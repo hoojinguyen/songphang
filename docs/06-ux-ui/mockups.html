@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe và mockup — Giai đoạn 1</title>
+<style>
+  :root{
+    --bg:#f3f4f1; --ink:#1b1f1d; --muted:#6a726d; --line:#e2e5df; --card:#fff;
+    --brand:#0f766e; --brand-ink:#fff; --brand-soft:#d9f0ec;
+    --pos:#0f766e; --neg:#b42318; --neg-soft:#fde8e6; --warn:#92400e; --warn-soft:#fdf0d5;
+    --page:#e9ebe6; --pageink:#1b1f1d;
+  }
+  body.wire{
+    --bg:#fff; --ink:#222; --muted:#777; --line:#bbb; --card:#fff;
+    --brand:#444; --brand-ink:#fff; --brand-soft:#eee;
+    --pos:#222; --neg:#222; --neg-soft:#eee; --warn:#222; --warn-soft:#eee;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--pageink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header.top{padding:24px 16px 8px;max-width:1280px;margin:0 auto}
+  header.top h1{margin:0 0 4px;font-size:22px}
+  header.top p{margin:0;color:#555;max-width:70ch}
+  .toggle{display:inline-flex;margin-top:14px;border:1px solid #999;border-radius:8px;overflow:hidden}
+  .toggle button{font:inherit;padding:8px 14px;border:0;background:#fff;color:#222;cursor:pointer}
+  .toggle button[aria-pressed=true]{background:#222;color:#fff}
+  main{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:28px 20px;padding:16px;max-width:1280px;margin:0 auto 40px}
+  figure{margin:0}
+  figcaption{margin:0 0 8px;font-size:13px;color:#444}
+  figcaption b{font-size:14px;color:#111}
+  .phone{width:100%;max-width:340px;height:640px;margin:0 auto;background:var(--bg);color:var(--ink);border:1px solid #9a9f99;border-radius:28px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+  body.wire .phone{border-radius:6px;border:2px solid #222}
+  .bar{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .bar h2{margin:0;font-size:17px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .ic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:var(--muted);font-size:18px}
+  .bar .act{color:var(--brand);font-weight:600}
+  .tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line)}
+  .tabs span{flex:1;text-align:center;padding:10px 0;font-size:14px;color:var(--muted);border-bottom:2px solid transparent}
+  .tabs .on{color:var(--brand);border-color:var(--brand);font-weight:600}
+  .body{flex:1;overflow:hidden;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  body.wire .card,body.wire .btn,body.wire .field,body.wire .chip{border-radius:3px}
+  .row{display:flex;align-items:center;gap:10px}
+  .row + .row{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .grow{flex:1;min-width:0}
+  .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .s{font-size:12.5px;color:var(--muted)}
+  .amt{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;white-space:nowrap}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+  .av{width:34px;height:34px;border-radius:50%;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+  .emo{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);display:grid;place-items:center;flex:none}
+  body.wire .emo,body.wire .av{border:1px solid #999;background:#fff;color:#222}
+  .day{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+  .btn{display:block;width:100%;text-align:center;padding:13px;border-radius:12px;border:1px solid var(--brand);background:var(--brand);color:var(--brand-ink);font-weight:600;font-size:15px}
+  .btn.ghost{background:transparent;color:var(--brand)}
+  .btn.sm{display:inline-block;width:auto;padding:7px 12px;font-size:13px;border-radius:9px}
+  .fab{position:absolute;right:16px;bottom:18px;width:56px;height:56px;border-radius:50%;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-size:30px;line-height:1}
+  .field{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px}
+  .field label{display:block;font-size:12px;color:var(--muted)}
+  .field .v{font-weight:600}
+  .big{font-size:34px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;padding:6px 0 2px}
+  .chips{display:flex;gap:6px}
+  .chip{flex:1;text-align:center;padding:7px 0;border:1px solid var(--line);border-radius:999px;font-size:13px;background:var(--card);color:var(--muted)}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:600}
+  .inp{border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-width:92px;text-align:right;font-variant-numeric:tabular-nums;background:var(--bg)}
+  .note{border-radius:12px;padding:10px 12px;font-size:13px;background:var(--brand-soft);color:var(--ink)}
+  .note.warn{background:var(--warn-soft);color:var(--warn)}
+  .foot{padding:12px 14px;background:var(--card);border-top:1px solid var(--line)}
+  .center{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:14px;text-align:center;padding:0 12px}
+  .logo{width:72px;height:72px;border-radius:20px;background:var(--brand);color:var(--brand-ink);display:grid;place-items:center;font-size:32px;font-weight:700}
+  .qr{width:120px;height:120px;margin:0 auto;border:1px solid var(--line);border-radius:8px;background:
+    conic-gradient(var(--ink) 25%,transparent 0 50%,var(--ink) 0 75%,transparent 0) 0 0/20px 20px}
+  .tag{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-weight:600}
+  .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:none}
+  .radio.on{border-color:var(--brand);box-shadow:inset 0 0 0 4px var(--card);background:var(--brand)}
+  .dim{opacity:.45}
+</style>
+</head>
+<body>
+<div role="note" style="margin:0;padding:14px 20px;background:#FFD84D;color:#1C1B22;font:600 15px/1.5 system-ui,sans-serif">Bản cũ, đã được thay thế. Thiết kế hiện hành theo hướng "G + E" nằm trên <a href="https://claude.ai/artifact/VEWSdwY25ULTJUSM1pBH5X" style="color:#1C1B22">canvas thiết kế</a> (hàng "Vòng 3") và được mô tả trong <a href="user-flows.md" style="color:#1C1B22">user-flows.md</a>. Trang này chỉ giữ để tham khảo.</div>
+<header class="top">
+  <h1>Wireframe và mockup — Giai đoạn 1</h1>
+  <p>Tám màn hình chính của web, thiết kế cho điện thoại trước. Mã màn hình (S1, S2…) khớp với tài liệu user flow. Dữ liệu là ví dụ minh hoạ; người đang xem là Minh.</p>
+  <div class="toggle" role="group" aria-label="Chế độ xem">
+    <button id="bw" aria-pressed="false">Wireframe</button>
+    <button id="bm" aria-pressed="true">Mockup</button>
+  </div>
+</header>
+
+<main>
+
+<figure>
+  <figcaption><b>S1 — Đăng nhập</b><br>Một hành động duy nhất.</figcaption>
+  <div class="phone">
+    <div class="center">
+      <div class="logo">÷</div>
+      <div><div class="t" style="font-size:22px">Chia tiền</div><div class="s">Ghi chi tiêu chung, biết ngay ai nợ ai.</div></div>
+    </div>
+    <div class="foot">
+      <div class="btn">Đăng nhập bằng Google</div>
+      <div class="s" style="text-align:center;margin-top:10px">Người được mời không cần cài đặt gì.</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>S2 — Danh sách nhóm</b><br>Mỗi nhóm hiện số dư của chính tôi.</figcaption>
+  <div class="phone">
+    <div class="bar"><h2>Nhóm của tôi</h2><div class="av">M</div></div>
+    <div class="body">
+      <div class="card">
+        <div class="row"><div class="emo">🏔️</div><div class="grow"><div class="t">Đà Lạt 12/2026</div><div class="s">4 thành viên</div></div><div class="amt pos">+450.000 đ<div class="s">được nhận</div></div></div>
+        <div class="row"><div class="emo">🏠</div><div class="grow"><div class="t">Phòng trọ</div><div class="s">3 thành viên</div></div><div class="amt neg">−320.000 đ<div class="s">cần trả</div></div></div>
+        <div class="row"><div class="emo">🍜</div><div class="grow"><div class="t">Team ăn trưa</div><div class="s">6 thành viên</div></div><div class="amt">0 đ<div class="s">đã xong</div></div></div>
+      </div>
+      <div class="btn ghost">+ Tạo nhóm</div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>S4 — Nhóm, tab Giao dịch</b><br>Mỗi dòng: ai trả, tổng tiền, phần của tôi.</figcaption>
+  <div class="phone">
+    <div class="bar"><div class="ic">‹</div><h2>Đà Lạt 12/2026</h2><div class="ic">👥</div><div class="ic">⚙</div></div>
+    <div class="tabs"><span class="on">Giao dịch</span><span>Số dư</span><span>Lịch sử</span></div>
+    <div class="body">
+      <div class="day">Hôm nay</div>
+      <div class="card">
+        <div class="row"><div class="emo">🍲</div><div class="grow"><div class="t">Ăn tối quán lẩu</div><div class="s">Minh trả · phần bạn 120.000 đ</div></div><div class="amt">300.000 đ</div></div>
+        <div class="row"><div class="emo">🚡</div><div class="grow"><div class="t">Vé cáp treo</div><div class="s">Lan trả · phần bạn 200.000 đ</div></div><div class="amt">800.000 đ</div></div>
+      </div>
+      <div class="day">Hôm qua</div>
+      <div class="card">
+        <div class="row"><div class="emo">🛵</div><div class="grow"><div class="t">Thuê xe máy</div><div class="s">Minh trả · phần bạn 150.000 đ</div></div><div class="amt">600.000 đ</div></div>
+        <div class="row"><div class="emo">↗</div><div class="grow"><div class="t">Thu chuyển cho Minh</div><div class="s">Chuyển khoản</div></div><div class="amt">200.000 đ</div></div>
+        <div class="row"><div class="emo">🏨</div><div class="grow"><div class="t">Homestay 2 đêm</div><div class="s">Minh trả · phần bạn 450.000 đ</div></div><div class="amt">1.800.000 đ</div></div>
+      </div>
+    </div>
+    <div class="fab">+</div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>S5 — Nhóm, tab Số dư</b><br>Lượt chuyển của tôi lên đầu; bấm một lần để ghi nhận.</figcaption>
+  <div class="phone">
+    <div class="bar"><div class="ic">‹</div><h2>Đà Lạt 12/2026</h2><div class="ic">👥</div><div class="ic">⚙</div></div>
+    <div class="tabs"><span>Giao dịch</span><span class="on">Số dư</span><span>Lịch sử</span></div>
+    <div class="body">
+      <div class="day">Ai trả ai · 3 lượt chuyển</div>
+      <div class="card">
+        <div class="row"><div class="av">H</div><div class="grow"><div class="t">Hùng → Minh</div><div class="s">250.000 đ</div></div><div class="btn sm">Đã nhận</div></div>
+        <div class="row"><div class="av">L</div><div class="grow"><div class="t">Lan → Minh</div><div class="s">120.000 đ</div></div><div class="btn sm">Đã nhận</div></div>
+        <div class="row"><div class="av">T</div><div class="grow"><div class="t">Thu → Minh</div><div class="s">80.000 đ</div></div><div class="btn sm">Đã nhận</div></div>
+      </div>
+      <div class="day">Số dư từng người</div>
+      <div class="card">
+        <div class="row"><div class="av">M</div><div class="grow"><div class="t">Minh <span class="tag">bạn</span></div></div><div class="amt pos">+450.000 đ</div></div>
+        <div class="row"><div class="av">T</div><div class="grow"><div class="t">Thu</div></div><div class="amt neg">−80.000 đ</div></div>
+        <div class="row"><div class="av">L</div><div class="grow"><div class="t">Lan</div></div><div class="amt neg">−120.000 đ</div></div>
+        <div class="row"><div class="av">H</div><div class="grow"><div class="t">Hùng</div></div><div class="amt neg">−250.000 đ</div></div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>S7 — Thêm khoản chi</b><br>Ba thao tác: số tiền, mô tả, lưu. Mọi thứ khác có mặc định.</figcaption>
+  <div class="phone">
+    <div class="bar"><div class="ic">✕</div><h2>Thêm khoản chi</h2></div>
+    <div class="body">
+      <div class="chips"><span class="chip on">Chi tiêu</span><span class="chip">Chuyển khoản</span><span class="chip">Thu nhập</span></div>
+      <div class="big">300.000 đ</div>
+      <div class="field"><label>Mô tả</label><div class="v">Ăn tối quán lẩu</div></div>
+      <div class="card">
+        <div class="row"><div class="grow"><div class="s">Ai trả</div><div class="t">Minh (bạn)</div></div><div class="ic">›</div></div>
+        <div class="row"><div class="grow"><div class="s">Chia cho</div><div class="t">Chia đều · 4 người</div></div><div class="ic">›</div></div>
+        <div class="row"><div class="grow"><div class="s">Ngày</div><div class="t">Hôm nay, 19:30</div></div><div class="ic">›</div></div>
+        <div class="row"><div class="grow"><div class="s">Danh mục</div><div class="t">🍲 Ăn uống</div></div><div class="ic">›</div></div>
+      </div>
+      <div class="s" style="text-align:center">Mỗi người 75.000 đ</div>
+    </div>
+    <div class="foot"><div class="btn">Lưu</div></div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>S8 — Cách chia: phần riêng cộng phần chung</b><br>Nhập món riêng, phần còn lại tự chia đều.</figcaption>
+  <div class="phone">
+    <div class="bar"><div class="ic">‹</div><h2>Chia 300.000 đ</h2><div class="act">Xong</div></div>
+    <div class="body">
+      <div class="chips"><span class="chip">Đều</span><span class="chip on">Số tiền</span><span class="chip">Phần</span><span class="chip">%</span></div>
+      <div class="card">
+        <div class="row"><div class="av">M</div><div class="grow"><div class="t">Minh</div><div class="s">tổng 120.000 đ</div></div><div class="inp">80.000</div></div>
+        <div class="row"><div class="av">L</div><div class="grow"><div class="t">Lan</div><div class="s">tổng 100.000 đ</div></div><div class="inp">60.000</div></div>
+        <div class="row"><div class="av">H</div><div class="grow"><div class="t">Hùng</div><div class="s">tổng 80.000 đ</div></div><div class="inp">40.000</div></div>
+        <div class="row dim"><div class="av">T</div><div class="grow"><div class="t">Thu</div><div class="s">không tham gia</div></div><div class="inp">—</div></div>
+      </div>
+      <div class="note"><b>Còn lại 120.000 đ</b> — chia đều cho 3 người, mỗi người 40.000 đ</div>
+      <div class="card">
+        <div class="row"><div class="radio on"></div><div class="grow"><div class="t">Chia đều phần còn lại cho tất cả</div></div></div>
+        <div class="row"><div class="radio"></div><div class="grow"><div class="t">Chỉ chia cho người để trống</div></div></div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>S10 — Thành viên và lời mời</b><br>Thành viên không cần tài khoản; vai trò chỉ áp dụng cho người đã tham gia.</figcaption>
+  <div class="phone">
+    <div class="bar"><div class="ic">‹</div><h2>Thành viên</h2></div>
+    <div class="body">
+      <div class="card">
+        <div class="row"><div class="av">M</div><div class="grow"><div class="t">Minh <span class="tag">bạn</span></div><div class="s">Chủ nhóm</div></div></div>
+        <div class="row"><div class="av">L</div><div class="grow"><div class="t">Lan</div><div class="s">Đọc-ghi</div></div><div class="ic">›</div></div>
+        <div class="row"><div class="av">T</div><div class="grow"><div class="t">Thu</div><div class="s">Chỉ xem</div></div><div class="ic">›</div></div>
+        <div class="row"><div class="av">H</div><div class="grow"><div class="t">Hùng</div><div class="s">Chưa tham gia</div></div><div class="ic">›</div></div>
+      </div>
+      <div class="btn ghost">+ Thêm thành viên</div>
+      <div class="card" style="text-align:center">
+        <div class="s" style="margin-bottom:8px">Mời vào nhóm</div>
+        <div class="qr"></div>
+        <div class="row" style="margin-top:10px;justify-content:center"><div class="btn sm">Sao chép link</div><div class="btn sm ghost">Tạo link mới</div></div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure>
+  <figcaption><b>S12 — Tham gia nhóm</b><br>Xem trước, rồi chọn "tôi là ai" để không tạo thành viên trùng.</figcaption>
+  <div class="phone">
+    <div class="bar"><h2>Lời mời vào nhóm</h2></div>
+    <div class="body">
+      <div class="card" style="text-align:center">
+        <div class="emo" style="margin:0 auto 6px">🏔️</div>
+        <div class="t" style="font-size:18px">Đà Lạt 12/2026</div>
+        <div class="s">4 thành viên · Minh mời bạn</div>
+      </div>
+      <div class="day">Bạn là ai trong nhóm?</div>
+      <div class="card">
+        <div class="row dim"><div class="radio"></div><div class="grow"><div class="t">Minh</div><div class="s">đã có người nhận</div></div></div>
+        <div class="row dim"><div class="radio"></div><div class="grow"><div class="t">Lan</div><div class="s">đã có người nhận</div></div></div>
+        <div class="row"><div class="radio on"></div><div class="grow"><div class="t">Hùng</div><div class="s">trùng tên tài khoản của bạn</div></div></div>
+        <div class="row"><div class="radio"></div><div class="grow"><div class="t">Tôi chưa có tên trong danh sách</div></div></div>
+      </div>
+    </div>
+    <div class="foot"><div class="btn">Tham gia với tên Hùng</div></div>
+  </div>
+</figure>
+
+</main>
+<script>
+  var bw=document.getElementById('bw'),bm=document.getElementById('bm');
+  function set(w){document.body.classList.toggle('wire',w);bw.setAttribute('aria-pressed',w);bm.setAttribute('aria-pressed',!w);}
+  bw.onclick=function(){set(true)};bm.onclick=function(){set(false)};
+</script>
+</body>
+</html>
