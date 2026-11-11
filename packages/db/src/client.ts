@@ -20,3 +20,20 @@ export function createDb(url: string): { db: Db; close(): Promise<void> } {
 		close: () => client.end({ timeout: 5 }),
 	};
 }
+
+export async function checkDatabaseHealth(db: Db): Promise<boolean> {
+	let timeout: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			db.execute("select 1").then(
+				() => true,
+				() => false,
+			),
+			new Promise<boolean>((resolve) => {
+				timeout = setTimeout(() => resolve(false), 2000);
+			}),
+		]);
+	} finally {
+		clearTimeout(timeout);
+	}
+}
