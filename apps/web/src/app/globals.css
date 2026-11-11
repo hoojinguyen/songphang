@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+	--color-bg: #f6f2fb;
+	--color-surface: #ffffff;
+	--color-ink: #1c1b22;
+	--color-muted: #5a5766;
+	--color-accent: #ffd84d;
+	--color-sunken: #e9e4f3;
+	--color-mint: #9eebc0;
+	--color-sky: #9ccbff;
+	--color-coral: #ff8a73;
+	--color-lilac: #d3b8ff;
+	--radius-card: 32px;
+	--radius-pill: 9999px;
+	--spacing-control-md: 48px;
+	--spacing-control-lg: 64px;
+	--text-title: 32px;
+	--text-title--line-height: 1.25;
+}
