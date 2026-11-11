@@ -1,58 +1,58 @@
-# Quy ước code
+# Code conventions
 
-Cập nhật: 2026-11-11. File này chi tiết hoá mục 7 của `AGENTS.md`. Khi hai file khác nhau, `AGENTS.md` đúng.
+Updated: 2026-11-11. This file expands section 7 of `AGENTS.md`. If the two files differ, `AGENTS.md` is authoritative.
 
-## 1. Cấu trúc thư mục
+## 1. Directory structure
 
 ```
 apps/
   api/src/
-    config.ts            đọc và kiểm biến môi trường
-    app.ts               ráp ứng dụng: middleware, route
-    errors.ts            AppError và bộ xử lý lỗi chung
-    routes/              một file cho một nhóm endpoint; không chứa logic
-    services/            một file cho một nhóm thao tác nghiệp vụ
-    auth/                phiên, middleware đăng nhập và phân quyền
+    config.ts            read and validate environment variables
+    app.ts               assemble the application: middleware, routes
+    errors.ts            AppError and shared error handler
+    routes/              one file per endpoint group; no logic
+    services/            one file per group of business operations
+    auth/                sessions, authentication middleware, and authorization
   web/src/
-    app/                 trang (App Router); mỗi thư mục một màn hình
-    components/ui/       thành phần dùng chung, không biết nghiệp vụ
-    components/<tên>/    thành phần của riêng một tính năng
-    lib/                 gọi API, hook dữ liệu, hàm tiện ích
-    messages/vi.ts       mọi chuỗi hiển thị
+    app/                 pages (App Router); one screen per directory
+    components/ui/       shared components with no business knowledge
+    components/<name>/   feature-specific components
+    lib/                 API calls, data hooks, utility functions
+    messages/vi.ts       all displayed strings
 packages/
-  contract/src/          schema Zod của mọi yêu cầu và phản hồi
-  db/src/                schema bảng, migration, truy vấn
-  core/src/              logic tiền thuần (có từ mốc 1A)
-docs/                    tài liệu; agent triển khai không sửa
+  contract/src/          Zod schemas for every request and response
+  db/src/                table schemas, migrations, queries
+  core/src/              pure money logic (from milestone 1A)
+docs/                    documentation; implementation agents do not edit it
 ```
 
-Quy tắc phụ thuộc: `web → contract`; `api → contract, db, core`; `core` không phụ thuộc gì. Không nhập chéo giữa `apps/`. Không tạo thư mục mới ở cấp này khi chưa được đồng ý.
+Dependency rules: `web → contract`; `api → contract, db, core`; `core` has no dependencies. Do not import across `apps/`. Do not create a new top-level directory without approval.
 
-Chưa có file thứ hai cùng loại thì chưa cần thư mục: đừng tạo `utils/`, `helpers/`, `types/`, `constants/` để chứa một file.
+Do not create a directory for one file: there is no need for `utils/`, `helpers/`, `types/`, or `constants/` until a second file of that kind exists.
 
-## 2. Đặt tên
+## 2. Naming
 
-| Thứ | Quy ước | Ví dụ |
+| Thing | Convention | Example |
 |---|---|---|
-| File và thư mục | `kebab-case` | `create-session.ts`, `dev-login/` |
-| File component React | `PascalCase` | `MemberShape.tsx` |
-| Biến, hàm | `camelCase` | `findSessionUser` |
-| Kiểu, component | `PascalCase` | `UserDto`, `MemberShape` |
-| Hằng số cấp module | `SCREAMING_SNAKE_CASE` | `SESSION_TTL_MS` |
-| Bảng và cột database | `snake_case`, bảng số nhiều | `sessions.token_hash` |
-| Trường JSON của API | `camelCase` | `avatarUrl` |
-| Mã lỗi | `SCREAMING_SNAKE_CASE` | `UNAUTHENTICATED` |
+| Files and directories | `kebab-case` | `create-session.ts`, `dev-login/` |
+| React component files | `PascalCase` | `MemberShape.tsx` |
+| Variables and functions | `camelCase` | `findSessionUser` |
+| Types and components | `PascalCase` | `UserDto`, `MemberShape` |
+| Module-level constants | `SCREAMING_SNAKE_CASE` | `SESSION_TTL_MS` |
+| Database tables and columns | `snake_case`, plural tables | `sessions.token_hash` |
+| API JSON fields | `camelCase` | `avatarUrl` |
+| Error codes | `SCREAMING_SNAKE_CASE` | `UNAUTHENTICATED` |
 
-- **Hàm là động từ**, nói đúng việc nó làm và thứ nó trả: `createSession`, `findSessionUser`, `deleteSession`. Hàm trả `null` khi không thấy bắt đầu bằng `find`; hàm ném lỗi khi không thấy bắt đầu bằng `get`.
-- **Giá trị đúng/sai** bắt đầu bằng `is`, `has`, `can`, `should`: `isExpired`, `hasVerifiedEmail`.
-- **Không viết tắt**, trừ những từ ai cũng hiểu (`id`, `url`, `db`, `dto`). Viết `transaction`, không viết `tx` hay `txn`; `member`, không `mem`.
-- **Đơn vị nằm trong tên** khi kiểu không nói lên: `SESSION_TTL_MS`, `amountMinor`, `expiresAt`.
-- **Không dùng tên rỗng nghĩa**: `data`, `info`, `item`, `temp`, `handle`, `process`, `manager`, `util`. Nếu không nghĩ ra tên cụ thể thì hàm đang làm quá nhiều việc.
-- Code, tên và comment viết bằng **tiếng Anh**. Chuỗi hiển thị cho người dùng viết bằng tiếng Việt và chỉ nằm trong `messages/vi.ts`.
+- **Functions are verbs**, accurately stating what they do and return: `createSession`, `findSessionUser`, `deleteSession`. Functions returning `null` when absent start with `find`; functions throwing when absent start with `get`.
+- **Boolean values** start with `is`, `has`, `can`, or `should`: `isExpired`, `hasVerifiedEmail`.
+- **Do not abbreviate**, except for universally understood terms (`id`, `url`, `db`, `dto`). Write `transaction`, not `tx` or `txn`; `member`, not `mem`.
+- **Put units in names** when the type does not express them: `SESSION_TTL_MS`, `amountMinor`, `expiresAt`.
+- **Do not use meaningless names:** `data`, `info`, `item`, `temp`, `handle`, `process`, `manager`, `util`. If you cannot find a specific name, the function is doing too much.
+- Code, names, and comments are written in **English**. User-visible strings are written in Vietnamese and live only in `messages/vi.ts`.
 
-**Từ vựng nghiệp vụ.** Dùng đúng một từ tiếng Anh cho mỗi khái niệm, ở mọi nơi:
+**Business vocabulary.** Use one English word for each concept everywhere:
 
-| Tiếng Việt | Trong code |
+| Vietnamese | In code |
 |---|---|
 | Nhóm | `group` |
 | Thành viên (một cái tên trong nhóm) | `member` |
@@ -69,54 +69,54 @@ Chưa có file thứ hai cùng loại thì chưa cần thư mục: đừng tạo
 
 ## 3. TypeScript
 
-- `strict` bật hoàn toàn, kèm `noUncheckedIndexedAccess` và `exactOptionalPropertyTypes`.
-- Không `any`. Dữ liệu chưa biết kiểu là `unknown`, rồi thu hẹp bằng schema Zod.
-- Không ép kiểu bằng `as` để cho qua trình biên dịch, không dùng `!`. Ngoại lệ duy nhất là `as const`.
-- Kiểu của dữ liệu qua ranh giới được suy ra từ schema Zod (`z.infer`), không viết tay lần hai.
-- Dùng union của chuỗi thay cho `enum`. Dùng `type` cho dữ liệu, `interface` chỉ khi cần được mở rộng.
-- Chỉ `export` có tên. `export default` chỉ ở nơi framework bắt buộc (trang và layout của Next.js, file cấu hình).
-- Ưu tiên `const`, hàm thuần và dữ liệu không đổi. Không sửa tham số đầu vào.
-- Hàm có hơn ba tham số nhận một đối tượng có tên trường.
-- Dùng `async`/`await`; không để promise trôi nổi không ai chờ.
-- Trả về sớm thay cho lồng `if`. Không có `else` sau `return`.
+- `strict` is fully enabled, together with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`.
+- No `any`. Data of unknown type is `unknown`, then narrowed with a Zod schema.
+- Do not use `as` casts to satisfy the compiler or use `!`. The only exception is `as const`.
+- Types for boundary data are inferred from Zod schemas (`z.infer`), not handwritten a second time.
+- Use string unions instead of `enum`. Use `type` for data; use `interface` only when extension is needed.
+- Use named exports only. `export default` is allowed only where the framework requires it (Next.js pages and layouts, configuration files).
+- Prefer `const`, pure functions, and immutable data. Do not mutate input parameters.
+- Functions with more than three parameters receive an object with named fields.
+- Use `async`/`await`; do not leave promises floating without an owner.
+- Return early instead of nesting `if`. Do not use `else` after `return`.
 
-## 4. Xử lý lỗi
+## 4. Error handling
 
-- Lỗi nghiệp vụ ở API ném `AppError(status, code, message, details?)`; bộ xử lý chung đổi nó thành định dạng lỗi của đặc tả API. Không tự dựng phản hồi lỗi trong route.
-- Không nuốt lỗi: không có `catch` rỗng, không `catch` rồi chỉ log và đi tiếp như không có gì.
-- Chỉ `try/catch` ở nơi thực sự xử lý được lỗi. Còn lại để lỗi nổi lên bộ xử lý chung.
-- Lỗi không lường trước trả 500 với thông điệp chung và được log đầy đủ kèm `requestId`.
-- Ở web, mọi lời gọi API đi qua `apiFetch`; màn hình có dữ liệu luôn có trạng thái đang tải, lỗi và trống.
+- API business errors throw `AppError(status, code, message, details?)`; the shared handler converts them to the API specification's error format. Do not build error responses in routes.
+- Do not swallow errors: no empty `catch`, and no catch-then-log-and-continue as if nothing happened.
+- Use `try/catch` only where the error can actually be handled. Otherwise let it reach the shared handler.
+- Unexpected errors return 500 with a generic message and are logged fully with `requestId`.
+- In the web app, every API call goes through `apiFetch`; data screens always have loading, error, and empty states.
 
 ## 5. API
 
-- **Route** khai báo đường dẫn, gắn schema từ `contract`, gọi một hàm service và trả kết quả. Không truy vấn database, không có điều kiện nghiệp vụ.
-- **Service** là một hàm cho một thao tác nghiệp vụ. Nó mở transaction khi ghi nhiều bảng, gọi `core` để tính, và ghi dữ liệu.
-- **Truy vấn** nằm trong `packages/db`, có kiểu, không chứa quy tắc nghiệp vụ.
-- Mọi yêu cầu và phản hồi có schema trong `packages/contract`. Không trả về đối tượng lấy thẳng từ database; ánh xạ sang DTO.
-- Thời gian hiện tại lấy qua `deps.now()`, không gọi `new Date()` rải rác trong logic.
+- **Route** declares the path, attaches schemas from `contract`, calls one service function, and returns the result. It does not query the database or contain business conditions.
+- **Service** is one function for one business operation. It opens a transaction when writing multiple tables, calls `core` for calculations, and writes data.
+- **Queries** live in `packages/db`, are typed, and contain no business rules.
+- Every request and response has a schema in `packages/contract`. Never return a raw database object; map it to a DTO.
+- Read the current time through `deps.now()`; do not scatter `new Date()` through logic.
 
 ## 6. Database
 
-- Thay đổi cấu trúc chỉ qua migration sinh bằng `drizzle-kit generate`. Không sửa migration đã commit; cần đổi thì tạo migration mới.
-- Quy tắc toàn vẹn nằm trong database (khoá ngoại, `UNIQUE`, `CHECK`, `NOT NULL`), không chỉ trong code.
-- Ghi nhiều bảng cho một thao tác thì dùng một transaction.
-- Không `select *` trong truy vấn trả ra ngoài; chọn đúng cột cần.
+- Change structure only through migrations generated by `drizzle-kit generate`. Do not edit a committed migration; create a new migration.
+- Integrity rules belong in the database (foreign keys, `UNIQUE`, `CHECK`, `NOT NULL`), not only in code.
+- A write across multiple tables uses one transaction.
+- Do not `select *` in a query that returns data externally; select only the required columns.
 
 ## 7. Web
 
-- Dữ liệu từ server đi qua TanStack Query. Không sao chép nó vào `useState`.
-- Trạng thái cục bộ để gần nơi dùng nhất. Chưa cần thì chưa đưa thư viện quản lý trạng thái vào.
-- Một file một component được `export`. Component quá 150 dòng thì tách phần con.
-- Màu, cỡ chữ, bo góc lấy từ token trong `globals.css`. Không viết mã màu trực tiếp trong component.
-- Mọi chuỗi người dùng nhìn thấy nằm trong `messages/vi.ts`.
-- Phần tử bấm được là `<button>` hoặc `<a>` thật; có nhãn đọc được; vùng chạm tối thiểu 44×44; dùng được bằng bàn phím.
-- Hình của thành viên luôn vẽ bằng `MemberShape`. Không tự vẽ lại ở nơi khác.
-- Không đổi bố cục, màu, chữ, câu chữ hay hành vi so với `docs/06-ux-ui/user-flows.md` và kế hoạch của task. Thấy thiết kế thiếu hoặc không làm được: hỏi.
+- Server data goes through TanStack Query. Do not copy it into `useState`.
+- Keep local state close to where it is used. Do not add a state-management library until needed.
+- One exported component per file. Split components over 150 lines.
+- Get colors, font sizes, and radii from tokens in `globals.css`. Do not put raw color values in components.
+- Every user-visible string lives in `messages/vi.ts`.
+- Clickable elements are real `<button>` or `<a>` elements, have accessible labels, have a minimum 44×44 hit area, and work with the keyboard.
+- Member images are always rendered with `MemberShape`. Do not redraw them elsewhere.
+- Do not change layout, colors, typography, wording, or behavior from `docs/06-ux-ui/user-flows.md` and the task plan. Ask if the design is missing or impossible.
 
-## 8. Comment
+## 8. Comments
 
-Viết comment khi người đọc sau sẽ hỏi "sao lại làm thế này?":
+Write a comment when a later reader would ask “why is it done this way?”:
 
 ```ts
 // Hash before lookup so a malformed cookie simply fails to match,
@@ -124,23 +124,23 @@ Viết comment khi người đọc sau sẽ hỏi "sao lại làm thế này?":
 const tokenHash = sha256Hex(token);
 ```
 
-Không viết comment nhắc lại code (`// create session`), không để lại code bị comment, không `TODO` không có người nhận. Thứ gì cần comment dài để hiểu thì đặt lại tên hoặc tách hàm trước.
+Do not write comments that repeat code (`// create session`), leave commented-out code, or add an unowned `TODO`. If code needs a long comment to be understood, rename it or split the function first.
 
-## 9. Khi nào dùng mẫu thiết kế
+## 9. When to use design patterns
 
-| Tình huống | Cách làm |
+| Situation | Approach |
 |---|---|
-| Cùng một việc có nhiều cách thực hiện chọn lúc chạy (ví dụ nhiều cách chia tiền) | Một bảng ánh xạ từ tên sang hàm; mỗi hàm cùng chữ ký |
-| Cần thay thứ phụ thuộc bên ngoài (đồng hồ, gửi thư, database) | Truyền vào qua tham số `deps`, không nhập trực tiếp trong logic |
-| Dữ liệu có vài dạng loại trừ nhau (ví dụ kết quả `ok`, `needs_input`, `unparsed`) | Union có trường phân biệt, xử lý bằng `switch` đủ nhánh |
-| Một thao tác gồm nhiều bước phải cùng thành công | Một hàm service với một transaction |
-| Logic lặp lại ở ba nơi trở lên | Tách hàm chung, đặt cạnh nơi dùng |
+| One operation has several implementations selected at runtime (for example, multiple splits) | A name-to-function map; every function has the same signature |
+| An external dependency must be replaceable (clock, email, database) | Pass it through `deps`; do not import it directly in logic |
+| Data has a few mutually exclusive forms (for example, `ok`, `needs_input`, `unparsed`) | A discriminated union, handled with an exhaustive `switch` |
+| One operation has multiple steps that must all succeed | One service function with one transaction |
+| Logic repeats in three or more places | Extract a shared function beside its callers |
 
-Không dùng lớp khi một hàm là đủ. Không dựng tầng trung gian (repository cho từng bảng, factory, container phụ thuộc) khi chưa có nhu cầu cụ thể trong task.
+Do not use a class when a function is enough. Do not build intermediate layers (a repository per table, factory, or dependency container) without a concrete task need.
 
-## 10. Tiền
+## 10. Money
 
-- Tiền là số nguyên theo đơn vị nhỏ nhất (VND: đồng), kiểu `bigint` trong database.
-- Mọi phép chia và làm tròn tiền chỉ nằm trong `packages/core`. API gọi `core`; web hiển thị con số API trả về.
-- Không dùng phép chia số thực, `toFixed`, `Math.round` trên tiền ở bất kỳ nơi nào khác.
-- Định dạng hiển thị là `150.000 đ`, làm ở web bằng một hàm duy nhất.
+- Money is an integer in the smallest unit (VND: đồng), represented as `bigint` in the database.
+- All division and rounding of money lives only in `packages/core`. The API calls `core`; the web app displays the number returned by the API.
+- Do not use floating-point division, `toFixed`, or `Math.round` on money elsewhere.
+- Display formatting is `150.000 đ`, done in one web function.

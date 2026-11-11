@@ -1,10 +1,10 @@
 # Sòng Phẳng
 
-Luật làm việc của dự án nằm trong `AGENTS.md`, dùng chung cho mọi agent. Đọc và tuân theo toàn bộ:
+The project's working rules are in `AGENTS.md` and are shared by every agent. Read and follow the entire file:
 
 @AGENTS.md
 
-## Riêng cho Claude
+## Claude-specific
 
-- Skill của dự án nằm ở `.agents/skills/`; `.claude/skills` là liên kết tới thư mục đó.
-- Luật "không viết test tự động" ở mục 6 của `AGENTS.md` cao hơn mọi skill hay thói quen mặc định yêu cầu viết test trước (kể cả các skill TDD). Trong dự án này không viết test.
+- Project skills live in `.agents/skills/`; `.claude/skills` is a symlink to that directory.
+- The “do not write automated tests” rule in section 6 of `AGENTS.md` takes precedence over any skill or default habit that requires tests first (including TDD skills). This project does not write tests.

@@ -1,76 +1,76 @@
 ---
 name: ra-soat-bao-mat
-description: Dùng trước khi báo xong bất kỳ thay đổi code nào trong dự án Sòng Phẳng, và khi review code. Danh sách rà soát bảo mật cho API, database, phiên đăng nhập, web và cấu hình; mỗi mục phải được kiểm trên diff thật chứ không trả lời theo trí nhớ.
+description: Use before reporting any code change complete in Sòng Phẳng and when reviewing code. Security checklist for API, database, sessions, web, and configuration; every relevant item must be checked against the actual diff, not memory.
 ---
 
-# Rà soát bảo mật
+# Security review
 
-Chạy trên diff của thay đổi hiện tại (`git diff` hoặc `git show`). Với mỗi mục liên quan, mở đúng đoạn code và kiểm; đừng trả lời "ổn" theo trí nhớ. Mục không liên quan tới thay đổi thì bỏ qua.
+Run this on the current change's diff (`git diff` or `git show`). For every relevant item, open and inspect the exact code; do not answer “looks fine” from memory. Skip items unrelated to the change.
 
-Tìm thấy vấn đề: sửa nếu nằm trong phạm vi task; nếu không, ghi vào mục "Ngoài phạm vi" của báo cáo. Không chắc một thứ có an toàn không: dừng và hỏi.
+If you find an issue, fix it when it is in task scope; otherwise record it under “Out of scope” in the report. If you are unsure whether something is safe, stop and ask.
 
-## 1. Bí mật và cấu hình
+## 1. Secrets and configuration
 
-- [ ] Không có mật khẩu, khoá, mã phiên, chuỗi kết nối thật trong code, file cấu hình, hay file được commit. Chạy `git diff --cached` và đọc từng dòng thêm vào.
-- [ ] `.env` không nằm trong commit; `.env.example` chỉ có giá trị giả hoặc giá trị chỉ dùng cho máy local.
-- [ ] Biến môi trường mới được khai báo trong schema cấu hình và có trong `.env.example`.
-- [ ] Không log mật khẩu, mã phiên, cookie, header `Authorization`, hay toàn bộ thân yêu cầu.
+- [ ] No password, key, session token, or real connection string exists in code, configuration, or committed files. Run `git diff --cached` and read every added line.
+- [ ] `.env` is not committed; `.env.example` contains only fake or local-only values.
+- [ ] New environment variables are declared in the configuration schema and included in `.env.example`.
+- [ ] Passwords, session tokens, cookies, `Authorization` headers, and entire request bodies are not logged.
 
-## 2. Dữ liệu đầu vào
+## 2. Input data
 
-- [ ] Mọi thân yêu cầu, tham số đường dẫn, tham số truy vấn và header được dùng đều đi qua schema Zod trước khi tới logic.
-- [ ] Chuỗi có giới hạn độ dài; số có giới hạn khoảng; mảng có giới hạn số phần tử.
-- [ ] ID nhận từ client được kiểm là thuộc đúng nhóm hoặc đúng người dùng đang gọi, không chỉ kiểm là tồn tại.
-- [ ] Không có giá trị nào từ client được dùng làm tên cột, tên bảng, đường dẫn file hay lệnh hệ thống.
+- [ ] Every used request body, path parameter, query parameter, and header passes through a Zod schema before reaching logic.
+- [ ] Strings have length limits; numbers have range limits; arrays have item-count limits.
+- [ ] IDs from the client are checked to belong to the calling user's group or user, not merely to exist.
+- [ ] No client value is used as a column name, table name, file path, or system command.
 
-## 3. Đăng nhập và phiên
+## 3. Authentication and sessions
 
-- [ ] Endpoint cần đăng nhập có middleware `requireUser`. Endpoint công khai là có chủ đích và được ghi trong đặc tả API.
-- [ ] Mã phiên được sinh bằng `node:crypto`, đủ dài (từ 32 byte), và chỉ lưu ở dạng băm.
-- [ ] Cookie phiên có `HttpOnly`, `SameSite=Lax`, `Path=/`, và `Secure` ở production.
-- [ ] Đăng xuất, đổi mật khẩu và đặt lại mật khẩu làm mất hiệu lực các phiên cần mất.
-- [ ] Đường dẫn chỉ dành cho phát triển (`/dev/*`) không tồn tại khi `APP_ENV=production`.
-- [ ] Mật khẩu chỉ được băm bằng thuật toán chuyên cho mật khẩu qua thư viện; không tự viết, không dùng SHA hay MD5 cho mật khẩu.
-- [ ] So sánh mã bí mật dùng phép so sánh thời gian không đổi (`timingSafeEqual`) hoặc tra theo giá trị băm.
+- [ ] Authenticated endpoints use `requireUser` middleware. Public endpoints are intentional and documented in the API specification.
+- [ ] Session tokens are generated with `node:crypto`, are at least 32 bytes, and are stored only as hashes.
+- [ ] Session cookies have `HttpOnly`, `SameSite=Lax`, `Path=/`, and `Secure` in production.
+- [ ] Logout, password changes, and password resets invalidate the sessions that must be invalidated.
+- [ ] Development-only paths (`/dev/*`) do not exist when `APP_ENV=production`.
+- [ ] Passwords are hashed only with a password-specific algorithm through a library; do not implement it or use SHA/MD5 for passwords.
+- [ ] Secret comparisons use constant-time comparison (`timingSafeEqual`) or lookup by hash.
 
-## 4. Phân quyền
+## 4. Authorization
 
-- [ ] Mọi endpoint có `groupId` đi qua middleware phân quyền chung, với mức quyền tối thiểu đúng như đặc tả API.
-- [ ] Người ngoài nhóm nhận 404; người trong nhóm thiếu quyền nhận 403.
-- [ ] Không có truy vấn nào lấy dữ liệu của nhóm mà thiếu điều kiện theo `group_id`.
-- [ ] Thao tác chỉ dành cho chủ nhóm được kiểm ở server, không chỉ ẩn nút ở web.
+- [ ] Every endpoint with `groupId` passes through shared authorization middleware with the minimum role required by the API specification.
+- [ ] A person outside the group receives 404; a group member without permission receives 403.
+- [ ] No query reads group data without a `group_id` condition.
+- [ ] Group-owner-only operations are checked on the server, not merely hidden in the web UI.
 
 ## 5. Database
 
-- [ ] Mọi truy vấn dùng Drizzle hoặc tham số hoá. Không có chuỗi SQL được ghép từ biến.
-- [ ] Thao tác ghi nhiều bảng nằm trong một transaction.
-- [ ] Ràng buộc toàn vẹn mới (duy nhất, khoá ngoại, `CHECK`) nằm trong migration, không chỉ trong code.
+- [ ] Every query uses Drizzle or parameters. No SQL string is concatenated from variables.
+- [ ] A write across multiple tables is inside one transaction.
+- [ ] New integrity constraints (unique, foreign key, `CHECK`) are in a migration, not only in code.
 
-## 6. Phản hồi và lỗi
+## 6. Responses and errors
 
-- [ ] Phản hồi lỗi không chứa stack, câu SQL, đường dẫn file hay tên bảng.
-- [ ] Phản hồi không trả thừa trường: không có `tokenHash`, `passwordHash`, email của người khác nhóm, hay cột nội bộ.
-- [ ] Đăng ký, đăng nhập và quên mật khẩu không cho biết một email đã có tài khoản hay chưa.
-- [ ] Endpoint dễ bị dò (đăng nhập, đăng ký, gửi thư, xem lời mời) có giới hạn tần suất khi đặc tả yêu cầu.
+- [ ] Error responses contain no stack trace, SQL, file path, or table name.
+- [ ] Responses do not return extra fields: no `tokenHash`, `passwordHash`, another group's email, or internal columns.
+- [ ] Registration, login, and password reset do not reveal whether an email has an account.
+- [ ] Enumeration-prone endpoints (login, registration, email sending, invitation lookup) have rate limits when required by the specification.
 
 ## 7. Web
 
-- [ ] Không có `dangerouslySetInnerHTML`, `eval`, `new Function`, hay HTML dựng từ chuỗi.
-- [ ] Chuyển hướng theo tham số (`next`, `redirect`) chỉ nhận đường dẫn nội bộ: bắt đầu bằng đúng một dấu `/`, không chứa `\`.
-- [ ] Liên kết ra ngoài mở tab mới có `rel="noopener noreferrer"`.
-- [ ] Không lưu mã phiên, mật khẩu hay dữ liệu nhạy cảm vào `localStorage` hoặc `sessionStorage`.
-- [ ] Yêu cầu ghi gửi tới API cùng nguồn; không tắt kiểm tra nguồn gốc ở server.
+- [ ] No `dangerouslySetInnerHTML`, `eval`, `new Function`, or HTML constructed from strings.
+- [ ] Parameter-based redirects (`next`, `redirect`) accept only internal paths: exactly one leading `/` and no `\`.
+- [ ] External links opened in a new tab have `rel="noopener noreferrer"`.
+- [ ] Session tokens, passwords, and sensitive data are not stored in `localStorage` or `sessionStorage`.
+- [ ] Write requests go to the same-origin API; origin checks are not disabled on the server.
 
-## 8. Phụ thuộc
+## 8. Dependencies
 
-- [ ] Không có thư viện mới nào được thêm mà chưa được đồng ý.
-- [ ] `pnpm audit --prod` không báo lỗ hổng mức cao hoặc nghiêm trọng mới do thay đổi này. Có thì báo, đừng tự nâng phiên bản lớn.
-- [ ] File khoá phụ thuộc (`pnpm-lock.yaml`) được commit cùng thay đổi.
+- [ ] No new library was added without approval.
+- [ ] `pnpm audit --prod` reports no new high or critical vulnerability caused by this change. If it does, report it; do not upgrade a major version yourself.
+- [ ] The dependency lockfile (`pnpm-lock.yaml`) is committed with the change.
 
-## Ghi vào báo cáo
+## Add to the report
 
-Thêm một dòng vào mục "Tự chạy thử" của báo cáo:
+Add one line to “Exercise results”:
 
 ```
-Rà soát bảo mật: đã kiểm mục <số các mục liên quan>; <"không thấy vấn đề" hoặc danh sách vấn đề và cách đã xử lý>
+Security review: checked relevant items <numbers>; <“no issues found” or issues and how they were handled>
 ```

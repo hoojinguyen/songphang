@@ -1,112 +1,112 @@
 ---
 name: thuc-hien-task
-description: Dùng khi được giao thực hiện một task, một bước trong kế hoạch, sửa lỗi, hoặc bất kỳ thay đổi code nào trong dự án Sòng Phẳng. Quy định sáu bước bắt buộc từ đọc, nghĩ, làm, tự kiểm, báo cáo đến dừng chờ duyệt, và mẫu báo cáo kèm danh sách kiểm tay.
+description: Use when assigned a task, plan step, bug fix, or any code change in Sòng Phẳng. Defines the six required steps from reading and thinking through implementation, self-checking, reporting, and stopping for approval, including the report and manual-check template.
 ---
 
-# Thực hiện một task
+# Execute a task
 
-Làm đúng sáu bước, theo thứ tự. Không bỏ bước nào, kể cả với thay đổi nhỏ.
+Follow the six steps in order. Do not skip any, even for a small change.
 
-## Bước 1 — Đọc
+## Step 1 — Read
 
-1. Đọc toàn bộ task được giao và mục "Global Constraints" của kế hoạch chứa nó.
-2. Đọc các phần tài liệu trong `docs/` mà task trỏ tới.
-3. Đọc code hiện có ở những chỗ sẽ sửa và ở những chỗ đang làm việc tương tự. Bạn sẽ làm theo cách đã có.
-4. Nếu task đụng tới giao diện: đọc phần tương ứng trong `docs/06-ux-ui/user-flows.md`.
+1. Read the complete task and the plan's “Global Constraints” section.
+2. Read the sections of `docs/` referenced by the task.
+3. Read existing code at the places you will change and places doing similar work. Follow the existing approach.
+4. If the task touches UI, read the corresponding section of `docs/06-ux-ui/user-flows.md`.
 
-Chưa hiểu task yêu cầu gì, hoặc thấy nó mâu thuẫn với tài liệu: hỏi ngay ở bước này.
+If you do not understand the task or find a conflict with the documents, ask immediately at this step.
 
-## Bước 2 — Nghĩ, rồi viết ra
+## Step 2 — Think, then write it down
 
-Trước khi sửa file nào, viết ra cho người giao việc:
-
-```
-Cách làm
-- File sẽ tạo/sửa: …
-- Cách làm: … (hai đến bốn dòng)
-- Vì sao đây là cách đơn giản nhất: …
-- Phương án đã bỏ: … (nếu có một phương án đáng cân nhắc)
-- Cần hỏi: … (nếu không có thì ghi "không")
-```
-
-Tự hỏi ba câu trước khi viết phần này:
-
-- Có cách nào ít code hơn, ít khái niệm hơn mà vẫn đúng không?
-- Nền tảng hoặc thư viện đang dùng đã có sẵn thứ này chưa?
-- Mình có đang làm thêm thứ task không yêu cầu không?
-
-Nếu mục "Cần hỏi" có nội dung thuộc cột "Phải hỏi" ở mục 5 của `AGENTS.md`, dừng ở đây chờ trả lời. Nếu không, làm tiếp.
-
-## Bước 3 — Làm
-
-- Theo `docs/agents/quy-uoc-code.md`.
-- Dùng đúng tên file, tên hàm, kiểu mà kế hoạch đã ghi.
-- Chỉ đụng tới file mà task cần. Không sửa định dạng, không đổi tên, không dọn dẹp ở chỗ khác.
-- Không chắc API của một thư viện: đọc tài liệu hoặc mã nguồn của đúng phiên bản trong `node_modules`, đừng đoán.
-- Không viết test tự động.
-
-## Bước 4 — Tự kiểm
-
-Làm đủ bốn việc, theo thứ tự:
-
-1. `pnpm check` qua hoàn toàn. Lỗi thì sửa nguyên nhân, không tắt quy tắc.
-2. Chạy thật thứ vừa làm: gọi endpoint bằng `curl`, chạy lệnh, mở trang. Thử cả đường bình thường lẫn ít nhất hai trường hợp sai (thiếu dữ liệu, sai định dạng, chưa đăng nhập, không có quyền, gửi hai lần). Giữ lại kết quả thật.
-3. Rà soát bảo mật bằng skill `ra-soat-bao-mat`.
-4. Đọc lại toàn bộ diff của mình (`git diff`) như thể người khác viết: có file nào quá dài, tên nào khó hiểu, đoạn nào thừa, thứ gì ngoài phạm vi không?
-
-Sửa ba lần cho cùng một lỗi mà vẫn không qua: dừng và báo, đừng thử tiếp.
-
-## Bước 5 — Báo cáo
-
-Commit theo mục 10 của `AGENTS.md`, rồi gửi báo cáo đúng mẫu:
+Before editing any file, write to the requester:
 
 ```
-Task <số> — <tên>
-Commit: <mã băm rút gọn>
-pnpm check: qua / thất bại
+Approach
+- Files to create/modify: …
+- Approach: … (two to four lines)
+- Why this is the simplest approach: …
+- Rejected alternative: … (if there is a worthwhile alternative)
+- Questions: … (write “none” if there are no questions)
+```
 
-Đã làm
-- <một dòng cho mỗi thay đổi đáng kể>
+Ask yourself before writing this section:
 
-File tạo/sửa
-- <đường dẫn>
+- Is there a solution with less code and fewer concepts that remains correct?
+- Does the platform or an existing library already provide this?
+- Am I doing anything the task does not require?
 
-Tự chạy thử
-- <lệnh hoặc thao tác> → <kết quả thật, dán nguyên văn phần quan trọng>
+If “Questions” includes an item from the “Must ask” column in section 5 of `AGENTS.md`, stop and wait for an answer. Otherwise continue.
 
-Kiểm tay cho chủ dự án
-1. <làm gì, ở đâu> → thấy <gì> là đúng
+## Step 3 — Do
+
+- Follow `docs/agents/quy-uoc-code.md`.
+- Use the file names, function names, and types specified by the plan.
+- Touch only files needed by the task. Do not reformat, rename, or clean up elsewhere.
+- If unsure about a library API, read the documentation or source for the exact version in `node_modules`; do not guess.
+- Do not write automated tests.
+
+## Step 4 — Self-check
+
+Do all four activities, in order:
+
+1. `pnpm check` must pass completely. Fix the cause; do not disable rules.
+2. Exercise the actual change: call endpoints with `curl`, run commands, or open the page. Try the normal path and at least two invalid cases (missing data, invalid format, unauthenticated, unauthorized, or duplicate submission). Keep the real results.
+3. Run the `ra-soat-bao-mat` security review skill.
+4. Read your entire diff (`git diff`) as if someone else wrote it: check for oversized files, unclear names, unnecessary sections, and out-of-scope changes.
+
+If the same issue still fails after three fixes, stop and report it; do not keep trying.
+
+## Step 5 — Report
+
+Commit according to section 10 of `AGENTS.md`, then send a report using this template:
+
+```
+Task <number> — <name>
+Commit: <short hash>
+pnpm check: passed / failed
+
+Completed
+- <one line per significant change>
+
+Files created/modified
+- <path>
+
+Exercise results
+- <command or action> → <actual result; paste the important part verbatim>
+
+Manual checks for the project owner
+1. <what to do and where> → correct result is <what>
 2. …
-(gồm cả trường hợp sai: làm <gì> → phải thấy <thông báo/hành vi>)
+(include invalid cases: do <what> → must see <message/behavior>)
 
-Tự quyết
-- <lựa chọn kế hoạch để ngỏ mà bạn đã chọn; "không có">
+Decisions
+- <open plan choice you made; “none”>
 
-Lệch so với kế hoạch
-- <khác gì, vì sao; "không có">
+Deviations from plan
+- <what and why; “none”>
 
-Chưa kiểm được
-- <bước nào chưa chạy và vì sao; "không có">
+Not checked
+- <what was not run and why; “none”>
 
-Ngoài phạm vi
-- <lỗi hoặc điều đáng lo đã thấy nhưng không sửa; "không có">
+Out of scope
+- <bug or concern noticed but not fixed; “none”>
 ```
 
-Quy tắc cho mục "Kiểm tay cho chủ dự án":
+Rules for “Manual checks for the project owner”:
 
-- Mỗi bước là một thao tác cụ thể mà người không đọc code làm được: lệnh để dán, địa chỉ để mở, nút để bấm.
-- Mỗi bước nói rõ kết quả đúng trông thế nào.
-- Có ít nhất một bước cho đường bình thường và một bước cho mỗi trường hợp sai quan trọng.
-- Không quá mười bước cho một task; nếu cần nhiều hơn, task đang quá lớn.
+- Each step is a concrete action a person who has not read the code can perform: a command to paste, a URL to open, or a button to click.
+- Each step states what the correct result looks like.
+- Include at least one normal-path step and one step for each important invalid case.
+- Use no more than ten steps per task; if more are needed, the task is too large.
 
-## Bước 6 — Dừng
+## Step 6 — Stop
 
-Không bắt đầu task kế tiếp. Chờ người review trả lời "qua" hoặc danh sách cần sửa. Khi được yêu cầu sửa: sửa đúng những điểm đó, chạy lại bước 4, commit riêng, báo cáo lại phần thay đổi.
+Do not start the next task. Wait for the reviewer to reply “pass” or provide changes. When asked to fix something, fix exactly those points, repeat step 4, make a separate commit, and report the changes.
 
-## Dừng và hỏi ngay khi
+## Stop and ask immediately when
 
-- Kế hoạch và tài liệu mâu thuẫn nhau.
-- Không làm được task mà không đổi tên, kiểu hoặc hành vi kế hoạch đã ghi.
-- Cần một thư viện, thư mục, endpoint, bảng, cột hoặc biến môi trường chưa có trong kế hoạch.
-- Cần đổi thứ gì đó người dùng nhìn thấy.
-- Một thay đổi có thể làm yếu bảo mật.
+- The plan and documents conflict.
+- The task cannot be completed without changing a name, type, or behavior specified by the plan.
+- You need a library, directory, endpoint, table, column, or environment variable not in the plan.
+- You need to change something users see.
+- A change could weaken security.

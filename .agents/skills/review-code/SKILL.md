@@ -1,80 +1,80 @@
 ---
 name: review-code
-description: Dùng khi được giao review một commit, một task đã làm xong, hoặc báo cáo của agent triển khai trong dự án Sòng Phẳng. Quy định cách đối chiếu diff với kế hoạch và luật của dự án, thứ tự kiểm tra, và mẫu kết luận "qua" hoặc danh sách cần sửa.
+description: Use when asked to review a commit, completed task, or implementation-agent report in Sòng Phẳng. Defines how to compare the diff with the plan and project rules, the checking order, and the “pass” or changes-needed conclusion.
 ---
 
-# Review một task
+# Review a task
 
-Người review đọc **code thật**, không chỉ đọc báo cáo. Báo cáo cho biết agent nghĩ mình đã làm gì; diff cho biết điều đã xảy ra.
+The reviewer reads the **actual code**, not only the report. The report says what the agent thinks it did; the diff says what happened.
 
-## Chuẩn bị
+## Preparation
 
-1. Đọc task trong kế hoạch và mục "Global Constraints".
-2. Lấy diff: `git show <commit>` hoặc `git diff <commit trước>..<commit>`.
-3. Chạy `pnpm check` trên commit đó. Không qua thì dừng review và trả lại.
+1. Read the task in the plan and the “Global Constraints” section.
+2. Get the diff: `git show <commit>` or `git diff <previous commit>..<commit>`.
+3. Run `pnpm check` on that commit. If it fails, stop the review and return it.
 
-## Thứ tự kiểm
+## Checking order
 
-Kiểm theo thứ tự này; lỗi ở mục trên nghiêm trọng hơn mục dưới.
+Check in this order; an issue in an earlier section is more serious than one below it.
 
-### 1. Đúng việc
+### 1. Correctness
 
-- Mọi thứ task yêu cầu đều có trong diff, với đúng tên file, tên hàm, kiểu đã ghi trong kế hoạch.
-- Hành vi khớp đặc tả: mã trạng thái, định dạng lỗi, tên trường, ràng buộc database.
-- Chạy lại ít nhất hai mục trong phần "Tự chạy thử" của báo cáo và so kết quả. Kết quả khác báo cáo là lỗi nghiêm trọng.
+- Everything required by the task is in the diff, with the exact file names, function names, and types stated in the plan.
+- Behavior matches the specification: status codes, error format, field names, and database constraints.
+- Re-run at least two items from the report's “Exercise it yourself” section and compare the results. A result that differs from the report is a serious issue.
 
-### 2. Không thừa
+### 2. No extras
 
-- Không có file, endpoint, bảng, cột, tuỳ chọn hay thư viện nào ngoài task.
-- `package.json` và `pnpm-lock.yaml`: mọi phụ thuộc mới đều đã được đồng ý.
-- Không có file test, không có thư viện test.
-- Không có thay đổi giao diện ngoài những gì task và tài liệu thiết kế mô tả.
-- Không có thay đổi trong `docs/`, `AGENTS.md`, cấu hình lint hay TypeScript.
+- No file, endpoint, table, column, option, or library outside the task.
+- In `package.json` and `pnpm-lock.yaml`, every new dependency has approval.
+- No test files and no test library.
+- No UI changes beyond what the task and design documents describe.
+- No changes to `docs/`, `AGENTS.md`, lint configuration, or TypeScript configuration.
 
-### 3. An toàn
+### 3. Safety
 
-Chạy skill `ra-soat-bao-mat` trên diff.
+Run the `ra-soat-bao-mat` skill on the diff.
 
-### 4. Dễ đọc
+### 4. Readability
 
-Theo `docs/agents/quy-uoc-code.md`:
+Follow `docs/agents/quy-uoc-code.md`:
 
-- Tên hàm, biến, file tự giải thích; không viết tắt; dùng đúng từ vựng nghiệp vụ.
-- File quá 200 dòng, hàm quá 40 dòng, hơn 3 tham số, lồng quá 3 tầng: có lý do không?
-- Code nằm đúng tầng: route không có logic, web không tính tiền, truy vấn nằm trong `db`.
-- Không có `any`, `as` ép kiểu, `!`, `@ts-ignore`, quy tắc lint bị tắt.
-- Comment giải thích vì sao, không nhắc lại code; không có code bị comment.
-- Không có cách thứ hai cho việc đã có cách làm trong kho mã.
+- Function, variable, and file names are self-explanatory; no abbreviations; correct business vocabulary.
+- For files over 200 lines, functions over 40 lines, more than 3 parameters, or nesting over 3 levels: is there a reason?
+- Code is in the correct layer: routes have no logic, the web app does not calculate money, and queries are in `db`.
+- No `any`, forced `as` casts, `!`, `@ts-ignore`, or disabled lint rules.
+- Comments explain why, not what the code repeats; no commented-out code.
+- No second approach to something the repository already does.
 
-### 5. Đơn giản
+### 5. Simplicity
 
-- Có lớp trừu tượng, tham số hay cấu hình nào chưa có nơi dùng không?
-- Có đoạn nào thay được bằng tính năng sẵn có của nền tảng hoặc thư viện đang dùng không?
-- Có dùng API đã lỗi thời của thư viện trong khi phiên bản đang cài có cách mới hơn không?
+- Is there an abstraction, parameter, or configuration with no current use?
+- Could any part use a built-in feature of the platform or an existing library instead?
+- Is a deprecated library API used when the installed version has a newer approach?
 
-## Kết luận
+## Conclusion
 
-Trả lời theo đúng một trong hai mẫu.
-
-```
-Task <số>: QUA
-Ghi chú (không chặn): <tuỳ chọn>
-```
+Reply using exactly one of these templates.
 
 ```
-Task <số>: CẦN SỬA
-
-Phải sửa
-1. <file:dòng> — <vấn đề> — <sửa thế nào>
-
-Nên sửa
-1. <file:dòng> — <vấn đề> — <gợi ý>
-
-Câu hỏi cho chủ dự án
-1. <nếu có điều cần chủ dự án quyết>
+Task <number>: PASS
+Notes (non-blocking): <optional>
 ```
 
-- "Phải sửa": sai so với kế hoạch hoặc đặc tả, lỗ hổng bảo mật, thứ thừa ngoài phạm vi, vi phạm luật trong `AGENTS.md`.
-- "Nên sửa": dễ đọc và đơn giản hơn nhưng không sai.
-- Mỗi mục chỉ đúng một chỗ trong code và nói rõ cách sửa. Không viết nhận xét chung chung.
-- Không tự sửa code khi đang review, trừ khi chủ dự án yêu cầu.
+```
+Task <number>: CHANGES NEEDED
+
+Must fix
+1. <file:line> — <issue> — <how to fix>
+
+Should fix
+1. <file:line> — <issue> — <suggestion>
+
+Questions for the project owner
+1. <if the project owner must decide something>
+```
+
+- “Must fix”: incorrect plan or specification, security vulnerability, out-of-scope work, or violation of `AGENTS.md`.
+- “Should fix”: more readable or simpler but not incorrect.
+- Each item must identify exactly one code location and clearly state how to fix it. Do not write vague general comments.
+- Do not fix code while reviewing unless the project owner asks.
