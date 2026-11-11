@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:17
+    ports:
+      - "127.0.0.1:54329:5432"
+    environment:
+      POSTGRES_USER: songphang
+      POSTGRES_PASSWORD: songphang
+      POSTGRES_DB: songphang
+    volumes:
+      - songphang_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U songphang -d songphang"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  songphang_pgdata:

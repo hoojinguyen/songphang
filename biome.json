@@ -1,0 +1,24 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
+	"vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+	"files": {
+		"includes": [
+			"**",
+			"!!docs",
+			"!!AGENTS.md",
+			"!!CLAUDE.md",
+			"!!GEMINI.md",
+			"!!settle-up-research.md",
+			"!!.agents",
+			"!!.claude"
+		]
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"suspicious": { "noExplicitAny": "error" },
+			"style": { "noNonNullAssertion": "error" }
+		}
+	}
+}

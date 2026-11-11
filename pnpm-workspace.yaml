@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  esbuild: true
+minimumReleaseAgeExclude:
+  - postgres@4.1.1
