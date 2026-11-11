@@ -3,6 +3,6 @@ export {
 	DevUsersResponse,
 	MeResponse,
 	UserDto,
-} from "./auth.js";
-export { ErrorCode, ErrorResponse } from "./error.js";
-export { HealthResponse } from "./health.js";
+} from "./auth.ts";
+export { ErrorCode, ErrorResponse } from "./error.ts";
+export { HealthResponse } from "./health.ts";
