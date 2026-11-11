@@ -33,7 +33,7 @@ Check in this order; an issue in an earlier section is more serious than one bel
 
 ### 3. Safety
 
-Run the `ra-soat-bao-mat` skill on the diff.
+Run the `security-review` skill on the diff.
 
 ### 4. Readability
 

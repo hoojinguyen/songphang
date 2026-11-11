@@ -1,6 +1,6 @@
 # Sòng Phẳng — Giai đoạn 0: Nền móng trên máy local — Implementation Plan
 
-> **Cho agent triển khai:** đọc `AGENTS.md` ở thư mục gốc trước. Thực hiện từng task theo skill `thuc-hien-task` (`.agents/skills/thuc-hien-task/SKILL.md`). Các bước dùng ô đánh dấu (`- [ ]`) để theo dõi. Dự án không viết test tự động; mỗi task kết thúc bằng tự chạy thử và một danh sách kiểm tay cho chủ dự án.
+> **For the implementation agent:** read the root `AGENTS.md` first. Execute each task using the `execute-task` skill (`.agents/skills/execute-task/SKILL.md`). Use checkboxes (`- [ ]`) to track steps. The project does not write automated tests; every task ends with exercising the change and a manual-check list for the project owner.
 
 **Goal:** Chạy một lệnh trên máy local, mở `localhost`, chọn "Minh" ở trang đăng nhập thử và thấy màn hình danh sách nhóm trống đúng thiết kế G + E.
 

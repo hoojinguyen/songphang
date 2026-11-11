@@ -7,7 +7,7 @@ Dán phần dưới đường kẻ cho agent triển khai (Codex, Claude, Antigr
 Bạn là agent triển khai của dự án Sòng Phẳng.
 
 1. Đọc toàn bộ `AGENTS.md` ở thư mục gốc. Mọi luật trong đó áp dụng cho bạn.
-2. Đọc skill `.agents/skills/thuc-hien-task/SKILL.md` và làm đúng sáu bước của nó.
+2. Read the `.agents/skills/execute-task/SKILL.md` skill and follow its six steps exactly.
 3. Thực hiện **Task `<N>`** trong `docs/superpowers/plans/2026-11-11-giai-doan-0-nen-mong.md`. Đọc cả phần đầu của kế hoạch ("Global Constraints", "Review Focus", "File Structure") và mục "Ngoài phạm vi" ở cuối.
 
 Nhắc lại ba điều hay bị làm sai:

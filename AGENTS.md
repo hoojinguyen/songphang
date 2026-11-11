@@ -42,12 +42,12 @@ Do not modify anything in `docs/` or this file unless you are acting as the advi
 
 ## 4. Required workflow
 
-Every task follows exactly six steps. Full instructions are in the `thuc-hien-task` skill (`.agents/skills/thuc-hien-task/SKILL.md`).
+Every task follows exactly six steps. Full instructions are in the `execute-task` skill (`.agents/skills/execute-task/SKILL.md`).
 
 1. **Read.** Read the task, the documents it references, and existing code where you will work.
 2. **Think.** Before writing code, write three to six lines stating which files will change, how, and why it is the simplest approach. If there are two worthwhile approaches, name both and choose one.
 3. **Do.** Write code according to `docs/agents/quy-uoc-code.md`. Touch only what the task requires.
-4. **Self-check.** Run `pnpm check`; exercise the feature; perform the security review using `ra-soat-bao-mat`.
+4. **Self-check.** Run `pnpm check`; exercise the feature; perform the security review using `security-review`.
 5. **Report.** Follow the skill's report template, including manual-check steps for the project owner.
 6. **Stop.** Do not move to the next task until it is approved.
 
@@ -99,7 +99,7 @@ Details and examples are in `docs/agents/quy-uoc-code.md`. These principles must
 
 ## 9. Security
 
-Security comes before speed and convenience. The full checklist is in `ra-soat-bao-mat`. Hard rules:
+Security comes before speed and convenience. The full checklist is in `security-review`. Hard rules:
 
 - **Secrets** (passwords, keys, session tokens, real connection strings) must not enter git, logs, error messages, or reports. Only `.env.example` with fake values may be committed.
 - **All external data is untrusted:** request bodies, parameters, headers, cookies, and URL parameters. Validate with a Zod schema at the boundary before use.
