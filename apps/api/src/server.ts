@@ -1,5 +1,9 @@
 import { serve } from "@hono/node-server";
-import { createDb, runMigrations } from "@songphang/db";
+import {
+	createDb,
+	deleteExpiredIdempotencyKeys,
+	runMigrations,
+} from "@songphang/db";
 import { createApp } from "./app.js";
 import { type Config, loadConfig } from "./config.js";
 
@@ -18,6 +22,21 @@ try {
 try {
 	await runMigrations(config.databaseUrl);
 	const { db, close } = createDb(config.databaseUrl);
+	const cleanIdempotencyKeys = () =>
+		deleteExpiredIdempotencyKeys(
+			db,
+			new Date(Date.now() - 24 * 60 * 60 * 1000),
+		);
+	await cleanIdempotencyKeys();
+	const cleanupTimer = setInterval(
+		() => {
+			cleanIdempotencyKeys().catch(() => {
+				console.error("Idempotency cleanup failed");
+			});
+		},
+		60 * 60 * 1000,
+	);
+	cleanupTimer.unref();
 	const app = createApp({ config, db, now: () => new Date() });
 	const server = serve(
 		{ fetch: app.fetch, port: config.apiPort, hostname: "127.0.0.1" },
@@ -35,7 +54,10 @@ try {
 		server.close(closeDatabase);
 		process.exitCode = 1;
 	});
-	const shutdown = () => server.close(closeDatabase);
+	const shutdown = () => {
+		clearInterval(cleanupTimer);
+		server.close(closeDatabase);
+	};
 	process.once("SIGINT", shutdown);
 	process.once("SIGTERM", shutdown);
 } catch {

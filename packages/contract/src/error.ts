@@ -1,7 +1,17 @@
 import { z } from "@hono/zod-openapi";
 
 export const ErrorCode = z
-	.enum(["VALIDATION_FAILED", "UNAUTHENTICATED", "NOT_FOUND", "INTERNAL"])
+	.enum([
+		"VALIDATION_FAILED",
+		"UNAUTHENTICATED",
+		"NOT_FOUND",
+		"INTERNAL",
+		"FORBIDDEN",
+		"IDEMPOTENCY_KEY_REUSED",
+		"MEMBER_NOT_IN_GROUP",
+		"MEMBER_HAS_TRANSACTIONS",
+		"PAYER_TOTAL_MISMATCH",
+	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;
 

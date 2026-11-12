@@ -1,16 +1,23 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import type { UserDto } from "@songphang/contract";
+import type { GroupRole, UserDto } from "@songphang/contract";
 import type { Db } from "@songphang/db";
+import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerDevRoutes } from "./routes/dev.js";
+import { registerGroupRoutes } from "./routes/groups.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerMeRoute } from "./routes/me.js";
 
 export type AppEnv = {
-	Variables: { requestId: string; user: UserDto; sessionToken: string };
+	Variables: {
+		requestId: string;
+		user: UserDto;
+		sessionToken: string;
+		groupAccess: { groupId: string; role: GroupRole; memberId: string | null };
+	};
 };
 export type AppDeps = { config: Config; db: Db; now: () => Date };
 
@@ -25,11 +32,25 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 		await next();
 	});
 	app.onError(handleError);
+	app.use(
+		"*",
+		bodyLimit({
+			maxSize: 100 * 1024,
+			onError: () => {
+				throw new AppError(
+					400,
+					"VALIDATION_FAILED",
+					"Request body is too large",
+				);
+			},
+		}),
+	);
 	app.notFound(() => {
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	});
 	registerHealthRoute(app, deps.db);
 	registerMeRoute(app, deps);
+	registerGroupRoutes(app, deps);
 	registerAuthRoutes(app, deps);
 	if (deps.config.devLogin && deps.config.appEnv === "development") {
 		registerDevRoutes(app, deps);

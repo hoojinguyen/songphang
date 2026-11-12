@@ -1,9 +1,14 @@
+export * from "./activity.js";
+export * from "./balances.js";
 export {
 	checkDatabaseHealth,
 	createDb,
 	type Db,
 	type DbExecutor,
 } from "./client.js";
+export * from "./groups.js";
+export * from "./idempotency.js";
+export * from "./members.js";
 export { runMigrations } from "./migrate.js";
 export { sessions, users } from "./schema.js";
 export { groups, groupUsers, members } from "./schema-groups.js";

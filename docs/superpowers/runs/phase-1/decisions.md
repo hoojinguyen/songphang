@@ -32,3 +32,9 @@ Problem: Nullable created_by/updated_by foreign keys must allow account deletion
 Options: Default restrictive foreign keys; ON DELETE SET NULL.
 Choice: SET NULL for group and transaction authors.
 Reason: The approved account-deletion requirement retains members and transactions.
+
+## D4 — Link existing dependency-free workspace without registry access (task 1A.3)
+Problem: pnpm exec previously auto-installed and installation can trigger registry metadata lookups.
+Options: Run package-manager install; add the workspace dependency, its deterministic lockfile link and local node_modules symlink directly.
+Choice: Add only the local core workspace link manually.
+Reason: No external dependency resolution is needed or allowed.

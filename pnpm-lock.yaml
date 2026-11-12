@@ -26,6 +26,9 @@ importers:
       '@songphang/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@songphang/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@songphang/db':
         specifier: workspace:*
         version: link:../../packages/db

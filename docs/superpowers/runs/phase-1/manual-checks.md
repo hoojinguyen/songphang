@@ -20,3 +20,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 1. Run `pnpm db:migrate` → no error. Run `docker compose exec db psql -U songphang -c "\dt"` → ten tables.
 2. Run `pnpm db:check-balances` → `No groups` or one balanced line per group, exit 0.
 3. In one SQL transaction create an expense of 300000 with a payer of 300000 and shares of 150000 + 140000 → COMMIT is refused with `transaction shares total differs from amount`.
+
+## Groups API and access (1A.3)
+1. Sign in through the development login as Minh, then POST `/api/v1/groups` with name `Đà Lạt 12/2026`, memberNames `Lan`, `Hùng`, `Thu`, and an Idempotency-Key → 201 owner group. GET `/api/v1/groups` → four preview members.
+2. Sign in as Lan in a private window and open `http://localhost:4000/api/v1/groups` → empty list.
+3. As Lan open Minh's `/api/v1/groups/<groupId>` → NOT_FOUND, identical to a made-up UUID except requestId.
+4. Repeat the same POST body/key twice → same group id. Change the name but keep the key → 409 IDEMPOTENCY_KEY_REUSED.
