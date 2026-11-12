@@ -53,3 +53,10 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Empty group name → disabled create; Enter with spaces in `Tên người mới` → adds nothing.
 3. Use Tab/Enter to add a person and create → works; double-tap create → one group.
 4. Stop API and submit → save error, all form values retained. Restart and retry → one group.
+
+## S4 — Group and expense stream (1A.8)
+1. Open an empty group → compare GE14, without sentence samples/invite link; four shapes and `Ghi khoản chi đầu tiên`.
+2. Record Minh 800000/four and Lan 300000/Minh,Lan,Hùng → compare GE17; Minh right/black with four 200 chips, Lan left with `phần bạn 100.000`; official block 500.000 đ.
+3. Check one separator per day and newest expense just above bottom bar. With 120 expenses scroll up twice → no duplicate expense, visible row does not jump.
+4. Tap yellow block or `Ai nợ ai?` → balances URL. Tap `Nhập tay` → new expense URL.
+5. As Lan open Minh's private group or malformed ID → `Không tìm thấy nhóm này.`. Stop API/reload → retry error, no login redirect.

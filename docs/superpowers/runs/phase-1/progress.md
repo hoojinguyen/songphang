@@ -12,7 +12,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] 1A.4 API: members
 - [x] 1A.5 API: create, preview and list transactions
 - [x] 1A.6 API: balances and settlements
-- [ ] 1A.7 Web: group list and create group
+- [x] 1A.7 Web: group list and create group
 - [ ] 1A.8 Web: group screen and expense stream
 - [ ] 1A.9 Web: manual expense form
 - [ ] 1A.10 Web: balances and settlements
@@ -546,4 +546,24 @@ Size review: extracted NewGroupMembers; all new components under 150 lines.
 Decisions: D5, D6.
 Deviations: source-only contract extensions fixed as required by the browser compilation failure. Added currency symbol to vi.ts so formatting has no user-visible literal outside messages.
 Not verified: comparison with the external mockup canvas is left to the owner; no external service opened.
+Out of scope: none.
+
+Commit 1A.7: `6c7d24e`.
+
+## Task 1A.8 — Approach
+- Add group member/balance queries and an infinite transaction query with validated responses.
+- Render the approved two expense styles and official balance block using shared money formatting.
+- Keep the stream in one scroll container; preserve the visible anchor when older pages load.
+- Add S4 loading, empty, error and inaccessible states with the interim manual-entry bar.
+
+### Task 1A.8 — Results
+pnpm check: passed (104 files; all workspace typechecks Done).
+Browser (CUA, 360px): empty four-person group showed `Ghi khoản chi đầu tiên`, `Bạn đã xong 0 đ Xem`, no shortcut. After 800000 Minh/four and 300000 Lan/three: `Bạn được nhận 500.000 đ Thu về`, right row four 200 chips, left row `Lan trả`, `Chia đều 3 · phần bạn 100.000`.
+Created 118 further expenses with curl (real statuses: `{'201': 118}`) for 120 total. Included Hùng paying only for Lan/Thu → `Chia đều 2 · bạn không có phần`; coffee 100000/three → spans `33.334`, `33.333`, `33.333`. Yesterday and 05/11/2026 separators present (transaction description Hôm qua independently has the same text).
+Initial stream: scrollHeight 5976, clientHeight 132, scrollTop 5843.33 (bottom). First upward scroll loaded next 50: scrollHeight 11801, scrollTop 5825.33; visible anchor remained `Khoản cũ 69`. Second loaded last 20: 120 expense payer labels, height 14175, scrollTop 2374, visible anchor `Khoản cũ 19`. No horizontal overflow: scrollWidth 360/innerWidth 360.
+Malformed group and Lan opening Minh's group both rendered `Không tìm thấy nhóm này.` with back link. One initial browser wait timed out while queries retried, then the expected error rendered. Stopped API/reloaded → `Không tải được. Kiểm tra mạng rồi thử lại.` and `Thử lại`, URL stayed the group URL.
+Security review: relevant items 1, 2, 6, 7, 8 checked against actual diff; validated response DTOs, same-origin reads, no browser-side official money arithmetic, no storage or HTML injection, internal group links. No secrets or new dependencies.
+Decisions: none.
+Deviations: empty content scrolls within short viewports so the hint remains reachable; transfer pill text stays on one line.
+Not verified: external GE14/GE17 canvas comparison is for owner; browser verification uses the supplied numerical layout requirements.
 Out of scope: none.
