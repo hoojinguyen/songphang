@@ -1,4 +1,35 @@
 export const vi = {
+	settings: {
+		title: "Cài đặt nhóm",
+		ownerOnly: "Chỉ chủ nhóm thấy trang này",
+		nameLabel: "Tên nhóm",
+		saveName: "Lưu tên",
+		minimizeTitle: "Gộp nợ",
+		minimizeHint: "Ít lượt chuyển nhất có thể, thay vì từng cặp trả nhau.",
+	},
+	members: {
+		memberCount: "{count} người",
+		youTag: "Bạn",
+		ownerBadge: "Chủ nhóm",
+		inactiveTag: "Ngừng hoạt động",
+		edit: "Sửa {name}",
+		nameLabel: "Tên",
+		saveName: "Lưu tên",
+		deactivate: "Ngừng hoạt động",
+		reactivate: "Hoạt động lại",
+		delete: "Xoá",
+		deactivateWarning:
+			"{name} còn số dư {amount}. Ngừng hoạt động thì số dư này vẫn được giữ.",
+		deactivateAnyway: "Vẫn ngừng",
+		keepActive: "Thôi",
+		hasTransactions:
+			"{name} đã có khoản chi nên không xoá được. Hãy cho ngừng hoạt động.",
+		addName: "Thêm một cái tên",
+		newNameLabel: "Tên người mới",
+		add: "Thêm",
+		limitReached: "Nhóm đã đủ 100 người.",
+		settingsLink: "Cài đặt nhóm",
+	},
 	balances: {
 		headline: "{count} lượt chuyển là xong",
 		minimizedHint: "Ít lượt chuyển nhất có thể.",

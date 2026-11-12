@@ -74,3 +74,13 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Add signed bar values → 0. Turn Gộp nợ off → four transfers, same balances; viewer-involving cards first.
 3. Add expense in another tab, reload → bars/cards agree with group balance. Deactivate someone with debt → debt remains with inactive label.
 4. Open group with only a self-paid/self-shared expense → compare yellow all-settled card GE18. No expenses → `Chưa có gì để tính`. As outsider → group-not-found.
+
+## S10 — Members (1A.11)
+1. Compare GE9 without invite/claim/other-role/history controls. Add/rename an unused person → correct preview, stream/list names update; delete unused person → disappears.
+2. Delete Hùng with expenses → correct cannot-delete error. Deactivate with nonzero balance → warning; Thôi keeps active, Vẫn ngừng hides him in new form but retains old rows/balance. Reactivate → back in form.
+3. Your own row only edits name. Blank name → save disabled; add row at 100 members → limit message.
+
+## S11 — Group settings (1A.11)
+1. Compare name field and Gộp nợ row with GE11; no later-phase rows. Rename → group header/list update; empty name cannot save.
+2. Flip Gộp nợ and view balances → transfer count changes, each balance unchanged. Stop API and toggle → error and previous switch state restored.
+3. Tab/Space on switch → name Gộp nợ and correct on/off state announced by screen reader.

@@ -1,7 +1,14 @@
 "use client";
-import { type MemberDto, MembersResponse } from "@songphang/contract";
-import { useQuery } from "@tanstack/react-query";
-import { type ApiError, apiFetch } from "./api";
+import {
+	type CreateMemberRequest,
+	type MemberDto,
+	MemberResponse,
+	MembersResponse,
+	type UpdateMemberRequest,
+} from "@songphang/contract";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type ApiError, apiFetch, apiSend } from "./api";
+import { jsonRequest } from "./request";
 export function useMembers(groupId: string) {
 	return useQuery<MemberDto[], ApiError>({
 		queryKey: ["group", groupId, "members"],
@@ -12,5 +19,63 @@ export function useMembers(groupId: string) {
 					MembersResponse,
 				)
 			).members,
+	});
+}
+
+async function invalidateMembers(
+	client: ReturnType<typeof useQueryClient>,
+	groupId: string,
+) {
+	await Promise.all([
+		client.invalidateQueries({ queryKey: ["group", groupId, "members"] }),
+		client.invalidateQueries({ queryKey: ["group", groupId, "balances"] }),
+		client.invalidateQueries({ queryKey: ["groups"] }),
+	]);
+}
+export function useCreateMember(groupId: string) {
+	const client = useQueryClient();
+	return useMutation<
+		MemberDto,
+		ApiError,
+		{ request: CreateMemberRequest; key: string }
+	>({
+		mutationFn: async ({ request, key }) =>
+			(
+				await apiFetch(
+					`/groups/${encodeURIComponent(groupId)}/members`,
+					MemberResponse,
+					jsonRequest("POST", request, key),
+				)
+			).member,
+		onSuccess: () => invalidateMembers(client, groupId),
+	});
+}
+export function useUpdateMember(groupId: string) {
+	const client = useQueryClient();
+	return useMutation<
+		MemberDto,
+		ApiError,
+		{ memberId: string; request: UpdateMemberRequest }
+	>({
+		mutationFn: async ({ memberId, request }) =>
+			(
+				await apiFetch(
+					`/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`,
+					MemberResponse,
+					jsonRequest("PATCH", request),
+				)
+			).member,
+		onSuccess: () => invalidateMembers(client, groupId),
+	});
+}
+export function useDeleteMember(groupId: string) {
+	const client = useQueryClient();
+	return useMutation<void, ApiError, string>({
+		mutationFn: (memberId) =>
+			apiSend(
+				`/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`,
+				jsonRequest("DELETE"),
+			),
+		onSuccess: () => invalidateMembers(client, groupId),
 	});
 }

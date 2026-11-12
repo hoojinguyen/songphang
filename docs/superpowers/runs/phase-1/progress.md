@@ -15,7 +15,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] 1A.7 Web: group list and create group
 - [x] 1A.8 Web: group screen and expense stream
 - [x] 1A.9 Web: manual expense form
-- [ ] 1A.10 Web: balances and settlements
+- [x] 1A.10 Web: balances and settlements
 - [ ] 1A.11 Web: members and group settings
 - [ ] 1A.12 README and stage gate 1A
 
@@ -608,4 +608,24 @@ Size review: all new components under 150 lines.
 Decisions: none.
 Deviations: added a zero-net self-only expense to the same fixture to exercise all-settled before the two nonzero expenses; it does not change the expected numbers.
 Not verified: external GE5/GE18 comparison remains for owner.
+Out of scope: none.
+
+Commit 1A.10: `606545c`.
+
+## Task 1A.11 — Approach
+- Add member mutation hooks with existing invalidation/idempotency patterns.
+- Render one expanded member editor at a time, deactivation warnings and undeletable-history errors.
+- Reuse NewMemberRow with server-matching appearance previews and one key per opened row.
+- Add owner settings with validated name and a pending/rollback-capable Gộp nợ switch.
+
+### Task 1A.11 — Results
+pnpm check: passed (120 files; all workspace typechecks Done). `pnpm db:check-balances` → all nine groups sum 0/mismatches 0; `All groups balanced`.
+Browser: four rows; Minh displayed `Bạn`/`Chủ nhóm`. Added Bác Tư with Enter → five rows and `5 người`; preview circle/sky. Renamed Lan → `Sửa Lan Anh`, appearance unchanged. Deleted unused Bác Tư via curl → 204. Hùng delete button → `Hùng đã có khoản chi nên không xoá được. Hãy cho ngừng hoạt động.`.
+Deactivate Hùng → exact warning with `−300.000 đ`; `Thôi` preserved active status; `Vẫn ngừng` displayed inactive label and `Hoạt động lại`; reactivation restored active status. Opening Minh's editor exposed only name/save, no deactivate/delete.
+Settings: renamed group to `Nhóm đã đổi tên`; database balance output confirmed new name. Pressed Space on `Gộp nợ` switch → on; API balances minimized true, two transfers, unchanged +500000/0/-300000/-200000. Empty name kept save disabled. Stopped API, pressed Space again → exact save error and switch rolled back to on (AX Value 1).
+Security review: relevant items 1, 2, 4, 6, 7, 8 checked against current diff. API remains authorization authority; owner settings guard; validated DTO mutations, same-origin writes, encoded IDs, idempotent creates, API balances only. No secrets, storage, unsafe HTML or dependencies.
+Size review: all components below 150 lines.
+Decisions: in 1A only the creator can have a linked user, so member.isMe identifies the protected linked row; 1B explicitly expands this.
+Deviations: successful deletion of the disposable unused fixture exercised via curl; undeletable historical member exercised through the browser button.
+Not verified: external GE9/GE11 comparison and real screen-reader speech; browser AX switch name/state verified. Renamed stream/list propagation is implemented through member/group query invalidation, but those two screens were not revisited for this specific rename.
 Out of scope: none.

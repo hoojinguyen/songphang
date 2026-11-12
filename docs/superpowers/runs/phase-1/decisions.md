@@ -62,3 +62,9 @@ Problem: The expense component exceeds the 150-line component limit after format
 Options: Keep it oversized; move its local state/submission/preview preparation to a same-directory hook.
 Choice: use-expense-form.ts beside ExpenseForm.tsx.
 Reason: The component renders controls, while one cohesive controller owns the local draft; no extra package or directory.
+
+## D9 — Identify claimed members during 1A (task 1A.11)
+Problem: MemberDto has isMe but no claimed flag until account-sharing work.
+Options: Add a new interim endpoint/field; use the fact that only the creator can be linked in 1A.
+Choice: Hide deactivate/delete for isMe in 1A.
+Reason: Exactly matches the reachable phase-1A state without inventing an interface ahead of 1B.
