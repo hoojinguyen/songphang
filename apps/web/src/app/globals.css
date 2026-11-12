@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+	--color-phrase-split: #cff5df;
 	--color-ink-raised: #34323d;
 	--color-debt-soft: #ffd9d1;
 	--color-on-ink-muted: #c9c5d6;

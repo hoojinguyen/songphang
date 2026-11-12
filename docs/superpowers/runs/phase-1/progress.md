@@ -13,7 +13,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] 1A.5 API: create, preview and list transactions
 - [x] 1A.6 API: balances and settlements
 - [x] 1A.7 Web: group list and create group
-- [ ] 1A.8 Web: group screen and expense stream
+- [x] 1A.8 Web: group screen and expense stream
 - [ ] 1A.9 Web: manual expense form
 - [ ] 1A.10 Web: balances and settlements
 - [ ] 1A.11 Web: members and group settings
@@ -566,4 +566,27 @@ Security review: relevant items 1, 2, 6, 7, 8 checked against actual diff; valid
 Decisions: none.
 Deviations: empty content scrolls within short viewports so the hint remains reachable; transfer pill text stays on one line.
 Not verified: external GE14/GE17 canvas comparison is for owner; browser verification uses the supplied numerical layout requirements.
+Out of scope: none.
+
+Commit 1A.8: `5388717`.
+
+## Task 1A.9 — Approach
+- Add create mutation and debounced API preview query using the existing transaction contract.
+- Build amount/category/member controls with native inputs and accessible buttons.
+- Keep form state local, official shares from preview, default payer from myMemberId and sharers from active members.
+- Reuse one mounted form key and a synchronous submit guard for double clicks; preserve fields on errors.
+
+### Task 1A.9 — Results
+pnpm check: passed (110 files; all workspace typechecks Done).
+Browser exercises: amount autofocus, default Minh payer/all active sharers; 180000 → `180.000` and four `45.000`; deselect Thu → three `60.000`; 100 + 000 → `100.000`, shares `33.334/33.333/33.333`. Description empty disabled save. Deselect everyone → `Chọn ít nhất một người để chia.` and disabled save. `abc1.5tr` → `15`; filling `1000000000000` left the prior valid `15` unchanged.
+Stopped API, saved `Khoản kiểm tra form` → exact save error with all fields retained; restarted and double-clicked → returned to group, new row once. SQL `count(*)` for `Khoản kiểm tra form`, `Cà phê ba thao tác`, and `Khoản tuần trước từ form` was 1 each. Amount/description/Enter on save recorded `Cà phê ba thao tác` in three interactions from defaults.
+Deactivated Hùng through API (200), reopened → only Minh/Lan/Thu in both grids. All seven categories present as pressed buttons; accessibility exposes member names and selected states.
+Viewport tool uses physical pixels at DPR 1.5; override 585×1266 yielded measured CSS innerWidth 390, innerHeight 844, scrollWidth 390, scrollHeight 844. CSS 360 width also measured scrollWidth 360. Override reset afterwards.
+Date investigation: CUA fill changed the native DOM value without React's value attribute. Native ArrowUp/ArrowDown emitted input events, synchronizing both to `2026-11-05T10:00`; save stored SQL `Ngày cũ qua bàn phím | 2026-11-05 03:00:00+00`, the correct UTC instant. The first attempted date fixture retained the current date; it was not silently described as a successful old-date check. No product fix needed.
+After splitting the component/controller, browser created `Kiểm tra sau tách form`, preview `60.000` for three active people, returned to the group and showed the new row.
+`pnpm db:check-balances` → every group sum 0/mismatches 0, `All groups balanced`.
+Security review: relevant items 1, 2, 6, 7, 8 checked against actual diff: contract-validated draft/response, API-computed shares only, same-origin writes, mounted idempotency key and synchronous submit guard, no local/session storage, unsafe HTML or secrets. No dependencies added.
+Decisions: D7, D8.
+Deviations: semantic fieldsets provide the required group role under existing accessibility lint rules.
+Not verified: real screen-reader speech and external GE19 comparison remain for the owner; accessibility tree checked.
 Out of scope: none.

@@ -60,3 +60,11 @@ Written by the implementation agent from the "Manual checks for the project owne
 3. Check one separator per day and newest expense just above bottom bar. With 120 expenses scroll up twice → no duplicate expense, visible row does not jump.
 4. Tap yellow block or `Ai nợ ai?` → balances URL. Tap `Nhập tay` → new expense URL.
 5. As Lan open Minh's private group or malformed ID → `Không tìm thấy nhóm này.`. Stop API/reload → retry error, no login redirect.
+
+## S8 — Manual expense form (1A.9)
+1. Open Nhập tay → compare GE19 without type/split switches; all seven categories. Amount is focused, you pay, all active people share.
+2. Enter 180000, Cà phê, save → new expense; four-person payer balance rises by 135000.
+3. Enter 100000 for three → 33334/33333/33333; save and run balance check → balanced. Double-tap save → one expense.
+4. Tab through fields and shapes; Space/Enter operates controls. Screen reader reads person names and selected states.
+5. Blank description/no sharers → disabled save, correct hint. Try letters and an over-limit amount → only allowed digits remain.
+6. Choose a date last week using native controls → expense is under that day. Stop API/save → error, values retained; restart/retry → one expense.

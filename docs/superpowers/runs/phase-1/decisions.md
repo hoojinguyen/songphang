@@ -50,3 +50,15 @@ Problem: The creation page exceeds 150 lines when the ordered member list is inl
 Options: Keep the oversized page; extract the member list beside the existing group components.
 Choice: Add NewGroupMembers.tsx in the approved groups directory and keep the page responsible for submission.
 Reason: Separate member editing from screen loading and submission without a new abstraction layer.
+
+## D7 — Close icon in the expense header (task 1A.9)
+Problem: The form requires a close icon while ScreenHeader initially always renders a back icon.
+Options: Duplicate the header; add an optional backIcon prop defaulting to back.
+Choice: Extend ScreenHeader with backIcon and pass close only for the form.
+Reason: Preserve the shared layout and the plan's exact form header behavior.
+
+## D8 — Separate expense form state from rendering (task 1A.9)
+Problem: The expense component exceeds the 150-line component limit after formatting.
+Options: Keep it oversized; move its local state/submission/preview preparation to a same-directory hook.
+Choice: use-expense-form.ts beside ExpenseForm.tsx.
+Reason: The component renders controls, while one cohesive controller owns the local draft; no extra package or directory.

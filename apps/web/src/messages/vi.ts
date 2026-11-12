@@ -1,4 +1,27 @@
 export const vi = {
+	expenseForm: {
+		title: "Khoản chi mới",
+		amountLabel: "Số tiền",
+		addThousands: "000",
+		descriptionLabel: "Mô tả",
+		descriptionPlaceholder: "Chi cho việc gì?",
+		categoryLabel: "Danh mục",
+		categories: {
+			food: "Ăn uống",
+			transport: "Đi lại",
+			lodging: "Chỗ ở",
+			shopping: "Mua sắm",
+			entertainment: "Giải trí",
+			bills: "Hoá đơn",
+			other: "Khác",
+		},
+		payerTitle: "Ai trả?",
+		sharersTitle: "Chia cho ai?",
+		equalSplit: "Chia đều",
+		occurredAtLabel: "Ngày giờ",
+		needSharer: "Chọn ít nhất một người để chia.",
+		save: "Lưu khoản chi",
+	},
 	feed: {
 		membersLink: "Thành viên",
 		owedToYou: "Bạn được nhận",
@@ -35,6 +58,7 @@ export const vi = {
 	},
 	common: {
 		currency: "đ",
+		pendingValue: "…",
 		backToGroups: "Về danh sách nhóm",
 		groupNotFound: "Không tìm thấy nhóm này.",
 		you: "Bạn",
