@@ -23,6 +23,7 @@ export {
 export { DEV_USERS, seedDevUsers } from "./seed.js";
 export {
 	deleteSessionByHash,
+	deleteUserSessions,
 	findUserBySessionHash,
 	insertSession,
 } from "./sessions.js";

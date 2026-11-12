@@ -95,3 +95,8 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Register the same email again or uppercase → same empty 204 and no cookie. Unknown email/wrong-password login → identical INVALID_CREDENTIALS.
 3. Before verification POST /groups → EMAIL_NOT_VERIFIED; after verification → succeeds. Reuse verification token → TOKEN_INVALID.
 4. Six login attempts for one email → sixth RATE_LIMITED with Retry-After. Fourth resend within one hour → RATE_LIMITED.
+
+## Password recovery and deletion API (1B.3)
+1. Request reset and use console link token → new password works and all old browser sessions get 401. Weak new password → token remains usable; replay → TOKEN_INVALID.
+2. Change with revokeOtherSessions true while signed in twice → current session remains, other session gets 401. Wrong current password → INVALID_CREDENTIALS.
+3. Delete with wrong email → 400; own one group → OWNER_REQUIRED/groupCount 1; non-owner account → 204, cleared cookie and next request 401. After 1B.7, confirm member/transactions remain after deleting a joined account.

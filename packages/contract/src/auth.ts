@@ -47,3 +47,27 @@ export const VerifyEmailRequest = z
 export const ProvidersResponse = z
 	.object({ google: z.boolean(), devLogin: z.boolean() })
 	.openapi("ProvidersResponse");
+
+export const ForgotPasswordRequest = z
+	.object({ email: EmailAddress })
+	.openapi("ForgotPasswordRequest");
+export type ForgotPasswordRequest = z.infer<typeof ForgotPasswordRequest>;
+export const ResetPasswordRequest = z
+	.object({
+		token: z.string().min(1).max(256),
+		password: z.string().min(1).max(1024),
+	})
+	.openapi("ResetPasswordRequest");
+export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequest>;
+export const ChangePasswordRequest = z
+	.object({
+		currentPassword: z.string().min(1).max(1024),
+		newPassword: z.string().min(1).max(1024),
+		revokeOtherSessions: z.boolean(),
+	})
+	.openapi("ChangePasswordRequest");
+export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequest>;
+export const DeleteAccountRequest = z
+	.object({ email: EmailAddress })
+	.openapi("DeleteAccountRequest");
+export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequest>;

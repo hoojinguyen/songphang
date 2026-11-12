@@ -1,5 +1,5 @@
-import { and, eq, gt } from "drizzle-orm";
-import type { Db } from "./client.js";
+import { and, eq, gt, ne } from "drizzle-orm";
+import type { Db, DbExecutor } from "./client.js";
 import { sessions, users } from "./schema.js";
 import { USER_COLUMNS } from "./users.js";
 
@@ -46,4 +46,20 @@ export async function deleteSessionByHash(
 	tokenHash: string,
 ): Promise<void> {
 	await db.delete(sessions).where(eq(sessions.tokenHash, tokenHash));
+}
+
+export function deleteUserSessions(
+	executor: DbExecutor,
+	input: { userId: string; keepTokenHash?: string },
+) {
+	return executor
+		.delete(sessions)
+		.where(
+			and(
+				eq(sessions.userId, input.userId),
+				input.keepTokenHash === undefined
+					? undefined
+					: ne(sessions.tokenHash, input.keepTokenHash),
+			),
+		);
 }

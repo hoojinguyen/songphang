@@ -9,12 +9,14 @@ import {
 	sessionCookieAttributes,
 } from "../auth/sessions.js";
 import { registerAccountAuthRoutes } from "./account-auth.js";
+import { registerPasswordRecoveryRoutes } from "./password-recovery.js";
 
 export function registerAuthRoutes(
 	app: OpenAPIHono<AppEnv>,
 	deps: AppDeps,
 ): void {
 	registerAccountAuthRoutes(app, deps);
+	registerPasswordRecoveryRoutes(app, deps);
 	app.openapi(
 		createRoute({
 			method: "post",

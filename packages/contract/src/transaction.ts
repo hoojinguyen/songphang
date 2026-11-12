@@ -41,7 +41,7 @@ export const TransactionDto = CreateTransactionRequest.extend({
 	currency: z.literal("VND"),
 	shares: z.array(ShareDto),
 	version: z.int().positive(),
-	createdBy: z.object({ id: z.uuid(), name: z.string() }),
+	createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
 	createdAt: z.iso.datetime(),
 	updatedAt: z.iso.datetime(),
 	deletedAt: z.iso.datetime().nullable(),

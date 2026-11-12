@@ -30,7 +30,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 ## Stage 1B — Accounts and sharing
 
 - [x] 1B.1 Account foundations
-- [ ] 1B.2 API: register, sign in, verify email
+- [x] 1B.2 API: register, sign in, verify email
 - [ ] 1B.3 API: forgot, reset and change password; delete account
 - [ ] 1B.4 API: Google sign-in
 - [ ] 1B.5 Web: sign-in, register, verify, forgot and reset screens
@@ -781,4 +781,50 @@ Size review: account-auth route registration and register service are kept as si
 Decisions: D13–D15.
 Deviations: same-directory account-auth route module plus account-limits middleware; shared logger redaction required by section 9.
 Not verified: real mail delivery intentionally absent.
+Out of scope: none.
+
+Commit 1B.2: `4a2d0ba`.
+
+## Task 1B.3 — Approach
+- Add recovery/change/delete request contracts and typed account/session queries.
+- Keep reset token consumption, password update, verification and session revocation in one transaction.
+- Require the current password for changes, preserving the current session when revoking others.
+- Lock the account before owner-count/deletion; retain historical members/transactions via existing foreign keys.
+- Exercise both session jars, token replay/wrong purpose, owner refusal and disposable account deletion.
+
+### Task 1B.3 — Exercise output
+```text
+second session before reset 204 null Set-Cookie=True
+forgot known 204 null Set-Cookie=False
+forgot unknown 204 null Set-Cookie=False
+reset mail blocks before/after unknown: 1/1
+weak reset 400 {"error": {"code": "WEAK_PASSWORD", "message": "Password does not meet requirements", "details": {"reason": "too_short"}, "requestId": "01a1d0ab-b0de-7fde-99d7-a3f1aaa28335"}} Set-Cookie=False
+reset valid same token 204 null Set-Cookie=False
+session A after reset 401 {"error": {"code": "UNAUTHENTICATED", "message": "Authentication required", "requestId": "01a1d0ab-b106-784a-bc51-a52fecfb28e5"}} Set-Cookie=False
+session B after reset 401 {"error": {"code": "UNAUTHENTICATED", "message": "Authentication required", "requestId": "01a1d0ab-b10f-7f8c-9a01-3698ec0fb2c2"}} Set-Cookie=False
+old password after reset 401 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password is incorrect", "requestId": "01a1d0ab-b119-7b83-bbc4-e7922e7b5409"}} Set-Cookie=False
+new password A 204 null Set-Cookie=True
+new password B 204 null Set-Cookie=True
+reset token replay 400 {"error": {"code": "TOKEN_INVALID", "message": "Token is invalid or expired", "requestId": "01a1d0ab-b163-72f7-9a66-98d51ce9d87c"}} Set-Cookie=False
+wrong current password 401 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password is incorrect", "requestId": "01a1d0ab-b17a-7001-aa63-aa0358ea37bd"}} Set-Cookie=False
+change and revoke others 204 null Set-Cookie=False
+current session A remains 200 {"user": {"id": "01a1d0a5-b17f-74e6-811e-7c60188d62bc", "email": "ngan@example.test", "name": "Ngân", "avatarUrl": null, "emailVerified": true, "hasPassword": true}} Set-Cookie=False
+other session B revoked 401 {"error": {"code": "UNAUTHENTICATED", "message": "Authentication required", "requestId": "01a1d0ab-b1c2-72b7-a2be-f1548f19fb79"}} Set-Cookie=False
+delete wrong confirmation 400 {"error": {"code": "VALIDATION_FAILED", "message": "Email confirmation does not match", "requestId": "01a1d0ab-b1ca-7ed3-8b49-6e09ebe7e53c"}} Set-Cookie=False
+delete owner 422 {"error": {"code": "OWNER_REQUIRED", "message": "Transfer or delete owned groups first", "details": {"groupCount": 1}, "requestId": "01a1d0ab-b1d2-7245-99af-c669adaa97bb"}} Set-Cookie=False
+register disposable account 204 null Set-Cookie=False
+verification token to reset 400 {"error": {"code": "TOKEN_INVALID", "message": "Token is invalid or expired", "requestId": "01a1d0ab-b1fa-76a8-9505-ab594896573e"}} Set-Cookie=False
+sign in disposable 204 null Set-Cookie=True
+delete non-owner 204 null Set-Cookie=True
+deleted session 401 {"error": {"code": "UNAUTHENTICATED", "message": "Authentication required", "requestId": "01a1d0ab-b239-77cd-86ab-2585d3aacafe"}} Set-Cookie=False
+```
+
+### Task 1B.3 — Results
+pnpm check: passed (134 files, all workspace typechecks Done). Balance check: all three groups sum 0/mismatches 0; `All groups balanced`.
+Forgot known and unknown → identical empty 204/no cookie; only known printed a reset mail (mail-block count 1 before and after unknown). Weak reset → WEAK_PASSWORD and the same token then succeeded. Reset revoked both old sessions (401 each); old password 401, new password 204 in both jars. Replay and verification-purpose token at reset → TOKEN_INVALID. Wrong current password → 401; revokeOthers change 204, current jar /me 200, other jar 401. Seeded passwordless account change → 404.
+DELETE /me wrong email → 400; Ngân owning one group → 422 OWNER_REQUIRED, groupCount 1. Disposable non-owner account → 204 with cookie clearing; its next /me → 401.
+Security review: relevant items 1–6, 8 checked against actual source/query/contract diff. Recovery token consumption/hash update/email verification/all-session revocation atomic; weak password checked before consumption; password change requires current hash comparison and preserves only current session hash when requested; account deletion requires email and owner count under lock; no raw tokens, passwords or session values in reports/logs. No dependencies added.
+Decisions: D16–D18.
+Deviations: recovery services/routes split into same-directory files; nullable deleted author is represented directly instead of inventing an identity. Token consumption now follows account-first lock ordering while retaining the conditional atomic UPDATE.
+Not verified: deletion after joining a group, preservation of its member and authored transactions, and actual null-author reads must be re-exercised after 1B.7 as the task explicitly requires.
 Out of scope: none.

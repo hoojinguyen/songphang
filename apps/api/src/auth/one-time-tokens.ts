@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import {
 	consumeAuthToken,
 	type DbExecutor,
+	findAuthTokenUser,
 	insertAuthToken,
 	invalidateAuthTokens,
 	lockAccount,
@@ -33,9 +34,12 @@ export function consumeToken(
 	input: { token: string; purpose: TokenPurpose; now: Date },
 ): Promise<string | null> {
 	if (!/^[A-Za-z0-9_-]{43}$/.test(input.token)) return Promise.resolve(null);
-	return consumeAuthToken(executor, {
-		tokenHash: createHash("sha256").update(input.token).digest("hex"),
-		purpose: input.purpose,
-		now: input.now,
+	return executor.transaction(async (transaction) => {
+		const tokenHash = createHash("sha256").update(input.token).digest("hex");
+		const query = { tokenHash, purpose: input.purpose, now: input.now };
+		const userId = await findAuthTokenUser(transaction, query);
+		if (userId === null) return null;
+		await lockAccount(transaction, userId);
+		return consumeAuthToken(transaction, query);
 	});
 }

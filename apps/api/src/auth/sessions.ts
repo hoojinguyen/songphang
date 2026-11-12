@@ -19,7 +19,7 @@ const SESSION_TOKEN_SCHEMA = z
 	.length(43)
 	.regex(/^[A-Za-z0-9_-]+$/);
 
-function hashToken(token: string): string {
+export function hashSessionToken(token: string): string {
 	return createHash("sha256").update(token).digest("hex");
 }
 
@@ -36,7 +36,11 @@ export async function createSession(
 	}
 	const token = randomBytes(32).toString("base64url");
 	const expiresAt = new Date(input.now.getTime() + SESSION_TTL_MS);
-	await insertSession(db, { ...input, tokenHash: hashToken(token), expiresAt });
+	await insertSession(db, {
+		...input,
+		tokenHash: hashSessionToken(token),
+		expiresAt,
+	});
 	return { token, expiresAt };
 }
 
@@ -47,7 +51,7 @@ export async function findSessionUser(
 ): Promise<UserDto | null> {
 	if (!SESSION_TOKEN_SCHEMA.safeParse(token).success) return null;
 	const user = await findUserBySessionHash(db, {
-		tokenHash: hashToken(token),
+		tokenHash: hashSessionToken(token),
 		now,
 	});
 	return user === null ? null : UserDto.parse(user);
@@ -55,7 +59,7 @@ export async function findSessionUser(
 
 export async function deleteSession(db: Db, token: string): Promise<void> {
 	if (!SESSION_TOKEN_SCHEMA.safeParse(token).success) return;
-	await deleteSessionByHash(db, hashToken(token));
+	await deleteSessionByHash(db, hashSessionToken(token));
 }
 
 export function sessionCookieAttributes(appEnv: Config["appEnv"]) {

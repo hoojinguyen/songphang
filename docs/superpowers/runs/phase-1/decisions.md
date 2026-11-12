@@ -104,3 +104,21 @@ Problem: The existing unexpected-error logger prints error.message/stack; Drizzl
 Options: Log wrapped errors fully; log requestId plus error classification only.
 Choice: Keep requestId/name and a fixed generic message; never log wrapped SQL or parameters.
 Reason: AGENTS section 9's no-secrets-in-logs rule takes precedence over the lower-priority code-convention suggestion to log unexpected errors fully.
+
+## D16 — Represent deleted transaction authors (task 1B.3)
+Problem: Account deletion nulls transaction created_by; a required createdBy object would make historical transaction reads fail schema validation.
+Options: Invent an author UUID/name; allow createdBy null.
+Choice: Make TransactionDto.createdBy nullable, keeping all transaction/member money data unchanged.
+Reason: Represent the actual deleted-account state without retaining an account or inventing an identity.
+
+## D17 — Consistent account/token lock order (task 1B.3)
+Problem: Token issue locks user then tokens; reset/verify could lock a token then the user, causing a concurrent deadlock.
+Options: Accept transient deadlocks; look up the token owner, lock that user, then perform the single conditional UPDATE.
+Choice: consumeToken uses the same account-first lock order in a transaction and still atomically updates only an unused/unexpired token.
+Reason: Reset/revocation remains atomic with token consumption and serializes with issue. Future joining/ownership writes must also lock the account before making it own or join a group to serialize with account deletion.
+
+## D18 — Keep recovery routes/services separate (task 1B.3)
+Problem: Extending both account modules inline would exceed the size guidelines.
+Options: Oversized account modules; sibling password-recovery modules.
+Choice: Split within existing routes/services directories and register recovery routes from auth.ts.
+Reason: No package or directory change; each module has one coherent responsibility.
