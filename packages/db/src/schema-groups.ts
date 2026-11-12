@@ -1,0 +1,118 @@
+import { sql } from "drizzle-orm";
+import {
+	boolean,
+	check,
+	integer,
+	numeric,
+	pgTable,
+	primaryKey,
+	text,
+	timestamp,
+	unique,
+	uniqueIndex,
+	uuid,
+} from "drizzle-orm/pg-core";
+import { uuidv7 } from "uuidv7";
+import { users } from "./schema.js";
+
+export const groups = pgTable(
+	"groups",
+	{
+		id: uuid("id").primaryKey().$defaultFn(uuidv7),
+		name: text("name").notNull(),
+		currency: text("currency").notNull().default("VND"),
+		minimizeDebts: boolean("minimize_debts").notNull().default(true),
+		inviteToken: text("invite_token").notNull().unique(),
+		inviteActive: boolean("invite_active").notNull().default(true),
+		defaultRole: text("default_role").notNull().default("editor"),
+		createdBy: uuid("created_by").references(() => users.id, {
+			onDelete: "set null",
+		}),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		check(
+			"groups_name_length_check",
+			sql`char_length(${table.name}) between 1 and 80`,
+		),
+		check(
+			"groups_default_role_check",
+			sql`${table.defaultRole} in ('editor', 'viewer')`,
+		),
+	],
+);
+
+export const members = pgTable(
+	"members",
+	{
+		id: uuid("id").primaryKey().$defaultFn(uuidv7),
+		groupId: uuid("group_id")
+			.notNull()
+			.references(() => groups.id, { onDelete: "cascade" }),
+		name: text("name").notNull(),
+		active: boolean("active").notNull().default(true),
+		defaultWeight: numeric("default_weight", { precision: 6, scale: 2 })
+			.notNull()
+			.default("1"),
+		position: integer("position").notNull(),
+		shape: text("shape").notNull(),
+		color: text("color").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		unique("members_group_position_unique").on(table.groupId, table.position),
+		check(
+			"members_name_length_check",
+			sql`char_length(${table.name}) between 1 and 50`,
+		),
+		check("members_default_weight_check", sql`${table.defaultWeight} >= 0`),
+		check(
+			"members_shape_check",
+			sql`${table.shape} in ('circle', 'diamond', 'squircle', 'leaf')`,
+		),
+		check(
+			"members_color_check",
+			sql`${table.color} in ('mint', 'sky', 'coral', 'lilac')`,
+		),
+	],
+);
+
+export const groupUsers = pgTable(
+	"group_users",
+	{
+		groupId: uuid("group_id")
+			.notNull()
+			.references(() => groups.id, { onDelete: "cascade" }),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		role: text("role").notNull(),
+		memberId: uuid("member_id").references(() => members.id, {
+			onDelete: "set null",
+		}),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		primaryKey({ columns: [table.groupId, table.userId] }),
+		unique("group_users_member_unique").on(table.groupId, table.memberId),
+		uniqueIndex("group_users_owner_unique")
+			.on(table.groupId)
+			.where(sql`${table.role} = 'owner'`),
+		check(
+			"group_users_role_check",
+			sql`${table.role} in ('owner', 'editor', 'viewer')`,
+		),
+	],
+);

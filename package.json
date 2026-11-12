@@ -11,7 +11,8 @@
 		"check": "biome check . && pnpm -r typecheck",
 		"typecheck": "pnpm -r typecheck",
 		"db:migrate": "pnpm --filter @songphang/db migrate",
-		"db:seed": "pnpm --filter @songphang/db seed"
+		"db:seed": "pnpm --filter @songphang/db seed",
+		"db:check-balances": "pnpm --filter @songphang/db check-balances"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.6.6",

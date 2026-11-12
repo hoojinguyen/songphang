@@ -26,3 +26,9 @@ Problem: The task requests pnpm install while external services are forbidden.
 Options: Contact the package registry; use the local package store offline.
 Choice: Run pnpm install --offline and do not run the network-backed pnpm audit.
 Reason: This package adds no dependencies; the run must not contact external services.
+
+## D3 — Retain ledger authorship when accounts are deleted (task 1A.2)
+Problem: Nullable created_by/updated_by foreign keys must allow account deletion while preserving ledger history.
+Options: Default restrictive foreign keys; ON DELETE SET NULL.
+Choice: SET NULL for group and transaction authors.
+Reason: The approved account-deletion requirement retains members and transactions.

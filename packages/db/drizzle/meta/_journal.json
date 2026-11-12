@@ -8,6 +8,20 @@
 			"when": 1794413854131,
 			"tag": "0000_faulty_marten_broadcloak",
 			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1794498678906,
+			"tag": "0001_keen_sage",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1794498713558,
+			"tag": "0002_ledger-integrity",
+			"breakpoints": true
 		}
 	]
 }

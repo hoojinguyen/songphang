@@ -6,7 +6,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 
 ## Stage 1A — Core ledger
 
-- [ ] 1A.1 `core`: equal split and settlement suggestions
+- [x] 1A.1 `core`: equal split and settlement suggestions
 - [ ] 1A.2 Database: ledger tables, integrity triggers, balance check
 - [ ] 1A.3 API: groups, group authorization, idempotency
 - [ ] 1A.4 API: members
@@ -140,4 +140,109 @@ pairwise unknown member: RangeError
 Security review: checked relevant items 1, 2, 8 against actual diff; no secrets, no runtime dependencies, positive safe integer input validation and exact integer accumulation. Network-backed audit not run because external services are forbidden.
 Not verified: no visual feature in this task.
 Deviation: `pnpm install --offline` exited 1 with `ERR_PNPM_NO_OFFLINE_META` for @tailwindcss/node. A subsequent `pnpm exec biome` unexpectedly invoked installation and supply-chain verification (232 entries) before formatting; it exited 0. The tool's external activity was not independently inspected. Use direct installed binaries for subsequent tooling where possible. No packages were added beyond the dependency-free workspace package.
+Out of scope: none.
+
+Commit 1A.1: `6a6f9d6`.
+
+## Task 1A.2 — Approach
+- Add three schema files matching the approved columns and constraints; export their tables and DbExecutor.
+- Generate the table migration with the installed drizzle-kit and a separate custom migration containing the plan SQL.
+- Add the read-only balance command with database-side exact sums and mismatch counts.
+- Exercise migrations twice and commit/rollback constraints against the existing local Docker database, then remove exercise rows.
+
+### Task 1A.2 — Exercise output
+
+valid
+```text
+BEGIN
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+COMMIT
+```
+
+wrong shares
+```text
+BEGIN
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+ERROR:  transaction shares total differs from amount
+CONTEXT:  PL/pgSQL function assert_transaction_integrity(uuid) line 23 at RAISE
+SQL statement "SELECT assert_transaction_integrity(NEW.id)"
+PL/pgSQL function check_transaction_row() line 3 at PERFORM
+```
+
+wrong payer
+```text
+BEGIN
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+ERROR:  transaction payers total differs from amount
+CONTEXT:  PL/pgSQL function assert_transaction_integrity(uuid) line 19 at RAISE
+SQL statement "SELECT assert_transaction_integrity(NEW.id)"
+PL/pgSQL function check_transaction_row() line 3 at PERFORM
+```
+
+foreign member
+```text
+BEGIN
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+ERROR:  transaction references a member of another group
+CONTEXT:  PL/pgSQL function assert_transaction_integrity(uuid) line 35 at RAISE
+SQL statement "SELECT assert_transaction_integrity(NEW.id)"
+PL/pgSQL function check_transaction_row() line 3 at PERFORM
+```
+
+zero amount
+```text
+BEGIN
+ERROR:  new row for relation "transactions" violates check constraint "transactions_amount_check"
+DETAIL:  Failing row contains (0193a1b2-0000-7000-8000-000000000104, 0193a1b2-0000-7000-8000-000000000001, expense, Ledger exercise, 0, VND, 2026-11-12 15:52:25.807525+00, null, equal, {}, 1, null, null, 2026-11-12 15:52:25.807525+00, 2026-11-12 15:52:25.807525+00, null).
+```
+
+second owner
+```text
+BEGIN
+ERROR:  duplicate key value violates unique constraint "group_users_owner_unique"
+DETAIL:  Key (group_id)=(0193a1b2-0000-7000-8000-000000000001) already exists.
+```
+
+delete used member
+```text
+ERROR:  update or delete on table "members" violates foreign key constraint "transaction_payers_member_id_members_id_fk" on table "transaction_payers"
+DETAIL:  Key (id)=(0193a1b2-0000-7000-8000-000000000011) is still referenced from table "transaction_payers".
+```
+
+change share
+```text
+BEGIN
+UPDATE 1
+ERROR:  transaction shares total differs from amount
+CONTEXT:  PL/pgSQL function assert_transaction_integrity(uuid) line 23 at RAISE
+SQL statement "SELECT assert_transaction_integrity(OLD.transaction_id)"
+PL/pgSQL function check_transaction_line() line 4 at PERFORM
+```
+
+```text
+0193a1b2-0000-7000-8000-000000000001 Ledger exercise: sum 0; mismatches 0
+0193a1b2-0000-7000-8000-000000000002 Other ledger exercise: sum 0; mismatches 0
+All groups balanced
+$ pnpm --filter @songphang/db check-balances
+$ tsx --env-file=../../.env src/check-balances.ts
+```
+
+### Task 1A.2 — Results
+Completed: eight ledger tables, generated table migration and plan-provided deferred integrity triggers; exported DbExecutor; read-only balance command.
+pnpm check: passed (63 files; every workspace typecheck Done). Initial formatting failure in generated metadata was resolved by formatting only the generated JSON.
+Migrations: `pnpm db:migrate` twice → `Migrations applied`, exit 0 both times.
+Cleanup: initial autocommit line deletion was refused by the deferred trigger; repeating all cleanup statements in one explicit transaction → `BEGIN; DELETE 2; DELETE 1; DELETE 1; DELETE 2; COMMIT`. Final balance command → `No groups`, exit 0. All exercise rows removed.
+Security review: checked relevant items 1, 2, 5, 6, 8 against schema, generated SQL, custom SQL and script diff. No secrets; all checks, foreign keys and indexes present; parameterized static read queries; Zod validates query result structure. No new dependencies; network audit omitted under the external-services prohibition.
+Size review: checkBalances is slightly over 40 lines because the two adjacent read-only SQL queries belong to one inspection operation; no abstraction introduced for a one-off command.
+Decisions: D3.
+Deviations: direct installed drizzle-kit binary instead of pnpm exec to avoid auto-install; generated JSON formatted for the existing gate.
+Not verified: none for task exercises.
 Out of scope: none.

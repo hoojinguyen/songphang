@@ -3,6 +3,8 @@ import postgres from "postgres";
 import { z } from "zod";
 import * as schema from "./schema.js";
 
+export type DbExecutor = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
+
 export type Db = PostgresJsDatabase<typeof schema>;
 
 const DATABASE_URL_SCHEMA = z
