@@ -57,8 +57,11 @@ export function handleError(error: Error, context: Context<AppEnv>): Response {
 			requestId,
 		},
 	});
+	const headers = new Headers(context.res.headers);
+	headers.set("Content-Type", "application/json");
+	headers.set("X-Request-Id", requestId);
 	return new Response(JSON.stringify(body), {
 		status: appError.status,
-		headers: { "Content-Type": "application/json", "X-Request-Id": requestId },
+		headers,
 	});
 }

@@ -12,10 +12,24 @@ const CONFIG_SCHEMA = z
 			.transform(Number)
 			.pipe(z.int().min(1).max(65535)),
 		WEB_ORIGIN: z.url({ protocol: /^https?$/, hostname: /.+/ }).max(2048),
+		GOOGLE_CLIENT_ID: z.string().max(1024).optional(),
+		GOOGLE_CLIENT_SECRET: z.string().max(4096).optional(),
 		DEV_LOGIN: z.enum(["true", "false"]),
+	})
+	.superRefine((env, context) => {
+		if (Boolean(env.GOOGLE_CLIENT_ID) === Boolean(env.GOOGLE_CLIENT_SECRET))
+			return;
+		for (const name of ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"])
+			context.addIssue({
+				code: "custom",
+				path: [name],
+				message: "Google client ID and secret must be configured together",
+			});
 	})
 	.transform((env) => ({
 		appEnv: env.APP_ENV,
+		googleClientId: env.GOOGLE_CLIENT_ID || undefined,
+		googleClientSecret: env.GOOGLE_CLIENT_SECRET || undefined,
 		databaseUrl: env.DATABASE_URL,
 		apiPort: env.API_PORT,
 		webOrigin: env.WEB_ORIGIN,

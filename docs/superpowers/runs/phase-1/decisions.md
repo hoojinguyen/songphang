@@ -68,3 +68,21 @@ Problem: MemberDto has isMe but no claimed flag until account-sharing work.
 Options: Add a new interim endpoint/field; use the fact that only the creator can be linked in 1A.
 Choice: Hide deactivate/delete for isMe in 1A.
 Reason: Exactly matches the reachable phase-1A state without inventing an interface ahead of 1B.
+
+## D10 — Node crypto documentation without external access (task 1B.1)
+Problem: The plan asks for Node documentation while external services are forbidden.
+Options: Browse nodejs.org; read installed Node API documentation in @types/node/crypto.d.ts.
+Choice: Use the installed API documentation and signature, which marks argon2 @since v24.7.0; runtime is v26.12.1.
+Reason: Verify exact availability and parameters locally; set the engine minimum to 24.7.0.
+
+## D11 — Bounded PHC parameters and atomic token issue (task 1B.1)
+Problem: Malformed hashes must not cause unbounded memory allocation, and concurrent token issues must invalidate each other.
+Options: Trust every parsed PHC parameter and issue without locking; validate bounded parameters and serialize per user.
+Choice: Verify only canonical base64 and bounded Argon2 parameters; issue tokens in a transaction under a user-row lock. Dummy PHC is generated once at startup from random bytes.
+Reason: Preserve constant-work missing-account verification and single-use token semantics without new crypto code.
+
+## D12 — Preserve rate-limit response headers (task 1B.1)
+Problem: The real four-call limiter exercise returned 429 but Retry-After was null; the existing handleError created a new Response without middleware headers.
+Options: Return errors directly from the limiter; preserve prepared response headers in the shared error handler.
+Choice: Copy context.res.headers before setting the standard error headers.
+Reason: Keep one error response format and preserve the required Retry-After header without route-specific error handling.

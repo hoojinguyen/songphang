@@ -6,10 +6,13 @@ import {
 } from "@songphang/db";
 import { createApp } from "./app.js";
 import { type Config, loadConfig } from "./config.js";
+import { createConsoleMailer } from "./mailer.js";
 
 let config: Config;
 try {
 	config = loadConfig(process.env);
+	if (config.appEnv === "production")
+		throw new Error("Mailer is not configured for production");
 } catch (error) {
 	console.error(
 		error instanceof Error
@@ -37,7 +40,12 @@ try {
 		60 * 60 * 1000,
 	);
 	cleanupTimer.unref();
-	const app = createApp({ config, db, now: () => new Date() });
+	const app = createApp({
+		config,
+		db,
+		now: () => new Date(),
+		mailer: createConsoleMailer(),
+	});
 	const server = serve(
 		{ fetch: app.fetch, port: config.apiPort, hostname: "127.0.0.1" },
 		() => {

@@ -5,6 +5,7 @@ import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
+import type { Mailer } from "./mailer.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerDevRoutes } from "./routes/dev.js";
@@ -22,7 +23,12 @@ export type AppEnv = {
 		groupAccess: { groupId: string; role: GroupRole; memberId: string | null };
 	};
 };
-export type AppDeps = { config: Config; db: Db; now: () => Date };
+export type AppDeps = {
+	config: Config;
+	db: Db;
+	now: () => Date;
+	mailer: Mailer;
+};
 
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	const app = new OpenAPIHono<AppEnv>({

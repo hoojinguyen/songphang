@@ -17,7 +17,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] 1A.9 Web: manual expense form
 - [x] 1A.10 Web: balances and settlements
 - [x] 1A.11 Web: members and group settings
-- [ ] 1A.12 README and stage gate 1A
+- [x] 1A.12 README and stage gate 1A
 
 ### Gate 1A
 
@@ -680,4 +680,26 @@ Security review: relevant items 1, 4, 5, 6, 8 checked through the complete stage
 Decisions: none.
 Deviations: permission exercise adds a self-only expense of 1 đồng (zero net balance) and a disposable member after fixed acceptance; earlier-stage scripts do not exist yet.
 Not verified: human visual/keyboard journey and external mockup comparison remain in manual-checks; per-task browser exercises already recorded.
+Out of scope: none.
+
+Commit 1A.12: `47b1317`.
+
+## Task 1B.1 — Approach
+- Add account identity/token tables and typed queries with atomic token consumption.
+- Use installed Node crypto.argon2 documentation/types (since v24.7.0) and standard timingSafeEqual; no crypto library or implementation.
+- Load the approved local password list once; keep one-time tokens hashed and invalidate prior tokens under a user lock.
+- Add console-only mail templates, a fixed-window limiter and optional validated Google configuration.
+- Extend UserDto in place and update shared user selects so all current callers keep working.
+
+### Task 1B.1 — Results
+pnpm check: passed (128 files; all workspace typechecks Done). Migrations twice → `Migrations applied`, exit 0.
+Password exercise real output: two different PHC strings both beginning `$argon2id$v=19$m=19456,t=2,p=1$`; verification right/wrong/truncated → `true false false`. Rules in plan order → `too_short`, `too_common`, `too_common`, `too_common`, `too_long`, `ok`. Only the plan's public dummy exercise phrase was hashed; no account password or raw token recorded.
+Token exercise real output: consume → `01a1d09a-f3c2-7e23-aa0d-064356513fb2 null`; wrong purpose → `null`; expired → `null`; superseded → `null`. SQL inspection: token hash length 64, all_hex t, count 5; raw tokens never printed.
+Limiter initial output: `200/null`, `200/null`, `200/null`, `429/null` (missing Retry-After). Root cause: shared error handler discarded prepared headers. After fix: `200/null`, `200/null`, `200/null`, `429/60`.
+Unpaired configuration → `Invalid environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET`. Production startup → `Mailer is not configured for production`, exit 1 before serving/migrating.
+GET /me as seeded Minh → emailVerified true, hasPassword false.
+Security review: relevant items 1–6, 8 checked against the actual source, generated migration and staged diff. Standard node:crypto argon2id/randomBytes/timingSafeEqual only; PHC bounds validated; one-time token stores SHA256 only, atomically consumed and superseded under user lock; identity credential CHECK/uniques; no secrets logged outside permitted development mail; production mail refuses startup. No new dependencies; network audit not run.
+Decisions: D10–D12.
+Deviations: added users.ts shared projections and errors.ts header preservation, both required by the new UserDto and Retry-After contract. Installed crypto type documentation used locally instead of contacting nodejs.org.
+Not verified: real mail delivery intentionally absent; templates only print locally in development.
 Out of scope: none.

@@ -22,6 +22,13 @@
 			"when": 1794498713558,
 			"tag": "0002_ledger-integrity",
 			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1794501507042,
+			"tag": "0003_even_wilson_fisk",
+			"breakpoints": true
 		}
 	]
 }
