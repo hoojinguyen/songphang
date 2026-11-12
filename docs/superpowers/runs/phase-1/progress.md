@@ -31,7 +31,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 
 - [x] 1B.1 Account foundations
 - [x] 1B.2 API: register, sign in, verify email
-- [ ] 1B.3 API: forgot, reset and change password; delete account
+- [x] 1B.3 API: forgot, reset and change password; delete account
 - [ ] 1B.4 API: Google sign-in
 - [ ] 1B.5 Web: sign-in, register, verify, forgot and reset screens
 - [ ] 1B.6 Web: account screen
@@ -827,4 +827,38 @@ Security review: relevant items 1–6, 8 checked against actual source/query/con
 Decisions: D16–D18.
 Deviations: recovery services/routes split into same-directory files; nullable deleted author is represented directly instead of inventing an identity. Token consumption now follows account-first lock ordering while retaining the conditional atomic UPDATE.
 Not verified: deletion after joining a group, preservation of its member and authored transactions, and actual null-author reads must be re-exercised after 1B.7 as the task explicitly requires.
+Out of scope: none.
+
+Commit 1B.3: `a425e29`.
+
+## Task 1B.4 — Approach
+- Implement the Google claims-to-account service independently of the remote exchange.
+- Keep authorization state, verifier and safe return path in short-lived HttpOnly cookies.
+- Use Node randomBytes/SHA256/timingSafeEqual and a fixed HTTPS token endpoint; validate the returned ID-token payload with Zod.
+- Exercise only local authorization redirects, rejected callbacks and plain-claims outcomes; never contact Google.
+- Record the unavailable approved dependency as a material implementation deviation.
+
+### Task 1B.4 — Local exercise output
+```text
+No Google config /auth/google {"error":{"code":"NOT_FOUND","message":"Resource not found","requestId":"01a1d0b2-ef49-7a0d-a5d8-6e5ac7621bbc"}}
+404
+No Google config /auth/providers {"google":false,"devLogin":true}
+200
+Authorization /g/abc 302 {"scheme": "https", "host": "accounts.google.com", "clientId": ["test-client-id"], "redirectUri": ["http://localhost:3000/api/v1/auth/google/callback"], "scope": ["openid email profile"], "hasCodeChallenge": true, "stateLength": 43, "challengeMethod": ["S256"], "cookieCount": 3, "httpOnlyCount": 3, "cookie600sCount": 3, "storedRedirect": "/g/abc"}
+Authorization //evil.example 302 {"scheme": "https", "host": "accounts.google.com", "clientId": ["test-client-id"], "redirectUri": ["http://localhost:3000/api/v1/auth/google/callback"], "scope": ["openid email profile"], "hasCodeChallenge": true, "stateLength": 43, "challengeMethod": ["S256"], "cookieCount": 3, "httpOnlyCount": 3, "cookie600sCount": 3, "storedRedirect": "/"}
+Wrong state 302 /login?error=google cookies cleared=3
+Claims service:
+new signed_in 01a1d0b2-64c0-7d46-b651-79f5ceedf33d
+verified password signed_in 01a1d0a5-b17f-74e6-811e-7c60188d62bc
+unverified password google_unverified null
+known subject signed_in 01a1d0b2-64c0-7d46-b651-79f5ceedf33d
+```
+
+### Task 1B.4 — Results
+pnpm check: passed (138 files; all workspace typechecks Done). Local redirect/claims outputs recorded above.
+Security review: relevant items 1–6, 8 checked against source and query diff. HttpOnly/Lax/path-scoped short-lived cookies; standard randomBytes/SHA256 PKCE/timingSafeEqual state; bounded Zod query/cookie/claims inputs; safe internal redirect; fixed HTTPS token endpoint, redirects disabled and 10-second timeout; ID payload accepted only from that direct TLS exchange as specified. Verified password accounts may link; unverified password accounts cannot. No credentials, state/verifier/session values printed in the report.
+Decisions: D19 (material deviation).
+Deviations: arctic could not be installed offline; used a built-in Node/Web API adapter instead. Its behavior requires special advisor review. Google queries split to google-accounts.ts to keep accounts.ts below 200 lines.
+Unresolved: the plan's approved arctic dependency is unavailable locally and was not added; no external registry or Google service was contacted for this task.
+Not verified: real Google authorization/token exchange, ID-token delivery and real-account outcomes.
 Out of scope: none.

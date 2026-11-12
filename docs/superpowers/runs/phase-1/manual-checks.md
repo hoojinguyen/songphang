@@ -100,3 +100,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 1. Request reset and use console link token → new password works and all old browser sessions get 401. Weak new password → token remains usable; replay → TOKEN_INVALID.
 2. Change with revokeOtherSessions true while signed in twice → current session remains, other session gets 401. Wrong current password → INVALID_CREDENTIALS.
 3. Delete with wrong email → 400; own one group → OWNER_REQUIRED/groupCount 1; non-owner account → 204, cleared cookie and next request 401. After 1B.7, confirm member/transactions remain after deleting a joined account.
+
+## After the Google OAuth app exists — 1B.4
+1. Create an OAuth client of type Web application with exact redirect URI `http://localhost:3000/api/v1/auth/google/callback`; put client ID/secret in local .env and restart.
+2. First real Google sign-in → verified account/identity; a matching verified password email → same account with Google identity.
+3. Matching unverified password email → google_unverified, no link; known Google subject → same user.
+4. Check next/redirect rejects external addresses; full round-trip and real mail remain unverified in this run. The built-in adapter replacing unavailable arctic needs advisor review before this check.

@@ -122,3 +122,9 @@ Problem: Extending both account modules inline would exceed the size guidelines.
 Options: Oversized account modules; sibling password-recovery modules.
 Choice: Split within existing routes/services directories and register recovery routes from auth.ts.
 Reason: No package or directory change; each module has one coherent responsibility.
+
+## D19 — Google adapter without unavailable arctic (task 1B.4)
+Problem: Offline arctic@3.7.0 installation fails ERR_PNPM_NO_OFFLINE_META; cache/runtime/other-project searches found no copy. External services are prohibited.
+Options: Fetch the package despite the prohibition; leave Google unbuilt; implement the specified authorization-code protocol with standard Node/Web APIs.
+Choice: A small built-in adapter with fixed Google endpoints, standard crypto primitives, PKCE/state cookies and Zod-validated claims; no third-party package added.
+Reason: Continue the authorized phase run without remote calls, account creation or custom cryptographic algorithms. This differs materially from the advisor's chosen arctic integration and requires explicit attention in final review; real Google exchange remains unverified.
