@@ -9,6 +9,10 @@ import {
 import type { AppDeps, AppEnv } from "../app.js";
 import { requireGroupRole } from "../auth/group-access.js";
 import { requireSameOrigin, requireUser } from "../auth/middleware.js";
+import {
+	requireVerifiedEmail,
+	requireWriteLimit,
+} from "../auth/verified-email.js";
 import { hashRequest, runIdempotent } from "../idempotency.js";
 import {
 	createGroup,
@@ -86,7 +90,12 @@ export function registerGroupRoutes(
 	app.openapi(
 		{
 			...createGroupRoute,
-			middleware: [requireUser(deps), requireSameOrigin(deps.config)],
+			middleware: [
+				requireUser(deps),
+				requireVerifiedEmail(deps),
+				requireWriteLimit(deps),
+				requireSameOrigin(deps.config),
+			],
 		},
 		async (context) => {
 			const request = context.req.valid("json");
@@ -130,6 +139,8 @@ export function registerGroupRoutes(
 			middleware: [
 				requireUser(deps),
 				requireGroupRole(deps, "owner"),
+				requireVerifiedEmail(deps),
+				requireWriteLimit(deps),
 				requireSameOrigin(deps.config),
 			],
 		},

@@ -44,7 +44,7 @@ export function handleError(error: Error, context: Context<AppEnv>): Response {
 		console.error(
 			JSON.stringify({
 				requestId,
-				error: { name: error.name, message: error.message, stack: error.stack },
+				error: { name: error.name, message: "Unexpected application error" },
 			}),
 		);
 		appError = new AppError(500, "INTERNAL", "An internal error occurred");

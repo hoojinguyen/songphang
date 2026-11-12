@@ -7,6 +7,7 @@ import {
 import { createApp } from "./app.js";
 import { type Config, loadConfig } from "./config.js";
 import { createConsoleMailer } from "./mailer.js";
+import { createRateLimiter } from "./rate-limit.js";
 
 let config: Config;
 try {
@@ -45,6 +46,7 @@ try {
 		db,
 		now: () => new Date(),
 		mailer: createConsoleMailer(),
+		rateLimiter: createRateLimiter(() => new Date()),
 	});
 	const server = serve(
 		{ fetch: app.fetch, port: config.apiPort, hostname: "127.0.0.1" },

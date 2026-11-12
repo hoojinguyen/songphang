@@ -9,6 +9,10 @@ import {
 import type { AppDeps, AppEnv } from "../app.js";
 import { requireGroupRole } from "../auth/group-access.js";
 import { requireSameOrigin, requireUser } from "../auth/middleware.js";
+import {
+	requireVerifiedEmail,
+	requireWriteLimit,
+} from "../auth/verified-email.js";
 import { hashRequest, runIdempotent } from "../idempotency.js";
 import {
 	createMember,
@@ -79,6 +83,8 @@ export function registerMemberRoutes(
 	const write = [
 		requireUser(deps),
 		requireGroupRole(deps, "editor"),
+		requireVerifiedEmail(deps),
+		requireWriteLimit(deps),
 		requireSameOrigin(deps.config),
 	];
 	app.openapi({ ...listRoute, middleware: read }, async (context) =>

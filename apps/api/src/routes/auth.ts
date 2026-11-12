@@ -8,11 +8,13 @@ import {
 	SESSION_COOKIE,
 	sessionCookieAttributes,
 } from "../auth/sessions.js";
+import { registerAccountAuthRoutes } from "./account-auth.js";
 
 export function registerAuthRoutes(
 	app: OpenAPIHono<AppEnv>,
 	deps: AppDeps,
 ): void {
+	registerAccountAuthRoutes(app, deps);
 	app.openapi(
 		createRoute({
 			method: "post",

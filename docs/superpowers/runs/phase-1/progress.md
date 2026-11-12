@@ -29,7 +29,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 
 ## Stage 1B — Accounts and sharing
 
-- [ ] 1B.1 Account foundations
+- [x] 1B.1 Account foundations
 - [ ] 1B.2 API: register, sign in, verify email
 - [ ] 1B.3 API: forgot, reset and change password; delete account
 - [ ] 1B.4 API: Google sign-in
@@ -702,4 +702,83 @@ Security review: relevant items 1–6, 8 checked against the actual source, gene
 Decisions: D10–D12.
 Deviations: added users.ts shared projections and errors.ts header preservation, both required by the new UserDto and Retry-After contract. Installed crypto type documentation used locally instead of contacting nodejs.org.
 Not verified: real mail delivery intentionally absent; templates only print locally in development.
+Out of scope: none.
+
+Commit 1B.1: `01bb562`.
+
+## Task 1B.2 — Approach
+- Add validated account requests and thin authentication routes using existing session cookies.
+- Keep account creation/token/identity writes atomic and send development mail only after commit.
+- Prepare validated email keys in middleware, then apply socket-IP/email rate limits before account work.
+- Attach shared verified-email and per-user write limits to existing group writes.
+- Exercise enumeration, token replay, weak inputs and rate limits without printing session or raw token values.
+
+### Task 1B.2 — Exercise output
+```text
+register new 204 null Set-Cookie=False
+sign in good 204 null Set-Cookie=True
+unverified me 200 {"user": {"id": "01a1d0a5-b17f-74e6-811e-7c60188d62bc", "email": "ngan@example.test", "name": "Ngân", "avatarUrl": null, "emailVerified": false, "hasPassword": true}} Set-Cookie=False
+unverified create 403 {"error": {"code": "EMAIL_NOT_VERIFIED", "message": "Email verification required", "requestId": "01a1d0a5-b1c2-76a8-8fe2-0653b5306d0e"}} Set-Cookie=False
+resend 1 204 null Set-Cookie=False
+resend 2 204 null Set-Cookie=False
+resend 3 204 null Set-Cookie=False
+resend 4 429 {"error": {"code": "RATE_LIMITED", "message": "Too many requests", "requestId": "01a1d0a5-b1f2-760a-8b1a-e21b5643a89f"}} Set-Cookie=False Retry-After=3600
+superseded verification 400 {"error": {"code": "TOKEN_INVALID", "message": "Token is invalid or expired", "requestId": "01a1d0a5-b1fa-7d49-9612-ed584b5d918a"}} Set-Cookie=False
+verify current 500 {"error": {"code": "INTERNAL", "message": "An internal error occurred", "requestId": "01a1d0a5-b205-7bda-90b1-e4c8f8945601"}} Set-Cookie=False
+verified me 200 {"user": {"id": "01a1d0a5-b17f-74e6-811e-7c60188d62bc", "email": "ngan@example.test", "name": "Ngân", "avatarUrl": null, "emailVerified": false, "hasPassword": true}} Set-Cookie=False
+verified create 403 {"error": {"code": "EMAIL_NOT_VERIFIED", "message": "Email verification required", "requestId": "01a1d0a5-b219-7a06-ac6f-b752ba019b28"}} Set-Cookie=False
+token replay 500 {"error": {"code": "INTERNAL", "message": "An internal error occurred", "requestId": "01a1d0a5-b221-712e-87fe-64e4e166be53"}} Set-Cookie=False
+made up token 400 {"error": {"code": "TOKEN_INVALID", "message": "Token is invalid or expired", "requestId": "01a1d0a5-b22a-7e37-876d-d9c2d3fd2ef8"}} Set-Cookie=False
+register existing 204 null Set-Cookie=False
+register uppercase 204 null Set-Cookie=False
+weak common 400 {"error": {"code": "WEAK_PASSWORD", "message": "Password does not meet requirements", "details": {"reason": "too_common"}, "requestId": "01a1d0a5-b25e-706f-bf66-8f67411b918e"}} Set-Cookie=False
+weak short 400 {"error": {"code": "WEAK_PASSWORD", "message": "Password does not meet requirements", "details": {"reason": "too_short"}, "requestId": "01a1d0a5-b265-7822-a8a2-5de1f0b2f4f7"}} Set-Cookie=False
+wrong password 401 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password is incorrect", "requestId": "01a1d0a5-b26c-72c2-b91b-088670ba8e77"}} Set-Cookie=False
+unknown account 401 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password is incorrect", "requestId": "01a1d0a5-b282-7cd5-88ac-5b8926add044"}} Set-Cookie=False
+email sign-in attempt 3 401 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password is incorrect", "requestId": "01a1d0a5-b298-70db-aeb6-4b0b2e0b692c"}} Set-Cookie=False
+email sign-in attempt 4 401 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password is incorrect", "requestId": "01a1d0a5-b2ad-72d1-a60d-2e6f3ce06512"}} Set-Cookie=False
+email sign-in attempt 5 401 {"error": {"code": "INVALID_CREDENTIALS", "message": "Email or password is incorrect", "requestId": "01a1d0a5-b2c4-7b16-a07a-e6a243773b57"}} Set-Cookie=False
+email sign-in attempt 6 429 {"error": {"code": "RATE_LIMITED", "message": "Too many requests", "requestId": "01a1d0a5-b2da-7ba8-a535-949d30507739"}} Set-Cookie=False Retry-After=900
+providers 200 {"google": false, "devLogin": true} Set-Cookie=False
+new registration headers: "HTTP/1.1 204 No Content\nDate: Thu, 12 Nov 2026 16:44:42 GMT\nConnection: keep-alive\nKeep-Alive: timeout=5\n"
+existing registration headers: "HTTP/1.1 204 No Content\nDate: Thu, 12 Nov 2026 16:44:42 GMT\nConnection: keep-alive\nKeep-Alive: timeout=5\n"
+ count 
+-------
+     1
+(1 row)
+
+ argon2_only 
+-------------
+ t
+(1 row)
+
+
+```
+
+### Task 1B.2 — Timestamp fix and re-exercise
+```text
+before fix-retry me 200 {"user": {"id": "01a1d0a5-b17f-74e6-811e-7c60188d62bc", "email": "ngan@example.test", "name": "Ngân", "avatarUrl": null, "emailVerified": false, "hasPassword": true}}
+resend after restart 204 null
+verify after timestamp fix 204 null
+verified me 200 {"user": {"id": "01a1d0a5-b17f-74e6-811e-7c60188d62bc", "email": "ngan@example.test", "name": "Ngân", "avatarUrl": null, "emailVerified": true, "hasPassword": true}}
+verified group create 201 {"group": {"id": "01a1d0a6-f77b-71bb-adec-a4cc0a44b2dd", "name": "Verified Ngân", "currency": "VND", "minimizeDebts": true, "role": "owner", "myMemberId": "01a1d0a6-f77c-7f20-b537-2ddcdd9a2957", "createdAt": "2026-11-12T16:46:05.691Z"}}
+replay after success 400 {"error": {"code": "TOKEN_INVALID", "message": "Token is invalid or expired", "requestId": "01a1d0a6-f789-7924-8521-666525d45d6a"}}
+made up token 400 {"error": {"code": "TOKEN_INVALID", "message": "Token is invalid or expired", "requestId": "01a1d0a6-f793-7967-8a7f-9d7e8f1d7e18"}}
+dev-user regression group 201 {"group": {"id": "01a1d0a6-f79e-726a-9738-ae274091665c", "name": "1A verified-user regression", "currency": "VND", "minimizeDebts": true, "role": "owner", "myMemberId": "01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "createdAt": "2026-11-12T16:46:05.726Z"}}
+regression members 200 {"members": [{"id": "01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "name": "Minh", "active": true, "defaultWeight": "1.00", "position": 0, "shape": "circle", "color": "mint", "isMe": true}, {"id": "01a1d0a6-f7a0-7eb5-bbed-8c635f985548", "name": "Lan", "active": true, "defaultWeight": "1.00", "position": 1, "shape": "diamond", "color": "sky", "isMe": false}, {"id": "01a1d0a6-f7a0-7eb5-bbed-8c64ac3e06b8", "name": "Hùng", "active": true, "defaultWeight": "1.00", "position": 2, "shape": "squircle", "color": "coral", "isMe": false}, {"id": "01a1d0a6-f7a1-777d-8de7-ba6ef652bbaa", "name": "Thu", "active": true, "defaultWeight": "1.00", "position": 3, "shape": "leaf", "color": "lilac", "isMe": false}]}
+cable 201 {"transaction": {"type": "expense", "description": "cable", "amount": 800000, "occurredAt": "2026-11-12T00:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "amount": 800000}], "split": {"method": "equal", "members": ["01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "01a1d0a6-f7a0-7eb5-bbed-8c635f985548", "01a1d0a6-f7a0-7eb5-bbed-8c64ac3e06b8", "01a1d0a6-f7a1-777d-8de7-ba6ef652bbaa"]}, "id": "01a1d0a6-f7bb-764d-8ec5-8a2e968db491", "currency": "VND", "shares": [{"memberId": "01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "amount": 200000}, {"memberId": "01a1d0a6-f7a0-7eb5-bbed-8c635f985548", "amount": 200000}, {"memberId": "01a1d0a6-f7a0-7eb5-bbed-8c64ac3e06b8", "amount": 200000}, {"memberId": "01a1d0a6-f7a1-777d-8de7-ba6ef652bbaa", "amount": 200000}], "version": 1, "createdBy": {"id": "01a1d09a-f3c2-7e23-aa0d-064356513fb2", "name": "Minh"}, "createdAt": "2026-11-12T16:46:05.753Z", "updatedAt": "2026-11-12T16:46:05.753Z", "deletedAt": null}}
+hotpot 201 {"transaction": {"type": "expense", "description": "hotpot", "amount": 300000, "occurredAt": "2026-11-12T00:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d0a6-f7a0-7eb5-bbed-8c635f985548", "amount": 300000}], "split": {"method": "equal", "members": ["01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "01a1d0a6-f7a0-7eb5-bbed-8c635f985548", "01a1d0a6-f7a0-7eb5-bbed-8c64ac3e06b8"]}, "id": "01a1d0a6-f7dd-72c4-a1f2-82fa44de30bf", "currency": "VND", "shares": [{"memberId": "01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "amount": 100000}, {"memberId": "01a1d0a6-f7a0-7eb5-bbed-8c635f985548", "amount": 100000}, {"memberId": "01a1d0a6-f7a0-7eb5-bbed-8c64ac3e06b8", "amount": 100000}], "version": 1, "createdBy": {"id": "01a1d09a-f3c2-7e23-aa0d-064356513fb2", "name": "Minh"}, "createdAt": "2026-11-12T16:46:05.787Z", "updatedAt": "2026-11-12T16:46:05.787Z", "deletedAt": null}}
+regression balances 200 {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "balance": 500000}, {"memberId": "01a1d0a6-f7a0-7eb5-bbed-8c635f985548", "balance": 0}, {"memberId": "01a1d0a6-f7a0-7eb5-bbed-8c64ac3e06b8", "balance": -300000}, {"memberId": "01a1d0a6-f7a1-777d-8de7-ba6ef652bbaa", "balance": -200000}], "transfers": [{"fromMemberId": "01a1d0a6-f7a0-7eb5-bbed-8c64ac3e06b8", "toMemberId": "01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "amount": 300000}, {"fromMemberId": "01a1d0a6-f7a1-777d-8de7-ba6ef652bbaa", "toMemberId": "01a1d0a6-f79f-7bc4-82c8-d6d2c5b7f663", "amount": 200000}]}
+```
+
+### Task 1B.2 — Results
+pnpm check: passed (132 files; all workspace typechecks Done).
+Registration new/existing/uppercase → 204, empty body, no cookie; normalized application headers identical, same Date on the measured calls. One user row; password identity hash prefix inspected as argon2 only. Weak reasons and credential failures matched the plan. Resend fourth → 429 / Retry-After 3600; sixth email login attempt → 429 / Retry-After 900. Unknown and wrong-password 401 bodies identical apart from requestId.
+Initial verification returned 500. Isolated query reproduction showed TypeError: Date passed as a raw sql parameter was not encoded. Changed only that raw parameter to an ISO string cast to timestamptz. Transaction rollback preserved token state. After restart/resend: verification 204, me emailVerified true, group creation 201, replay and made-up token both 400 TOKEN_INVALID.
+Dev-user regression: create group with four members, cable 800000/four and hotpot 300000/three → balances +500000/0/-300000/-200000 and transfers 300000/200000; guards preserve 1A behavior for verified seeded users.
+Security review: relevant items 1–6, 8 checked against actual route/service/query diff. Socket IP only, validated email rate keys; standard password hashing for known and unknown paths; register always hashes; no sessions at registration; mail after commit; token consumption and verification atomic; verified-user/write-limit middleware on existing data writes. Shared unexpected-error logging now cannot print SQL parameters/password hashes. No secrets in reports; local development console capture is private mode 0600 and excluded from git. No new dependencies.
+Size review: account-auth route registration and register service are kept as single cohesive operations; route file under 200 lines.
+Decisions: D13–D15.
+Deviations: same-directory account-auth route module plus account-limits middleware; shared logger redaction required by section 9.
+Not verified: real mail delivery intentionally absent.
 Out of scope: none.

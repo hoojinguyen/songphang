@@ -89,3 +89,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 1. On a phone-size window create Đà Lạt 12/2026 with Minh/Lan/Hùng/Thu; record cable 800000 Minh/four, hotpot 300000 Lan/first three, coffee 100000 Minh/first three → balances +566666/-33333/-333333/-200000. Gộp nợ on → transfers 333333,200000,33333 to Minh; off → Lan→Minh 133333, Hùng→Minh 233333, Hùng→Lan 100000, Thu→Minh 200000.
 2. Record coffee in three interactions after opening the form. Reload any screen → ledger/session retained.
 3. Walk S2→S3→S4→S8→S5→S10→S11 with keyboard only.
+
+## Account API (1B.2)
+1. Register a fresh example.test email with a strong password → empty 204, no session. Use verification link from API console → verified account.
+2. Register the same email again or uppercase → same empty 204 and no cookie. Unknown email/wrong-password login → identical INVALID_CREDENTIALS.
+3. Before verification POST /groups → EMAIL_NOT_VERIFIED; after verification → succeeds. Reuse verification token → TOKEN_INVALID.
+4. Six login attempts for one email → sixth RATE_LIMITED with Retry-After. Fourth resend within one hour → RATE_LIMITED.

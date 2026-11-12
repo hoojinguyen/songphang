@@ -6,6 +6,7 @@ import { uuidv7 } from "uuidv7";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
 import type { Mailer } from "./mailer.js";
+import type { createRateLimiter } from "./rate-limit.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerDevRoutes } from "./routes/dev.js";
@@ -20,6 +21,7 @@ export type AppEnv = {
 		requestId: string;
 		user: UserDto;
 		sessionToken: string;
+		authEmail: string;
 		groupAccess: { groupId: string; role: GroupRole; memberId: string | null };
 	};
 };
@@ -28,6 +30,7 @@ export type AppDeps = {
 	db: Db;
 	now: () => Date;
 	mailer: Mailer;
+	rateLimiter: ReturnType<typeof createRateLimiter>;
 };
 
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {

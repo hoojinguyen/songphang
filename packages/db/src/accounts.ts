@@ -84,7 +84,20 @@ export async function insertAccount(
 	const [account] = await executor
 		.insert(users)
 		.values(input)
+		.onConflictDoNothing()
 		.returning({ id: users.id });
-	if (!account) throw new Error("Account insert failed");
-	return account;
+	return account ?? null;
+}
+
+export function verifyAccountEmail(
+	executor: DbExecutor,
+	input: { userId: string; now: Date },
+) {
+	return executor
+		.update(users)
+		.set({
+			emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, ${input.now.toISOString()}::timestamptz)`,
+			updatedAt: input.now,
+		})
+		.where(eq(users.id, input.userId));
 }

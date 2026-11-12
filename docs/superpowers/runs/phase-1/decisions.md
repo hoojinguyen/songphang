@@ -86,3 +86,21 @@ Problem: The real four-call limiter exercise returned 429 but Retry-After was nu
 Options: Return errors directly from the limiter; preserve prepared response headers in the shared error handler.
 Choice: Copy context.res.headers before setting the standard error headers.
 Reason: Keep one error response format and preserve the required Retry-After header without route-specific error handling.
+
+## D13 — Validate email before email-keyed rate limits (task 1B.2)
+Problem: Hono OpenAPI route middleware runs before its automatic body validators, while the login limit needs a normalized email.
+Options: Trust raw JSON in the limiter; prepare a validated email in authentication middleware first.
+Choice: Add account-limits.ts with Zod email preparation and socket-IP lookup; share one limiter instance in AppDeps.
+Reason: Never use unvalidated external data or proxy headers as a rate-limit identity.
+
+## D14 — Keep authentication route files small (task 1B.2)
+Problem: Adding all new password routes to the existing logout module would exceed the file-size guideline.
+Options: Keep one large module; register account-auth.ts from auth.ts.
+Choice: Split within the existing routes directory.
+Reason: Keep account declarations and logout readable without changing endpoint ownership.
+
+## D15 — Do not log database query parameters (task 1B.2)
+Problem: The existing unexpected-error logger prints error.message/stack; Drizzle wraps SQL and parameters there, which could include password hashes. The verification exercise revealed this path with a non-secret Date serialization error.
+Options: Log wrapped errors fully; log requestId plus error classification only.
+Choice: Keep requestId/name and a fixed generic message; never log wrapped SQL or parameters.
+Reason: AGENTS section 9's no-secrets-in-logs rule takes precedence over the lower-priority code-convention suggestion to log unexpected errors fully.
