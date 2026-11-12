@@ -14,7 +14,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] 1A.6 API: balances and settlements
 - [x] 1A.7 Web: group list and create group
 - [x] 1A.8 Web: group screen and expense stream
-- [ ] 1A.9 Web: manual expense form
+- [x] 1A.9 Web: manual expense form
 - [ ] 1A.10 Web: balances and settlements
 - [ ] 1A.11 Web: members and group settings
 - [ ] 1A.12 README and stage gate 1A
@@ -589,4 +589,23 @@ Security review: relevant items 1, 2, 6, 7, 8 checked against actual diff: contr
 Decisions: D7, D8.
 Deviations: semantic fieldsets provide the required group role under existing accessibility lint rules.
 Not verified: real screen-reader speech and external GE19 comparison remain for the owner; accessibility tree checked.
+Out of scope: none.
+
+Commit 1A.9: `f09530d`.
+
+## Task 1A.10 — Approach
+- Add balances strings and the three approved presentation components.
+- Render official API transfers with viewer-involving transfers first and balance signs as text.
+- Use proportional bars only as display geometry, with all money figures unchanged from API.
+- Add loading/error/not-found/empty/all-settled states and exercise the two debt modes.
+
+### Task 1A.10 — Results
+pnpm check: passed (114 files, all workspace typechecks Done).
+Browser: fresh group → `Chưa có gì để tính`; one Minh-only expense → `Cả nhóm đã xong.`, all four members at 0 đ. Added cable 800000/four and Lan hotpot 300000/three → `2 lượt chuyển là xong`, `Hùng trả bạn 300.000`, `Thu trả bạn 200.000`; bars Minh +500000, Lan 0, Thu -200000, Hùng -300000. API response matched all displayed amounts.
+PATCH minimizeDebts false and deactivate Thu → `4 lượt chuyển là xong`; ordered cards Lan→you 100000, Hùng→you 200000, Thu→you 200000, Hùng→Lan 100000; pairwise hint exact; bars unchanged with `Thu ngừng hoạt động −200.000`. Lan signed in and opened the private balances URL → `Không tìm thấy nhóm này.`.
+Security review: relevant items 1, 2, 6, 7, 8 checked against current diff; official numbers unchanged from validated API responses; only proportional bar geometry uses a fractional ratio; no local/session storage or HTML injection, secrets or new dependencies.
+Size review: all new components under 150 lines.
+Decisions: none.
+Deviations: added a zero-net self-only expense to the same fixture to exercise all-settled before the two nonzero expenses; it does not change the expected numbers.
+Not verified: external GE5/GE18 comparison remains for owner.
 Out of scope: none.

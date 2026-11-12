@@ -1,0 +1,37 @@
+import type { BalancesResponse, MemberDto } from "@songphang/contract";
+import { formatAmount } from "../../lib/money";
+import { t, vi } from "../../messages/vi";
+import { MemberShape } from "../ui/MemberShape";
+export function SettlementCard({
+	transfer,
+	members,
+	myMemberId,
+}: {
+	transfer: BalancesResponse["transfers"][number];
+	members: MemberDto[];
+	myMemberId: string | null;
+}) {
+	const from = members.find((member) => member.id === transfer.fromMemberId);
+	const to = members.find((member) => member.id === transfer.toMemberId);
+	if (!from || !to) return null;
+	const other = transfer.fromMemberId === myMemberId ? to : from;
+	const caption =
+		transfer.fromMemberId === myMemberId
+			? t(vi.balances.youPayMember, { name: to.name })
+			: transfer.toMemberId === myMemberId
+				? t(vi.balances.memberPaysYou, { name: from.name })
+				: t(vi.balances.memberPaysMember, { from: from.name, to: to.name });
+	return (
+		<div className="flex items-center gap-4 rounded-[36px] bg-surface p-5">
+			<MemberShape {...other} size={76} />
+			<div className="min-w-0">
+				<p className="break-words text-[13px] font-semibold text-muted">
+					{caption}
+				</p>
+				<p className="break-words text-[26px] font-black">
+					{formatAmount(transfer.amount)}
+				</p>
+			</div>
+		</div>
+	);
+}

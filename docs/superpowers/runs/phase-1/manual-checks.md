@@ -68,3 +68,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 4. Tab through fields and shapes; Space/Enter operates controls. Screen reader reads person names and selected states.
 5. Blank description/no sharers → disabled save, correct hint. Try letters and an over-limit amount → only allowed digits remain.
 6. Choose a date last week using native controls → expense is under that day. Stop API/save → error, values retained; restart/retry → one expense.
+
+## S5 — Balances and settlements (1A.10)
+1. Tap group balance → compare GE5 without settlement/reminder buttons. Cable 800000/four plus Lan 300000/three → two transfers 300000 and 200000 to Minh.
+2. Add signed bar values → 0. Turn Gộp nợ off → four transfers, same balances; viewer-involving cards first.
+3. Add expense in another tab, reload → bars/cards agree with group balance. Deactivate someone with debt → debt remains with inactive label.
+4. Open group with only a self-paid/self-shared expense → compare yellow all-settled card GE18. No expenses → `Chưa có gì để tính`. As outsider → group-not-found.

@@ -1,4 +1,20 @@
 export const vi = {
+	balances: {
+		headline: "{count} lượt chuyển là xong",
+		minimizedHint: "Ít lượt chuyển nhất có thể.",
+		pairwiseHint:
+			"Từng cặp trả nhau. Bật Gộp nợ trong cài đặt nhóm để ít lượt hơn.",
+		memberPaysYou: "{name} trả bạn",
+		youPayMember: "Bạn trả {name}",
+		memberPaysMember: "{from} trả {to}",
+		groupBalanceTitle: "Cán cân của nhóm",
+		inactiveTag: "ngừng hoạt động",
+		emptyTitle: "Chưa có gì để tính",
+		emptyHint: "Thêm khoản chi đầu tiên để thấy ai nợ ai.",
+		allSettledTitle: "Cả nhóm đã xong.",
+		allSettledHint: "Không ai nợ ai.",
+		backToGroup: "Về nhóm",
+	},
 	expenseForm: {
 		title: "Khoản chi mới",
 		amountLabel: "Số tiền",
