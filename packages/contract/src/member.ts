@@ -46,3 +46,26 @@ export const MemberDto = z
 	})
 	.openapi("MemberDto");
 export type MemberDto = z.infer<typeof MemberDto>;
+
+export const MembersResponse = z
+	.object({ members: z.array(MemberDto) })
+	.openapi("MembersResponse");
+export const MemberResponse = z
+	.object({ member: MemberDto })
+	.openapi("MemberResponse");
+export const CreateMemberRequest = z
+	.object({ name: MemberName })
+	.openapi("CreateMemberRequest");
+export type CreateMemberRequest = z.infer<typeof CreateMemberRequest>;
+export const UpdateMemberRequest = z
+	.object({
+		name: MemberName.optional(),
+		defaultWeight: z
+			.string()
+			.regex(/^\d{1,4}(\.\d{1,2})?$/)
+			.optional(),
+		active: z.boolean().optional(),
+	})
+	.refine((request) => Object.keys(request).length > 0)
+	.openapi("UpdateMemberRequest");
+export type UpdateMemberRequest = z.infer<typeof UpdateMemberRequest>;

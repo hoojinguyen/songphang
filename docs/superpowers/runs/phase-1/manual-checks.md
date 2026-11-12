@@ -26,3 +26,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Sign in as Lan in a private window and open `http://localhost:4000/api/v1/groups` → empty list.
 3. As Lan open Minh's `/api/v1/groups/<groupId>` → NOT_FOUND, identical to a made-up UUID except requestId.
 4. Repeat the same POST body/key twice → same group id. Change the name but keep the key → 409 IDEMPOTENCY_KEY_REUSED.
+
+## Members API (1A.4)
+1. As Minh open `http://localhost:4000/api/v1/groups/<groupId>/members` → ordered members, each with shape/color, isMe only for Minh.
+2. POST a name with surrounding spaces using a new Idempotency-Key → trimmed name, last position and first unused appearance.
+3. PATCH Lan's name → name changes, shape/color/position unchanged. PATCH defaultWeight `1.5` → `1.50`; negative weight, empty name or empty PATCH → 400.
+4. As Lan open Minh's members URL → NOT_FOUND. Delete a member of another group through Minh's group URL → NOT_FOUND.

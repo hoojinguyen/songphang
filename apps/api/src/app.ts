@@ -10,6 +10,7 @@ import { registerDevRoutes } from "./routes/dev.js";
 import { registerGroupRoutes } from "./routes/groups.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerMeRoute } from "./routes/me.js";
+import { registerMemberRoutes } from "./routes/members.js";
 
 export type AppEnv = {
 	Variables: {
@@ -51,6 +52,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerHealthRoute(app, deps.db);
 	registerMeRoute(app, deps);
 	registerGroupRoutes(app, deps);
+	registerMemberRoutes(app, deps);
 	registerAuthRoutes(app, deps);
 	if (deps.config.devLogin && deps.config.appEnv === "development") {
 		registerDevRoutes(app, deps);

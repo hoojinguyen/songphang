@@ -1,6 +1,7 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { members } from "./schema-groups.js";
+import { transactionPayers, transactionShares } from "./schema-transactions.js";
 export const MEMBER_COLUMNS = {
 	id: members.id,
 	groupId: members.groupId,
@@ -36,4 +37,59 @@ export async function insertMember(
 		.returning(MEMBER_COLUMNS);
 	if (member === undefined) throw new Error("Member insert failed");
 	return member;
+}
+
+export async function findMember(
+	executor: DbExecutor,
+	groupId: string,
+	memberId: string,
+) {
+	const [member] = await executor
+		.select(MEMBER_COLUMNS)
+		.from(members)
+		.where(and(eq(members.groupId, groupId), eq(members.id, memberId)))
+		.limit(1);
+	return member ?? null;
+}
+export function updateMember(
+	executor: DbExecutor,
+	input: {
+		groupId: string;
+		memberId: string;
+		changes: {
+			name?: string;
+			defaultWeight?: string;
+			active?: boolean;
+			updatedAt: Date;
+		};
+	},
+) {
+	return executor
+		.update(members)
+		.set(input.changes)
+		.where(
+			and(eq(members.groupId, input.groupId), eq(members.id, input.memberId)),
+		);
+}
+export function deleteMember(
+	executor: DbExecutor,
+	groupId: string,
+	memberId: string,
+) {
+	return executor
+		.delete(members)
+		.where(and(eq(members.groupId, groupId), eq(members.id, memberId)));
+}
+export async function hasMemberTransactions(
+	executor: DbExecutor,
+	groupId: string,
+	memberId: string,
+) {
+	const [row] = await executor
+		.select({
+			hasTransactions: sql<boolean>`exists(select 1 from ${transactionPayers} where ${transactionPayers.memberId} = ${members.id}) or exists(select 1 from ${transactionShares} where ${transactionShares.memberId} = ${members.id})`,
+		})
+		.from(members)
+		.where(and(eq(members.groupId, groupId), eq(members.id, memberId)));
+	return row?.hasTransactions ?? false;
 }
