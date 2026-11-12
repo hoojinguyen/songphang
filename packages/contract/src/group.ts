@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { MemberColorCode, MemberName, MemberShapeCode } from "./member.js";
+import { MemberColorCode, MemberName, MemberShapeCode } from "./member.ts";
 export const GroupName = z.string().trim().min(1).max(80);
 export const GroupRole = z.enum(["owner", "editor", "viewer"]);
 export type GroupRole = z.infer<typeof GroupRole>;

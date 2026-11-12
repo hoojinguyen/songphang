@@ -38,3 +38,15 @@ Problem: pnpm exec previously auto-installed and installation can trigger regist
 Options: Run package-manager install; add the workspace dependency, its deterministic lockfile link and local node_modules symlink directly.
 Choice: Add only the local core workspace link manually.
 Reason: No external dependency resolution is needed or allowed.
+
+## D5 — Preserve source-extension imports for web contract (task 1A.7)
+Problem: Browser compilation cannot resolve the .js exports added to the source-only contract package in earlier API tasks.
+Options: Add bundler aliases; follow phase-0 .ts imports in contract.
+Choice: Use .ts extensions throughout contract imports/exports, matching existing exports.
+Reason: Source-only workspace exports must resolve in both Next.js and Node/tsx without new configuration.
+
+## D6 — Split new-group member rows (task 1A.7)
+Problem: The creation page exceeds 150 lines when the ordered member list is inline.
+Options: Keep the oversized page; extract the member list beside the existing group components.
+Choice: Add NewGroupMembers.tsx in the approved groups directory and keep the page responsible for submission.
+Reason: Separate member editing from screen loading and submission without a new abstraction layer.

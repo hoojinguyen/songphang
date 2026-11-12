@@ -43,3 +43,13 @@ Written by the implementation agent from the "Manual checks for the project owne
 1. Create four people; record Minh 800000 split four, then Lan 300000 split Minh/Lan/Hùng → balances +500000,0,-300000,-200000; Hùng→Minh 300000 and Thu→Minh 200000.
 2. PATCH minimizeDebts false → unchanged balances; four pairwise transfers: Lan→Minh 100000, Hùng→Minh 200000, Hùng→Lan 100000, Thu→Minh 200000.
 3. Deactivate Thu → her -200000 remains; sum all balances → 0. As outsider GET balances → 404; without session → 401.
+
+## S2 — Group list (1A.7)
+1. As Minh create `Đà Lạt 12/2026` with Lan, Hùng, Thu → large yellow card with four shapes and 0; compare with GE1. Create a second group → newest large card, first compact.
+2. As Lan in a private window → no groups belonging to Minh.
+
+## S3 — New group (1A.7)
+1. Tap `Tạo nhóm`, name `Đà Lạt 12/2026`, add Lan/Hùng/Thu → compare with GE8, four shapes and `Tạo nhóm 4 người`.
+2. Empty group name → disabled create; Enter with spaces in `Tên người mới` → adds nothing.
+3. Use Tab/Enter to add a person and create → works; double-tap create → one group.
+4. Stop API and submit → save error, all form values retained. Restart and retry → one group.

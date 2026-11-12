@@ -4,9 +4,9 @@ export {
 	MeResponse,
 	UserDto,
 } from "./auth.ts";
-export * from "./balance.js";
+export * from "./balance.ts";
 export { ErrorCode, ErrorResponse } from "./error.ts";
-export * from "./group.js";
+export * from "./group.ts";
 export { HealthResponse } from "./health.ts";
-export * from "./member.js";
-export * from "./transaction.js";
+export * from "./member.ts";
+export * from "./transaction.ts";

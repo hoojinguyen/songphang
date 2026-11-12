@@ -11,7 +11,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] 1A.3 API: groups, group authorization, idempotency
 - [x] 1A.4 API: members
 - [x] 1A.5 API: create, preview and list transactions
-- [ ] 1A.6 API: balances and settlements
+- [x] 1A.6 API: balances and settlements
 - [ ] 1A.7 Web: group list and create group
 - [ ] 1A.8 Web: group screen and expense stream
 - [ ] 1A.9 Web: manual expense form
@@ -523,4 +523,27 @@ Security review: relevant items 1, 2, 3, 4, 5, 6, 8 checked against current diff
 Decisions: none.
 Deviations: database balance command ran after the complete sequence; intermediate returned balances were inspected for zero sum.
 Not verified: none for returned API numbers.
+Out of scope: none.
+
+Commit 1A.6: `fc8709d`.
+
+## Task 1A.7 — Approach
+- Add shared formatting/request/session-guard helpers and the three approved UI primitives.
+- Reuse TanStack Query and existing MemberShape/Button styles for group cards and creation.
+- Copy the task's strings exactly into vi.ts; use only named color tokens.
+- Keep one idempotency key per mounted creation screen and preserve fields on errors.
+
+### Task 1A.7 — Results
+pnpm check: passed (95 files; every workspace typecheck Done).
+Completed: S2 group list and S3 creation screen; shared formatting/request/session helpers; Icon, ScreenHeader, LoadError; exact task strings and color tokens.
+Browser exercise (CUA, localhost, viewport 360px): existing browser session was Hùng, so creation exercised as Hùng rather than Minh. Empty groups showed `Bạn chưa có nhóm nào` and enabled `Tạo nhóm`. Added Lan/Hùng/Thu → `Tạo nhóm 4 người`; removed Lan → `Tạo nhóm 3 người`, following shapes reflowed; Enter with spaces added nothing. Empty name kept submit disabled. Measured document scrollWidth 360, innerWidth 360 on both screens.
+Stopped the owned API, clicked create → `Chưa lưu được. Kiểm tra mạng rồi thử lại.`; all names and group name retained. Restarted API, double-clicked submit → `/g/01a1d084-c4cc-74ce-8221-4a7b47bd659b`, Next.js 404 as planned until 1A.8. Returning to `/` → one yellow card with `0`/`bạn đã xong`. Created second group → newest yellow card, first compact with `3 người` and `0 đã xong`.
+SQL real output after double click: `Nhóm kiểm tra giao diện | 1`, `Nhóm mới nhất | 1`.
+Signed out and opened `/groups/new` → `/dev-login?next=%2Fgroups%2Fnew`; selected Lan → returned to `/groups/new` with Lan as creator.
+Formatter exercise real output: `150.000 150.000 đ −320.000 +450.000 120 33.334`.
+Security review: relevant items 1, 2, 6, 7, 8 checked against actual diff. Same-origin apiFetch, schema-validated API responses, encoded path IDs, internal return path, no local/session storage, no HTML injection. No secrets or dependencies added.
+Size review: extracted NewGroupMembers; all new components under 150 lines.
+Decisions: D5, D6.
+Deviations: source-only contract extensions fixed as required by the browser compilation failure. Added currency symbol to vi.ts so formatting has no user-visible literal outside messages.
+Not verified: comparison with the external mockup canvas is left to the owner; no external service opened.
 Out of scope: none.
