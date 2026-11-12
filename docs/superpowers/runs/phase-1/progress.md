@@ -102,3 +102,42 @@ Not verified:
 
 ## Final summary
 
+
+## Task 1A.1 — Approach
+- Create the dependency-free core package with the contract package's module/export/typecheck configuration.
+- Implement equal splitting with BigInt division and remainder; preserve input order.
+- Implement greedy settlements on copied balances and pairwise netting with BigInt accumulation.
+- Reject invalid IDs, unsafe amounts, unbalanced totals and unsafe aggregated outputs with RangeError.
+- Keep all exercises ephemeral; add no automated tests or assertion scripts.
+
+### Task 1A.1 — Results
+pnpm check: passed (57 files; all five workspace typechecks Done, including core).
+Completed: dependency-free equal split, greedy settlements and pairwise netting; checked the entire source and lockfile diff.
+Exercise: Node's local TypeScript support executed the functions directly (no tsx dependency added). Real output, in plan row order:
+```text
+split 300000: 100000,100000,100000
+split 100000: 33334,33333,33333
+split 100: 34,33,33
+split 10: 3,3,2,2
+split 2: 1,1,0
+split 1: 1
+split 999999999999: 142857142857 (each of seven)
+split 0: RangeError
+split 1.5: RangeError
+split empty IDs: RangeError
+split duplicated IDs: RangeError
+minimized: c→a 250000; b→a 120000; d→a 80000
+minimized: c→a 100; c→b 100
+minimized: a→c 50; b→c 50
+minimized: c→a 60; d→b 30; d→a 10
+minimized: []
+minimized unbalanced: RangeError
+pairwise: b→a 70; c→a 50
+pairwise: b→a 90; c→b 90
+pairwise: []
+pairwise unknown member: RangeError
+```
+Security review: checked relevant items 1, 2, 8 against actual diff; no secrets, no runtime dependencies, positive safe integer input validation and exact integer accumulation. Network-backed audit not run because external services are forbidden.
+Not verified: no visual feature in this task.
+Deviation: `pnpm install --offline` exited 1 with `ERR_PNPM_NO_OFFLINE_META` for @tailwindcss/node. A subsequent `pnpm exec biome` unexpectedly invoked installation and supply-chain verification (232 entries) before formatting; it exited 0. The tool's external activity was not independently inspected. Use direct installed binaries for subsequent tooling where possible. No packages were added beyond the dependency-free workspace package.
+Out of scope: none.

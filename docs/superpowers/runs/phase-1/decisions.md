@@ -14,3 +14,15 @@ Reason: …
 
 A new library adds: License, Maintenance, Added size.
 
+
+## D1 — Safe accumulated money (task 1A.1)
+Problem: Safe individual inputs can produce unsafe totals when accumulated.
+Options: Accumulate as numbers; accumulate as BigInt and check the final number range.
+Choice: BigInt for sums and pair netting, with RangeError for unsafe outputs; reject empty IDs as invalid identifiers.
+Reason: Preserve exact integer money without silently rounding an accumulated result.
+
+## D2 — Offline workspace installation (task 1A.1)
+Problem: The task requests pnpm install while external services are forbidden.
+Options: Contact the package registry; use the local package store offline.
+Choice: Run pnpm install --offline and do not run the network-backed pnpm audit.
+Reason: This package adds no dependencies; the run must not contact external services.
