@@ -6,6 +6,8 @@
 		"node": ">=24"
 	},
 	"scripts": {
+		"dev": "docker compose up -d --wait db && pnpm db:migrate && pnpm db:seed && pnpm -r --parallel dev",
+		"build": "pnpm -r --if-present build",
 		"check": "biome check . && pnpm -r typecheck",
 		"typecheck": "pnpm -r typecheck",
 		"db:migrate": "pnpm --filter @songphang/db migrate",
