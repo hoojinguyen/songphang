@@ -84,3 +84,8 @@ Written by the implementation agent from the "Manual checks for the project owne
 1. Compare name field and Gộp nợ row with GE11; no later-phase rows. Rename → group header/list update; empty name cannot save.
 2. Flip Gộp nợ and view balances → transfer count changes, each balance unchanged. Stop API and toggle → error and previous switch state restored.
 3. Tab/Space on switch → name Gộp nợ and correct on/off state announced by screen reader.
+
+## Stage 1A acceptance
+1. On a phone-size window create Đà Lạt 12/2026 with Minh/Lan/Hùng/Thu; record cable 800000 Minh/four, hotpot 300000 Lan/first three, coffee 100000 Minh/first three → balances +566666/-33333/-333333/-200000. Gộp nợ on → transfers 333333,200000,33333 to Minh; off → Lan→Minh 133333, Hùng→Minh 233333, Hùng→Lan 100000, Thu→Minh 200000.
+2. Record coffee in three interactions after opening the form. Reload any screen → ledger/session retained.
+3. Walk S2→S3→S4→S8→S5→S10→S11 with keyboard only.

@@ -27,14 +27,15 @@ Keep `.env` local and out of Git. `.env.example` contains configuration values i
 
 ## Common commands
 
-| Command               | Purpose                                                                          |
-| --------------------- | -------------------------------------------------------------------------------- |
-| `pnpm dev`            | Start PostgreSQL, migrate and seed the database, then start the API and web app. |
-| `pnpm check`          | Run linting and strict TypeScript checks across the workspace.                   |
-| `pnpm build`          | Build every workspace package that defines a `build` script.                     |
-| `pnpm db:migrate`     | Apply database migrations; PostgreSQL must be running.                           |
-| `pnpm db:seed`        | Insert missing development users; PostgreSQL must be running and migrated.       |
-| `docker compose down` | Stop and remove the database container while preserving its data volume.         |
+| Command                  | Purpose                                                                          |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `pnpm dev`               | Start PostgreSQL, migrate and seed the database, then start the API and web app. |
+| `pnpm check`             | Run linting and strict TypeScript checks across the workspace.                   |
+| `pnpm build`             | Build every workspace package that defines a `build` script.                     |
+| `pnpm db:migrate`        | Apply database migrations; PostgreSQL must be running.                           |
+| `pnpm db:check-balances` | Check ledger totals and group balances after changing or importing expenses.     |
+| `pnpm db:seed`           | Insert missing development users; PostgreSQL must be running and migrated.       |
+| `docker compose down`    | Stop and remove the database container while preserving its data volume.         |
 
 **Reset local data:** stop the application with Ctrl+C, then run:
 

@@ -16,16 +16,16 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] 1A.8 Web: group screen and expense stream
 - [x] 1A.9 Web: manual expense form
 - [x] 1A.10 Web: balances and settlements
-- [ ] 1A.11 Web: members and group settings
+- [x] 1A.11 Web: members and group settings
 - [ ] 1A.12 README and stage gate 1A
 
 ### Gate 1A
 
-Result:
+Result: passed. pnpm check; network-isolated pnpm build; reset database acceptance; balance check; all ten group-scoped endpoint permission rows passed. Full outputs below.
 
-Gate not passed:
+Gate not passed: none.
 
-Not verified:
+Not verified: external mockup comparison and real screen-reader speech are owner checks. Hourly cleanup timer passage was not waited for. No editor/viewer exists before 1B.
 
 ## Stage 1B — Accounts and sharing
 
@@ -628,4 +628,56 @@ Size review: all components below 150 lines.
 Decisions: in 1A only the creator can have a linked user, so member.isMe identifies the protected linked row; 1B explicitly expands this.
 Deviations: successful deletion of the disposable unused fixture exercised via curl; undeletable historical member exercised through the browser button.
 Not verified: external GE9/GE11 comparison and real screen-reader speech; browser AX switch name/state verified. Renamed stream/list propagation is implemented through member/group query invalidation, but those two screens were not revisited for this specific rename.
+Out of scope: none.
+
+Commit 1A.11: `9160d77`.
+
+## Task 1A.12 — Approach
+- Document the existing balance-check command in README.
+- Run static/build gates with outbound network denied.
+- Reset the local disposable Docker database as required, seed users and replay fixed acceptance numbers through curl.
+- Replay every implemented group endpoint as owner, outsider and signed out; record real status and normalized errors.
+
+### Stage 1A — Reset acceptance and permission matrix
+```text
+Create 201 {"group": {"id": "01a1d09b-d60d-7cbe-8fdb-b1e0257aefc2", "name": "Đà Lạt 12/2026", "currency": "VND", "minimizeDebts": true, "role": "owner", "myMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "createdAt": "2026-11-12T16:33:56.237Z"}}
+Vé cáp treo 201 {"transaction": {"type": "expense", "description": "Vé cáp treo", "amount": 800000, "occurredAt": "2026-11-12T00:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 800000}], "split": {"method": "equal", "members": ["01a1d09b-d610-75aa-833d-fdec26104104", "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "01a1d09b-d613-7162-ad0f-0cd7741d2423", "01a1d09b-d614-769e-b026-0b7c3b4dd4c1"]}, "id": "01a1d09b-d63b-7379-9724-00097ad68847", "currency": "VND", "shares": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 200000}, {"memberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "amount": 200000}, {"memberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "amount": 200000}, {"memberId": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "amount": 200000}], "version": 1, "createdBy": {"id": "01a1d09a-f3c2-7e23-aa0d-064356513fb2", "name": "Minh"}, "createdAt": "2026-11-12T16:33:56.281Z", "updatedAt": "2026-11-12T16:33:56.281Z", "deletedAt": null}}
+Lẩu 201 {"transaction": {"type": "expense", "description": "Lẩu", "amount": 300000, "occurredAt": "2026-11-12T00:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "amount": 300000}], "split": {"method": "equal", "members": ["01a1d09b-d610-75aa-833d-fdec26104104", "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "01a1d09b-d613-7162-ad0f-0cd7741d2423"]}, "id": "01a1d09b-d656-74ee-b9d7-209db6d79d56", "currency": "VND", "shares": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 100000}, {"memberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "amount": 100000}, {"memberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "amount": 100000}], "version": 1, "createdBy": {"id": "01a1d09a-f3c2-7e23-aa0d-064356513fb2", "name": "Minh"}, "createdAt": "2026-11-12T16:33:56.307Z", "updatedAt": "2026-11-12T16:33:56.307Z", "deletedAt": null}}
+Cà phê 201 {"transaction": {"type": "expense", "description": "Cà phê", "amount": 100000, "occurredAt": "2026-11-12T00:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 100000}], "split": {"method": "equal", "members": ["01a1d09b-d610-75aa-833d-fdec26104104", "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "01a1d09b-d613-7162-ad0f-0cd7741d2423"]}, "id": "01a1d09b-d669-7dc5-a776-fb838fb7235f", "currency": "VND", "shares": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 33334}, {"memberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "amount": 33333}, {"memberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "amount": 33333}], "version": 1, "createdBy": {"id": "01a1d09a-f3c2-7e23-aa0d-064356513fb2", "name": "Minh"}, "createdAt": "2026-11-12T16:33:56.328Z", "updatedAt": "2026-11-12T16:33:56.328Z", "deletedAt": null}}
+Minimized ["200", {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "balance": 566666}, {"memberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "balance": -33333}, {"memberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "balance": -333333}, {"memberId": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "balance": -200000}], "transfers": [{"fromMemberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 333333}, {"fromMemberId": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 200000}, {"fromMemberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 33333}]}]
+Disable minimizing ["200", {"group": {"id": "01a1d09b-d60d-7cbe-8fdb-b1e0257aefc2", "name": "Đà Lạt 12/2026", "currency": "VND", "minimizeDebts": false, "role": "owner", "myMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "createdAt": "2026-11-12T16:33:56.237Z"}}]
+Pairwise ["200", {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "balance": 566666}, {"memberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "balance": -33333}, {"memberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "balance": -333333}, {"memberId": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "balance": -200000}], "transfers": [{"fromMemberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 133333}, {"fromMemberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 233333}, {"fromMemberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "toMemberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "amount": 100000}, {"fromMemberId": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 200000}]}]
+Deactivate Thu ["200", {"member": {"id": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "name": "Thu", "active": false, "defaultWeight": "1.00", "position": 3, "shape": "leaf", "color": "lilac", "isMe": false}}]
+Taxi 201 {"transaction": {"type": "expense", "description": "Taxi", "amount": 90000, "occurredAt": "2026-11-12T00:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 90000}], "split": {"method": "equal", "members": ["01a1d09b-d610-75aa-833d-fdec26104104", "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "01a1d09b-d613-7162-ad0f-0cd7741d2423"]}, "id": "01a1d09b-d6ab-75cf-9efb-230164c8ed66", "currency": "VND", "shares": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 30000}, {"memberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "amount": 30000}, {"memberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "amount": 30000}], "version": 1, "createdBy": {"id": "01a1d09a-f3c2-7e23-aa0d-064356513fb2", "name": "Minh"}, "createdAt": "2026-11-12T16:33:56.393Z", "updatedAt": "2026-11-12T16:33:56.393Z", "deletedAt": null}}
+After taxi ["200", {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1d09b-d610-75aa-833d-fdec26104104", "balance": 626666}, {"memberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "balance": -63333}, {"memberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "balance": -363333}, {"memberId": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "balance": -200000}], "transfers": [{"fromMemberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 163333}, {"fromMemberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 263333}, {"fromMemberId": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "toMemberId": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "amount": 100000}, {"fromMemberId": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "toMemberId": "01a1d09b-d610-75aa-833d-fdec26104104", "amount": 200000}]}]
+Permission matrix: endpoint | owner | outsider | random UUID outsider | malformed outsider | signed out; normalized outsider/random/malformed bodies
+GET group | 200 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+PATCH group | 200 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+GET members | 200 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+POST member | 201 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+PATCH member | 200 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+DELETE member | 204 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+POST preview | 200 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+POST transaction | 201 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+GET transactions | 200 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+GET balances | 200 | 404 | 404 | 404 | 401 | [{"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+GET groups owner ["200", {"groups": [{"id": "01a1d09b-d60d-7cbe-8fdb-b1e0257aefc2", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1d09b-d610-75aa-833d-fdec26104104", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1d09b-d612-7812-8fb6-0ceecbe65b34", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1d09b-d613-7162-ad0f-0cd7741d2423", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1d09b-d614-769e-b026-0b7c3b4dd4c1", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": 626666}]}]
+GET groups outsider ["200", {"groups": []}]
+01a1d09b-d60d-7cbe-8fdb-b1e0257aefc2 Đà Lạt 12/2026: sum 0; mismatches 0
+All groups balanced
+$ pnpm --filter @songphang/db check-balances
+$ tsx --env-file=../../.env src/check-balances.ts
+
+```
+
+### Task 1A.12 — Results
+pnpm check: passed after formatting README's updated table (120 files; all typechecks Done).
+Build command: `NEXT_TELEMETRY_DISABLED=1 sandbox-exec -p '(version 1)(allow default)(deny network-outbound)(allow network-outbound (remote ip "localhost:*"))' pnpm build` → exit 0, `Compiled successfully in 1248ms`, static pages 5/5, all nine expected routes listed. Outbound network prohibited during the real build.
+Database reset: docker compose down -v removed the local volume; up --pull never --wait used the existing local image and became Healthy; migrations → `Migrations applied`; seed → `Development users seeded`.
+Acceptance: fixed +566666/-33333/-333333/-200000 matched; minimized transfers 333333,200000,33333; pairwise 133333,233333,100000,200000; Taxi 30000 each and inactive Thu stays -200000. See raw output above.
+Permission matrix: all ten implemented group-scoped endpoints owner 2xx, outsider/random/malformed 404 with identical normalized bodies, signed out 401. GET /groups remains intentionally 200 with an empty list for outsiders.
+Security review: relevant items 1, 4, 5, 6, 8 checked through the complete stage gate and README diff. No new code in this task; no secrets or network-dependent audit.
+Decisions: none.
+Deviations: permission exercise adds a self-only expense of 1 đồng (zero net balance) and a disposable member after fixed acceptance; earlier-stage scripts do not exist yet.
+Not verified: human visual/keyboard journey and external mockup comparison remain in manual-checks; per-task browser exercises already recorded.
 Out of scope: none.
