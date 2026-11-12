@@ -32,3 +32,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. POST a name with surrounding spaces using a new Idempotency-Key → trimmed name, last position and first unused appearance.
 3. PATCH Lan's name → name changes, shape/color/position unchanged. PATCH defaultWeight `1.5` → `1.50`; negative weight, empty name or empty PATCH → 400.
 4. As Lan open Minh's members URL → NOT_FOUND. Delete a member of another group through Minh's group URL → NOT_FOUND.
+
+## Expense API (1A.5)
+1. Create 100000 paid by Minh, split Minh/Lan/Hùng → shares 33334/33333/33333, version 1. Reverse the submitted member order → same amounts by position.
+2. Open `http://localhost:4000/api/v1/groups/<groupId>/transactions` → newest first with payers/shares. Follow nextCursor → no duplicate IDs.
+3. Run `pnpm db:check-balances` → All groups balanced.
+4. Repeat the create with one Idempotency-Key → same ID, stored once. Change amount with the same key → 409. Amount 0/fraction, no sharers or blank description → 400.

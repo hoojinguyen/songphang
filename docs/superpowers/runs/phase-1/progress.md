@@ -9,7 +9,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] 1A.1 `core`: equal split and settlement suggestions
 - [x] 1A.2 Database: ledger tables, integrity triggers, balance check
 - [x] 1A.3 API: groups, group authorization, idempotency
-- [ ] 1A.4 API: members
+- [x] 1A.4 API: members
 - [ ] 1A.5 API: create, preview and list transactions
 - [ ] 1A.6 API: balances and settlements
 - [ ] 1A.7 Web: group list and create group
@@ -356,3 +356,128 @@ Decisions: none.
 Deviations: none.
 Not verified: deletion of a member with transactions is exercised after transaction creation is available in 1A.5.
 Out of scope: none.
+
+Commit 1A.4: `197a6dc`.
+
+## Task 1A.5 — Approach
+- Add transaction request/response contracts with integer money and unique split members.
+- Implement ordered core-backed share calculation shared by create and preview; lock the group during create.
+- Keep transaction/payer/share/activity writes in the idempotency transaction.
+- Use keyset pagination and batch payer/share reads, validating decoded cursor data before querying.
+
+### Task 1A.5 — Exercise output
+```text
+fresh group 201 {"group": {"id": "01a1d07e-8794-76a4-a366-5e70e8970cc5", "name": "Task5 ledger", "currency": "VND", "minimizeDebts": true, "role": "owner", "myMemberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "createdAt": "2026-11-12T16:01:55.603Z"}}
+members 200 {"members": [{"id": "01a1d07e-8796-7200-87b8-90da6f966bf4", "name": "Minh", "active": true, "defaultWeight": "1.00", "position": 0, "shape": "circle", "color": "mint", "isMe": true}, {"id": "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "name": "Lan", "active": true, "defaultWeight": "1.00", "position": 1, "shape": "diamond", "color": "sky", "isMe": false}, {"id": "01a1d07e-879a-729f-a4a2-4240a29e512a", "name": "Hùng", "active": true, "defaultWeight": "1.00", "position": 2, "shape": "squircle", "color": "coral", "isMe": false}, {"id": "01a1d07e-879c-7a7c-b1cf-59826eb665de", "name": "Thu", "active": true, "defaultWeight": "1.00", "position": 3, "shape": "leaf", "color": "lilac", "isMe": false}]}
+preview 200 {"shares": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 45000}, {"memberId": "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "amount": 45000}, {"memberId": "01a1d07e-879a-729f-a4a2-4240a29e512a", "amount": 45000}, {"memberId": "01a1d07e-879c-7a7c-b1cf-59826eb665de", "amount": 45000}]}
+transaction count after preview SQL "0"
+create coffee 201 {"transaction": {"type": "expense", "description": "Cà phê", "amount": 100000, "occurredAt": "2026-11-12T10:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 100000}], "split": {"method": "equal", "members": ["01a1d07e-8796-7200-87b8-90da6f966bf4", "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "01a1d07e-879a-729f-a4a2-4240a29e512a"]}, "id": "01a1d07e-8902-7cab-a280-9bb688acf0d6", "currency": "VND", "shares": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 33334}, {"memberId": "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "amount": 33333}, {"memberId": "01a1d07e-879a-729f-a4a2-4240a29e512a", "amount": 33333}], "version": 1, "createdBy": {"id": "01a1cd7b-5691-7f2c-8ce1-355d36415149", "name": "Minh"}, "createdAt": "2026-11-12T16:01:55.968Z", "updatedAt": "2026-11-12T16:01:55.968Z", "deletedAt": null}}
+reverse split order 201 {"transaction": {"type": "expense", "description": "Cà phê", "amount": 100000, "occurredAt": "2026-11-12T10:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 100000}], "split": {"method": "equal", "members": ["01a1d07e-879a-729f-a4a2-4240a29e512a", "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "01a1d07e-8796-7200-87b8-90da6f966bf4"]}, "id": "01a1d07e-8919-715b-8101-777af0f3acf7", "currency": "VND", "shares": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 33334}, {"memberId": "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "amount": 33333}, {"memberId": "01a1d07e-879a-729f-a4a2-4240a29e512a", "amount": 33333}], "version": 1, "createdBy": {"id": "01a1cd7b-5691-7f2c-8ce1-355d36415149", "name": "Minh"}, "createdAt": "2026-11-12T16:01:55.991Z", "updatedAt": "2026-11-12T16:01:55.991Z", "deletedAt": null}}
+create hotpot 201 {"transaction": {"type": "expense", "description": "Lẩu", "amount": 300000, "occurredAt": "2026-11-12T10:00:00.000Z", "category": "food", "payers": [{"memberId": "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "amount": 300000}], "split": {"method": "equal", "members": ["01a1d07e-8796-7200-87b8-90da6f966bf4", "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "01a1d07e-879a-729f-a4a2-4240a29e512a", "01a1d07e-879c-7a7c-b1cf-59826eb665de"]}, "id": "01a1d07e-892a-7cd0-8f55-add69584a6ad", "currency": "VND", "shares": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 75000}, {"memberId": "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "amount": 75000}, {"memberId": "01a1d07e-879a-729f-a4a2-4240a29e512a", "amount": 75000}, {"memberId": "01a1d07e-879c-7a7c-b1cf-59826eb665de", "amount": 75000}], "version": 1, "createdBy": {"id": "01a1cd7b-5691-7f2c-8ce1-355d36415149", "name": "Minh"}, "createdAt": "2026-11-12T16:01:56.009Z", "updatedAt": "2026-11-12T16:01:56.009Z", "deletedAt": null}}
+pagination create 0 201 id=01a1d07e-893c-7f35-a40b-4b7495089fec
+pagination create 1 201 id=01a1d07e-894e-75d0-95ae-ffd6d04635e2
+pagination create 2 201 id=01a1d07e-895e-7dbb-8b45-531fbddad7cb
+pagination create 3 201 id=01a1d07e-8970-7719-a063-924ffbf5ca6a
+pagination create 4 201 id=01a1d07e-8981-7786-9455-bbe8ac34f4ff
+pagination create 5 201 id=01a1d07e-8992-79cc-a974-0367cd7796b0
+pagination create 6 201 id=01a1d07e-89a2-7c9b-a285-04d1c213eacd
+pagination create 7 201 id=01a1d07e-89b2-7196-a741-34a2fe3ce4ec
+pagination create 8 201 id=01a1d07e-89c2-7d47-a188-3727635044fe
+pagination create 9 201 id=01a1d07e-89d3-7572-9028-f2797323aac3
+pagination create 10 201 id=01a1d07e-89e3-7073-bcd1-fd1ec9d40203
+pagination create 11 201 id=01a1d07e-89f3-781f-b96e-a74ebd997bf6
+pagination create 12 201 id=01a1d07e-8a04-75fd-9cff-ddbdae77af9e
+pagination create 13 201 id=01a1d07e-8a14-76b9-8b26-696a67569c29
+pagination create 14 201 id=01a1d07e-8a24-7f63-b063-7b4def8f9e38
+pagination create 15 201 id=01a1d07e-8a34-72ff-90a1-a69dbcea57d0
+pagination create 16 201 id=01a1d07e-8a45-796e-8fac-46e97b0b6bd0
+pagination create 17 201 id=01a1d07e-8a55-7073-bd96-f75f30f2c6c8
+pagination create 18 201 id=01a1d07e-8a66-7584-a936-78153c372176
+pagination create 19 201 id=01a1d07e-8a75-70bc-ac73-862b15052bd5
+pagination create 20 201 id=01a1d07e-8a85-73aa-8c85-7670537473f7
+pagination create 21 201 id=01a1d07e-8a94-7f08-9985-8ae5fc7c5c78
+pagination create 22 201 id=01a1d07e-8aa3-7247-83bf-568994d8525d
+pagination create 23 201 id=01a1d07e-8ab3-766b-956e-d641f4c2bd6b
+pagination create 24 201 id=01a1d07e-8ac3-71a7-a78e-4ef3a3f21171
+pagination create 25 201 id=01a1d07e-8ad3-7195-a3d8-cf88302f813b
+pagination create 26 201 id=01a1d07e-8ae5-7ddf-896d-e4c8702aa0fa
+pagination create 27 201 id=01a1d07e-8af7-7e53-a259-17210da28927
+pagination create 28 201 id=01a1d07e-8b07-73f2-913b-899d720d4d8c
+pagination create 29 201 id=01a1d07e-8b16-7e08-bb54-af94cd210517
+pagination create 30 201 id=01a1d07e-8b27-75e8-becd-2c6e5467e7ba
+pagination create 31 201 id=01a1d07e-8b37-7022-82eb-72a0d025eed4
+pagination create 32 201 id=01a1d07e-8b46-72bb-9e2e-190d7f945e78
+pagination create 33 201 id=01a1d07e-8b56-7f68-9006-658be4e811e4
+pagination create 34 201 id=01a1d07e-8b66-75c2-9bc3-7f074a8b999b
+pagination create 35 201 id=01a1d07e-8b75-7fc9-9d82-474322024c62
+pagination create 36 201 id=01a1d07e-8b85-7723-832b-ac6c84f37a2a
+pagination create 37 201 id=01a1d07e-8b96-731e-b8c5-7f59e47b251c
+pagination create 38 201 id=01a1d07e-8ba6-7300-abad-5ffe441dea83
+pagination create 39 201 id=01a1d07e-8bb6-71db-9e82-b35b77c72d0b
+pagination create 40 201 id=01a1d07e-8bc6-7b64-85dd-c8dc3155922c
+pagination create 41 201 id=01a1d07e-8bd5-757f-8cbb-a75c2e664c45
+pagination create 42 201 id=01a1d07e-8be4-76a1-af66-2a781e050860
+pagination create 43 201 id=01a1d07e-8bf4-77bb-86b7-0c0e0b47fb50
+pagination create 44 201 id=01a1d07e-8c03-7313-a8ae-3949f3ebd7b4
+pagination create 45 201 id=01a1d07e-8c13-70da-b784-88ed9e28a792
+pagination create 46 201 id=01a1d07e-8c23-7eb9-8f4d-54a1eec3ad5c
+pagination create 47 201 id=01a1d07e-8c32-7c97-9bfb-2c80d3ae91dd
+pagination create 48 201 id=01a1d07e-8c41-7a4c-bebd-7368fc0ad519
+pagination create 49 201 id=01a1d07e-8c51-7d52-9585-4590cdf1fab7
+pagination create 50 201 id=01a1d07e-8c61-7b9f-9091-83930a29edc3
+pagination create 51 201 id=01a1d07e-8c71-76c8-9e0e-e6d1e40f535d
+pagination create 52 201 id=01a1d07e-8c80-7048-b49e-8d6a227b4831
+pagination create 53 201 id=01a1d07e-8c90-7f38-a101-b12dbaac2ae0
+pagination create 54 201 id=01a1d07e-8c9e-7a9c-90a8-d699c5898b90
+pagination create 55 201 id=01a1d07e-8cad-7414-856e-106dd0317738
+pagination create 56 201 id=01a1d07e-8cbd-7491-8f5b-098788318724
+pagination create 57 201 id=01a1d07e-8ccd-7e00-9d04-d73cce7dc78f
+pagination create 58 201 id=01a1d07e-8cdb-7007-bef5-59a767ef3419
+pagination create 59 201 id=01a1d07e-8ceb-79ad-ba64-415ab8c132fd
+page 1 200 {"count": 50, "ids": ["01a1d07e-8ceb-79ad-ba64-415ab8c132fd", "01a1d07e-8cdb-7007-bef5-59a767ef3419", "01a1d07e-8ccd-7e00-9d04-d73cce7dc78f", "01a1d07e-8cbd-7491-8f5b-098788318724", "01a1d07e-8cad-7414-856e-106dd0317738", "01a1d07e-8c9e-7a9c-90a8-d699c5898b90", "01a1d07e-8c90-7f38-a101-b12dbaac2ae0", "01a1d07e-8c80-7048-b49e-8d6a227b4831", "01a1d07e-8c71-76c8-9e0e-e6d1e40f535d", "01a1d07e-8c61-7b9f-9091-83930a29edc3", "01a1d07e-8c51-7d52-9585-4590cdf1fab7", "01a1d07e-8c41-7a4c-bebd-7368fc0ad519", "01a1d07e-8c32-7c97-9bfb-2c80d3ae91dd", "01a1d07e-8c23-7eb9-8f4d-54a1eec3ad5c", "01a1d07e-8c13-70da-b784-88ed9e28a792", "01a1d07e-8c03-7313-a8ae-3949f3ebd7b4", "01a1d07e-8bf4-77bb-86b7-0c0e0b47fb50", "01a1d07e-8be4-76a1-af66-2a781e050860", "01a1d07e-8bd5-757f-8cbb-a75c2e664c45", "01a1d07e-8bc6-7b64-85dd-c8dc3155922c", "01a1d07e-8bb6-71db-9e82-b35b77c72d0b", "01a1d07e-8ba6-7300-abad-5ffe441dea83", "01a1d07e-8b96-731e-b8c5-7f59e47b251c", "01a1d07e-8b85-7723-832b-ac6c84f37a2a", "01a1d07e-8b75-7fc9-9d82-474322024c62", "01a1d07e-8b66-75c2-9bc3-7f074a8b999b", "01a1d07e-8b56-7f68-9006-658be4e811e4", "01a1d07e-8b46-72bb-9e2e-190d7f945e78", "01a1d07e-8b37-7022-82eb-72a0d025eed4", "01a1d07e-8b27-75e8-becd-2c6e5467e7ba", "01a1d07e-8b16-7e08-bb54-af94cd210517", "01a1d07e-8b07-73f2-913b-899d720d4d8c", "01a1d07e-8af7-7e53-a259-17210da28927", "01a1d07e-8ae5-7ddf-896d-e4c8702aa0fa", "01a1d07e-8ad3-7195-a3d8-cf88302f813b", "01a1d07e-8ac3-71a7-a78e-4ef3a3f21171", "01a1d07e-8ab3-766b-956e-d641f4c2bd6b", "01a1d07e-8aa3-7247-83bf-568994d8525d", "01a1d07e-8a94-7f08-9985-8ae5fc7c5c78", "01a1d07e-8a85-73aa-8c85-7670537473f7", "01a1d07e-8a75-70bc-ac73-862b15052bd5", "01a1d07e-8a66-7584-a936-78153c372176", "01a1d07e-8a55-7073-bd96-f75f30f2c6c8", "01a1d07e-8a45-796e-8fac-46e97b0b6bd0", "01a1d07e-8a34-72ff-90a1-a69dbcea57d0", "01a1d07e-8a24-7f63-b063-7b4def8f9e38", "01a1d07e-8a14-76b9-8b26-696a67569c29", "01a1d07e-8a04-75fd-9cff-ddbdae77af9e", "01a1d07e-89f3-781f-b96e-a74ebd997bf6", "01a1d07e-89e3-7073-bcd1-fd1ec9d40203"], "nextCursor": "eyJvY2N1cnJlZEF0IjoiMjAyNi0xMS0xMlQxMDowMDowMC4wMDBaIiwiaWQiOiIwMWExZDA3ZS04OWUzLTcwNzMtYmNkMS1mZDFlYzlkNDAyMDMifQ"}
+page 2 200 {"count": 13, "ids": ["01a1d07e-89d3-7572-9028-f2797323aac3", "01a1d07e-89c2-7d47-a188-3727635044fe", "01a1d07e-89b2-7196-a741-34a2fe3ce4ec", "01a1d07e-89a2-7c9b-a285-04d1c213eacd", "01a1d07e-8992-79cc-a974-0367cd7796b0", "01a1d07e-8981-7786-9455-bbe8ac34f4ff", "01a1d07e-8970-7719-a063-924ffbf5ca6a", "01a1d07e-895e-7dbb-8b45-531fbddad7cb", "01a1d07e-894e-75d0-95ae-ffd6d04635e2", "01a1d07e-893c-7f35-a40b-4b7495089fec", "01a1d07e-892a-7cd0-8f55-add69584a6ad", "01a1d07e-8919-715b-8101-777af0f3acf7", "01a1d07e-8902-7cab-a280-9bb688acf0d6"], "nextCursor": null}
+zero 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"amount": ["Too small: expected number to be >=1"]}, "requestId": "01a1d07e-8d0e-7793-bb33-40459963acca"}}
+fraction 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"amount": ["Invalid input: expected int, received number"]}, "requestId": "01a1d07e-8d18-7bfb-89af-8ac65efc9013"}}
+above max 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"amount": ["Too big: expected number to be <=999999999999"]}, "requestId": "01a1d07e-8d21-7e86-b646-150a53645e15"}}
+blank description 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"description": ["Too small: expected string to have >=1 characters"]}, "requestId": "01a1d07e-8d2a-7b33-a093-ef1b43daa53f"}}
+no sharers 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.members": ["Too small: expected array to have >=1 items"]}, "requestId": "01a1d07e-8d32-7f84-9c9b-42058de328e1"}}
+duplicate sharer 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.members": ["Invalid input"]}, "requestId": "01a1d07e-8d3b-72a3-aebd-497f31be318f"}}
+two payers 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"payers": ["Too big: expected array to have exactly 1 items"]}, "requestId": "01a1d07e-8d43-7045-8356-84f3769b7208"}}
+wrong paid total 400 {"error": {"code": "PAYER_TOTAL_MISMATCH", "message": "Payer total differs from amount", "details": {"expected": 100000, "actual": 90000}, "requestId": "01a1d07e-8d4b-7f58-803b-f76ddfa2b0b5"}}
+foreign member 400 {"error": {"code": "MEMBER_NOT_IN_GROUP", "message": "Member does not belong to group", "requestId": "01a1d07e-8d56-7c82-9353-a9742e9b3e91"}}
+transfer 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"type": ["Invalid input: expected \"expense\""]}, "requestId": "01a1d07e-8d61-7578-b447-cdd11f962089"}}
+invalid limit=0 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"limit": ["Too small: expected number to be >=1"]}, "requestId": "01a1d07e-8d69-7925-a848-d4ce2d11feef"}}
+invalid limit=201 400 {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"limit": ["Too big: expected number to be <=200"]}, "requestId": "01a1d07e-8d71-7e69-8fdd-81a999f046ef"}}
+invalid cursor=abc 400 {"error": {"code": "VALIDATION_FAILED", "message": "Invalid cursor", "requestId": "01a1d07e-8d79-77ad-ae64-a05d2651526f"}}
+duplicate replay 201 {"transaction": {"type": "expense", "description": "Cà phê", "amount": 100000, "occurredAt": "2026-11-12T10:00:00.000Z", "category": null, "payers": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 100000}], "split": {"method": "equal", "members": ["01a1d07e-8796-7200-87b8-90da6f966bf4", "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "01a1d07e-879a-729f-a4a2-4240a29e512a"]}, "id": "01a1d07e-8902-7cab-a280-9bb688acf0d6", "currency": "VND", "shares": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 33334}, {"memberId": "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "amount": 33333}, {"memberId": "01a1d07e-879a-729f-a4a2-4240a29e512a", "amount": 33333}], "version": 1, "createdBy": {"id": "01a1cd7b-5691-7f2c-8ce1-355d36415149", "name": "Minh"}, "createdAt": "2026-11-12T16:01:55.968Z", "updatedAt": "2026-11-12T16:01:55.968Z", "deletedAt": null}}
+duplicate changed 409 {"error": {"code": "IDEMPOTENCY_KEY_REUSED", "message": "Idempotency key was used with another request", "requestId": "01a1d07e-8d8b-7141-8e7c-1bb3d1297b4c"}}
+outsider GET 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found", "requestId": "01a1d07e-8d96-7fd7-9905-f7508945c7f1"}}
+outsider POST 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found", "requestId": "01a1d07e-8d9d-7d59-95bd-69ac4bb16b97"}}
+outsider POST/preview 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found", "requestId": "01a1d07e-8da6-7b82-8f19-249f23d2c854"}}
+delete member with transactions 422 {"error": {"code": "MEMBER_HAS_TRANSACTIONS", "message": "Member has transactions", "requestId": "01a1d07e-8dad-70a4-b9ca-8b4ea52dbcda"}}
+deactivate sharer 200 {"member": {"id": "01a1d07e-879a-729f-a4a2-4240a29e512a", "name": "Hùng", "active": false, "defaultWeight": "1.00", "position": 2, "shape": "squircle", "color": "coral", "isMe": false}}
+explicit inactive sharer 200 {"shares": [{"memberId": "01a1d07e-8796-7200-87b8-90da6f966bf4", "amount": 33334}, {"memberId": "01a1d07e-8799-7a1e-9c75-30a3673cf6a8", "amount": 33333}, {"memberId": "01a1d07e-879a-729f-a4a2-4240a29e512a", "amount": 33333}]}
+01a1d079-c6a5-797a-acd4-dc23d7d0213d Đà Lạt 12/2026: sum 0; mismatches 0
+01a1d079-f0d7-7bb7-93d4-7aa82261bf88 Concurrent exercise: sum 0; mismatches 0
+01a1d07b-f142-7afd-af2c-064eebbd93d8 Other group: sum 0; mismatches 0
+01a1d07e-8794-76a4-a366-5e70e8970cc5 Task5 ledger: sum 0; mismatches 0
+All groups balanced
+$ pnpm --filter @songphang/db check-balances
+$ tsx --env-file=../../.env src/check-balances.ts
+```
+
+Known member of another existing group, preview result:
+```text
+{"error":{"code":"MEMBER_NOT_IN_GROUP","message":"Member does not belong to group","requestId":"01a1d07f-08b2-7a65-b57c-7a3d95b4bad3"}}
+400
+```
+
+### Task 1A.5 — Results
+pnpm check: passed (80 files, all workspace typechecks Done).
+Completed: create, no-write preview and keyset-paginated listing with batched payer/share queries. The recorded 50 + 13 IDs contain no duplicates between pages; final cursor is null. Reverse split order preserves the extra đồng for position 0.
+Security review: relevant items 1–6, 8 checked against actual diff. Group authorization precedes request validation; all writes are same-origin and create is idempotent. Safe integer contract, membership validation before totals, core-only division, parameterized group-scoped queries, one transaction for ledger lines and activity. No secrets/new dependencies.
+Size review: createTransaction exceeds 40 lines because its explicit transaction writes map all approved columns, payer/share rows and history; no file exceeds 200 lines.
+Decisions: none.
+Deviations: none.
+Not verified: none for task exercises.
+Out of scope: account-deletion rendering of nullable historical createdBy is deferred to the account task that introduces deletion.
