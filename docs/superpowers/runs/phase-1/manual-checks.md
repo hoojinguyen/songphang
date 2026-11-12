@@ -38,3 +38,8 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Open `http://localhost:4000/api/v1/groups/<groupId>/transactions` → newest first with payers/shares. Follow nextCursor → no duplicate IDs.
 3. Run `pnpm db:check-balances` → All groups balanced.
 4. Repeat the create with one Idempotency-Key → same ID, stored once. Change amount with the same key → 409. Amount 0/fraction, no sharers or blank description → 400.
+
+## Balances API (1A.6)
+1. Create four people; record Minh 800000 split four, then Lan 300000 split Minh/Lan/Hùng → balances +500000,0,-300000,-200000; Hùng→Minh 300000 and Thu→Minh 200000.
+2. PATCH minimizeDebts false → unchanged balances; four pairwise transfers: Lan→Minh 100000, Hùng→Minh 200000, Hùng→Lan 100000, Thu→Minh 200000.
+3. Deactivate Thu → her -200000 remains; sum all balances → 0. As outsider GET balances → 404; without session → 401.

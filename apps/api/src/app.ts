@@ -6,6 +6,7 @@ import { uuidv7 } from "uuidv7";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerDevRoutes } from "./routes/dev.js";
 import { registerGroupRoutes } from "./routes/groups.js";
 import { registerHealthRoute } from "./routes/health.js";
@@ -55,6 +56,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerGroupRoutes(app, deps);
 	registerMemberRoutes(app, deps);
 	registerTransactionRoutes(app, deps);
+	registerBalanceRoutes(app, deps);
 	registerAuthRoutes(app, deps);
 	if (deps.config.devLogin && deps.config.appEnv === "development") {
 		registerDevRoutes(app, deps);

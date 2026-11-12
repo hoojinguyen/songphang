@@ -40,3 +40,22 @@ export async function listBalancesForGroups(
 export function listMemberBalances(executor: DbExecutor, groupId: string) {
 	return listBalancesForGroups(executor, [groupId]);
 }
+
+export async function listPairDebts(executor: DbExecutor, groupId: string) {
+	const rows = await executor.execute(sql`
+ select s.member_id as "debtorMemberId", p.member_id as "creditorMemberId", sum(s.amount)::bigint::text as amount
+ from transactions t join transaction_payers p on p.transaction_id = t.id
+ join transaction_shares s on s.transaction_id = t.id
+ where t.group_id = ${groupId}::uuid and t.deleted_at is null and s.amount > 0
+ group by s.member_id, p.member_id
+ `);
+	return z
+		.array(
+			z.object({
+				debtorMemberId: z.uuid(),
+				creditorMemberId: z.uuid(),
+				amount: z.coerce.number().int().positive().safe(),
+			}),
+		)
+		.parse(rows);
+}
