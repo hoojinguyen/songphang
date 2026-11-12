@@ -301,3 +301,12 @@ Khi hệ điều hành bật "giảm chuyển động", mọi chuyển động t
 - Mở rộng bộ hình và màu; kiểm tra độ tương phản của chữ trên từng màu.
 - Dựng thử chuyển động ở mục 6.
 - Bố cục cho màn hình rộng (máy tính): chưa thiết kế.
+
+## 11. Amendment 2026-11-12
+
+Approved with the phase 1 spec, `docs/superpowers/specs/2026-11-12-phase-1-single-run-design.md`. Its section 9 is the design, in words, of everything listed in section 10 above that had no mockup, with final strings.
+
+- New screen **S13 Account** (`/account`): change password, sign out, delete account. The user's shape on S2 opens it.
+- S1 gains email and password fields and links to four new screens: `/register`, `/verify-email`, `/forgot-password`, `/reset-password`. GE7's line "Không cần mật khẩu. Bạn bè không phải cài gì." is removed.
+- "Bơm hình" (flow D) and the "Thay đổi khác" lines of the stream (section 5) are not built in phase 1; the split editor's second mode is labelled "Số tiền". Transfers and income still appear as pills, and an edited transaction carries the tag "đã sửa".
+- The member palette stays at 4 shapes × 4 colors in phase 1.

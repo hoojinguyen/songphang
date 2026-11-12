@@ -281,3 +281,21 @@ Bất biến: tổng số dư của mọi thành viên trong một nhóm luôn b
 | 4 | `comments`, `notifications`, `chat_links` | Thêm cột trạng thái tuỳ chọn trên `transactions` |
 | 5 | `user_identities`, `push_devices` | Chuyển `google_sub` sang `user_identities` |
 | Chưa xếp | Đa tiền tệ: thêm `exchange_rate` trên `transactions` | `currency` đã có sẵn trên từng giao dịch |
+
+## 9. Amendment 2026-11-12
+
+Approved with the phase 1 spec.
+
+### auth_tokens
+
+| Column | Type | Constraints | Note |
+|---|---|---|---|
+| id | uuid | PK | |
+| user_id | uuid | FK users, ON DELETE CASCADE | |
+| purpose | text | NOT NULL, `'verify_email'` or `'reset_password'` | |
+| token_hash | text | UNIQUE, NOT NULL | SHA-256 of the token; the token itself is never stored |
+| expires_at | timestamptz | NOT NULL | 24 hours for verification, 1 hour for reset |
+| used_at | timestamptz | | Set on first use; a token works once |
+| created_at | timestamptz | NOT NULL | |
+
+Membership of payers and sharers in the transaction's group is enforced by the same deferred constraint trigger that checks the totals, not by a composite foreign key. `user_identities` stays as designed; section 8's note about moving `google_sub` is obsolete.

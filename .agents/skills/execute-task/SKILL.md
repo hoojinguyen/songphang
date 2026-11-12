@@ -110,3 +110,15 @@ Do not start the next task. Wait for the reviewer to reply “pass” or provide
 - You need a library, directory, endpoint, table, column, or environment variable not in the plan.
 - You need to change something users see.
 - A change could weaken security.
+
+## Phase-run mode
+
+Use this mode only when the plan says it is a phase run (see the "Phase run" section of `AGENTS.md`). The six steps stay, with these changes:
+
+- **Step 2 — Think.** Write the approach note into the run's `progress.md` under the task instead of sending it. A question you would have asked becomes an entry in the run's `decisions.md`: problem, options, choice, reason. Then continue; do not wait.
+- **Step 4 — Self-check.** If the same check still fails after three fixes, record the exact failure under the task as "Unresolved", commit what works with `pnpm check` passing, and continue with the next task.
+- **Step 5 — Report.** Do not send a report. Commit, then in `progress.md` tick the task and record the commit hash and the real output of the exercises; copy the task's manual checks into the run's `manual-checks.md` under the screen or flow they belong to. What you could not verify goes under "Not verified".
+- **Step 6 — Stop** becomes **continue with the next task.** After the last task of a stage, run the plan's stage gate before starting the next stage.
+- **"Stop and ask immediately when"** does not apply: decide and record instead. The hard rules of `AGENTS.md` sections 9 and 11, the money rules, and "no automated tests" are not decisions and never change.
+- **Starting a session.** Read `progress.md` and continue from the first unticked task. If the working tree holds uncommitted work from an interrupted session, finish or discard it deliberately and note what you did.
+

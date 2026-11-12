@@ -78,3 +78,15 @@ Questions for the project owner
 - “Should fix”: more readable or simpler but not incorrect.
 - Each item must identify exactly one code location and clearly state how to fix it. Do not write vague general comments.
 - Do not fix code while reviewing unless the project owner asks.
+
+## Reviewing a phase run
+
+Use this order when asked to review the branch of a phase run (`AGENTS.md` section 12) instead of a single task.
+
+1. **Read the run files first:** `decisions.md`, then “Gate not passed”, “Unresolved”, and “Not verified” in `progress.md`. Every decision is either confirmed, or becomes a finding or a question for the project owner.
+2. **Re-run every gate yourself** on a reset database: `pnpm check`, `pnpm build`, each stage's acceptance script, `pnpm db:check-balances`, and the permission matrix. Do not trust recorded results; a result that differs from the record is a serious finding.
+3. **Read the diff stage by stage** (`git log --oneline main..<branch>`, then per-task commits), applying the checking order above. Spend the most time where manual checking is weakest: the money layer (`packages/core`, database triggers, rounding), authorization on every `groupId` route, and accounts (password hashing, single-use tokens, no account enumeration, session revocation).
+4. **Check the plan was followed, not improved:** strings character for character, expected numbers unchanged, no library beyond the approved ones without a `decisions.md` entry, no test files.
+5. **Conclude per stage** with the templates above, using `Stage <id>` in place of `Task <number>` and giving each finding the commit hash as well as `file:line`. Add a final section “Decisions for the project owner” listing each `decisions.md` entry with confirm or change.
+
+Findings are fixed by the implementation agent in new commits on the same branch; review those commits again before the project owner's manual check.

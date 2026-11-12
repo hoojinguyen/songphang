@@ -220,3 +220,27 @@ Phiên bản cụ thể của từng công nghệ sẽ được chốt khi khở
 - Mỗi task nhanh hơn và ít code hơn.
 - Lỗi hồi quy (sửa chỗ này làm hỏng chỗ khác) không có gì tự động bắt; càng nhiều tính năng, lượng kiểm tay lại càng lớn.
 - Các bất biến về tiền ("tổng số dư của nhóm luôn bằng 0", làm tròn không lệch một đồng) và bảng quyền theo từng endpoint là hai chỗ kiểm tay khó phủ hết. Cố vấn đã đề xuất ngoại lệ cho phép test riêng `packages/core`; chủ dự án quyết định ngày 2026-11-11 là không có ngoại lệ nào. Bù lại, kế hoạch mốc 1A phải có: ràng buộc trong database kiểm tổng phần chịu và tổng phần trả bằng tổng tiền, một lệnh kiểm tra tổng số dư của mọi nhóm bằng 0 để chủ dự án chạy bất cứ lúc nào, và một bảng các trường hợp chia tiền kèm kết quả đúng để kiểm tay.
+
+## ADR-017 — Own session layer; Google through `arctic`; argon2id from Node
+
+**Status:** decided 2026-11-12. Replaces the library choice left open in ADR-007; the rest of ADR-007 and ADR-015 stands.
+
+**Context.** ADR-007 named Better Auth "to be confirmed". Phase 0 already built and checked a session layer with the required model: a cookie for the web, a header for mobile, only hashes in the database. Better Auth (1.7.22) manages its own user, session, and account tables and brings sixteen direct dependencies.
+
+**Decision.** Keep the project's own sessions and the `user_identities` design. Hash passwords with argon2id from `node:crypto`. Use `arctic` only for the Google authorization-code flow. Single-use tokens for email verification and password reset are stored as hashes in `auth_tokens`.
+
+**Considered.** Better Auth: less code to write, but it would discard verified work and an approved data model, and add a large dependency surface to the most security-sensitive part. Writing the OAuth flow by hand: possible, but that flow cannot be exercised against Google during the phase run, so verified library code is safer.
+
+**Consequences.** The project owns account security (NFR-1.12, 1.13) and must review it carefully. Adding Apple sign-in in phase 5 is one more identity provider.
+
+## ADR-018 — One agent run per phase, with gates and a decision log
+
+**Status:** decided 2026-11-12 by the project owner. Changes how ADR-016's four activities are scheduled; ADR-016 itself stands.
+
+**Context.** Phase 0 was built task by task, with the owner assigning and approving each task. The owner wants one agent run to build a whole phase.
+
+**Decision.** A phase is built in one continuous run on its own branch. All decisions are settled beforehand in a spec; what remains open the agent decides and records. After each stage the agent runs a gate: type checking, build, acceptance scripts of this and earlier stages, the balance check, and the permission matrix. The advisor reviews the whole branch at the end; the owner then checks by hand once and merges. Details: `AGENTS.md` section 12.
+
+**Considered.** Task-by-task approval (phase 0): safest, but every task waits for a person. One run without gates: fastest, but with no automated tests an early money or permission defect would be built upon by every later stage.
+
+**Consequences.** Far fewer hand-offs. Visual defects are found only at the final manual check, and that check is long. The agent's exercises are self-graded, so the advisor re-runs every gate. Google sign-in in phase 1 ships unverified until the owner creates the OAuth app.

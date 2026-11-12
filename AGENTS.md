@@ -13,7 +13,7 @@ This file applies to every agent working in this repository (Claude, Codex, Anti
 
 Sòng Phẳng is a group expense-splitting application for Vietnamese users: web first, native iOS and Android later, with a shared API. It is initially for internal use and will be released publicly later, so accounts, security, and UI quality are built to public-product standards from the beginning.
 
-Current phase: **0 — Local foundations**. Everything runs on the development machine; there is no server, domain, or external service.
+Current phase: **1 — Core expense splitting**, built in one phase run (section 12). Everything runs on the development machine; there is no server, domain, or external service.
 
 ## 2. Who decides what
 
@@ -30,6 +30,9 @@ When sources conflict, priority is: the project owner's words in the current ses
 | To learn | Read |
 |---|---|
 | What to do in this task | The plan in `docs/superpowers/plans/` |
+| Decisions behind the current plan | The spec in `docs/superpowers/specs/` |
+| Progress, decisions, and manual checks of a phase run | `docs/superpowers/runs/` |
+| Sentences the quick-entry reader must read or refuse | `docs/08-quick-entry-samples.md` |
 | What the system must do exactly | `docs/03-srs.md` |
 | Source structure, layers, and dependency rules | `docs/04-sad.md` |
 | Chosen technologies and reasons | `docs/04-adr.md` |
@@ -38,7 +41,7 @@ When sources conflict, priority is: the project owner's words in the current ses
 | Screens, colors, typography, imagery, and behavior | `docs/06-ux-ui/user-flows.md` |
 | Naming and code style | `docs/agents/quy-uoc-code.md` |
 
-Do not modify anything in `docs/` or this file unless you are acting as the advisor.
+Do not modify anything in `docs/` or this file unless you are acting as the advisor. The one exception: during a phase run the implementation agent writes the run files under `docs/superpowers/runs/`.
 
 ## 4. Required workflow
 
@@ -50,6 +53,8 @@ Every task follows exactly six steps. Full instructions are in the `execute-task
 4. **Self-check.** Run `pnpm check`; exercise the feature; perform the security review using `security-review`.
 5. **Report.** Follow the skill's report template, including manual-check steps for the project owner.
 6. **Stop.** Do not move to the next task until it is approved.
+
+In a phase run, steps 5 and 6 change as section 12 describes.
 
 ## 5. May decide and must ask
 
@@ -66,6 +71,8 @@ Every task follows exactly six steps. Full instructions are in the `execute-task
 When asking, state the problem, two or three options with each cost, and the option you prefer. A library proposal must include what it solves, why it cannot be written in a few dozen lines, its license, maintenance level, and the size it adds.
 
 If you see an out-of-scope bug or concern, record it under “Out of scope” in the report. Do not fix it yourself.
+
+In a phase run the “must ask” column becomes “decide and record”, as section 12 describes.
 
 ## 6. Checks: do not write automated tests
 
@@ -113,7 +120,7 @@ Security comes before speed and convenience. The full checklist is in `security-
 ## 10. Git
 
 - One commit per task on the current branch, after `pnpm check` passes. Use the format `type(scope): short description`, where type is `feat`, `fix`, `chore`, `refactor`, or `docs`.
-- Do not `push`, `--force`, rewrite history, use `--no-verify`, or change branches unless the project owner says so.
+- Do not `push`, `--force`, rewrite history, use `--no-verify`, or change branches unless the project owner says so. A phase run happens on the branch its plan names; the advisor creates that branch and the project owner merges it.
 - Do not commit build artifacts, `node_modules`, `.env`, or files outside the task scope.
 
 ## 11. Absolutely do not
@@ -123,3 +130,15 @@ Security comes before speed and convenience. The full checklist is in `security-
 - Do not delete or rewrite working code to “clean it up” when the task does not require it.
 - Do not call external services, deploy, or create accounts anywhere.
 - Do not use emoji in the UI or code.
+
+## 12. Phase run
+
+A phase run builds a whole roadmap phase in one continuous agent run. It applies only when the plan says so. The design and its reasons are in `docs/superpowers/specs/2026-11-12-phase-1-single-run-design.md` and ADR-018.
+
+- **Roles.** The advisor writes the spec and the plan and reviews the finished branch. The implementation agent runs the plan from the first unticked task to the last without waiting for approval. The project owner approves the spec and the plan before the run, and checks by hand and merges after the review.
+- **Per task.** The six steps of section 4 stay. The report is written into the run's `progress.md`, and the agent then continues with the next task instead of stopping. One commit per task; `pnpm check` passes before each commit.
+- **Decide and record.** Whatever the spec and plan leave open, including the “must ask” column of section 5, the agent decides, records in the run's `decisions.md` (problem, options, choice, reason; for a library also license, maintenance, and added size), and continues. It never waits for an answer and never leaves a required piece unbuilt.
+- **Not decisions.** Sections 6, 9, and 11, the integer-only money rule, and the rule that money is divided only in `packages/core` stay absolute. No external service, no account creation, no deployment, no push.
+- **Stage gates.** After the last task of each stage the agent runs the gate defined in the plan: `pnpm check`, `pnpm build`, the acceptance scripts of this and all earlier stages on a reset database, `pnpm db:check-balances`, and the permission matrix. A failing gate is fixed until it passes; after three failed attempts on the same item it is recorded under “Gate not passed” and the run continues.
+- **Honesty.** Anything the agent could not verify is listed under “Not verified”. A recorded result is the real output, never an expectation.
+- **Review.** The advisor reads the decisions and failed gates first, re-runs every gate, reads the diff stage by stage, and returns findings by commit. Fixes are new commits on the same branch.

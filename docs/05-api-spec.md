@@ -300,3 +300,16 @@ data: {}
 | Tần suất xem trước lời mời | 30 yêu cầu mỗi phút mỗi IP |
 | Độ dài câu gõ | 300 ký tự |
 | Tần suất đọc câu gõ | 120 yêu cầu mỗi phút mỗi người dùng |
+
+## 5. Amendment 2026-11-12
+
+Approved with the phase 1 spec. English, following the language policy.
+
+- New endpoint `GET /auth/providers` (public): `{ "google": boolean, "devLogin": boolean }`.
+- `POST /auth/register` always answers 204 and never creates a session.
+- New error codes: `INVALID_CREDENTIALS` (401), `EMAIL_NOT_VERIFIED` (403), `TOKEN_INVALID` (400), `WEAK_PASSWORD` (400, `details.reason` is `too_short`, `too_long`, or `too_common`).
+- `GET /invites/{token}` also returns `ownerName`, `memberCount`, `transactionCount`, each member's `shape` and `color`, and `balance` for unclaimed members.
+- `POST /groups` takes `{ "name", "memberNames" }`. Create endpoints require `Idempotency-Key`.
+- An issue of the parse response may also carry `count`, `expected`, and `actual`; the response also returns `text`, the normalized sentence its spans index.
+- `PATCH` of a transaction takes the full create body plus `version`; the type cannot change.
+- Rate limits for accounts are in the spec, section 6.8.

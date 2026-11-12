@@ -1,24 +1,22 @@
-# Sòng Phẳng — Milestone 1A: Core Ledger — Implementation Plan
+# Phase 1 — Stage 1A: Core Ledger
 
-> **For the implementation agent:** read the root `AGENTS.md` first. Execute each task with the `execute-task` skill (`.agents/skills/execute-task/SKILL.md`). Use the checkboxes (`- [ ]`) to track steps. The project does not write automated tests; every task ends with exercising the change and a manual-check list for the project owner. Do one task, report, and stop.
+> Part of the phase 1 plan. Read `00-overview.md` first: it holds the global constraints, the per-task procedure, the gate procedure and the run files. Task references inside this file ("Task 3") mean this stage's tasks (1A.3).
 
-**Goal:** One signed-in person can keep the whole ledger for a group on the local machine: create a group, name its members, record equally split expenses, and see every balance and the suggested settlements.
+**Stage goal:** One signed-in person can keep the whole ledger for a group on the local machine: create a group, name its members, record equally split expenses, and see every balance and the suggested settlements.
 
-**Architecture:** A new dependency-free `packages/core` holds all money arithmetic (equal split, settlement suggestions). The API gains a service layer: routes validate with `contract` schemas, one shared middleware authorizes every `groupId` route, services open a database transaction, call `core`, write rows and an activity record. Balances are never stored; they are summed on read. The web app adds seven screens that read through TanStack Query and re-fetch after each of their own writes; there is no realtime channel yet.
+**Architecture:** A new dependency-free `packages/core` holds all money arithmetic (equal split, settlement suggestions). The API gains a service layer: routes validate with `contract` schemas, one shared middleware authorizes every `groupId` route, services open a database transaction, call `core`, write rows and an activity record. Balances are never stored; they are summed on read. The web app adds seven screens that read through TanStack Query and re-fetch after each of their own writes; realtime arrives in stage 1B.
 
-**Tech Stack:** unchanged from phase 0 — TypeScript, Node.js ≥ 24, pnpm workspaces, Hono + `@hono/zod-openapi`, Zod, PostgreSQL 17, Drizzle ORM + drizzle-kit, Next.js (App Router) + React, TanStack Query, Tailwind CSS v4, Biome.
+**Spec:** `docs/03-srs.md` (FR-1.10–1.12, 1.20–1.23, 1.25, 1.40, 1.41, 1.47–1.50, 1.60–1.63, NFR-1.1–1.3, 1.5, 1.7, 1.8, 1.11), `docs/04-sad.md` (sections 4, 5, 6.2, 6.4, 7), `docs/05-database-design.md`, `docs/05-api-spec.md`, `docs/06-ux-ui/user-flows.md` (flows A, C2, F, H; sections 5–8).
 
-**Spec:** `docs/07-roadmap.md` (milestone 1A), `docs/03-srs.md` (FR-1.10–1.12, 1.20–1.23, 1.25, 1.40, 1.41, 1.47–1.50, 1.60–1.63, NFR-1.1–1.3, 1.5, 1.7, 1.8, 1.11), `docs/04-sad.md` (sections 4, 5, 6.2, 6.4, 7), `docs/04-adr.md` (ADR-009, ADR-016), `docs/05-database-design.md`, `docs/05-api-spec.md`, `docs/06-ux-ui/user-flows.md` (flows A, C2, F, H; sections 5–8), `docs/agents/quy-uoc-code.md`.
-
-## Decisions recorded in this plan
+## Decisions for this stage
 
 The project owner decided these on 2026-11-12. Where they differ from `docs/`, this plan wins (AGENTS.md section 2).
 
 1. **FR-1.63 moves from 1C to 1A.** The "Gộp nợ" switch works fully in 1A: on = fewest transfers, off = pairwise debts.
 2. **The member palette stays at 4 shapes × 4 colors (16 pairs).** The 6 × 8 extension is deferred. The 17th member reuses pairs from the start.
-3. **Editing and deleting transactions stay in 1E.** 1A only creates and lists.
+3. **Editing and deleting transactions arrive in stage 1E.** This stage only creates and lists.
 
-Decisions made by the advisor while writing this plan; approving the plan approves them:
+Decisions made by the advisor and approved with the plan:
 
 4. **Interim S4 wording.** The sentence parser arrives in 1D, so the empty state and the bottom bar use the interim strings in Task 8 and show no sample sentences.
 5. **Activity records are written from 1A** (`activity_log`), so history is complete when its screen arrives in 1E. No endpoint reads them yet.
@@ -28,22 +26,6 @@ Decisions made by the advisor while writing this plan; approving the plan approv
 9. **A member linked to a user shows no "Xoá" or "Ngừng hoạt động" action in S10.** "Tôi là người này" cannot be re-chosen until 1B (FR-1.24). The API still follows FR-1.22.
 10. **`defaultWeight` is accepted by the API (FR-1.21) but has no control in the web app** until weighted splits arrive in 1C.
 11. **Hidden until their milestone:** invite card, QR scan button, "Mời bạn" link, "Chỉ xem" state, "Đã nhận"/"Đã trả"/"Nhắc" buttons, transaction type switch, "đổi cách chia", "Lịch sử", every settings row except name and "Gộp nợ".
-
-## Global Constraints
-
-- Every rule in `AGENTS.md` applies to every task.
-- **No new third-party library.** The only new package is the workspace package `@songphang/core`, which has no dependencies. `apps/api` adds `@songphang/core` as a workspace dependency. Anything else: stop and ask.
-- No test library; no `*.test.*` or `*.spec.*` file.
-- Engineering artifacts are in English. User-visible strings are Vietnamese, live only in `apps/web/src/messages/vi.ts`, and must match the tables in this plan character for character. No emoji.
-- API root `/api/v1`; JSON with `camelCase` fields; times are ISO 8601 UTC strings; one error format `{ "error": { "code", "message", "details"?, "requestId" } }`.
-- **Money** is a JavaScript `number` holding a safe integer of đồng, `1 ≤ amount ≤ 999_999_999_999`, stored as `bigint`. Division and rounding of money happen only in `packages/core`, using integer operators (`%`, `-`, exact `/` on a multiple). No `Math.round`, `toFixed`, or fractional intermediate anywhere on the money path.
-- Tables are plural `snake_case`; primary keys are UUID v7 generated on the server; timestamps are `timestamptz`; enumerations are `text` with a `CHECK`.
-- Every route with `{groupId}` goes through `requireGroupRole`. A caller who is not in the group, or a `groupId` that is not a UUID, gets **404 `NOT_FOUND`** — identical to a group that does not exist (NFR-1.5). Insufficient role gets 403 `FORBIDDEN`.
-- Every write route (`POST`, `PATCH`, `DELETE`) uses the existing `requireSameOrigin` middleware.
-- Routes hold no logic; one service function per operation; queries live in `packages/db`; the current time comes from `deps.now()`.
-- Dependency rules: `web → contract`; `api → contract, db, core`; `core → nothing`. The web app never computes an amount it displays as official; it shows numbers returned by the API.
-- Design tokens only: no raw color value in a component. Minimum hit area 44 × 44. Page column max width 430px, centered, as in phase 0.
-- `pnpm check` must pass before each commit. One commit per task, format `type(scope): short description`, English.
 
 ## Review Focus
 
@@ -120,7 +102,7 @@ The URL segment `tx` is fixed by `docs/06-ux-ui/user-flows.md`; identifiers in c
 
 ---
 
-### Task 1: `packages/core` — equal split and settlement suggestions
+### Task 1A.1: `packages/core` — equal split and settlement suggestions
 
 **Files:**
 - Create: `packages/core/package.json`, `packages/core/tsconfig.json`, `packages/core/src/split.ts`, `packages/core/src/settlements.ts`, `packages/core/src/index.ts`
@@ -197,7 +179,7 @@ git commit -m "feat(core): add equal split and settlement suggestions"
 
 ---
 
-### Task 2: Database — ledger tables, integrity triggers, balance check command
+### Task 1A.2: Database — ledger tables, integrity triggers, balance check command
 
 **Files:**
 - Create: `packages/db/src/schema-groups.ts`, `packages/db/src/schema-transactions.ts`, `packages/db/src/schema-records.ts`, `packages/db/src/check-balances.ts`
@@ -352,7 +334,7 @@ git commit -m "feat(db): add ledger tables, integrity triggers, and balance chec
 
 ---
 
-### Task 3: API — groups, group authorization, idempotency
+### Task 1A.3: API — groups, group authorization, idempotency
 
 **Files:**
 - Create: `packages/contract/src/member.ts`, `packages/contract/src/group.ts`, `packages/db/src/groups.ts`, `packages/db/src/members.ts`, `packages/db/src/balances.ts`, `packages/db/src/activity.ts`, `packages/db/src/idempotency.ts`, `apps/api/src/auth/group-access.ts`, `apps/api/src/idempotency.ts`, `apps/api/src/services/groups.ts`, `apps/api/src/routes/groups.ts`
@@ -449,7 +431,7 @@ git commit -m "feat(api): add groups, group authorization, and idempotent create
 
 ---
 
-### Task 4: API — members
+### Task 1A.4: API — members
 
 **Files:**
 - Create: `apps/api/src/services/members.ts`, `apps/api/src/routes/members.ts`
@@ -507,7 +489,7 @@ git commit -m "feat(api): add member endpoints"
 
 ---
 
-### Task 5: API — create, preview and list transactions
+### Task 1A.5: API — create, preview and list transactions
 
 **Files:**
 - Create: `packages/contract/src/transaction.ts`, `packages/db/src/transactions.ts`, `apps/api/src/services/transactions.ts`, `apps/api/src/routes/transactions.ts`
@@ -590,7 +572,7 @@ git commit -m "feat(api): add equal-split expense creation, preview, and listing
 
 ---
 
-### Task 6: API — balances and settlements
+### Task 1A.6: API — balances and settlements
 
 **Files:**
 - Create: `packages/contract/src/balance.ts`, `apps/api/src/services/balances.ts`, `apps/api/src/routes/balances.ts`
@@ -637,7 +619,7 @@ git commit -m "feat(api): add balances with minimized and pairwise settlements"
 
 ---
 
-### Task 7: Web — group list and create group (S2, S3)
+### Task 1A.7: Web — group list and create group (S2, S3)
 
 **Files:**
 - Create: `apps/web/src/lib/money.ts`, `apps/web/src/lib/request.ts`, `apps/web/src/lib/use-session-guard.ts`, `apps/web/src/lib/groups.ts`, `apps/web/src/components/ui/Icon.tsx`, `apps/web/src/components/ui/ScreenHeader.tsx`, `apps/web/src/components/ui/LoadError.tsx`, `apps/web/src/components/groups/FeaturedGroupCard.tsx`, `apps/web/src/components/groups/GroupCard.tsx`, `apps/web/src/components/groups/NewMemberRow.tsx`, `apps/web/src/app/groups/new/page.tsx`
@@ -730,7 +712,7 @@ git commit -m "feat(web): add group list and group creation screens"
 
 ---
 
-### Task 8: Web — group screen and expense stream (S4)
+### Task 1A.8: Web — group screen and expense stream (S4)
 
 **Files:**
 - Create: `apps/web/src/lib/members.ts`, `apps/web/src/lib/transactions.ts`, `apps/web/src/lib/balances.ts`, `apps/web/src/components/feed/BalanceBlock.tsx`, `apps/web/src/components/feed/ExpenseRow.tsx`, `apps/web/src/components/feed/ExpenseStream.tsx`, `apps/web/src/components/feed/EmptyStream.tsx`, `apps/web/src/components/feed/EntryBar.tsx`, `apps/web/src/app/g/[groupId]/page.tsx`
@@ -777,7 +759,7 @@ Screen behavior (`/g/{groupId}`):
 | Header | `ScreenHeader`: title = group name, back to `/`; `trailing` is a link to `/g/{id}/members`, height 48, radius 24, surface, labelled `feed.membersLink`, holding up to four `MemberShape` at size 24. |
 | `BalanceBlock` | One link to `/g/{id}/balances`: accent, radius 32, padding 14/18/16/20. Caption 13px weight 600 and `formatMoney` of the absolute value at 40px weight 900; on the right a pill, height 48, ink. The viewer's balance is their entry in `useBalances`. Positive: `feed.owedToYou` / `feed.collect`. Negative: `feed.youOwe` / `feed.pay`. Zero or no linked member: `feed.settled`, `0 đ`, `feed.view`. |
 | `ExpenseStream` | Oldest at the top, newest at the bottom; on first render the view is scrolled to the bottom. A day separator (12px weight 600 muted, centered) precedes the first row of each day. A sentinel at the top, watched with `IntersectionObserver`, fetches the next page while `hasNextPage`; the visible rows must not jump when older rows are inserted; `feed.loadingOlder` shows while fetching. |
-| `ExpenseRow`, payer is the viewer's member | Right-aligned, max width 300, ink background, radius 26 with an 8px bottom-right corner, padding 12/16/14. `feed.youPaid` 12px weight 600 in `on-ink-muted`; description 15px weight 700 and `formatAmount(amount)` 19px weight 900 on one line; below, the first four shares as `{name} {formatCompactAmount}` joined by ` · `, then `feed.moreShares` when there are more, 13px `on-ink-muted`. |
+| `ExpenseRow`, payer is the viewer's member | Right-aligned, max width 300, ink background, radius 26 with an 8px bottom-right corner, padding 12/16/14. `feed.youPaid` 12px weight 600 in `on-ink-muted`; description 15px weight 700 and `formatAmount(amount)` 19px weight 900 on one line; below, a wrapping row of chips for the first four shares, then `feed.moreShares` when there are more: each chip has background `ink-raised` (new token `--color-ink-raised: #34323d`), radius 14, padding 5/9, a `MemberShape` at size 14 and `formatCompactAmount` at 12px weight 700. |
 | `ExpenseRow`, any other payer | Left-aligned with the payer's `MemberShape` at size 36 beside a surface bubble, max width 270, radius 26 with an 8px bottom-left corner. `feed.memberPaid` 12px weight 600 muted; description and amount as above; then `feed.equalSplitMine` with the viewer's share via `formatAmount`, or `feed.equalSplitNotMine`, 13px muted. |
 | `EmptyStream` | Shown when the first page is empty: up to four `MemberShape` at size 76 in a centered row, `feed.emptyTitle` 32px weight 900, `feed.emptyHint` 14px muted. |
 | Shortcut row | Shown when there is at least one transaction: a link `feed.whoOwesWho` to `/g/{id}/balances`, height 44, radius 22, surface, 13px weight 700. |
@@ -796,9 +778,9 @@ Rows are not tappable in 1A. Inactive members still render by name and shape in 
 Create expenses with the `curl` commands from Task 5 until Task 9 exists.
 
 1. A group with no expenses → the four shapes, "Ghi khoản chi đầu tiên", no shortcut row; the balance block reads "Bạn đã xong", "0 đ".
-2. As Minh, after "Minh pays 800000 split four" and "Lan pays 300000 split Minh, Lan, Hùng" → Minh's row on the right in black with `Minh 200 · Lan 200 · Hùng 200 · Thu 200`; Lan's row on the left with her blue diamond and "Chia đều 3 · phần bạn 100.000"; balance block "Bạn được nhận", "500.000 đ", "Thu về".
+2. As Minh, after "Minh pays 800000 split four" and "Lan pays 300000 split Minh, Lan, Hùng" → Minh's row on the right in black with four chips, each a small shape and `200`; Lan's row on the left with her blue diamond and "Chia đều 3 · phần bạn 100.000"; balance block "Bạn được nhận", "500.000 đ", "Thu về".
 3. An expense paid by Hùng and split only between Lan and Thu → a left-aligned row reading "Chia đều 2 · bạn không có phần".
-4. An expense of 100000 paid by Minh and split between Minh, Lan and Hùng → the black row shows `Minh 33.334 · Lan 33.333 · Hùng 33.333`, in full, not rounded.
+4. An expense of 100000 paid by Minh and split between Minh, Lan and Hùng → the black row's chips show `33.334`, `33.333`, `33.333`, in full, not rounded.
 5. Insert an expense dated yesterday and one dated last week → separators "Hôm qua" and a `dd/MM/yyyy` date, in chronological order.
 6. With 120 expenses → the page opens at the newest; scrolling up loads older pages twice; the row under the finger does not jump; no expense appears twice.
 7. Open `/g/<Minh's group>` as Lan and `/g/not-a-uuid` → "Không tìm thấy nhóm này." both times.
@@ -821,7 +803,7 @@ git commit -m "feat(web): add group screen with expense stream and balance block
 
 ---
 
-### Task 9: Web — manual expense form (S8)
+### Task 1A.9: Web — manual expense form (S8)
 
 **Files:**
 - Create: `apps/web/src/components/expense-form/AmountField.tsx`, `apps/web/src/components/expense-form/CategoryPicker.tsx`, `apps/web/src/components/expense-form/MemberToggleGrid.tsx`, `apps/web/src/components/expense-form/ExpenseForm.tsx`, `apps/web/src/app/g/[groupId]/tx/new/page.tsx`
@@ -914,7 +896,7 @@ git commit -m "feat(web): add manual expense form with live equal-split preview"
 
 ---
 
-### Task 10: Web — balances and settlements (S5)
+### Task 1A.10: Web — balances and settlements (S5)
 
 **Files:**
 - Create: `apps/web/src/components/balances/SettlementCard.tsx`, `apps/web/src/components/balances/BalanceBars.tsx`, `apps/web/src/components/balances/AllSettled.tsx`, `apps/web/src/app/g/[groupId]/balances/page.tsx`
@@ -985,7 +967,7 @@ git commit -m "feat(web): add balances screen with suggested settlements"
 
 ---
 
-### Task 11: Web — members and group settings (S10, S11)
+### Task 1A.11: Web — members and group settings (S10, S11)
 
 **Files:**
 - Create: `apps/web/src/components/members/MemberRow.tsx`, `apps/web/src/components/members/MemberEditor.tsx`, `apps/web/src/components/members/AddMemberRow.tsx`, `apps/web/src/components/ui/Switch.tsx`, `apps/web/src/app/g/[groupId]/members/page.tsx`, `apps/web/src/app/g/[groupId]/settings/page.tsx`
@@ -1074,57 +1056,44 @@ git commit -m "feat(web): add member management and group settings screens"
 
 ---
 
-### Task 12: Milestone 1A acceptance run and README
+### Task 1A.12: README and stage gate 1A
 
 **Files:**
 - Modify: `README.md`
 
-**Interfaces:**
-- Consumes: everything from Tasks 1–11.
-- Produces: README "Common commands" gains `pnpm db:check-balances` with one sentence on when to run it.
-
 - [ ] **Step 1: Update the README**
 
-- [ ] **Step 2: `pnpm check && pnpm build`**
+"Common commands" gains `pnpm db:check-balances` with one sentence on when to run it.
 
-Expected: both pass with no type warnings.
+- [ ] **Step 2: Run stage gate 1A**
 
-- [ ] **Step 3: Exercise from a clean state**
-
-Run: `docker compose down -v`, then `pnpm dev`. In the browser, as Minh, with no `curl`:
+Follow "Stage gate" in `00-overview.md`. The acceptance script for this stage, on a freshly reset database (`docker compose down -v`, then start everything), signed in as Minh through the dev login, using `curl` only:
 
 1. Create "Đà Lạt 12/2026" with Lan, Hùng, Thu.
-2. Add: "Vé cáp treo" 800.000, Minh pays, all four; "Lẩu" 300.000, Lan pays, Minh, Lan, Hùng; "Cà phê" 100.000, Minh pays, Minh, Lan, Hùng.
-3. Balances with "Gộp nợ" on → Minh +566.666, Lan −33.333, Hùng −333.333, Thu −200.000; three transfers to Minh.
-4. Turn "Gộp nợ" off → four transfers: Lan→Minh 133.333, Hùng→Minh 233.333, Hùng→Lan 100.000, Thu→Minh 200.000.
-5. Deactivate Thu, add "Taxi" 90.000, Minh pays → the form offers three people; Thu still owes 200.000.
+2. Create: "Vé cáp treo" 800000, Minh pays, all four; "Lẩu" 300000, Lan pays, split Minh, Lan, Hùng; "Cà phê" 100000, Minh pays, split Minh, Lan, Hùng.
+3. `GET …/balances` with "Gộp nợ" on → Minh +566666, Lan −33333, Hùng −333333, Thu −200000; transfers Hùng→Minh 333333, Thu→Minh 200000, Lan→Minh 33333.
+4. `PATCH` `minimizeDebts: false` → transfers Lan→Minh 133333, Hùng→Minh 233333, Hùng→Lan 100000, Thu→Minh 200000; balances unchanged.
+5. Deactivate Thu; create "Taxi" 90000, Minh pays, split Minh, Lan, Hùng → shares 30000 each; Thu's balance is still −200000.
 6. `pnpm db:check-balances` → `All groups balanced`.
-7. Sign in as Lan in a private window → no groups; pasting the group address shows "Không tìm thấy nhóm này."
+7. Permission matrix rows active in this stage: every endpoint of Tasks 3–6 called as owner (Minh) succeeds and as outsider (Lan) returns 404 with a body identical to that of a random UUID.
 
-Paste the observed balances and transfers into the report. If any number differs from steps 3 and 4, stop and report; do not adjust the expected values.
+If a number differs from steps 3–5, the code is wrong; do not adjust the expected values.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add -A
 git commit -m "docs(repo): document the balance check command"
 ```
 
-**Manual checks for the project owner — milestone 1A completion criteria**
-1. Run `docker compose down -v` and `pnpm dev`, then follow Step 3 yourself on a phone-sized window → every number matches.
+**Manual checks for the project owner — stage 1A**
+1. On a phone-sized window, create the group and the three expenses of the acceptance script through the screens → the balances screen shows the numbers of steps 3 and 4.
 2. Recording the "Cà phê" expense takes three interactions after opening the form.
 3. Reload any screen → nothing is lost; you are still Minh.
 4. Walk S2 → S3 → S4 → S8 → S5 → S10 → S11 using only the keyboard.
-5. Run `pnpm db:check-balances` → `All groups balanced`.
 
 ---
 
-## Out of scope for this plan
+## Not in this stage
 
-Do not build any of the following; they belong to later milestones. Record needs you notice under "Out of scope" in the task report.
-
-- **1B:** invite link and QR, joining, "tôi là người này" (FR-1.24), viewer role in the UI, changing roles, leaving a group, realtime (SSE), Google and email sign-in, rate limiting, `user_identities`.
-- **1C:** exact, shares and percent splits; multiple payers; transfers and income; recording a settlement ("Đã nhận", "Đã trả"); the transaction type switch.
-- **1D:** the typing box parser, confirmation card, sample sentences.
-- **1E:** editing, deleting and restoring transactions; `GET …/transactions/{id}`; the activity screen and activity lines in the stream; deleting a group; offline banner; motion; remaining NFRs (500-transaction load time).
-- **Deferred design work:** the 6 × 8 member palette, desktop layout, shadcn/ui adoption.
+Everything listed in the later stage files. Do not build ahead: a later stage's task defines its own interfaces.

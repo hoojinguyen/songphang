@@ -217,3 +217,12 @@ Các ứng viên chưa xếp giai đoạn. Sau mỗi giai đoạn, xem lại dan
 | Hoãn hạ tầng quá lâu, đến lúc đưa lên máy chủ mới lộ vấn đề | App chỉ chạy được trên máy phát triển | Dùng cùng Postgres và cùng Docker Compose ở local và máy chủ; cấu hình đọc từ biến môi trường ngay từ đầu |
 | Tích hợp bên ngoài không khả thi | Khảo sát cho kết quả xấu | Các mốc 2E, 4E đã được đánh dấu là tuỳ chọn |
 | Làm ba client khiến mỗi tính năng tốn gấp ba | Tốc độ ra tính năng giảm mạnh sau giai đoạn 5 | Giữ logic ở server; cân nhắc tính năng nào chỉ cần có trên web |
+
+## 7. Amendment 2026-11-12 — phase 1 in one run
+
+Approved by the project owner. Where this section differs from the text above, this section applies.
+
+- Phase 1 (1A–1E) is built in one agent run on the branch `phase-1`, following `docs/superpowers/specs/2026-11-12-phase-1-single-run-design.md` and ADR-018. Section 2, step 4 becomes: the agent builds the whole phase; the advisor reviews the branch; the owner checks by hand once.
+- FR-1.63 (pairwise debts when "Gộp nợ" is off) moves from 1C to 1A.
+- Google sign-in is written in 1B without real credentials and stays unverified until the owner creates the OAuth app. The sign-in library decision point of section 5 is closed by ADR-017.
+- Moved to the waiting list: "bơm hình" (hold a shape to grow a share); activity lines inside the expense stream. The 6 × 8 member palette and the desktop layout remain design work.
