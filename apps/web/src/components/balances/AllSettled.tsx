@@ -1,13 +1,15 @@
-import type { MemberDto } from "@songphang/contract";
+import type { MemberDto, TransactionDto } from "@songphang/contract";
 import Link from "next/link";
 import { formatMoney } from "../../lib/money";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
 export function AllSettled({
+	recorded,
 	groupId,
 	members,
 	myMemberId,
 }: {
+	recorded: TransactionDto[];
 	groupId: string;
 	members: MemberDto[];
 	myMemberId: string | null;
@@ -36,6 +38,42 @@ export function AllSettled({
 					</div>
 				))}
 			</div>
+			{recorded.length > 0 && (
+				<section className="grid gap-3 rounded-[30px] bg-surface p-5">
+					<h2 className="font-extrabold">
+						{t(vi.balances.recordedTitle, { count: String(recorded.length) })}
+					</h2>
+					{recorded.slice(0, 5).map((transaction) => {
+						const from = members.find(
+							(m) => m.id === transaction.payers[0]?.memberId,
+						);
+						const to = members.find(
+							(m) => m.id === transaction.shares[0]?.memberId,
+						);
+						if (!from || !to) return null;
+						const text =
+							from.id === myMemberId
+								? t(vi.balances.youPaidMember, { name: to.name })
+								: to.id === myMemberId
+									? t(vi.balances.memberPaidYou, { name: from.name })
+									: t(vi.balances.memberPaidMember, {
+											from: from.name,
+											to: to.name,
+										});
+						return (
+							<div
+								key={transaction.id}
+								className="flex items-center gap-2 text-xs"
+							>
+								<MemberShape {...from} size={28} />
+								<span className="flex-1">{text}</span>
+								<strong>{formatMoney(transaction.amount)}</strong>
+							</div>
+						);
+					})}
+				</section>
+			)}
+
 			<Link
 				href={`/g/${groupId}`}
 				className="flex h-control-lg items-center justify-center rounded-pill bg-ink font-bold text-surface"

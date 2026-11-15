@@ -12,3 +12,10 @@ export function useBalances(groupId: string) {
 			),
 	});
 }
+
+export function settlementHref(
+	groupId: string,
+	transfer: { fromMemberId: string; toMemberId: string; amount: number },
+) {
+	return `/g/${encodeURIComponent(groupId)}/settle?from=${encodeURIComponent(transfer.fromMemberId)}&to=${encodeURIComponent(transfer.toMemberId)}&amount=${transfer.amount}`;
+}

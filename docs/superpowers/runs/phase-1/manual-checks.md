@@ -156,3 +156,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Enter 300000 and private amounts 80000/60000/40000, spread remainder → 120000/100000/80000. Enter 150000 with two blanks → 150000/75000/75000.
 3. Try a 320000 split on 300000 or percent total 99 → save disabled; correct the total → save enabled.
 4. Close/reopen and remove/add participants → state remains as specified; every field is labelled with the member name.
+
+## Settlement recording — 1C.5
+1. Compare GE5, GE13 and GE12; no Nhắc or Xác nhận buttons.
+2. Settle a suggested transfer in full and one in part → remaining suggestion is the unpaid part.
+3. After settling everything, compare with GE18 and inspect the recorded list.
+4. Double-tap Ghi nhận → one transfer. Empty amount disables saving; made-up member URL returns to balances.

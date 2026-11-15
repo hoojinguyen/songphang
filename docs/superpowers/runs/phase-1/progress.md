@@ -55,7 +55,7 @@ Not verified:
 - [x] 1C.1 `core`: rounding function, all split methods, debt attribution
 - [x] 1C.2 API: every transaction type and split
 - [x] 1C.3 Web: transaction type, several payers, transfer and income forms
-- [ ] 1C.4 Web: split editor
+- [x] 1C.4 Web: split editor
 - [ ] 1C.5 Web: settling, and transfers and income in the stream
 - [ ] 1C.6 Stage gate 1C
 
@@ -1558,4 +1558,23 @@ Security review: relevant items 1, 2, 6, 7, 8 inspected across all new/changed f
 Decisions: same-directory ParticipantFields and use-split-state split keep ExpenseForm below 200 lines; aria labels use localized wording. Pixel size is integer geometry derived from the server preview, distinct from money allocation.
 Deviations: none in behavior; focused form/split controller functions exceed 40 lines because they own the single coherent state. No extra state framework introduced.
 Not verified: complete keyboard-only traversal and visual comparison with GE4/GE16; field labels and button semantics were inspected/exercised through the browser. Debounced preview can briefly retain the prior valid preview until the new response arrives, as with the existing preview hook.
+Out of scope: none.
+
+Commit 1C.4: `ea0c74e`.
+
+## Task 1C.5 — Approach
+- Link settlement suggestions to a validated recording form with one idempotency key per mount.
+- Separate the viewer's outgoing transfers from other suggestions and hide recording controls for viewers/unverified accounts.
+- Render income/transfer ledger pills from normalized server transactions.
+- Add the recent-transfer card to the settled state using existing paginated transaction data.
+- Exercise full/partial recording, duplicate submission and invalid query fallback against the fixed ledger.
+
+### Task 1C.5 — Results
+pnpm check: passed (193 files; all workspace typechecks Done). Balance checker: five groups sum 0/mismatches 0; `All groups balanced`.
+Fresh fixed T1–T4 fixture had 500001/-120000/-170001/-210000. Browser Minh: Thu's Đã nhận opened a 210000 form with the correct whole-debt status. Double-click Ghi nhận → one 210000 transfer, Thu suggestion disappeared and Minh balance became 290001. Stream displayed exactly `Thu đã chuyển cho bạn 210.000 đ`. Made-up sender/receiver UUIDs redirected to balances.
+Browser Lan: `Bạn chuyển 1 lần là xong`, own card `Bạn trả Minh 120.000`; recorded 100000 → `Bạn trả Minh 20.000`, balance -20000. Empty amount disabled Ghi nhận. Recorded remaining 20000 and Hùng 170001 → all four balances 0, transfers empty, `Cả nhóm đã xong.` and four recorded lines. API read showed exactly four transfers: 170001, 20000, 100000, 210000 (one after double click).
+Security review: relevant items 1, 2, 6, 7, 8 inspected across page, form, cards, pills, query helper and message diff. Query ids/amount validated with Zod and actual group members; viewer form denied, write controls require verified editor role; one mount key plus synchronous submit guard; API remains authoritative. No calculated official shares, unsafe redirect/markup/storage, dependencies or external calls.
+Decisions: settled history loads existing transaction pages until exhausted to count transfers accurately while rendering only five most recent; SettlementForm split in the existing balances directory. Balances page is 202 lines because loading/access/error/render branches remain explicit; no separate screen-state abstraction introduced.
+Deviations: none in behavior.
+Not verified: GE5/GE13/GE12/GE18 visual comparisons; alternate date selection, very long paginated settlement history and viewer UI for this screen were not exercised (server permission matrix already covers transfers).
 Out of scope: none.

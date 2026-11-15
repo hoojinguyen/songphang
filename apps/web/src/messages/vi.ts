@@ -1,4 +1,17 @@
 export const vi = {
+	settle: {
+		titleReceived: "Ghi nhận đã nhận",
+		titlePaid: "Ghi nhận đã trả",
+		title: "Ghi nhận thanh toán",
+		amountLabel: "Số tiền {name} đã trả",
+		partialHint:
+			"{name} trả ít hơn? Sửa con số, phần còn lại vẫn nằm trong sổ.",
+		today: "Hôm nay",
+		yesterday: "Hôm qua",
+		otherDay: "Ngày khác",
+		clears: "Sau khoản này {name} không còn nợ ai",
+		submit: "Ghi nhận {amount}",
+	},
 	split: {
 		changeLabel: "Đổi cách chia",
 		change: "{method} · đổi cách chia",
@@ -185,6 +198,17 @@ export const vi = {
 		settingsLink: "Cài đặt nhóm",
 	},
 	balances: {
+		youPayHeadline: "Bạn chuyển {count} lần là xong",
+		youPayHint: "Chuyển xong thì bấm Đã trả để sổ khớp.",
+		collectHint: "Ít lượt chuyển nhất có thể. Bấm Đã nhận khi tiền về.",
+		received: "Đã nhận",
+		paid: "Đã trả",
+		record: "Ghi nhận",
+		othersTitle: "Lượt của người khác",
+		recordedTitle: "{count} lượt chuyển đã ghi nhận",
+		memberPaidYou: "{name} đã trả bạn",
+		youPaidMember: "Bạn đã trả {name}",
+		memberPaidMember: "{from} đã trả {to}",
 		headline: "{count} lượt chuyển là xong",
 		minimizedHint: "Ít lượt chuyển nhất có thể.",
 		pairwiseHint:
@@ -242,6 +266,11 @@ export const vi = {
 		save: "Lưu khoản chi",
 	},
 	feed: {
+		transferToYou: "{name} đã chuyển cho bạn {amount}",
+		transferFromYou: "Bạn đã chuyển cho {name} {amount}",
+		transferOther: "{from} đã chuyển cho {to} {amount}",
+		income: "{name} nhận về {amount} · {description}",
+		incomeYou: "Bạn nhận về {amount} · {description}",
 		chooseShape: "Chọn hình của bạn trong nhóm",
 		inviteLink: "Mời bạn vào nhóm",
 		membersLink: "Thành viên và lời mời",

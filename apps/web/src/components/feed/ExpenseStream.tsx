@@ -5,6 +5,7 @@ import { dayLabel, type useTransactions } from "../../lib/transactions";
 import { vi } from "../../messages/vi";
 import { LoadError } from "../ui/LoadError";
 import { ExpenseRow } from "./ExpenseRow";
+import { LedgerPill } from "./LedgerPill";
 export function ExpenseStream({
 	query,
 	members,
@@ -90,11 +91,19 @@ export function ExpenseStream({
 									{label}
 								</p>
 							)}
-							<ExpenseRow
-								transaction={transaction}
-								members={members}
-								myMemberId={myMemberId}
-							/>
+							{transaction.type === "expense" ? (
+								<ExpenseRow
+									transaction={transaction}
+									members={members}
+									myMemberId={myMemberId}
+								/>
+							) : (
+								<LedgerPill
+									transaction={transaction}
+									members={members}
+									myMemberId={myMemberId}
+								/>
+							)}
 						</Fragment>
 					);
 				})}

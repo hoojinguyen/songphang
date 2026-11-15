@@ -1,25 +1,49 @@
 "use client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect } from "react";
 import { AllSettled } from "../../../../components/balances/AllSettled";
 import { BalanceBars } from "../../../../components/balances/BalanceBars";
+import { OtherSettlements } from "../../../../components/balances/OtherSettlements";
+import { OwnSettlementCard } from "../../../../components/balances/OwnSettlementCard";
 import { SettlementCard } from "../../../../components/balances/SettlementCard";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { useBalances } from "../../../../lib/balances";
 import { useGroup } from "../../../../lib/groups";
 import { useMembers } from "../../../../lib/members";
+import { useMe } from "../../../../lib/session";
 import { useTransactions } from "../../../../lib/transactions";
 import { useSessionGuard } from "../../../../lib/use-session-guard";
 import { t, vi } from "../../../../messages/vi";
 export default function BalancesPage() {
 	const { groupId } = useParams<{ groupId: string }>();
+	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
 	const balances = useBalances(groupId);
 	const transactions = useTransactions(groupId);
 	const error =
-		group.error ?? members.error ?? balances.error ?? transactions.error;
+		group.error ??
+		members.error ??
+		balances.error ??
+		transactions.error ??
+		me.error;
+	useEffect(() => {
+		if (
+			balances.data?.transfers.length === 0 &&
+			transactions.hasNextPage &&
+			!transactions.isFetchingNextPage &&
+			!transactions.isFetchNextPageError
+		)
+			void transactions.fetchNextPage();
+	}, [
+		balances.data,
+		transactions.hasNextPage,
+		transactions.isFetchingNextPage,
+		transactions.isFetchNextPageError,
+		transactions.fetchNextPage,
+	]);
 	useSessionGuard(error);
 	if (error?.status === 404)
 		return (
@@ -31,6 +55,7 @@ export default function BalancesPage() {
 			</main>
 		);
 	if (
+		me.isPending ||
 		group.isPending ||
 		members.isPending ||
 		balances.isPending ||
@@ -48,6 +73,7 @@ export default function BalancesPage() {
 			</main>
 		);
 	if (
+		me.isError ||
 		group.isError ||
 		members.isError ||
 		balances.isError ||
@@ -57,6 +83,7 @@ export default function BalancesPage() {
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
 				<LoadError
 					onRetry={() => {
+						void me.refetch();
 						void group.refetch();
 						void members.refetch();
 						void balances.refetch();
@@ -84,6 +111,11 @@ export default function BalancesPage() {
 					first.toMemberId === group.data.myMemberId,
 			),
 	);
+	const own = transfers.filter(
+		(transfer) => transfer.fromMemberId === group.data.myMemberId,
+	);
+	const canEdit = me.data.emailVerified && group.data.role !== "viewer";
+
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 py-6">
 			<ScreenHeader
@@ -98,6 +130,9 @@ export default function BalancesPage() {
 				</div>
 			) : transfers.length === 0 ? (
 				<AllSettled
+					recorded={transactions.data.pages
+						.flatMap((page) => page.transactions)
+						.filter((transaction) => transaction.type === "transfer")}
 					groupId={groupId}
 					members={members.data}
 					myMemberId={group.data.myMemberId}
@@ -106,22 +141,56 @@ export default function BalancesPage() {
 				<>
 					<div>
 						<h2 className="text-[34px] font-black">
-							{t(vi.balances.headline, { count: String(transfers.length) })}
+							{t(
+								own.length > 0
+									? vi.balances.youPayHeadline
+									: vi.balances.headline,
+								{
+									count: String(own.length > 0 ? own.length : transfers.length),
+								},
+							)}
 						</h2>
 						<p className="mt-2 text-sm text-muted">
-							{balances.data.minimized
-								? vi.balances.minimizedHint
-								: vi.balances.pairwiseHint}
+							{own.length > 0
+								? vi.balances.youPayHint
+								: balances.data.minimized
+									? vi.balances.collectHint
+									: vi.balances.pairwiseHint}
 						</p>
 					</div>
-					{transfers.map((transfer) => (
-						<SettlementCard
-							key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
-							transfer={transfer}
-							members={members.data}
-							myMemberId={group.data.myMemberId}
-						/>
-					))}
+					{own.length > 0 ? (
+						<>
+							{own.map((transfer) => (
+								<OwnSettlementCard
+									key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
+									groupId={groupId}
+									transfer={transfer}
+									members={members.data}
+									canEdit={canEdit}
+								/>
+							))}
+							<OtherSettlements
+								groupId={groupId}
+								transfers={transfers.filter(
+									(transfer) => transfer.fromMemberId !== group.data.myMemberId,
+								)}
+								members={members.data}
+								canEdit={canEdit}
+							/>
+						</>
+					) : (
+						transfers.map((transfer) => (
+							<SettlementCard
+								key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
+								groupId={groupId}
+								transfer={transfer}
+								members={members.data}
+								myMemberId={group.data.myMemberId}
+								canEdit={canEdit}
+							/>
+						))
+					)}
+
 					<BalanceBars
 						balances={balances.data.balances}
 						members={members.data}
