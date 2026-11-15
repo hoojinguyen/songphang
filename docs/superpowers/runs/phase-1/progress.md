@@ -56,7 +56,7 @@ Not verified:
 - [x] 1C.2 API: every transaction type and split
 - [x] 1C.3 Web: transaction type, several payers, transfer and income forms
 - [x] 1C.4 Web: split editor
-- [ ] 1C.5 Web: settling, and transfers and income in the stream
+- [x] 1C.5 Web: settling, and transfers and income in the stream
 - [ ] 1C.6 Stage gate 1C
 
 ### Gate 1C
@@ -1578,3 +1578,221 @@ Decisions: settled history loads existing transaction pages until exhausted to c
 Deviations: none in behavior.
 Not verified: GE5/GE13/GE12/GE18 visual comparisons; alternate date selection, very long paginated settlement history and viewer UI for this screen were not exercised (server permission matrix already covers transfers).
 Out of scope: none.
+
+Commit 1C.5: `754a361`.
+
+## Task 1C.6 — Approach
+- Build with outbound networking denied and reset the local compose database.
+- Replay C's fixed ledger/refusals, then B's account/sharing acceptance and A's original ledger acceptance using curl.
+- Record each endpoint/caller permission outcome and normalized unknown-group errors.
+- Run pnpm check and the independent balance checker before the gate commit.
+
+### Stage 1C gate — actual acceptance and permission output
+```text
+dev login minh [204, null]
+dev login lan [204, null]
+dev login hung [204, null]
+dev login thu [204, null]
+create group 201
+1C T1 [201, [{"memberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 120000}, {"memberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "amount": 100000}, {"memberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "amount": 80000}]]
+1C T2 [201, [{"memberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 480000}, {"memberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "amount": 240000}, {"memberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "amount": 240000}, {"memberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "amount": 240000}]]
+1C T3 [201, [{"memberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 50000}, {"memberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "amount": 50000}, {"memberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "amount": 50000}, {"memberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "amount": 50000}]]
+1C T4 [201, [{"memberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 49999}, {"memberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "amount": 30000}, {"memberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "amount": 20000}]]
+1C minimized [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "balance": 500001}, {"memberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "balance": -120000}, {"memberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "balance": -170001}, {"memberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "balance": -210000}], "transfers": [{"fromMemberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "toMemberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 210000}, {"fromMemberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "toMemberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 170001}, {"fromMemberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "toMemberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 120000}]}]
+1C T5 201
+1C after T5 [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "balance": 290001}, {"memberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "balance": -120000}, {"memberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "balance": -170001}, {"memberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "balance": 0}], "transfers": [{"fromMemberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "toMemberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 170001}, {"fromMemberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "toMemberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 120000}]}]
+1C pairwise [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "balance": 290001}, {"memberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "balance": -120000}, {"memberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "balance": -170001}, {"memberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "balance": 0}], "transfers": [{"fromMemberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "toMemberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "amount": 50000}, {"fromMemberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "toMemberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 150000}, {"fromMemberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "toMemberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 190001}, {"fromMemberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "toMemberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "amount": 30000}, {"fromMemberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "toMemberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "amount": 20000}]}]
+1C received minus paid {"Minh": 290001, "Lan": -120000, "Hùng": -170001, "Thu": 0}
+1C exact mismatch [400, {"error": {"code": "SPLIT_TOTAL_MISMATCH", "message": "Split total differs from amount", "details": {"expected": 300000, "actual": 320000}, "requestId": "01a1e016-5ce9-7376-a874-d2ee3f031b7d"}}]
+1C payer mismatch [400, {"error": {"code": "PAYER_TOTAL_MISMATCH", "message": "Payer total differs from amount", "details": {"expected": 1200000, "actual": 1100000}, "requestId": "01a1e016-5cf7-7ba3-ab8f-f45854b18c49"}}]
+1C percent mismatch [400, {"error": {"code": "SPLIT_TOTAL_MISMATCH", "message": "Split total differs from amount", "details": {"expected": 100, "actual": 99}, "requestId": "01a1e016-5d04-7899-9972-4acd4f171c1b"}}]
+1C self transfer [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"body": ["Invalid input"]}, "requestId": "01a1e016-5d10-7cfe-b91c-88ca566fad3d"}}]
+1C weight precision [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.entries.0.weight": ["Invalid string: must match pattern /^\\d{1,4}(\\.\\d{1,2})?$/"]}, "requestId": "01a1e016-5d1a-7018-a923-a948506f79cb"}}]
+1C negative percent [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.entries.0.percent": ["Invalid string: must match pattern /^\\d{1,3}(\\.\\d{1,2})?$/"]}, "requestId": "01a1e016-5d24-7858-b337-79cb3e1affac"}}]
+1C outside entry [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split": ["Invalid input"]}, "requestId": "01a1e016-5d2f-7b3b-9e66-31ca30c4516d"}}]
+1C preview [200, {"shares": [{"memberId": "01a1e016-5c2b-7877-a3be-8d722707478f", "amount": 480000}, {"memberId": "01a1e016-5c2e-7bc8-89cf-f8317f59f5ee", "amount": 240000}, {"memberId": "01a1e016-5c2f-709b-8527-3c9931673dba", "amount": 240000}, {"memberId": "01a1e016-5c30-70ca-bcff-c3eb12d5166d", "amount": 240000}]}]
+1C stored count 5
+1B register [204, null]
+1B unverified write [403, {"error": {"code": "EMAIL_NOT_VERIFIED", "message": "Email verification required", "requestId": "01a1e016-5d84-7734-a17d-03a07dfab7e1"}}]
+1B verify [204, null]
+create group 201
+1B preview [200, {"group": {"id": "01a1e016-5dce-7d3a-8586-101f1e28d539", "name": "Đà Lạt 12/2026"}, "ownerName": "Minh", "memberCount": 4, "transactionCount": 2, "members": [{"id": "01a1e016-5dcf-75c8-b8f5-d38190106cae", "name": "Minh", "shape": "circle", "color": "mint", "claimed": true, "balance": null}, {"id": "01a1e016-5dd0-7d9e-9c41-1ede83b9705f", "name": "Lan", "shape": "diamond", "color": "sky", "claimed": false, "balance": 0}, {"id": "01a1e016-5dd0-7d9e-9c41-1edfdc0b9335", "name": "Hùng", "shape": "squircle", "color": "coral", "claimed": false, "balance": -300000}, {"id": "01a1e016-5dd1-722a-97b3-032755a5ea38", "name": "Thu", "shape": "leaf", "color": "lilac", "claimed": false, "balance": -200000}], "alreadyJoined": false}]
+1B Lan join [200, {"groupId": "01a1e016-5dce-7d3a-8586-101f1e28d539"}]
+1B Ngân join [200, {"groupId": "01a1e016-5dce-7d3a-8586-101f1e28d539"}]
+1B Hùng join [200, {"groupId": "01a1e016-5dce-7d3a-8586-101f1e28d539"}]
+1B Lan list [200, {"groups": [{"id": "01a1e016-5dce-7d3a-8586-101f1e28d539", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1e016-5dcf-75c8-b8f5-d38190106cae", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1e016-5dd0-7d9e-9c41-1ede83b9705f", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1e016-5dd0-7d9e-9c41-1edfdc0b9335", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1e016-5dd1-722a-97b3-032755a5ea38", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": 0}]}]
+1B Hùng list [200, {"groups": [{"id": "01a1e016-5dce-7d3a-8586-101f1e28d539", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1e016-5dcf-75c8-b8f5-d38190106cae", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1e016-5dd0-7d9e-9c41-1ede83b9705f", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1e016-5dd0-7d9e-9c41-1edfdc0b9335", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1e016-5dd1-722a-97b3-032755a5ea38", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": -300000}]}]
+1B viewer write [403, {"error": {"code": "FORBIDDEN", "message": "Insufficient group role", "requestId": "01a1e016-5e87-717e-811d-d3138f7184c5"}}]
+1B viewer read 200
+1B SSE within 2s ": connected\n\nevent: changed\ndata: {\"resources\":[\"transactions\",\"balances\",\"activity\"]}\n\n"
+1B remove Hùng [204, null]
+1B removed read [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found", "requestId": "01a1e016-60fa-79ab-8e16-bc8473e37395"}}]
+1B preserved balance [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e016-5dcf-75c8-b8f5-d38190106cae", "balance": 566666}, {"memberId": "01a1e016-5dd0-7d9e-9c41-1ede83b9705f", "balance": -33333}, {"memberId": "01a1e016-5dd0-7d9e-9c41-1edfdc0b9335", "balance": -333333}, {"memberId": "01a1e016-5dd1-722a-97b3-032755a5ea38", "balance": -200000}, {"memberId": "01a1e016-5e3a-7dd7-a959-b179e71099a4", "balance": 0}], "transfers": [{"fromMemberId": "01a1e016-5dd0-7d9e-9c41-1edfdc0b9335", "toMemberId": "01a1e016-5dcf-75c8-b8f5-d38190106cae", "amount": 333333}, {"fromMemberId": "01a1e016-5dd1-722a-97b3-032755a5ea38", "toMemberId": "01a1e016-5dcf-75c8-b8f5-d38190106cae", "amount": 200000}, {"fromMemberId": "01a1e016-5dd0-7d9e-9c41-1ede83b9705f", "toMemberId": "01a1e016-5dcf-75c8-b8f5-d38190106cae", "amount": 33333}]}]
+1B old invite [404, {"error": {"code": "INVITE_INVALID", "message": "Invite is invalid", "requestId": "01a1e016-612b-7d0b-a645-1334629fdd83"}}]
+1B forgot [204, null]
+1B reset [204, null]
+1B sessions after reset [401, 401]
+1B existing register [204, null]
+1B new register [204, null]
+1B known forgot [204, null]
+1B unknown forgot [204, null]
+create group 201
+1A Vé cáp treo 201
+1A Lẩu 201
+1A Cà phê 201
+1A minimized [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e016-61e5-78b5-b48f-903079559391", "balance": 566666}, {"memberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "balance": -33333}, {"memberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "balance": -333333}, {"memberId": "01a1e016-61e7-711e-88f9-3786a54d8e92", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 333333}, {"fromMemberId": "01a1e016-61e7-711e-88f9-3786a54d8e92", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 200000}, {"fromMemberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 33333}]}]
+1A pairwise [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e016-61e5-78b5-b48f-903079559391", "balance": 566666}, {"memberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "balance": -33333}, {"memberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "balance": -333333}, {"memberId": "01a1e016-61e7-711e-88f9-3786a54d8e92", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 133333}, {"fromMemberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 233333}, {"fromMemberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "toMemberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "amount": 100000}, {"fromMemberId": "01a1e016-61e7-711e-88f9-3786a54d8e92", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 200000}]}]
+1A taxi [201, [{"memberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 30000}, {"memberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "amount": 30000}, {"memberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "amount": 30000}]]
+1A inactive balance [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e016-61e5-78b5-b48f-903079559391", "balance": 626666}, {"memberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "balance": -63333}, {"memberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "balance": -363333}, {"memberId": "01a1e016-61e7-711e-88f9-3786a54d8e92", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 163333}, {"fromMemberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 263333}, {"fromMemberId": "01a1e016-61e6-7de4-a406-c0c4c3c11e30", "toMemberId": "01a1e016-61e6-7de4-a406-c0c34dcfaf2d", "amount": 100000}, {"fromMemberId": "01a1e016-61e7-711e-88f9-3786a54d8e92", "toMemberId": "01a1e016-61e5-78b5-b48f-903079559391", "amount": 200000}]}]
+matrix GET /group minh 200
+matrix GET /group lan 200
+matrix GET /group ngan 200
+matrix GET /group hung 404
+matrix GET /group None 401
+matrix GET  malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET  random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /members minh 200
+matrix GET /members lan 200
+matrix GET /members ngan 200
+matrix GET /members hung 404
+matrix GET /members None 401
+matrix GET /members malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /members random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /users minh 200
+matrix GET /users lan 200
+matrix GET /users ngan 200
+matrix GET /users hung 404
+matrix GET /users None 401
+matrix GET /users malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /users random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /transactions minh 200
+matrix GET /transactions lan 200
+matrix GET /transactions ngan 200
+matrix GET /transactions hung 404
+matrix GET /transactions None 401
+matrix GET /transactions malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /transactions random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /balances minh 200
+matrix GET /balances lan 200
+matrix GET /balances ngan 200
+matrix GET /balances hung 404
+matrix GET /balances None 401
+matrix GET /balances malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /balances random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /events minh 200
+matrix GET /events lan 200
+matrix GET /events ngan 200
+matrix GET /events hung 404
+matrix GET /events None 401
+matrix GET /events malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /events random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /invite minh 200
+matrix GET /invite lan 200
+matrix GET /invite ngan 403
+matrix GET /invite hung 404
+matrix GET /invite None 401
+matrix GET /invite malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /invite random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /members minh 201
+matrix POST /members lan 201
+matrix POST /members ngan 403
+matrix POST /members hung 404
+matrix POST /members None 401
+matrix POST /members malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /members random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /members/01a1e016-62a6-7cb1-b089-4ba85153eeda minh 200
+matrix PATCH /members/01a1e016-62a6-7cb1-b089-4ba85153eeda lan 200
+matrix PATCH /members/01a1e016-62a6-7cb1-b089-4ba85153eeda ngan 403
+matrix PATCH /members/01a1e016-62a6-7cb1-b089-4ba85153eeda hung 404
+matrix PATCH /members/01a1e016-62a6-7cb1-b089-4ba85153eeda None 401
+matrix PATCH /members/01a1e016-62a6-7cb1-b089-4ba85153eeda malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /members/01a1e016-62a6-7cb1-b089-4ba85153eeda random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions minh 201
+matrix POST /transactions lan 201
+matrix POST /transactions ngan 403
+matrix POST /transactions hung 404
+matrix POST /transactions None 401
+matrix POST /transactions malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions/preview minh 200
+matrix POST /transactions/preview lan 200
+matrix POST /transactions/preview ngan 403
+matrix POST /transactions/preview hung 404
+matrix POST /transactions/preview None 401
+matrix POST /transactions/preview malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions/preview random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /group minh 200
+matrix PATCH /group lan 403
+matrix PATCH /group ngan 403
+matrix PATCH /group hung 404
+matrix PATCH /group None 401
+matrix PATCH  malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH  random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /invite minh 200
+matrix PATCH /invite lan 403
+matrix PATCH /invite ngan 403
+matrix PATCH /invite hung 404
+matrix PATCH /invite None 401
+matrix PATCH /invite malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /invite random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /invite/rotate minh 200
+matrix POST /invite/rotate lan 403
+matrix POST /invite/rotate ngan 403
+matrix POST /invite/rotate hung 404
+matrix POST /invite/rotate None 401
+matrix POST /invite/rotate malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /invite/rotate random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 minh 200
+matrix PATCH /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 lan 403
+matrix PATCH /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 ngan 403
+matrix PATCH /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 hung 404
+matrix PATCH /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 None 401
+matrix PATCH /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PUT /me/member minh 200
+matrix PUT /me/member lan 200
+matrix PUT /me/member ngan 200
+matrix PUT /me/member hung 404
+matrix PUT /me/member None 401
+matrix POST /transfer-ownership lan 403
+matrix POST /transfer-ownership ngan 403
+matrix POST /transfer-ownership hung 404
+matrix POST /transfer-ownership None 401
+matrix POST /transfer-ownership minh 200
+matrix DELETE /users/user lan 403
+matrix DELETE /users/user ngan 403
+matrix DELETE /users/user hung 404
+matrix DELETE /users/user None 401
+matrix DELETE /users/user minh 204
+matrix POST /leave minh 422
+matrix POST /leave lan 204
+matrix POST /leave ngan 204
+matrix POST /leave hung 404
+matrix POST /leave None 401
+matrix DELETE /members/member minh 204
+matrix DELETE /members/member lan 204
+matrix DELETE /members/member ngan 403
+matrix DELETE /members/member hung 404
+matrix DELETE /members/member None 401
+matrix PUT /me/member malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PUT /me/member random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transfer-ownership malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transfer-ownership random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /users/01a1e014-ab3d-7ad0-9555-21a8e70ba574 random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /leave malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /leave random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /members/01a1e016-62a6-7cb1-b089-4ba85153eeda malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /members/01a1e016-62a6-7cb1-b089-4ba85153eeda random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+```
+
+### Task 1C.6 — Gate result
+Gate passed.
+pnpm build with outbound networking denied: compiled successfully, TypeScript finished, 11/11 static pages generated; settlement route included. Reset compose volume, started cached Postgres image, migrations applied and development users seeded.
+C acceptance produced every fixed T1–T5 share/balance/transfer; pairwise received-minus-paid equalled 290001/-120000/-170001/0. All seven invalid split/payer/type rows returned the specified 400 codes; preview returned exact T2 shares without increasing stored count beyond five.
+B acceptance replay passed: unverified write denied; preview/joins/balances, viewer denial/read, live SSE, removal preservation, invite rotation, reset session revocation and identical enumeration-safe responses all recorded above.
+A acceptance replay matched 566666/-33333/-333333/-200000 and all fixed minimized/pairwise transfers; Taxi shares 30000; inactive Thu -200000.
+Every existing group endpoint was called as owner/editor/viewer/outsider/signed-out; outcomes match. Every malformed/random group endpoint produced normalized NOT_FOUND 404. Balance checker: three groups sum 0/mismatches 0; `All groups balanced`. pnpm check passed (193 files; all workspace typechecks Done).
+Security review: relevant items 1, 4, 6, 8 checked against this documentation-only gate diff and observed responses; no secrets in output, no changed implementation or dependency.
+Decisions: none. Deviations: acceptance requests are orchestrated by an uncommitted temporary curl-output printer; it contains no assertions and is not a repository test.
+Not verified: device/visual/manual checks listed under C's UI tasks and real Google remain outstanding. Gate not passed: none.
