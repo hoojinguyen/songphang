@@ -140,3 +140,7 @@ Written by the implementation agent from the "Manual checks for the project owne
 
 ## Split arithmetic — 1C.1
 1. Run three rows of your choice from each task table → outputs match and each row adds up to its amount.
+
+## Transaction types and splits — 1C.2
+1. Run T1–T4 and read balances → 500001, -120000, -170001, -210000, summing to 0.
+2. Run T3 alone in a new group → Lan owes each of the other three 50.000 đ.

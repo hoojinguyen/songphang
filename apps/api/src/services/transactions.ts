@@ -7,7 +7,6 @@ import {
 	type TransactionsQuery,
 	TransactionsResponse,
 } from "@songphang/contract";
-import { splitEqually } from "@songphang/core";
 import {
 	type DbExecutor,
 	findGroup,
@@ -16,7 +15,6 @@ import {
 	insertTransaction,
 	insertTransactionPayers,
 	insertTransactionShares,
-	listGroupMembers,
 	listTransactionPayers,
 	listTransactionRows,
 	listTransactionShares,
@@ -25,6 +23,7 @@ import {
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { AppError } from "../errors.js";
+import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 
 const CURSOR_SCHEMA = z.object({ occurredAt: z.iso.datetime(), id: z.uuid() });
 function decodeCursor(cursor: string | undefined): TransactionCursor | null {
@@ -38,39 +37,6 @@ function decodeCursor(cursor: string | undefined): TransactionCursor | null {
 	} catch {
 		throw new AppError(400, "VALIDATION_FAILED", "Invalid cursor");
 	}
-}
-async function calculateShares(
-	executor: DbExecutor,
-	groupId: string,
-	request: CreateTransactionRequest,
-) {
-	const members = await listGroupMembers(executor, groupId);
-	const ids = new Set(members.map((member) => member.id));
-	if (
-		[
-			...request.payers.map((payer) => payer.memberId),
-			...request.split.members,
-		].some((id) => !ids.has(id))
-	)
-		throw new AppError(
-			400,
-			"MEMBER_NOT_IN_GROUP",
-			"Member does not belong to group",
-		);
-	const paid = request.payers.reduce((sum, payer) => sum + payer.amount, 0);
-	if (paid !== request.amount)
-		throw new AppError(
-			400,
-			"PAYER_TOTAL_MISMATCH",
-			"Payer total differs from amount",
-			{ expected: request.amount, actual: paid },
-		);
-	return splitEqually(
-		request.amount,
-		members
-			.filter((member) => request.split.members.includes(member.id))
-			.map((member) => member.id),
-	);
 }
 export async function previewTransaction(
 	deps: AppDeps,
@@ -114,19 +80,20 @@ export async function createTransaction(
 ) {
 	await lockGroup(executor, input.groupId);
 	const shares = await calculateShares(executor, input.groupId, input.request);
+	const request = normalizeTransaction(input.request);
 	const group = await findGroup(executor, input.groupId);
 	if (group === null)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	const row = await insertTransaction(executor, {
 		groupId: input.groupId,
-		type: input.request.type,
-		description: input.request.description,
-		amount: input.request.amount,
+		type: request.type,
+		description: request.description,
+		amount: request.amount,
 		currency: group.currency,
-		occurredAt: new Date(input.request.occurredAt),
-		category: input.request.category,
-		splitMethod: input.request.split.method,
-		splitInput: input.request.split,
+		occurredAt: new Date(request.occurredAt),
+		category: request.category,
+		splitMethod: request.split.method,
+		splitInput: request.split,
 		createdBy: input.userId,
 		updatedBy: input.userId,
 		createdAt: input.now,
@@ -134,7 +101,7 @@ export async function createTransaction(
 	});
 	await insertTransactionPayers(
 		executor,
-		input.request.payers.map((payer) => ({ ...payer, transactionId: row.id })),
+		request.payers.map((payer) => ({ ...payer, transactionId: row.id })),
 	);
 	await insertTransactionShares(
 		executor,
@@ -146,7 +113,7 @@ export async function createTransaction(
 		action: "create",
 		entityType: "transaction",
 		entityId: row.id,
-		summary: input.request.description,
+		summary: request.description,
 		createdAt: input.now,
 	});
 	const stored = await findTransactionRow(executor, input.groupId, row.id);

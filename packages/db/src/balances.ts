@@ -1,6 +1,12 @@
-import { sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DbExecutor } from "./client.js";
+import { members } from "./schema-groups.js";
+import {
+	transactionPayers,
+	transactionShares,
+	transactions,
+} from "./schema-transactions.js";
 
 const BALANCE_ROW = z.object({
 	memberId: z.uuid(),
@@ -41,21 +47,39 @@ export function listMemberBalances(executor: DbExecutor, groupId: string) {
 	return listBalancesForGroups(executor, [groupId]);
 }
 
-export async function listPairDebts(executor: DbExecutor, groupId: string) {
-	const rows = await executor.execute(sql`
- select s.member_id as "debtorMemberId", p.member_id as "creditorMemberId", sum(s.amount)::bigint::text as amount
- from transactions t join transaction_payers p on p.transaction_id = t.id
- join transaction_shares s on s.transaction_id = t.id
- where t.group_id = ${groupId}::uuid and t.deleted_at is null and s.amount > 0
- group by s.member_id, p.member_id
- `);
-	return z
-		.array(
-			z.object({
-				debtorMemberId: z.uuid(),
-				creditorMemberId: z.uuid(),
-				amount: z.coerce.number().int().positive().safe(),
-			}),
+export async function listLedgerSides(executor: DbExecutor, groupId: string) {
+	const payers = await executor
+		.select({
+			transactionId: transactionPayers.transactionId,
+			type: transactions.type,
+			memberId: transactionPayers.memberId,
+			amount: transactionPayers.amount,
+		})
+		.from(transactionPayers)
+		.innerJoin(
+			transactions,
+			eq(transactions.id, transactionPayers.transactionId),
 		)
-		.parse(rows);
+		.innerJoin(members, eq(members.id, transactionPayers.memberId))
+		.where(
+			and(eq(transactions.groupId, groupId), isNull(transactions.deletedAt)),
+		)
+		.orderBy(members.position);
+	const shares = await executor
+		.select({
+			transactionId: transactionShares.transactionId,
+			memberId: transactionShares.memberId,
+			amount: transactionShares.amount,
+		})
+		.from(transactionShares)
+		.innerJoin(
+			transactions,
+			eq(transactions.id, transactionShares.transactionId),
+		)
+		.innerJoin(members, eq(members.id, transactionShares.memberId))
+		.where(
+			and(eq(transactions.groupId, groupId), isNull(transactions.deletedAt)),
+		)
+		.orderBy(members.position);
+	return { payers, shares };
 }

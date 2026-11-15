@@ -173,6 +173,7 @@ export const vi = {
 		backToGroup: "Về nhóm",
 	},
 	expenseForm: {
+		defaultTransferDescription: "Chuyển khoản",
 		title: "Khoản chi mới",
 		amountLabel: "Số tiền",
 		addThousands: "000",

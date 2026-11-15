@@ -9,43 +9,130 @@ export const TransactionCategory = z.enum([
 	"bills",
 	"other",
 ]);
+const MemberIds = z
+	.array(z.uuid())
+	.min(1)
+	.max(100)
+	.refine((ids) => new Set(ids).size === ids.length);
 export const EqualSplitInput = z.object({
 	method: z.literal("equal"),
-	members: z
-		.array(z.uuid())
-		.min(1)
-		.max(100)
-		.refine((ids) => new Set(ids).size === ids.length),
+	members: MemberIds,
 });
 export type EqualSplitInput = z.infer<typeof EqualSplitInput>;
-export const CreateTransactionRequest = z
+const ExactSplitInput = z
 	.object({
-		type: z.literal("expense"),
-		description: z.string().trim().min(1).max(200),
+		method: z.literal("exact"),
+		members: MemberIds,
+		entries: z
+			.array(z.object({ memberId: z.uuid(), amount: MoneyAmount }))
+			.max(100),
+		remainder: z.enum(["none", "equal_among_blank", "equal_among_all"]),
+	})
+	.refine(
+		(split) =>
+			new Set(split.entries.map((e) => e.memberId)).size ===
+				split.entries.length &&
+			split.entries.every((e) => split.members.includes(e.memberId)) &&
+			(split.remainder !== "none" ||
+				split.entries.length === split.members.length),
+	);
+const SharesSplitInput = z
+	.object({
+		method: z.literal("shares"),
+		entries: z
+			.array(
+				z.object({
+					memberId: z.uuid(),
+					weight: z.string().regex(/^\d{1,4}(\.\d{1,2})?$/),
+				}),
+			)
+			.min(1)
+			.max(100),
+	})
+	.refine(
+		(split) =>
+			new Set(split.entries.map((e) => e.memberId)).size ===
+			split.entries.length,
+	);
+const PercentSplitInput = z
+	.object({
+		method: z.literal("percent"),
+		entries: z
+			.array(
+				z.object({
+					memberId: z.uuid(),
+					percent: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/),
+				}),
+			)
+			.min(1)
+			.max(100),
+	})
+	.refine(
+		(split) =>
+			new Set(split.entries.map((e) => e.memberId)).size ===
+			split.entries.length,
+	);
+export const SplitInput = z
+	.discriminatedUnion("method", [
+		EqualSplitInput,
+		ExactSplitInput,
+		SharesSplitInput,
+		PercentSplitInput,
+	])
+	.openapi("SplitInput");
+export type SplitInput = z.infer<typeof SplitInput>;
+const Payers = z
+	.array(z.object({ memberId: z.uuid(), amount: MoneyAmount }))
+	.min(1)
+	.max(100)
+	.refine(
+		(payers) => new Set(payers.map((p) => p.memberId)).size === payers.length,
+	);
+const LedgerFields = {
+	description: z.string().trim().min(1).max(200),
+	amount: MoneyAmount,
+	occurredAt: z.iso.datetime(),
+	category: TransactionCategory.nullable(),
+	payers: Payers,
+	split: SplitInput,
+};
+export const SplitTransactionRequest = z
+	.object({ type: z.enum(["expense", "income"]), ...LedgerFields })
+	.openapi("SplitTransactionRequest");
+export type SplitTransactionRequest = z.infer<typeof SplitTransactionRequest>;
+export const TransferRequest = z
+	.object({
+		type: z.literal("transfer"),
 		amount: MoneyAmount,
 		occurredAt: z.iso.datetime(),
-		category: TransactionCategory.nullable(),
-		payers: z
-			.array(z.object({ memberId: z.uuid(), amount: MoneyAmount }))
-			.length(1),
-		split: EqualSplitInput,
+		fromMemberId: z.uuid(),
+		toMemberId: z.uuid(),
+		description: z.string().trim().min(1).max(200).optional(),
 	})
+	.refine((request) => request.fromMemberId !== request.toMemberId)
+	.openapi("TransferRequest");
+export const CreateTransactionRequest = z
+	.discriminatedUnion("type", [SplitTransactionRequest, TransferRequest])
 	.openapi("CreateTransactionRequest");
 export type CreateTransactionRequest = z.infer<typeof CreateTransactionRequest>;
 export const ShareDto = z.object({
 	memberId: z.uuid(),
 	amount: z.int().nonnegative(),
 });
-export const TransactionDto = CreateTransactionRequest.extend({
-	id: z.uuid(),
-	currency: z.literal("VND"),
-	shares: z.array(ShareDto),
-	version: z.int().positive(),
-	createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-	createdAt: z.iso.datetime(),
-	updatedAt: z.iso.datetime(),
-	deletedAt: z.iso.datetime().nullable(),
-}).openapi("TransactionDto");
+export const TransactionDto = z
+	.object({
+		type: z.enum(["expense", "income", "transfer"]),
+		...LedgerFields,
+		id: z.uuid(),
+		currency: z.literal("VND"),
+		shares: z.array(ShareDto),
+		version: z.int().positive(),
+		createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+		createdAt: z.iso.datetime(),
+		updatedAt: z.iso.datetime(),
+		deletedAt: z.iso.datetime().nullable(),
+	})
+	.openapi("TransactionDto");
 export type TransactionDto = z.infer<typeof TransactionDto>;
 export const TransactionResponse = z
 	.object({ transaction: TransactionDto })

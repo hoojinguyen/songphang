@@ -19,6 +19,7 @@ export const ErrorCode = z
 		"MEMBER_NOT_IN_GROUP",
 		"MEMBER_HAS_TRANSACTIONS",
 		"PAYER_TOTAL_MISMATCH",
+		"SPLIT_TOTAL_MISMATCH",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

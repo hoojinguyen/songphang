@@ -154,3 +154,9 @@ Problem: stage 1B build with outbound networking denied failed because next/font
 Options: permit external requests (forbidden); fall back to a different font; self-host the exact cached font resources.
 Choice: keep all six approved weights and Vietnamese/Latin/Latin-extended subsets as source WOFF2 assets under public/fonts/be-vietnam-pro, with explicit CSS faces and the same fallback metrics. Copy the existing SIL OFL 1.1 license from the local Kệ Hàng font source. No download or new dependency.
 Reason: preserves the approved typography while making builds independent of a remote service. The source font bytes are unchanged; generated Next CSS, source maps and build directories are not committed.
+
+## D24 — Single source for the transfer default description
+Problem: API transfers default to the Vietnamese product description, while the owner's rule requires all product literals to live only in apps/web/src/messages/vi.ts. Duplicating the literal in the API/contract would violate that rule.
+Options: duplicate text; change the default; import the pure message module for this one default.
+Choice: the API normalization module imports only the pure vi.ts message object for the approved default. It imports no web framework/runtime code.
+Reason: preserves the exact API default and the owner's single-copy rule. This is a narrow dependency-direction exception to the plan that requires advisor review; the owner instruction has higher priority.

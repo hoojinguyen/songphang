@@ -52,7 +52,7 @@ Not verified:
 
 ## Stage 1C — Splits and settlements
 
-- [ ] 1C.1 `core`: rounding function, all split methods, debt attribution
+- [x] 1C.1 `core`: rounding function, all split methods, debt attribution
 - [ ] 1C.2 API: every transaction type and split
 - [ ] 1C.3 Web: transaction type, several payers, transfer and income forms
 - [ ] 1C.4 Web: split editor
@@ -1480,4 +1480,44 @@ pnpm check: passed (178 files; all workspace typechecks Done). All eight allocat
 Security review: relevant items 1, 2, 8 inspected against the complete pure-core diff: no I/O, dependencies, secrets or external inputs bypassing validation. BigInt products/division/remainders appear only in allocateByWeights; decimal hundredths remain integers. Exact allocations keep position order; zero shares are retained. Attribution conserves remaining payer capacity and skips zero rows.
 Decisions: none. Deviations: none. The exact-case function is slightly above 40 lines because validation and the three remainder branches form one bounded operation; file remains below 200 lines.
 Not verified: exhaustive arbitrary-input exploration; no automated tests by project rule.
+Out of scope: none.
+
+Commit 1C.1: `3a5235c`.
+
+## Task 1C.2 — Approach
+- Replace the equal-only contract with validated split/type unions and a normalized ledger DTO.
+- Normalize transfers once, validate group membership before payer totals and core splits, and retain the submitted split input.
+- Replace the single-payer SQL debt attribution with two scoped ledger-side queries and core attribution.
+- Update affected callers in place and exercise all fixed T1–T5 amounts plus malformed boundaries.
+
+### Task 1C.2 — Exercise output
+```text
+T1 [201, [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 120000}, {"memberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "amount": 100000}, {"memberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "amount": 80000}]]
+T2 [201, [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 480000}, {"memberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "amount": 240000}, {"memberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "amount": 240000}, {"memberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "amount": 240000}]]
+T3 [201, [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 50000}, {"memberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "amount": 50000}, {"memberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "amount": 50000}, {"memberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "amount": 50000}]]
+T4 [201, [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 49999}, {"memberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "amount": 30000}, {"memberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "amount": 20000}]]
+T1–T4 minimized [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "balance": 500001}, {"memberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "balance": -120000}, {"memberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "balance": -170001}, {"memberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "balance": -210000}], "transfers": [{"fromMemberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "toMemberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 210000}, {"fromMemberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "toMemberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 170001}, {"fromMemberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "toMemberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 120000}]}]
+T5 [201, {"transaction": {"type": "transfer", "description": "Chuyển khoản", "amount": 210000, "occurredAt": "2026-11-15T00:00:00.000Z", "category": null, "payers": [{"memberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "amount": 210000}], "split": {"method": "exact", "members": ["01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0"], "entries": [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 210000}], "remainder": "none"}, "id": "01a1e002-c65b-7a37-8515-2dd12daa0bf0", "currency": "VND", "shares": [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 210000}], "version": 1, "createdBy": {"id": "01a1dff9-e1bf-766e-87e7-0f6c18f4a631", "name": "Minh"}, "createdAt": "2026-11-15T16:20:40.664Z", "updatedAt": "2026-11-15T16:20:40.664Z", "deletedAt": null}}]
+after T5 [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "balance": 290001}, {"memberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "balance": -120000}, {"memberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "balance": -170001}, {"memberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "balance": 0}], "transfers": [{"fromMemberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "toMemberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 170001}, {"fromMemberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "toMemberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 120000}]}]
+pairwise [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "balance": 290001}, {"memberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "balance": -120000}, {"memberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "balance": -170001}, {"memberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "balance": 0}], "transfers": [{"fromMemberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "toMemberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "amount": 50000}, {"fromMemberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "toMemberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 150000}, {"fromMemberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "toMemberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 190001}, {"fromMemberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "toMemberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "amount": 30000}, {"fromMemberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "toMemberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "amount": 20000}]}]
+pairwise received minus paid {"Minh": 290001, "Lan": -120000, "Hùng": -170001, "Thu": 0}
+exact over [400, {"error": {"code": "SPLIT_TOTAL_MISMATCH", "message": "Split total differs from amount", "details": {"expected": 300000, "actual": 320000}, "requestId": "01a1e002-c68e-7d54-a1cd-6eb0258dd805"}}]
+payer mismatch [400, {"error": {"code": "PAYER_TOTAL_MISMATCH", "message": "Payer total differs from amount", "details": {"expected": 1200000, "actual": 1100000}, "requestId": "01a1e002-c69c-7720-9d51-997a03769c8b"}}]
+percent mismatch [400, {"error": {"code": "SPLIT_TOTAL_MISMATCH", "message": "Split total differs from amount", "details": {"expected": 100, "actual": 99}, "requestId": "01a1e002-c6a9-74b2-9b7c-843df7ad5a10"}}]
+self transfer [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"body": ["Invalid input"]}, "requestId": "01a1e002-c6b5-7598-86c4-987cb8ce8bb7"}}]
+weight precision [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.entries.0.weight": ["Invalid string: must match pattern /^\\d{1,4}(\\.\\d{1,2})?$/"]}, "requestId": "01a1e002-c6bf-7d32-b2fd-60f3cc432253"}}]
+negative percent [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.entries.0.percent": ["Invalid string: must match pattern /^\\d{1,3}(\\.\\d{1,2})?$/"]}, "requestId": "01a1e002-c6c8-760a-8563-3b13b7e68c61"}}]
+outside exact entry [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split": ["Invalid input"]}, "requestId": "01a1e002-c6d2-76a7-b526-0acec321c623"}}]
+T2 preview [200, {"shares": [{"memberId": "01a1e002-c5bb-7c9e-8ee2-fa7bc61961c0", "amount": 480000}, {"memberId": "01a1e002-c5be-741a-ae6f-6b057bb655b6", "amount": 240000}, {"memberId": "01a1e002-c5c0-7392-9184-2d2c68c0e2fe", "amount": 240000}, {"memberId": "01a1e002-c5c2-7a73-8c2c-ee20e23bf069", "amount": 240000}]}]
+stored transaction count 5
+membership first [400, {"error": {"code": "MEMBER_NOT_IN_GROUP", "message": "Member does not belong to group", "requestId": "01a1e002-c6fc-7c82-b045-919ca33b26a4"}}]
+existing 1A balances [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "balance": 626666}, {"memberId": "01a1dffc-077a-7945-aaa0-205d934da197", "balance": -63333}, {"memberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "balance": -363333}, {"memberId": "01a1dffc-077d-7597-95ca-4677ef5ec1e5", "balance": -200000}], "transfers": [{"fromMemberId": "01a1dffc-077a-7945-aaa0-205d934da197", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 163333}, {"fromMemberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 263333}, {"fromMemberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "toMemberId": "01a1dffc-077a-7945-aaa0-205d934da197", "amount": 100000}, {"fromMemberId": "01a1dffc-077d-7597-95ca-4677ef5ec1e5", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 200000}]}]
+```
+
+### Task 1C.2 — Results
+pnpm check: passed (179 files; all workspace typechecks Done). All fixed T1–T5 outputs recorded above. T1 shares 120000/100000/80000; T2 480000/240000/240000/240000; T3 50000 each; T4 49999/30000/20000. Minimized balances 500001/-120000/-170001/-210000. T5 default description exactly Chuyển khoản; sender payer/receiver share exact input; balances 290001/-120000/-170001/0. Pairwise net for each member matched those four balances. Invalid totals/precision/negative percentage/outside exact entry/self transfer returned the specified 400 codes. Membership validation ran before payer mismatch. Preview returned T2 shares; stored count remained five. Earlier 1A retained balances/transfers unchanged. Balance checker: `All groups balanced`.
+Security review: relevant items 1–8 inspected against full schema, normalization, service, query and caller diff. Bound/unique member lists and split entries, strict decimal regexes, group membership before arithmetic, parameterized scoped reads, atomic payer/share inserts and deferred constraints, no client official amounts trusted. Existing authorization/idempotency/origin/rate guards remain. No dependency changes; network audit not run.
+Decisions: D24 preserves the exact transfer default in the single authorized message source. Normalization/calculation moved to a same-directory service file to keep transactions.ts below 200 lines.
+Deviations: narrow import of the pure vi.ts object by API normalization, as documented in D24. Preview explicitly accepts only expense/income per plan.
+Not verified: separate income-only fresh-group manual example (T3's sign was exercised in the combined fixed ledger).
 Out of scope: none.

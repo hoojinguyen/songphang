@@ -1,5 +1,9 @@
 "use client";
-import { CreateTransactionRequest, type MemberDto } from "@songphang/contract";
+import {
+	CreateTransactionRequest,
+	type MemberDto,
+	type SplitTransactionRequest,
+} from "@songphang/contract";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { parseAmountInput } from "../../lib/money";
@@ -20,7 +24,7 @@ export function useExpenseForm(
 	const [amountText, setAmountText] = useState("");
 	const [description, setDescription] = useState("");
 	const [category, setCategory] =
-		useState<CreateTransactionRequest["category"]>(null);
+		useState<SplitTransactionRequest["category"]>(null);
 	const [payer, setPayer] = useState<string | null>(
 		active.some((member) => member.id === myMemberId) ? myMemberId : null,
 	);

@@ -3,6 +3,7 @@ import {
 	CreateTransactionRequest,
 	IdempotencyKeyHeader,
 	PreviewTransactionResponse,
+	SplitTransactionRequest,
 	TransactionResponse,
 	TransactionsQuery,
 	TransactionsResponse,
@@ -40,7 +41,13 @@ const listRoute = createRoute({
 const previewRoute = createRoute({
 	method: "post",
 	path: "/api/v1/groups/{groupId}/transactions/preview",
-	request: { params, body },
+	request: {
+		params,
+		body: {
+			required: true,
+			content: { "application/json": { schema: SplitTransactionRequest } },
+		},
+	},
 	responses: {
 		200: {
 			description: "Shares preview",
