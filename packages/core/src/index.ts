@@ -1,3 +1,6 @@
+export { allocateByWeights } from "./allocate.ts";
+export { parseHundredths } from "./decimal.ts";
+export { type LedgerEntry, pairDebtsOf } from "./pair-debts.ts";
 export {
 	type MemberBalance,
 	netPairwiseDebts,
@@ -5,4 +8,9 @@ export {
 	type Settlement,
 	suggestMinimizedSettlements,
 } from "./settlements.ts";
-export { type Share, splitEqually } from "./split.ts";
+export {
+	computeShares,
+	type Share,
+	type SplitInput,
+	splitEqually,
+} from "./split.ts";

@@ -137,3 +137,6 @@ Written by the implementation agent from the "Manual checks for the project owne
 ## Stage 1B
 1. With two phones or browser profiles, go through flow A and flow B from sign-up to both people seeing the same new expense.
 2. Confirm sign-in, registration and forgot-password screens do not disclose whether an email already has an account.
+
+## Split arithmetic — 1C.1
+1. Run three rows of your choice from each task table → outputs match and each row adds up to its amount.

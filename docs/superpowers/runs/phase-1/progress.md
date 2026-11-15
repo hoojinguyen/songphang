@@ -40,7 +40,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.9 API: realtime events
 - [x] 1B.10 Web: joining and inviting
 - [x] 1B.11 Web: roles, settings, leaving, read-only, realtime
-- [ ] 1B.12 Stage gate 1B
+- [x] 1B.12 Stage gate 1B
 
 ### Gate 1B
 
@@ -1320,3 +1320,164 @@ Gate passed after one build fix.
 - pnpm db:check-balances: both groups sum 0/mismatches 0; `All groups balanced`.
 - Production web local font URL → `200 font/woff2 4720`; missing font → 404. Source font assets plus license use 200 KiB. Security review relevant items 1, 6, 7, 8: static licensed files, no external font URL, no credential/configuration/dependency change; no generated build folders committed.
 Decisions: D23. Not verified: visual font comparison, precise QR bundle delta, real Google roundtrip and the browser/device checks already listed under the preceding tasks. No gate item remains failed. No external registry, font service, Google service, deployment or push performed.
+
+Commit 1B.12: `be8919c`.
+
+## Task 1C.1 — Approach
+- Centralize integer money division in allocateByWeights with BigInt quotient/remainder ranking.
+- Parse decimal weights into hundredths without floating point and validate structural split errors explicitly.
+- Keep splitEqually as the same public helper over equal weights; computeShares orders every result by member position.
+- Attribute each share using remaining payer capacities so both row and column totals stay exact.
+- Print every specified table row through a temporary local invocation; commit no test or assertion script.
+
+### Task 1C.1 — Exercise output
+```text
+allocate 100000 [ 1, 1, 1 ] [ 33334, 33333, 33333 ]
+allocate 300000 [ 2, 1 ] [ 200000, 100000 ]
+allocate 100 [ 1, 2 ] [ 33, 67 ]
+allocate 100 [ 150, 100, 100 ] [ 43, 29, 28 ]
+allocate 99999 [ 5000, 3000, 2000 ] [ 49999, 30000, 20000 ]
+allocate 0 [ 1, 1 ] [ 0, 0 ]
+allocate 5 [ 0, 1 ] [ 0, 5 ]
+allocate 5 [ 0, 0 ] RangeError
+exact 300000 [ 120000, 100000, 80000 ] none {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 120000 },
+    { memberId: 'b', amount: 100000 },
+    { memberId: 'c', amount: 80000 }
+  ]
+}
+exact 300000 [ 150000, 140000 ] none {
+  ok: false,
+  code: 'SPLIT_TOTAL_MISMATCH',
+  expected: 300000,
+  actual: 290000
+}
+exact 300000 [ 150000 ] equal_among_blank {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 150000 },
+    { memberId: 'b', amount: 75000 },
+    { memberId: 'c', amount: 75000 }
+  ]
+}
+exact 100000 [ 50000 ] equal_among_blank {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 50000 },
+    { memberId: 'b', amount: 16667 },
+    { memberId: 'c', amount: 16667 },
+    { memberId: 'd', amount: 16666 }
+  ]
+}
+exact 100000 [ 60000, 40000 ] equal_among_blank {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 60000 },
+    { memberId: 'b', amount: 40000 }
+  ]
+}
+exact 100000 [ 60000, 50000 ] equal_among_blank {
+  ok: false,
+  code: 'SPLIT_TOTAL_MISMATCH',
+  expected: 100000,
+  actual: 110000
+}
+exact 300000 [ 80000, 60000, 40000 ] equal_among_all {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 120000 },
+    { memberId: 'b', amount: 100000 },
+    { memberId: 'c', amount: 80000 }
+  ]
+}
+exact 100000 [ 10000, 10000, 10000 ] equal_among_all {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 33334 },
+    { memberId: 'b', amount: 33333 },
+    { memberId: 'c', amount: 33333 }
+  ]
+}
+exact 100000 [ 60000, 50000 ] equal_among_all {
+  ok: false,
+  code: 'SPLIT_TOTAL_MISMATCH',
+  expected: 100000,
+  actual: 110000
+}
+shares 100 [ '1.5', '1', '1' ] {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 43 },
+    { memberId: 'b', amount: 29 },
+    { memberId: 'c', amount: 28 }
+  ]
+}
+shares 1200000 [ '2', '1', '1', '1' ] {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 480000 },
+    { memberId: 'b', amount: 240000 },
+    { memberId: 'c', amount: 240000 },
+    { memberId: 'd', amount: 240000 }
+  ]
+}
+shares 1000 [ '0', '1' ] {
+  ok: true,
+  shares: [ { memberId: 'a', amount: 0 }, { memberId: 'b', amount: 1000 } ]
+}
+shares 1000 [ '0', '0' ] { ok: false, code: 'SPLIT_TOTAL_MISMATCH', expected: 1000, actual: 0 }
+percent 99999 [ '50', '30', '20' ] {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 49999 },
+    { memberId: 'b', amount: 30000 },
+    { memberId: 'c', amount: 20000 }
+  ]
+}
+percent 100000 [ '33.33', '33.33', '33.34' ] {
+  ok: true,
+  shares: [
+    { memberId: 'a', amount: 33330 },
+    { memberId: 'b', amount: 33330 },
+    { memberId: 'c', amount: 33340 }
+  ]
+}
+percent 100000 [ '50', '49.99' ] { ok: false, code: 'SPLIT_TOTAL_MISMATCH', expected: 100, actual: 99 }
+attribution expense [
+  { debtorMemberId: 'a', creditorMemberId: 'a', amount: 66667 },
+  { debtorMemberId: 'a', creditorMemberId: 'b', amount: 33333 },
+  { debtorMemberId: 'b', creditorMemberId: 'a', amount: 66667 },
+  { debtorMemberId: 'b', creditorMemberId: 'b', amount: 33333 },
+  { debtorMemberId: 'c', creditorMemberId: 'a', amount: 66666 },
+  { debtorMemberId: 'c', creditorMemberId: 'b', amount: 33334 }
+] [
+  { fromMemberId: 'b', toMemberId: 'a', amount: 33334 },
+  { fromMemberId: 'c', toMemberId: 'a', amount: 66666 },
+  { fromMemberId: 'c', toMemberId: 'b', amount: 33334 }
+]
+attribution transfer [ { debtorMemberId: 'a', creditorMemberId: 'c', amount: 50000 } ] [ { fromMemberId: 'a', toMemberId: 'c', amount: 50000 } ]
+attribution income [
+  { debtorMemberId: 'b', creditorMemberId: 'a', amount: 50000 },
+  { debtorMemberId: 'b', creditorMemberId: 'b', amount: 50000 },
+  { debtorMemberId: 'b', creditorMemberId: 'c', amount: 50000 },
+  { debtorMemberId: 'b', creditorMemberId: 'd', amount: 50000 }
+] [
+  { fromMemberId: 'b', toMemberId: 'a', amount: 50000 },
+  { fromMemberId: 'b', toMemberId: 'c', amount: 50000 },
+  { fromMemberId: 'b', toMemberId: 'd', amount: 50000 }
+]
+decimal -1 RangeError
+decimal 1.234 RangeError
+decimal  RangeError
+outside entry RangeError
+duplicate member RangeError
+```
+
+### Task 1C.1 — Results
+pnpm check: passed (178 files; all workspace typechecks Done). All eight allocation rows, sixteen split rows and three attribution rows printed the exact fixed outputs above. Invalid decimal syntax, outside entries and duplicate members threw RangeError. No assertion script or tests committed.
+Security review: relevant items 1, 2, 8 inspected against the complete pure-core diff: no I/O, dependencies, secrets or external inputs bypassing validation. BigInt products/division/remainders appear only in allocateByWeights; decimal hundredths remain integers. Exact allocations keep position order; zero shares are retained. Attribution conserves remaining payer capacity and skips zero rows.
+Decisions: none. Deviations: none. The exact-case function is slightly above 40 lines because validation and the three remainder branches form one bounded operation; file remains below 200 lines.
+Not verified: exhaustive arbitrary-input exploration; no automated tests by project rule.
+Out of scope: none.
