@@ -37,7 +37,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.6 Web: account screen
 - [x] 1B.7 API: invites, joining, member selection
 - [x] 1B.8 API: users in a group, roles, leaving, ownership
-- [ ] 1B.9 API: realtime events
+- [x] 1B.9 API: realtime events
 - [ ] 1B.10 Web: joining and inviting
 - [ ] 1B.11 Web: roles, settings, leaving, read-only, realtime
 - [ ] 1B.12 Stage gate 1B
@@ -1068,3 +1068,22 @@ Decisions: D20; D21 records the preceding task's ownership lock ordering.
 Deviations: committed callback in the existing transaction wrapper handles creates; no rewrite/proxy fix needed because the existing Next rewrite streamed promptly.
 Not verified: explicit HTTP header capture was not performed; headers were inspected in the route source. Cross-process delivery is outside the specified single-process hub.
 Out of scope: none.
+
+Commit 1B.9: `6971ce8`.
+
+## Task 1B.10 — Approach
+- Add typed invite/join hooks with one idempotency key per mounted join form.
+- Build the specified two-column claim picker, name preselection and server-provided balance wording.
+- Render QR modules as React SVG paths, never injected markup; preserve the copy/share and disabled-link states.
+- Add owner/editor invitation links and card using existing screen/error/loading components.
+- Use the locally cached qrcode package because uqr is unavailable offline; record the dependency deviation and never call a registry.
+
+### Task 1B.10 — Results
+pnpm check: passed (165 files; all workspace typechecks Done).
+Browser: owner invite card showed the labelled inline SVG, title/hint and copy/share buttons. Copy showed `Đã sao chép link`; the URL read from the real clipboard opened the join flow. Signed out → login preserving join return path; dev-login Lan → Lan preselected, `Lan không nợ ai trong nhóm này.` Selecting Hùng → `Hùng đang cần trả 300.000 đ trong nhóm này. Vào nhóm xong bạn sẽ thấy chi tiết.` Lan claimed her shape and landed on the group. A later Ngân session saw Lan disabled with `đã có người nhận`; new-member input was prefilled Ngân and joining succeeded. Invalid and disabled links both displayed the exact invalid-link title, hint and return control. Stale development module text cleared after restarting Next; no product workaround added.
+Completed deferred 1B.3/1B.6 API exercise: disposable verified UI fixture joined (200), was promoted (200), authored an expense (201), deleted its account (204), then /me returned 401. Its member remained active/unclaimed with the same name; its transaction remained amount 1 with createdBy null.
+Security review: relevant items 1, 2, 6, 7, 8 inspected against hooks, page, picker, QR, copy/share, localized strings and dependency diff. Zod responses, safe login return, one key per mounted form, no raw SVG/HTML injection, no storage of credentials. QR data comes from the validated server URL. No external service contacted. Offline installation downloaded 0 packages. Audit not run (external services forbidden).
+Decisions: D22. qrcode package footprint 232 KiB; declaration package 40 KiB, excluding transitive packages. Bundle delta not yet measured.
+Deviations: qrcode replaces unavailable uqr; JoinForm split beside ClaimGrid after the page exceeded 200 lines. Browser exercise used sequential sessions in one browser, not two simultaneous browser profiles.
+Not verified: physical phone-camera QR scan, native share sheet delivery, visual comparison against GE6/GE9, and simultaneous-browser join race UI (the API race passed in 1B.7).
+Out of scope: none. Two new untracked advisor spec documents were observed and left untouched.

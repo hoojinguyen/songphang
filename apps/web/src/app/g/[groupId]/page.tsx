@@ -108,6 +108,14 @@ export default function GroupPage() {
 				}
 			/>
 			<BalanceBlock groupId={groupId} balance={balance} />
+			{group.data.role !== "viewer" && (
+				<Link
+					href={`/g/${groupId}/members`}
+					className="flex min-h-11 items-center justify-center text-[13px] font-bold"
+				>
+					{vi.feed.inviteLink}
+				</Link>
+			)}
 			{hasTransactions ? (
 				<>
 					<ExpenseStream
@@ -123,7 +131,11 @@ export default function GroupPage() {
 					</Link>
 				</>
 			) : (
-				<EmptyStream members={members.data} />
+				<EmptyStream
+					members={members.data}
+					groupId={groupId}
+					canInvite={group.data.role !== "viewer"}
+				/>
 			)}
 			{me.data.emailVerified ? (
 				<EntryBar groupId={groupId} />

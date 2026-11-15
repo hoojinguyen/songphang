@@ -44,3 +44,5 @@ export const JoinResponse = z
 export const ChooseMemberRequest = z
 	.object({ memberId: z.uuid() })
 	.openapi("ChooseMemberRequest");
+
+export type InvitePreviewResponse = z.infer<typeof InvitePreviewResponse>;

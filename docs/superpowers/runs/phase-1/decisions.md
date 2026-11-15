@@ -140,3 +140,11 @@ Problem: ownership transfer can race an account deletion and violate the deletio
 Options: group-only locking; lock both accounts before the group.
 Choice: lock both account rows in sorted UUID order, then lock the group and recheck ownership/target membership.
 Reason: matches the established account-first ordering and avoids opposing-transfer deadlocks.
+
+## D22 — Offline QR dependency substitution
+Problem: `pnpm --offline --filter @songphang/web add uqr` failed ERR_PNPM_NO_OFFLINE_META; the approved package is unavailable locally.
+Options: omit required QR; implement a QR encoder ourselves; use the locally cached qrcode 1.5.4 with its TypeScript declarations.
+Choice: qrcode 1.5.4 and @types/qrcode 1.5.6, installed with --offline (downloaded 0).
+Reason: QR encoding/error correction cannot be implemented safely in a few dozen lines; a real QR is required. Render the standard library's module matrix with React SVG rather than inserting its serialized markup.
+License: MIT. Maintenance: established library, installed stable release; current upstream maintenance/latest version could not be verified without a forbidden external call.
+Added size: 29 runtime packages and one declaration package in the offline install; bundle impact will be measured at the stage build. This is a material deviation from the planned uqr dependency for advisor review.

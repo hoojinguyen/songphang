@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { AddMemberRow } from "../../../../components/members/AddMemberRow";
+import { InviteCard } from "../../../../components/members/InviteCard";
 import { MemberEditor } from "../../../../components/members/MemberEditor";
 import { MemberRow } from "../../../../components/members/MemberRow";
 import { LoadError } from "../../../../components/ui/LoadError";
@@ -103,6 +104,7 @@ export default function MembersPage() {
 			) : (
 				<VerifyEmailBanner />
 			)}
+			{group.data.role !== "viewer" && <InviteCard groupId={groupId} />}
 			{group.data.role === "owner" && (
 				<Link
 					href={`/g/${groupId}/settings`}

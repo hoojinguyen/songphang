@@ -1,4 +1,31 @@
 export const vi = {
+	join: {
+		invitedBy: "{name} mời bạn vào",
+		summary: "{members} người · {count} khoản chi",
+		question: "Hình nào là bạn?",
+		claimed: "đã có người nhận",
+		sameName: "trùng tên tài khoản của bạn",
+		unclaimed: "chưa ai nhận",
+		newMember: "Tôi chưa có trong nhóm · tạo hình mới",
+		newMemberLabel: "Tên của bạn trong nhóm",
+		owes: "{name} đang cần trả {amount} trong nhóm này. Vào nhóm xong bạn sẽ thấy chi tiết.",
+		isOwed:
+			"{name} đang được nhận {amount} trong nhóm này. Vào nhóm xong bạn sẽ thấy chi tiết.",
+		even: "{name} không nợ ai trong nhóm này.",
+		submit: "Vào nhóm với tên {name}",
+		claimedMeanwhile: "Hình này vừa có người khác nhận. Hãy chọn hình khác.",
+		invalidTitle: "Link mời này không còn dùng được",
+		invalidHint: "Hãy xin chủ nhóm một link mới.",
+	},
+	invite: {
+		title: "Mời vào nhóm",
+		hint: "Quét mã, hoặc gửi link.",
+		copy: "Sao chép link",
+		share: "Gửi",
+		qrLabel: "Mã QR mời vào nhóm",
+		copied: "Đã sao chép link",
+		disabled: "Link mời đang tắt.",
+	},
 	account: {
 		title: "Tài khoản",
 		changePassword: "Đổi mật khẩu",
@@ -138,7 +165,8 @@ export const vi = {
 		save: "Lưu khoản chi",
 	},
 	feed: {
-		membersLink: "Thành viên",
+		inviteLink: "Mời bạn vào nhóm",
+		membersLink: "Thành viên và lời mời",
 		owedToYou: "Bạn được nhận",
 		youOwe: "Bạn cần trả",
 		settled: "Bạn đã xong",

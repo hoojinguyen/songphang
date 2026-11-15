@@ -119,3 +119,10 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Change your password with the box ticked while signed in on a second browser → the second browser is signed out on its next action.
 3. Try to delete an account that owns a group → the message names how many groups.
 4. Enter a wrong current password → the specified warning; use a wrong confirmation email → deletion stays disabled.
+
+## Joining and invitation card — 1B.10
+1. Compare /join/<token> with GE6 and the yellow card on the members screen with GE9.
+2. As Minh copy the link; in a private window sign in as Lan, open it, pick Lan's shape → Lan lands in the group.
+3. In a third window sign in as Hùng and open the link → Lan's shape is greyed with “đã có người nhận”.
+4. Open a link after Minh has disabled it → “Link mời này không còn dùng được”.
+5. Scan the QR using a phone camera → the same localhost join URL. Check the balance sentence before claiming a shape.
