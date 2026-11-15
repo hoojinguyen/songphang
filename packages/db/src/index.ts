@@ -8,6 +8,7 @@ export {
 	type DbExecutor,
 } from "./client.js";
 export * from "./google-accounts.js";
+export * from "./group-users.js";
 export * from "./groups.js";
 export * from "./idempotency.js";
 export * from "./invites.js";

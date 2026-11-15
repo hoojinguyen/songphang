@@ -35,7 +35,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.4 API: Google sign-in
 - [x] 1B.5 Web: sign-in, register, verify, forgot and reset screens
 - [x] 1B.6 Web: account screen
-- [ ] 1B.7 API: invites, joining, member selection
+- [x] 1B.7 API: invites, joining, member selection
 - [ ] 1B.8 API: users in a group, roles, leaving, ownership
 - [ ] 1B.9 API: realtime events
 - [ ] 1B.10 Web: joining and inviting
@@ -915,4 +915,131 @@ Local curl exercises on the retained two-expense regression group: invite token 
 Security review: relevant items 1–8 checked against actual contract/query/service/route diff. Bounded Zod inputs, same-origin and verified/write guards, shared group authorization, account-before-group locks, group lock plus unique member constraint for claims, transaction for every multirow write, no emails in preview. Invite tokens omitted from logs/reports. No dependencies added; network audit not run.
 Decisions: reused the existing group lock to serialize claim races; the unique constraint remains the database backstop. Invite route file is 208 lines because the six explicit OpenAPI contracts and thin handlers belong together; no abstraction introduced.
 Deviations: exercise reused the existing two-expense regression group with a different name; its amounts and expected balances match the plan. Not verified: fresh-window exact 31st request (the exercised window already had requests); account deletion preserving joined authored transactions is carried to the joining UI exercise in 1B.10.
+Out of scope: none.
+
+Commit 1B.7: `7cb3e9a`.
+
+## Task 1B.8 — Approach
+- Add explicit role/user contracts and scoped queries; never return user emails.
+- Serialize role/removal/leave/ownership changes on the group and recheck the actor after acquiring the lock.
+- Transfer ownership by demoting then promoting atomically; lock both accounts in stable order before the group.
+- Extend the current group DTO/update path with defaultRole and exercise all existing permission rows with four sessions.
+
+### Task 1B.8 — Permission matrix output
+```text
+GET /group minh: 200
+GET /group lan: 200
+GET /group hung: 200
+GET /group ngan: 404
+GET /group signed-out: 401
+GET /members minh: 200
+GET /members lan: 200
+GET /members hung: 200
+GET /members ngan: 404
+GET /members signed-out: 401
+GET /users minh: 200
+GET /users lan: 200
+GET /users hung: 200
+GET /users ngan: 404
+GET /users signed-out: 401
+GET /transactions minh: 200
+GET /transactions lan: 200
+GET /transactions hung: 200
+GET /transactions ngan: 404
+GET /transactions signed-out: 401
+GET /balances minh: 200
+GET /balances lan: 200
+GET /balances hung: 200
+GET /balances ngan: 404
+GET /balances signed-out: 401
+GET /invite minh: 200
+GET /invite lan: 200
+GET /invite hung: 403
+GET /invite ngan: 404
+GET /invite signed-out: 401
+POST /members minh: 201
+POST /members lan: 201
+POST /members hung: 403
+POST /members ngan: 404
+POST /members signed-out: 401
+PATCH /members/01a1dfe5-b9be-73f0-bd4e-624985179b11 minh: 200
+PATCH /members/01a1dfe5-b9be-73f0-bd4e-624985179b11 lan: 200
+PATCH /members/01a1dfe5-b9be-73f0-bd4e-624985179b11 hung: 403
+PATCH /members/01a1dfe5-b9be-73f0-bd4e-624985179b11 ngan: 404
+PATCH /members/01a1dfe5-b9be-73f0-bd4e-624985179b11 signed-out: 401
+POST /transactions minh: 201
+POST /transactions lan: 201
+POST /transactions hung: 403
+POST /transactions ngan: 404
+POST /transactions signed-out: 401
+POST /transactions/preview minh: 200
+POST /transactions/preview lan: 200
+POST /transactions/preview hung: 403
+POST /transactions/preview ngan: 404
+POST /transactions/preview signed-out: 401
+PATCH /group minh: 200
+PATCH /group lan: 403
+PATCH /group hung: 403
+PATCH /group ngan: 404
+PATCH /group signed-out: 401
+PATCH /invite minh: 200
+PATCH /invite lan: 403
+PATCH /invite hung: 403
+PATCH /invite ngan: 404
+PATCH /invite signed-out: 401
+POST /invite/rotate minh: 200
+POST /invite/rotate lan: 403
+POST /invite/rotate hung: 403
+POST /invite/rotate ngan: 404
+POST /invite/rotate signed-out: 401
+PATCH /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c minh: 200
+PATCH /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c lan: 403
+PATCH /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c hung: 403
+PATCH /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c ngan: 404
+PATCH /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c signed-out: 401
+PUT /me/member minh: 200
+PUT /me/member lan: 200
+PUT /me/member hung: 200
+PUT /me/member ngan: 404
+PUT /me/member signed-out: 401
+POST /transfer-ownership lan: 403
+POST /transfer-ownership hung: 403
+POST /transfer-ownership ngan: 404
+POST /transfer-ownership signed-out: 401
+POST /transfer-ownership minh: 200
+DELETE /users/user lan: 403
+DELETE /users/user hung: 403
+DELETE /users/user ngan: 404
+DELETE /users/user signed-out: 401
+DELETE /users/user minh: 204
+POST /leave minh: 422
+POST /leave lan: 204
+POST /leave hung: 204
+POST /leave ngan: 404
+POST /leave signed-out: 401
+DELETE /members/member minh: 204
+DELETE /members/member lan: 403
+DELETE /members/member hung: 403
+DELETE /members/member ngan: 404
+DELETE /members/member signed-out: 401
+GET /users malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /users random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+DELETE /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+DELETE /users/01a1d09a-f3c7-7b00-9650-c1ce81affe8c random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /transfer-ownership malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /transfer-ownership random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /leave malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /leave random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+```
+
+### Task 1B.8 — Results
+pnpm check: passed (158 files; all workspace typechecks Done). Balance checker: `All groups balanced`.
+Role change to viewer → 200; viewer transaction write and invite read → 403; transaction read → 200. Owner demotion/leave → 422 OWNER_REQUIRED. Transfer → caller editor, target owner; transfer back → 200. Removed Hùng's read → 404; member rows remained. Lan leave → 204, claimed false; rejoin → 200. New join after defaultRole viewer → viewer. Group-users response ordered owner first and contained no email fields.
+Matrix output above records every existing group endpoint. During destructive-row restoration, Lan rejoined with the new viewer default; the first DELETE member row therefore returned 403. Restored Lan to editor and repeated DELETE member → 204. The other rows matched the permission matrix. Malformed/random group IDs on each new route produced identical normalized NOT_FOUND bodies.
+Security review: relevant items 1–8 inspected in contracts, queries, services, routes and group-update diff. All new group routes use shared authorization; writes use verified/rate/origin guards. Services recheck actor and target under group lock. Ownership demotion/promotion is atomic and protected by the existing unique owner index; account locks precede the group lock. No emails, secret fields, raw SQL concatenation or dependency changes. Network audit not run.
+Decisions: owner/target accounts are locked in sorted order for ownership transfer to coordinate with account deletion and opposing transfers.
+Deviations: no separate count SQL was run; the real users responses after each transfer showed exactly one owner, backed by the unique owner constraint.
+Not verified: none beyond the count SQL noted above.
 Out of scope: none.

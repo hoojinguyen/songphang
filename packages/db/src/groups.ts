@@ -25,6 +25,7 @@ export async function findGroup(executor: DbExecutor, groupId: string) {
 			name: groups.name,
 			currency: groups.currency,
 			minimizeDebts: groups.minimizeDebts,
+			defaultRole: groups.defaultRole,
 			createdAt: groups.createdAt,
 		})
 		.from(groups)
@@ -66,7 +67,11 @@ export function updateGroup(
 	executor: DbExecutor,
 	input: {
 		groupId: string;
-		changes: { name?: string; minimizeDebts?: boolean };
+		changes: {
+			name?: string;
+			minimizeDebts?: boolean;
+			defaultRole?: "editor" | "viewer";
+		};
 		now: Date;
 	},
 ) {

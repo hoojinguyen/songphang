@@ -9,6 +9,7 @@ export const GroupDto = z
 		name: GroupName,
 		currency: z.literal("VND"),
 		minimizeDebts: z.boolean(),
+		defaultRole: z.enum(["editor", "viewer"]),
 		role: GroupRole,
 		myMemberId: z.uuid().nullable(),
 		createdAt: z.iso.datetime(),
@@ -49,7 +50,11 @@ export const CreateGroupRequest = z
 	.openapi("CreateGroupRequest");
 export type CreateGroupRequest = z.infer<typeof CreateGroupRequest>;
 export const UpdateGroupRequest = z
-	.object({ name: GroupName.optional(), minimizeDebts: z.boolean().optional() })
+	.object({
+		name: GroupName.optional(),
+		minimizeDebts: z.boolean().optional(),
+		defaultRole: z.enum(["editor", "viewer"]).optional(),
+	})
 	.refine((value) => Object.keys(value).length > 0)
 	.openapi("UpdateGroupRequest");
 export type UpdateGroupRequest = z.infer<typeof UpdateGroupRequest>;

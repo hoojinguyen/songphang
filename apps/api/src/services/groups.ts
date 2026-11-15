@@ -118,9 +118,14 @@ export async function editGroup(
 	return deps.db.transaction(async (transaction) => {
 		await lockGroup(transaction, input.groupId);
 		const before = await getGroup(transaction, input.groupId, input.userId);
+		if (before.group.role !== "owner")
+			throw new AppError(403, "FORBIDDEN", "Insufficient group role");
 		await updateGroup(transaction, {
 			groupId: input.groupId,
 			changes: {
+				...(input.changes.defaultRole === undefined
+					? {}
+					: { defaultRole: input.changes.defaultRole }),
 				...(input.changes.name === undefined
 					? {}
 					: { name: input.changes.name }),
