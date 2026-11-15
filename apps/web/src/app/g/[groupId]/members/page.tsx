@@ -7,18 +7,21 @@ import { MemberEditor } from "../../../../components/members/MemberEditor";
 import { MemberRow } from "../../../../components/members/MemberRow";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
+import { VerifyEmailBanner } from "../../../../components/ui/VerifyEmailBanner";
 import { useBalances } from "../../../../lib/balances";
 import { useGroup } from "../../../../lib/groups";
 import { useMembers } from "../../../../lib/members";
+import { useMe } from "../../../../lib/session";
 import { useSessionGuard } from "../../../../lib/use-session-guard";
 import { t, vi } from "../../../../messages/vi";
 export default function MembersPage() {
 	const { groupId } = useParams<{ groupId: string }>();
 	const [expanded, setExpanded] = useState<string | null>(null);
+	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
 	const balances = useBalances(groupId);
-	const error = group.error ?? members.error ?? balances.error;
+	const error = group.error ?? members.error ?? balances.error ?? me.error;
 	useSessionGuard(error);
 	if (error?.status === 404)
 		return (
@@ -30,6 +33,7 @@ export default function MembersPage() {
 			</main>
 		);
 	if (
+		me.isPending ||
 		group.isPending ||
 		members.isPending ||
 		balances.isPending ||
@@ -44,11 +48,12 @@ export default function MembersPage() {
 				<div className="h-80 rounded-card bg-sunken" />
 			</main>
 		);
-	if (group.isError || members.isError || balances.isError)
+	if (me.isError || group.isError || members.isError || balances.isError)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
 				<LoadError
 					onRetry={() => {
+						void me.refetch();
 						void group.refetch();
 						void members.refetch();
 						void balances.refetch();
@@ -74,12 +79,13 @@ export default function MembersPage() {
 					<MemberRow
 						member={member}
 						isOwner={group.data.role === "owner"}
+						canEdit={me.data.emailVerified}
 						isExpanded={expanded === member.id}
 						onEdit={() =>
 							setExpanded(expanded === member.id ? null : member.id)
 						}
 					/>
-					{expanded === member.id && (
+					{me.data.emailVerified && expanded === member.id && (
 						<MemberEditor
 							groupId={groupId}
 							member={member}
@@ -92,7 +98,11 @@ export default function MembersPage() {
 					)}
 				</div>
 			))}
-			<AddMemberRow groupId={groupId} members={members.data} />
+			{me.data.emailVerified ? (
+				<AddMemberRow groupId={groupId} members={members.data} />
+			) : (
+				<VerifyEmailBanner />
+			)}
 			{group.data.role === "owner" && (
 				<Link
 					href={`/g/${groupId}/settings`}

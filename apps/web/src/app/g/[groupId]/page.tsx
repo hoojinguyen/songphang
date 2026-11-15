@@ -8,20 +8,27 @@ import { ExpenseStream } from "../../../components/feed/ExpenseStream";
 import { LoadError } from "../../../components/ui/LoadError";
 import { MemberShape } from "../../../components/ui/MemberShape";
 import { ScreenHeader } from "../../../components/ui/ScreenHeader";
+import { VerifyEmailBanner } from "../../../components/ui/VerifyEmailBanner";
 import { useBalances } from "../../../lib/balances";
 import { useGroup } from "../../../lib/groups";
 import { useMembers } from "../../../lib/members";
+import { useMe } from "../../../lib/session";
 import { useTransactions } from "../../../lib/transactions";
 import { useSessionGuard } from "../../../lib/use-session-guard";
 import { vi } from "../../../messages/vi";
 export default function GroupPage() {
 	const { groupId } = useParams<{ groupId: string }>();
+	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
 	const balances = useBalances(groupId);
 	const transactions = useTransactions(groupId);
 	const error =
-		group.error ?? members.error ?? balances.error ?? transactions.error;
+		group.error ??
+		members.error ??
+		balances.error ??
+		transactions.error ??
+		me.error;
 	useSessionGuard(error);
 	if (error?.status === 404)
 		return (
@@ -33,6 +40,7 @@ export default function GroupPage() {
 			</main>
 		);
 	if (
+		me.isPending ||
 		group.isPending ||
 		members.isPending ||
 		balances.isPending ||
@@ -50,6 +58,7 @@ export default function GroupPage() {
 			</main>
 		);
 	if (
+		me.isError ||
 		group.isError ||
 		members.isError ||
 		balances.isError ||
@@ -59,6 +68,7 @@ export default function GroupPage() {
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
 				<LoadError
 					onRetry={() => {
+						void me.refetch();
 						void group.refetch();
 						void members.refetch();
 						void balances.refetch();
@@ -115,7 +125,13 @@ export default function GroupPage() {
 			) : (
 				<EmptyStream members={members.data} />
 			)}
-			<EntryBar groupId={groupId} />
+			{me.data.emailVerified ? (
+				<EntryBar groupId={groupId} />
+			) : (
+				<div className="fixed bottom-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-bg p-5">
+					<VerifyEmailBanner />
+				</div>
+			)}
 		</main>
 	);
 }

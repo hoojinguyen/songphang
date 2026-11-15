@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { type ApiError, apiFetch, apiSend } from "./api";
 
 export function loginPath(returnTo: string): string {
-	return `/dev-login?next=${encodeURIComponent(returnTo)}`;
+	return `/login?next=${encodeURIComponent(returnTo)}`;
 }
 export function safeNext(raw: string | null): string {
 	if (
@@ -43,7 +43,7 @@ export function useLogout(): UseMutationResult<void, ApiError, void> {
 			if (error !== null && error.status !== 401) return;
 			await queryClient.cancelQueries();
 			queryClient.clear();
-			router.replace("/dev-login");
+			router.replace("/login");
 		},
 	});
 }

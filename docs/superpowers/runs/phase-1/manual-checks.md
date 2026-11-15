@@ -106,3 +106,10 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. First real Google sign-in → verified account/identity; a matching verified password email → same account with Google identity.
 3. Matching unverified password email → google_unverified, no link; known Google subject → same user.
 4. Check next/redirect rejects external addresses; full round-trip and real mail remain unverified in this run. The built-in adapter replacing unavailable arctic needs advisor review before this check.
+
+## Authentication screens — 1B.5
+1. Compare /login with GE7: same shapes and headline, smaller, with the form beneath; the line about not needing a password is gone.
+2. Register, open the console verification link, and sign in; sign in from a protected group URL and confirm return to that URL.
+3. Register with a nine-character password and with password123 → the two messages of spec 9.2.
+4. Read every sentence on the five screens for tone and spelling.
+5. Try an invalid token, wrong password repeatedly, and //evil.example as next → recovery copy, rate limit, and internal landing respectively.

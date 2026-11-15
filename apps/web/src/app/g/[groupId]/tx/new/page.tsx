@@ -4,15 +4,18 @@ import { useParams } from "next/navigation";
 import { ExpenseForm } from "../../../../../components/expense-form/ExpenseForm";
 import { LoadError } from "../../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../../components/ui/ScreenHeader";
+import { VerifyEmailBanner } from "../../../../../components/ui/VerifyEmailBanner";
 import { useGroup } from "../../../../../lib/groups";
 import { useMembers } from "../../../../../lib/members";
+import { useMe } from "../../../../../lib/session";
 import { useSessionGuard } from "../../../../../lib/use-session-guard";
 import { vi } from "../../../../../messages/vi";
 export default function NewExpensePage() {
 	const { groupId } = useParams<{ groupId: string }>();
+	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
-	const error = group.error ?? members.error;
+	const error = group.error ?? members.error ?? me.error;
 	useSessionGuard(error);
 	if (error?.status === 404)
 		return (
@@ -23,7 +26,12 @@ export default function NewExpensePage() {
 				</Link>
 			</main>
 		);
-	if (group.isPending || members.isPending || error?.status === 401)
+	if (
+		me.isPending ||
+		group.isPending ||
+		members.isPending ||
+		error?.status === 401
+	)
 		return (
 			<main
 				aria-busy="true"
@@ -34,11 +42,12 @@ export default function NewExpensePage() {
 				<div className="h-64 rounded-card bg-sunken" />
 			</main>
 		);
-	if (group.isError || members.isError)
+	if (me.isError || group.isError || members.isError)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
 				<LoadError
 					onRetry={() => {
+						void me.refetch();
 						void group.refetch();
 						void members.refetch();
 					}}
@@ -55,11 +64,15 @@ export default function NewExpensePage() {
 				backLabel={vi.common.cancel}
 				backIcon="close"
 			/>
-			<ExpenseForm
-				groupId={groupId}
-				members={members.data}
-				myMemberId={group.data.myMemberId}
-			/>
+			{!me.data.emailVerified ? (
+				<VerifyEmailBanner />
+			) : (
+				<ExpenseForm
+					groupId={groupId}
+					members={members.data}
+					myMemberId={group.data.myMemberId}
+				/>
+			)}
 		</main>
 	);
 }

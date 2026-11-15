@@ -32,7 +32,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.1 Account foundations
 - [x] 1B.2 API: register, sign in, verify email
 - [x] 1B.3 API: forgot, reset and change password; delete account
-- [ ] 1B.4 API: Google sign-in
+- [x] 1B.4 API: Google sign-in
 - [ ] 1B.5 Web: sign-in, register, verify, forgot and reset screens
 - [ ] 1B.6 Web: account screen
 - [ ] 1B.7 API: invites, joining, member selection
@@ -861,4 +861,24 @@ Decisions: D19 (material deviation).
 Deviations: arctic could not be installed offline; used a built-in Node/Web API adapter instead. Its behavior requires special advisor review. Google queries split to google-accounts.ts to keep accounts.ts below 200 lines.
 Unresolved: the plan's approved arctic dependency is unavailable locally and was not added; no external registry or Google service was contacted for this task.
 Not verified: real Google authorization/token exchange, ID-token delivery and real-account outcomes.
+Out of scope: none.
+
+Commit 1B.4: `6569a0f`.
+
+## Task 1B.5 — Approach
+- Add account mutation hooks and one accessible TextField; preserve typed fields across errors.
+- Build the five specified auth pages with exact spec copy and safe internal return paths.
+- Use a one-shot verification effect and explicit success/invalid/loading states.
+- Replace unverified users' write controls with the shared resend banner on every specified screen.
+- Extend ApiError to retain validated business details for weak-password messages.
+
+### Task 1B.5 — Results
+Resumed and deliberately completed the interrupted working tree for this task.
+pnpm check: passed (147 files, all workspace typechecks Done).
+Browser exercises: registration with nine characters → `Mật khẩu cần ít nhất 10 ký tự.`; common password → `Mật khẩu này quá phổ biến. Hãy chọn mật khẩu khác.` Valid registration → `Kiểm tra hộp thư của bạn`, without signing in. Unverified login → verification banner, no create-group control; direct new-group route also showed the banner. Resend → `Đã gửi lại thư xác minh.`; the previous token returned TOKEN_INVALID; the new development-console link → `Email đã được xác minh.` and `Vào ứng dụng`.
+Six wrong logins → invalid-credentials copy then `Bạn thử quá nhiều lần. Đợi một lúc rồi thử lại.` Safe-next exercise with //evil.example landed on /. Signing in from a protected group route returned to the exact group URL. Google-unverified query displayed the exact long explanation. Forgot-password known and unknown emails both displayed the same generic confirmation. Missing reset token and invalid verification token displayed their specified recovery states.
+Responsive DOM measurements at CSS 360px: login, register, forgot-password, verify-email, reset-password all scrollWidth 360. With placeholder Google configuration the Google button used the internal API authorization URL; without configuration it was absent. No remote Google navigation occurred. API restarted afterwards without placeholders.
+Security review: relevant items 1, 2, 6, 7, 8 checked against the complete source diff. Typed error details validated before use; same-origin writes; internal-only return paths; no storage of credentials; no raw HTML or credentials in committed files. No dependency changes. Network audit not run because external services are forbidden.
+Deviations: LoginShapes is a same-directory presentational split. Fixed accessible labels after a browser exercise showed the hint was part of the password label. Restarted the development server after stale route/SSR output caused a temporary 404 and hydration warning; fresh SSR then matched the source.
+Not verified: browser submission of password reset requires credential-change handoff under the browser tool policy and was not performed; API reset was exercised in 1B.3. Real Google sign-in remains unverified. Full keyboard-only traversal was not completed.
 Out of scope: none.

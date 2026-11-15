@@ -7,7 +7,9 @@ import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { Switch } from "../../../../components/ui/Switch";
+import { VerifyEmailBanner } from "../../../../components/ui/VerifyEmailBanner";
 import { useGroup, useUpdateGroup } from "../../../../lib/groups";
+import { useMe } from "../../../../lib/session";
 import { useSessionGuard } from "../../../../lib/use-session-guard";
 import { vi } from "../../../../messages/vi";
 
@@ -65,7 +67,8 @@ function SettingsForm({ group }: { group: GroupDto }) {
 export default function SettingsPage() {
 	const { groupId } = useParams<{ groupId: string }>();
 	const group = useGroup(groupId);
-	useSessionGuard(group.error);
+	const me = useMe();
+	useSessionGuard(group.error ?? me.error);
 	if (
 		group.error?.status === 404 ||
 		(group.data && group.data.role !== "owner")
@@ -78,7 +81,7 @@ export default function SettingsPage() {
 				</Link>
 			</main>
 		);
-	if (group.isPending || group.error?.status === 401)
+	if (me.isPending || group.isPending || group.error?.status === 401)
 		return (
 			<main
 				aria-busy="true"
@@ -88,11 +91,12 @@ export default function SettingsPage() {
 				<div className="h-64 rounded-card bg-sunken" />
 			</main>
 		);
-	if (group.isError)
+	if (me.isError || group.isError)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
 				<LoadError
 					onRetry={() => {
+						void me.refetch();
 						void group.refetch();
 					}}
 					isRetrying={group.isFetching}
@@ -107,7 +111,11 @@ export default function SettingsPage() {
 				backHref={`/g/${groupId}/members`}
 				backLabel={vi.common.back}
 			/>
-			<SettingsForm group={group.data} />
+			{me.data.emailVerified ? (
+				<SettingsForm group={group.data} />
+			) : (
+				<VerifyEmailBanner />
+			)}
 		</main>
 	);
 }

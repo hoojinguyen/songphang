@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { Icon } from "../components/ui/Icon";
 import { LoadError } from "../components/ui/LoadError";
 import { MemberShape } from "../components/ui/MemberShape";
+import { VerifyEmailBanner } from "../components/ui/VerifyEmailBanner";
 import { useGroups } from "../lib/groups";
 import { useLogout, useMe } from "../lib/session";
 import { useSessionGuard } from "../lib/use-session-guard";
@@ -52,6 +53,7 @@ function GroupsHeader({
 }
 function GroupsContent({ name }: { name: string }) {
 	const logout = useLogout();
+	const me = useMe();
 	const groups = useGroups();
 	useSessionGuard(groups.error);
 	return (
@@ -87,13 +89,17 @@ function GroupsContent({ name }: { name: string }) {
 				)}
 				{logout.isError && <p role="alert">{vi.common.loadError}</p>}
 			</div>
-			<Link
-				href="/groups/new"
-				className="flex h-control-lg items-center justify-center gap-2 rounded-pill bg-ink font-bold text-surface"
-			>
-				<Icon name="plus" size={24} />
-				{vi.groups.create}
-			</Link>
+			{me.data?.emailVerified === false ? (
+				<VerifyEmailBanner />
+			) : (
+				<Link
+					href="/groups/new"
+					className="flex h-control-lg items-center justify-center gap-2 rounded-pill bg-ink font-bold text-surface"
+				>
+					<Icon name="plus" size={24} />
+					{vi.groups.create}
+				</Link>
+			)}
 		</main>
 	);
 }

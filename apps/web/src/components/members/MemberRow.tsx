@@ -6,18 +6,23 @@ export function MemberRow({
 	isOwner,
 	isExpanded,
 	onEdit,
+	canEdit = true,
 }: {
 	member: MemberDto;
 	isOwner: boolean;
 	isExpanded: boolean;
 	onEdit: () => void;
+	canEdit?: boolean;
 }) {
+	const RowTag = canEdit ? "button" : "div";
 	return (
-		<button
-			type="button"
-			aria-label={t(vi.members.edit, { name: member.name })}
-			aria-expanded={isExpanded}
-			onClick={onEdit}
+		<RowTag
+			type={canEdit ? "button" : undefined}
+			aria-label={
+				canEdit ? t(vi.members.edit, { name: member.name }) : member.name
+			}
+			aria-expanded={canEdit ? isExpanded : undefined}
+			onClick={canEdit ? onEdit : undefined}
 			className={`flex w-full items-center gap-3 rounded-[28px] bg-surface p-4 text-left ${member.active ? "text-ink" : "text-muted"}`}
 		>
 			<MemberShape {...member} size={52} />
@@ -38,6 +43,6 @@ export function MemberRow({
 					{vi.members.ownerBadge}
 				</span>
 			)}
-		</button>
+		</RowTag>
 	);
 }

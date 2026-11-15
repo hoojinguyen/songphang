@@ -5,6 +5,7 @@ import { NewGroupMembers } from "../../../components/groups/NewGroupMembers";
 import { Button } from "../../../components/ui/Button";
 import { LoadError } from "../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../components/ui/ScreenHeader";
+import { VerifyEmailBanner } from "../../../components/ui/VerifyEmailBanner";
 import { useCreateGroup } from "../../../lib/groups";
 import { useMe } from "../../../lib/session";
 import { useSessionGuard } from "../../../lib/use-session-guard";
@@ -59,6 +60,8 @@ export default function NewGroupPage() {
 					}}
 					isRetrying={me.isFetching}
 				/>
+			) : !me.data.emailVerified ? (
+				<VerifyEmailBanner />
 			) : (
 				<>
 					<label className="grid gap-2 text-[13px] font-semibold text-muted">

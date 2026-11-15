@@ -5,15 +5,22 @@ export class ApiError extends Error {
 	readonly status: number;
 	readonly code: string;
 	readonly requestId: string | null;
+	readonly details: Record<string, unknown> | undefined;
 	constructor(
 		message: string,
-		details: { status: number; code: string; requestId: string | null },
+		details: {
+			status: number;
+			code: string;
+			requestId: string | null;
+			details?: Record<string, unknown>;
+		},
 	) {
 		super(message);
 		this.name = "ApiError";
 		this.status = details.status;
 		this.code = details.code;
 		this.requestId = details.requestId;
+		this.details = details.details;
 	}
 }
 function networkError(): ApiError {
@@ -52,6 +59,7 @@ async function readResponse(response: Response): Promise<unknown> {
 			status: response.status,
 			code: error.code,
 			requestId: error.requestId,
+			...(error.details === undefined ? {} : { details: error.details }),
 		});
 	}
 	return body;

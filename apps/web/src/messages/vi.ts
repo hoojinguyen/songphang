@@ -1,4 +1,57 @@
 export const vi = {
+	resetPassword: {
+		title: "Đặt mật khẩu mới",
+		field: "Mật khẩu mới",
+		submit: "Lưu mật khẩu",
+		success: "Đã đổi mật khẩu. Hãy đăng nhập lại.",
+		invalid: "Link đặt lại không còn dùng được.",
+		newLink: "Xin link mới",
+	},
+	forgotPassword: {
+		title: "Quên mật khẩu",
+		hint: "Nhập email của bạn. Chúng tôi sẽ gửi link đặt lại mật khẩu.",
+		submit: "Gửi link",
+		submitted:
+			"Nếu email này có tài khoản, link đặt lại đã được gửi. Link có hiệu lực trong 1 giờ.",
+	},
+	verify: {
+		banner: "Hãy xác minh email để tạo nhóm và ghi khoản chi.",
+		resend: "Gửi lại thư",
+		resent: "Đã gửi lại thư xác minh.",
+		success: "Email đã được xác minh.",
+		enter: "Vào ứng dụng",
+		invalid: "Link xác minh không còn dùng được.",
+	},
+	register: {
+		title: "Tạo tài khoản",
+		name: "Tên hiển thị",
+		passwordHint: "Ít nhất 10 ký tự.",
+		submittedTitle: "Kiểm tra hộp thư của bạn",
+		submittedBody:
+			"Nếu email này chưa có tài khoản, chúng tôi vừa gửi một thư xác minh. Sau đó hãy đăng nhập.",
+		login: "Đã có tài khoản? Đăng nhập",
+		nameTooLong: "Tên dài tối đa 50 ký tự.",
+	},
+	login: {
+		headline: "Chia tiền, gõ như nhắn tin.",
+		submit: "Đăng nhập",
+		google: "Tiếp tục với Google",
+		register: "Tạo tài khoản",
+		forgot: "Quên mật khẩu?",
+		invalidCredentials: "Email hoặc mật khẩu không đúng.",
+		tooMany: "Bạn thử quá nhiều lần. Đợi một lúc rồi thử lại.",
+		googleUnverified:
+			"Email này đã đăng ký bằng mật khẩu nhưng chưa xác minh. Hãy đăng nhập bằng mật khẩu và xác minh email trước.",
+		dev: "Đăng nhập thử",
+		googleError: "Không đăng nhập được bằng Google. Hãy thử lại.",
+	},
+	auth: {
+		email: "Email",
+		password: "Mật khẩu",
+		passwordTooLong: "Mật khẩu dài tối đa 128 ký tự.",
+		tooShort: "Mật khẩu cần ít nhất 10 ký tự.",
+		tooCommon: "Mật khẩu này quá phổ biến. Hãy chọn mật khẩu khác.",
+	},
 	settings: {
 		title: "Cài đặt nhóm",
 		ownerOnly: "Chỉ chủ nhóm thấy trang này",
