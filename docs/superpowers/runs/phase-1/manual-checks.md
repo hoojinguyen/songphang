@@ -126,3 +126,10 @@ Written by the implementation agent from the "Manual checks for the project owne
 3. In a third window sign in as Hùng and open the link → Lan's shape is greyed with “đã có người nhận”.
 4. Open a link after Minh has disabled it → “Link mời này không còn dùng được”.
 5. Scan the QR using a phone camera → the same localhost join URL. Check the balance sentence before claiming a shape.
+
+## Roles and realtime — 1B.11
+1. With two windows side by side, add an expense as Minh → Lan sees it and updated balance without reload; change Lan to viewer → entry bar becomes Chỉ xem; remove Lan → list and removal message.
+2. Compare settings with GE11: every row is there except Xoá nhóm (stage 1E).
+3. As a Chỉ xem person try every screen → nothing lets you add or change; direct transaction form shows the permission message.
+4. Turn Wi-Fi off and on with a group open → after reconnecting a change from the other window appears.
+5. Check dialogs: cancel initially focused, Tab stays inside, Escape cancels, opener regains focus. Transfer ownership → settings access moves to the new owner.

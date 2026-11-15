@@ -30,7 +30,9 @@ export function MemberEditor({
 		remove.error?.code === "MEMBER_HAS_TRANSACTIONS"
 			? t(vi.members.hasTransactions, { name: member.name })
 			: update.isError || remove.isError
-				? vi.common.saveError
+				? (update.error ?? remove.error)?.status === 403
+					? vi.common.forbidden
+					: vi.common.saveError
 				: null;
 	return (
 		<div className="grid gap-3 rounded-[28px] bg-surface p-4">
@@ -52,7 +54,7 @@ export function MemberEditor({
 			>
 				{vi.members.saveName}
 			</Button>
-			{!member.isMe && (
+			{
 				<>
 					{showsWarning ? (
 						<div className="grid gap-2">
@@ -97,7 +99,7 @@ export function MemberEditor({
 						{vi.members.delete}
 					</Button>
 				</>
-			)}
+			}
 			{error && <p role="alert">{error}</p>}
 		</div>
 	);

@@ -17,6 +17,13 @@ export default function NewExpensePage() {
 	const members = useMembers(groupId);
 	const error = group.error ?? members.error ?? me.error;
 	useSessionGuard(error);
+	if (group.data?.role === "viewer")
+		return (
+			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
+				<p role="alert">{vi.common.forbidden}</p>
+				<Link href={`/g/${groupId}`}>{vi.common.back}</Link>
+			</main>
+		);
 	if (error?.status === 404)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-4 px-5 text-center">

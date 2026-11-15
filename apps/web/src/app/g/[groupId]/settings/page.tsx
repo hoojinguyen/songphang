@@ -3,9 +3,12 @@ import type { GroupDto } from "@songphang/contract";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { InviteLinkCard } from "../../../../components/settings/InviteLinkCard";
+import { TransferOwnershipCard } from "../../../../components/settings/TransferOwnershipCard";
 import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
+import { SegmentedControl } from "../../../../components/ui/SegmentedControl";
 import { Switch } from "../../../../components/ui/Switch";
 import { VerifyEmailBanner } from "../../../../components/ui/VerifyEmailBanner";
 import { useGroup, useUpdateGroup } from "../../../../lib/groups";
@@ -60,7 +63,32 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					disabled={update.isPending}
 				/>
 			</section>
-			{update.isError && <p role="alert">{vi.common.saveError}</p>}
+			<section className="grid gap-3 rounded-[28px] bg-surface p-5">
+				<h2 className="font-extrabold">{vi.settings.defaultRoleTitle}</h2>
+				<p className="text-xs text-muted">{vi.settings.defaultRoleHint}</p>
+				<SegmentedControl
+					label={vi.settings.defaultRoleTitle}
+					value={group.defaultRole}
+					options={[
+						{ value: "editor", label: vi.members.roleEditor },
+						{ value: "viewer", label: vi.members.roleViewer },
+					]}
+					disabled={update.isPending}
+					onChange={(defaultRole) => {
+						if (defaultRole === "editor" || defaultRole === "viewer")
+							update.mutate({ defaultRole });
+					}}
+				/>
+			</section>
+			<InviteLinkCard groupId={group.id} />
+			<TransferOwnershipCard groupId={group.id} />
+			{update.isError && (
+				<p role="alert">
+					{update.error.status === 403
+						? vi.common.forbidden
+						: vi.common.saveError}
+				</p>
+			)}
 		</>
 	);
 }
@@ -75,7 +103,11 @@ export default function SettingsPage() {
 	)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-4 px-5 text-center">
-				<p>{vi.common.groupNotFound}</p>
+				<p>
+					{group.error?.status === 404
+						? vi.common.groupNotFound
+						: vi.common.forbidden}
+				</p>
 				<Link href="/" className="flex min-h-11 items-center justify-center">
 					{vi.common.backToGroups}
 				</Link>

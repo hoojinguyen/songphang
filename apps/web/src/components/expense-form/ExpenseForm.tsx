@@ -104,7 +104,13 @@ export function ExpenseForm({
 					className="h-16 min-w-0 w-full rounded-[32px] bg-surface px-4 text-base text-ink"
 				/>
 			</label>
-			{mutation.isError && <p role="alert">{vi.common.saveError}</p>}
+			{mutation.isError && (
+				<p role="alert">
+					{mutation.error.status === 403
+						? vi.common.forbidden
+						: vi.common.saveError}
+				</p>
+			)}
 			{preview.isError && <p role="alert">{vi.common.loadError}</p>}
 			<Button
 				variant="accent"

@@ -108,6 +108,14 @@ export default function GroupPage() {
 				}
 			/>
 			<BalanceBlock groupId={groupId} balance={balance} />
+			{group.data.myMemberId === null && (
+				<Link
+					href={`/g/${groupId}/members`}
+					className="flex min-h-11 items-center justify-center rounded-pill bg-surface px-4 text-sm font-bold"
+				>
+					{vi.feed.chooseShape}
+				</Link>
+			)}
 			{group.data.role !== "viewer" && (
 				<Link
 					href={`/g/${groupId}/members`}
@@ -138,7 +146,7 @@ export default function GroupPage() {
 				/>
 			)}
 			{me.data.emailVerified ? (
-				<EntryBar groupId={groupId} />
+				<EntryBar groupId={groupId} readOnly={group.data.role === "viewer"} />
 			) : (
 				<div className="fixed bottom-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-bg p-5">
 					<VerifyEmailBanner />

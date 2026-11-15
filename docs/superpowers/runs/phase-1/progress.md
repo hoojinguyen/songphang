@@ -38,7 +38,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.7 API: invites, joining, member selection
 - [x] 1B.8 API: users in a group, roles, leaving, ownership
 - [x] 1B.9 API: realtime events
-- [ ] 1B.10 Web: joining and inviting
+- [x] 1B.10 Web: joining and inviting
 - [ ] 1B.11 Web: roles, settings, leaving, read-only, realtime
 - [ ] 1B.12 Stage gate 1B
 
@@ -1087,3 +1087,22 @@ Decisions: D22. qrcode package footprint 232 KiB; declaration package 40 KiB, ex
 Deviations: qrcode replaces unavailable uqr; JoinForm split beside ClaimGrid after the page exceeded 200 lines. Browser exercise used sequential sessions in one browser, not two simultaneous browser profiles.
 Not verified: physical phone-camera QR scan, native share sheet delivery, visual comparison against GE6/GE9, and simultaneous-browser join race UI (the API race passed in 1B.7).
 Out of scope: none. Two new untracked advisor spec documents were observed and left untouched.
+
+Commit 1B.10: `75de514`.
+
+## Task 1B.11 — Approach
+- Mount one validated EventSource subscription per group layout and invalidate the existing query keys.
+- Add native dialog and segmented-control primitives, then sharing/ownership and member-user controls.
+- Gate every edit surface by verified email and role; retain claim/leave actions for viewers.
+- Represent removal as a one-time query-cache notice on the group list and clear cached group data.
+- Exercise live role changes, member updates, removal, dialogs and reconnects with local browser/API fixtures.
+
+### Task 1B.11 — Results
+pnpm check: passed (174 files; all workspace typechecks Done). Biome required semantic fieldset for the segmented group; used its native group role without suppressions.
+Browser + local API actor: viewer Ngân saw `Chỉ xem` with no entry controls; promotion to editor made invitation/entry links appear without reload. New expense 100000 split Minh/Ngân appeared in the stream and changed Ngân's balance block to `Bạn cần trả 50.000 đ`. Demotion removed entry controls live; direct /tx/new displayed `Bạn không có quyền làm việc này.` Removal sent Ngân to / with `Bạn không còn ở trong nhóm này.` Member rename to Hùng nhỏ appeared without reload. Stopped/restarted API; the open group later displayed the changed group title with no alert stuck.
+Owner settings displayed default role, link controls and transfer targets. Transfer dialog initially focused cancel; Escape closed it and returned focus to Lan's opener. Native dialog was open with focus inside. Transfer to Lan navigated to members; ownership restored through the API after the exercise. Moved transfer/leave navigation into mutation-level onSuccess before invalidation so navigation survives unmounts caused by live role updates.
+Security review: relevant items 1, 2, 6, 7, 8 inspected against all new hooks/components and changed screens. SSE payload length/type/schema validated; source closed on cleanup/removal; group queries cancelled/removed on access loss; no persisted group notice or credentials. Role/verification controls are client presentation backed by existing server guards. Dialog uses native modal behavior; no raw HTML or unchecked redirect. No new dependencies; network audit not run.
+Decisions: shared discriminated group-user mutation follows five operations with the same invalidation/permission handling; removal notice lives only in the existing query cache. Same-directory UserControls and LeaveGroupButton keep member page below 200 lines.
+Deviations: semantic fieldset provides role=group implicitly. Used a browser observer plus API actor instead of two independent browser profiles.
+Not verified: full long-stream scroll preservation (attempted native scroll did not move the intended container); complete Tab-cycle trap (native key exercise was inconclusive); every dialog variant, two-window rename/leave visibility, QR change after rotation, and Wi-Fi toggling. API SSE cleanup/replay/removal/idle delivery passed in 1B.9. Dialog Escape/focus return and transfer navigation were exercised directly.
+Out of scope: none.

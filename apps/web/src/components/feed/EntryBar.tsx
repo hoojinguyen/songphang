@@ -1,7 +1,21 @@
 import Link from "next/link";
 import { vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
-export function EntryBar({ groupId }: { groupId: string }) {
+export function EntryBar({
+	groupId,
+	readOnly = false,
+}: {
+	groupId: string;
+	readOnly?: boolean;
+}) {
+	if (readOnly)
+		return (
+			<div className="fixed bottom-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-bg px-5 pb-5 pt-3">
+				<div className="flex h-16 items-center justify-center rounded-[32px] bg-sunken text-sm font-semibold text-muted">
+					{vi.members.roleViewer}
+				</div>
+			</div>
+		);
 	return (
 		<div className="fixed bottom-0 left-1/2 flex w-full max-w-[430px] -translate-x-1/2 gap-3 bg-bg px-5 pb-5 pt-3">
 			<Link

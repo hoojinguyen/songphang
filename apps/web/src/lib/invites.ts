@@ -52,3 +52,20 @@ async function fetchInvite(groupId: string) {
 		)
 	).invite;
 }
+export function useChangeInvite(groupId: string) {
+	const client = useQueryClient();
+	return useMutation<void, ApiError, { active: boolean } | { rotate: true }>({
+		mutationFn: async (request) => {
+			await apiFetch(
+				`/groups/${encodeURIComponent(groupId)}/invite${"rotate" in request ? "/rotate" : ""}`,
+				InviteResponse,
+				jsonRequest(
+					"rotate" in request ? "POST" : "PATCH",
+					"rotate" in request ? undefined : request,
+				),
+			);
+		},
+		onSuccess: () =>
+			client.invalidateQueries({ queryKey: ["group", groupId, "invite"] }),
+	});
+}

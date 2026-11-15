@@ -1,5 +1,7 @@
 "use client";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { FeaturedGroupCard } from "../components/groups/FeaturedGroupCard";
 import { GroupCard } from "../components/groups/GroupCard";
 import { Button } from "../components/ui/Button";
@@ -44,10 +46,18 @@ function GroupsHeader({ name }: { name: string }) {
 function GroupsContent({ name }: { name: string }) {
 	const me = useMe();
 	const groups = useGroups();
+	const client = useQueryClient();
+	const [removed] = useState(
+		() => client.getQueryData(["notice", "removed"]) === true,
+	);
+	useEffect(() => {
+		client.removeQueries({ queryKey: ["notice", "removed"] });
+	}, [client]);
 	useSessionGuard(groups.error);
 	return (
 		<main className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-5 pb-5 pt-6">
 			<GroupsHeader name={name} />
+			{removed && <p role="status">{vi.common.removed}</p>}
 			<div className="flex flex-1 flex-col gap-4 py-6">
 				{groups.isPending ? (
 					<div aria-busy="true" className="h-56 rounded-[40px] bg-sunken" />

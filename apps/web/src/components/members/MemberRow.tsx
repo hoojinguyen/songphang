@@ -1,15 +1,15 @@
-import type { MemberDto } from "@songphang/contract";
+import type { GroupRole, MemberDto } from "@songphang/contract";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
 export function MemberRow({
 	member,
-	isOwner,
+	role,
 	isExpanded,
 	onEdit,
 	canEdit = true,
 }: {
 	member: MemberDto;
-	isOwner: boolean;
+	role: GroupRole | undefined;
 	isExpanded: boolean;
 	onEdit: () => void;
 	canEdit?: boolean;
@@ -31,16 +31,24 @@ export function MemberRow({
 					{member.name}
 				</span>
 				<span className="text-xs text-muted">
-					{member.isMe
-						? vi.members.youTag
-						: !member.active
-							? vi.members.inactiveTag
-							: ""}
+					{!member.active
+						? vi.members.inactiveTag
+						: member.isMe
+							? vi.members.loggedInYou
+							: member.claimed
+								? vi.members.joined
+								: vi.members.unclaimed}
 				</span>
 			</span>
-			{member.isMe && isOwner && (
-				<span className="rounded-[14px] bg-accent px-3 py-1 text-xs text-ink">
-					{vi.members.ownerBadge}
+			{role && (
+				<span
+					className={`rounded-[14px] px-3 py-1 text-xs text-ink ${role === "owner" ? "bg-accent" : "bg-sunken"}`}
+				>
+					{role === "owner"
+						? vi.members.ownerBadge
+						: role === "editor"
+							? vi.members.roleEditor
+							: vi.members.roleViewer}
 				</span>
 			)}
 		</RowTag>
