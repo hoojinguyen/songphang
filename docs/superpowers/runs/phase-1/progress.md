@@ -53,7 +53,7 @@ Not verified:
 ## Stage 1C — Splits and settlements
 
 - [x] 1C.1 `core`: rounding function, all split methods, debt attribution
-- [ ] 1C.2 API: every transaction type and split
+- [x] 1C.2 API: every transaction type and split
 - [ ] 1C.3 Web: transaction type, several payers, transfer and income forms
 - [ ] 1C.4 Web: split editor
 - [ ] 1C.5 Web: settling, and transfers and income in the stream
@@ -1520,4 +1520,23 @@ Security review: relevant items 1–8 inspected against full schema, normalizati
 Decisions: D24 preserves the exact transfer default in the single authorized message source. Normalization/calculation moved to a same-directory service file to keep transactions.ts below 200 lines.
 Deviations: narrow import of the pure vi.ts object by API normalization, as documented in D24. Preview explicitly accepts only expense/income per plan.
 Not verified: separate income-only fresh-group manual example (T3's sign was exercised in the combined fixed ledger).
+Out of scope: none.
+
+Commit 1C.2: `fe78116`.
+
+## Task 1C.3 — Approach
+- Extend the current form controller with a transaction type and explicit multi-payer/transfer fields.
+- Keep amount, description and date in one state across type switches; validate each request with the contract.
+- Reuse the member grid with disabled receiver support and show integer payer-total status.
+- Move the form header into the form so its title and trailing type switch share the same controller.
+- Preview only expense/income requests; transfer requests normalize on the API as already verified.
+
+### Task 1C.3 — Results
+pnpm check: passed (182 files; all workspace typechecks Done).
+Browser: 1200000 with payers Minh 800000/Lan 300000 showed `Còn dư 100.000 đ`, save disabled. Changed Lan to 400000, saved; API read showed both payer amounts and four equal 300000 shares. Found/fixed match-line bug (showed zero instead of total); repeated browser exercise showed exactly `Khớp 1.200.000 đ`.
+Switched income/transfer/expense while keeping 200000, Hoàn cọc and date value. Saved income received by Lan → API read type income, amount 200000, Lan payer and four 50000 shares. Saved transfer Thu→Minh 210000 with empty note → API read type transfer/default Chuyển khoản, one sender payer and one receiver share 210000. Transfer receiver grid disabled the selected sender. Missing receiver disabled saving.
+Security review: relevant items 1, 2, 6, 7, 8 checked against form/controller, grids, fields, type switch and caller diff. Contract validates final payload; payer-total status uses integer sums only; official per-person amounts remain API previews; transfer side cannot equal itself; same-origin/idempotent mutation unchanged; no dependency changes. No external calls/audit.
+Decisions: D25. Header lives with form state; type buttons use the mandatory 44px hit area although the mockup specifies 40px.
+Deviations: exact weighted T2 UI exercise carried into 1C.4 (split editor not yet introduced); hotel saved here uses equal split. Controller exceeds 40 lines because it keeps one coherent form state; files remain below 200 lines.
+Not verified: GE19 visual comparison; date preservation was observed in native displayed value without changing its default date.
 Out of scope: none.

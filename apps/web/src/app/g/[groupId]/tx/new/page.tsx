@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ExpenseForm } from "../../../../../components/expense-form/ExpenseForm";
 import { LoadError } from "../../../../../components/ui/LoadError";
-import { ScreenHeader } from "../../../../../components/ui/ScreenHeader";
 import { VerifyEmailBanner } from "../../../../../components/ui/VerifyEmailBanner";
 import { useGroup } from "../../../../../lib/groups";
 import { useMembers } from "../../../../../lib/members";
@@ -64,13 +63,6 @@ export default function NewExpensePage() {
 		);
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-4 px-5 py-5">
-			<ScreenHeader
-				title={vi.expenseForm.title}
-				subtitle={group.data.name}
-				backHref={`/g/${groupId}`}
-				backLabel={vi.common.cancel}
-				backIcon="close"
-			/>
 			{!me.data.emailVerified ? (
 				<VerifyEmailBanner />
 			) : (

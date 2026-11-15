@@ -144,3 +144,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 ## Transaction types and splits — 1C.2
 1. Run T1–T4 and read balances → 500001, -120000, -170001, -210000, summing to 0.
 2. Run T3 alone in a new group → Lan owes each of the other three 50.000 đ.
+
+## Transaction form — 1C.3
+1. Compare the header switch with GE19.
+2. Record a hotel bill paid 800.000 by Minh and 400.000 by Lan → both payers, status Khớp 1.200.000 đ.
+3. Record a refund received by Lan → Lan now owes the others on balances.
+4. Enter mismatched payer totals or omit a transfer receiver → saving disabled. Switch types → amount, description and date stay.

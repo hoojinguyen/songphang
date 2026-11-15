@@ -160,3 +160,9 @@ Problem: API transfers default to the Vietnamese product description, while the 
 Options: duplicate text; change the default; import the pure message module for this one default.
 Choice: the API normalization module imports only the pure vi.ts message object for the approved default. It imports no web framework/runtime code.
 Reason: preserves the exact API default and the owner's single-copy rule. This is a narrow dependency-direction exception to the plan that requires advisor review; the owner instruction has higher priority.
+
+## D25 — Exercise weighted hotel input after the split editor exists
+Problem: 1C.3 asks for T2's weighted split through the form, but the weighted editor is introduced by the following task 1C.4.
+Options: build the editor early; exercise the new two-payer input with equal shares now and replay full T2 in 1C.4.
+Choice: exercise two payers now and carry the exact weighted T2 form exercise into 1C.4.
+Reason: preserves task order and one commit per task without claiming an unavailable control was exercised.
