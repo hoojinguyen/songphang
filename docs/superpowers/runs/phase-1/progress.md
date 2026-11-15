@@ -39,7 +39,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.8 API: users in a group, roles, leaving, ownership
 - [x] 1B.9 API: realtime events
 - [x] 1B.10 Web: joining and inviting
-- [ ] 1B.11 Web: roles, settings, leaving, read-only, realtime
+- [x] 1B.11 Web: roles, settings, leaving, read-only, realtime
 - [ ] 1B.12 Stage gate 1B
 
 ### Gate 1B
@@ -1106,3 +1106,217 @@ Decisions: shared discriminated group-user mutation follows five operations with
 Deviations: semantic fieldset provides role=group implicitly. Used a browser observer plus API actor instead of two independent browser profiles.
 Not verified: full long-stream scroll preservation (attempted native scroll did not move the intended container); complete Tab-cycle trap (native key exercise was inconclusive); every dialog variant, two-window rename/leave visibility, QR change after rotation, and Wi-Fi toggling. API SSE cleanup/replay/removal/idle delivery passed in 1B.9. Dialog Escape/focus return and transfer navigation were exercised directly.
 Out of scope: none.
+
+Commit 1B.11: `5b6aff5`.
+
+## Task 1B.12 — Approach
+- Build with outbound networking denied and run pnpm check before the gate commit.
+- Reset only the development compose database, migrate and seed, then replay 1B and 1A acceptance requests.
+- Record actual responses and the endpoint/caller matrix without storing credentials or mail tokens.
+- Run the independent balance checker after all replayed writes.
+
+### Stage 1B gate — acceptance output
+```text
+dev-login minh [204, null]
+dev-login lan [204, null]
+dev-login hung [204, null]
+dev-login thu [204, null]
+register Ngân [204, null]
+sign in unverified [204, null]
+unverified group write [403, {"error": {"code": "EMAIL_NOT_VERIFIED", "message": "Email verification required", "requestId": "01a1dffc-02c7-7295-aff5-d1e6202a89df"}}]
+verify [204, null]
+sign in verified [204, null]
+create group 201
+cable 201
+hotpot 201
+preview Lan [200, {"group": {"id": "01a1dffc-0327-7b50-b806-7ab6b8a4ba71", "name": "Đà Lạt 12/2026"}, "ownerName": "Minh", "memberCount": 4, "transactionCount": 2, "members": [{"id": "01a1dffc-032b-78e3-a090-954fad1f0c05", "name": "Minh", "shape": "circle", "color": "mint", "claimed": true, "balance": null}, {"id": "01a1dffc-0330-7905-8814-b45ca322e57d", "name": "Lan", "shape": "diamond", "color": "sky", "claimed": false, "balance": 0}, {"id": "01a1dffc-0331-7ad4-8784-c73d9a473b1b", "name": "Hùng", "shape": "squircle", "color": "coral", "claimed": false, "balance": -300000}, {"id": "01a1dffc-0332-700f-bafe-537c723da5ef", "name": "Thu", "shape": "leaf", "color": "lilac", "claimed": false, "balance": -200000}], "alreadyJoined": false}]
+Lan joins [200, {"groupId": "01a1dffc-0327-7b50-b806-7ab6b8a4ba71"}]
+Ngan joins [200, {"groupId": "01a1dffc-0327-7b50-b806-7ab6b8a4ba71"}]
+Hung joins [200, {"groupId": "01a1dffc-0327-7b50-b806-7ab6b8a4ba71"}]
+Lan groups [200, {"groups": [{"id": "01a1dffc-0327-7b50-b806-7ab6b8a4ba71", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1dffc-032b-78e3-a090-954fad1f0c05", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1dffc-0330-7905-8814-b45ca322e57d", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1dffc-0331-7ad4-8784-c73d9a473b1b", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1dffc-0332-700f-bafe-537c723da5ef", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": 0}]}]
+Hung groups [200, {"groups": [{"id": "01a1dffc-0327-7b50-b806-7ab6b8a4ba71", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1dffc-032b-78e3-a090-954fad1f0c05", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1dffc-0330-7905-8814-b45ca322e57d", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1dffc-0331-7ad4-8784-c73d9a473b1b", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1dffc-0332-700f-bafe-537c723da5ef", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": -300000}]}]
+Ngân viewer 200
+viewer create [403, {"error": {"code": "FORBIDDEN", "message": "Insufficient group role", "requestId": "01a1dffc-03f5-753e-902f-ec9a456e8558"}}]
+viewer read 200
+coffee 201
+SSE within 2s ": connected\n\nevent: changed\ndata: {\"resources\":[\"transactions\",\"balances\",\"activity\"]}\n\n"
+remove Hung [204, null]
+removed read [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found", "requestId": "01a1dffc-0660-789e-addb-cca0aa75801c"}}]
+preserved balances [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1dffc-032b-78e3-a090-954fad1f0c05", "balance": 566666}, {"memberId": "01a1dffc-0330-7905-8814-b45ca322e57d", "balance": -33333}, {"memberId": "01a1dffc-0331-7ad4-8784-c73d9a473b1b", "balance": -333333}, {"memberId": "01a1dffc-0332-700f-bafe-537c723da5ef", "balance": -200000}, {"memberId": "01a1dffc-03ad-78c4-8ec1-8febe4dd7b2c", "balance": 0}], "transfers": [{"fromMemberId": "01a1dffc-0331-7ad4-8784-c73d9a473b1b", "toMemberId": "01a1dffc-032b-78e3-a090-954fad1f0c05", "amount": 333333}, {"fromMemberId": "01a1dffc-0332-700f-bafe-537c723da5ef", "toMemberId": "01a1dffc-032b-78e3-a090-954fad1f0c05", "amount": 200000}, {"fromMemberId": "01a1dffc-0330-7905-8814-b45ca322e57d", "toMemberId": "01a1dffc-032b-78e3-a090-954fad1f0c05", "amount": 33333}]}]
+rotate 200
+old token [404, {"error": {"code": "INVITE_INVALID", "message": "Invite is invalid", "requestId": "01a1dffc-0693-746b-8b80-ba9fda3bc860"}}]
+forgot [204, null]
+reset [204, null]
+old session 1 401
+old session 2 401
+login new [204, null]
+register existing [204, null]
+register new [204, null]
+forgot known [204, null]
+forgot unknown [204, null]
+1A Vé cáp treo 201
+1A Lẩu 201
+1A Cà phê 201
+1A minimized [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "balance": 566666}, {"memberId": "01a1dffc-077a-7945-aaa0-205d934da197", "balance": -33333}, {"memberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "balance": -333333}, {"memberId": "01a1dffc-077d-7597-95ca-4677ef5ec1e5", "balance": -200000}], "transfers": [{"fromMemberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 333333}, {"fromMemberId": "01a1dffc-077d-7597-95ca-4677ef5ec1e5", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 200000}, {"fromMemberId": "01a1dffc-077a-7945-aaa0-205d934da197", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 33333}]}]
+1A pairwise setting 200
+1A pairwise [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "balance": 566666}, {"memberId": "01a1dffc-077a-7945-aaa0-205d934da197", "balance": -33333}, {"memberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "balance": -333333}, {"memberId": "01a1dffc-077d-7597-95ca-4677ef5ec1e5", "balance": -200000}], "transfers": [{"fromMemberId": "01a1dffc-077a-7945-aaa0-205d934da197", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 133333}, {"fromMemberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 233333}, {"fromMemberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "toMemberId": "01a1dffc-077a-7945-aaa0-205d934da197", "amount": 100000}, {"fromMemberId": "01a1dffc-077d-7597-95ca-4677ef5ec1e5", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 200000}]}]
+1A deactivate Thu 200
+1A Taxi shares [201, [{"memberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 30000}, {"memberId": "01a1dffc-077a-7945-aaa0-205d934da197", "amount": 30000}, {"memberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "amount": 30000}]]
+1A inactive balance [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "balance": 626666}, {"memberId": "01a1dffc-077a-7945-aaa0-205d934da197", "balance": -63333}, {"memberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "balance": -363333}, {"memberId": "01a1dffc-077d-7597-95ca-4677ef5ec1e5", "balance": -200000}], "transfers": [{"fromMemberId": "01a1dffc-077a-7945-aaa0-205d934da197", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 163333}, {"fromMemberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 263333}, {"fromMemberId": "01a1dffc-077b-7c9e-93e7-444a53c5c173", "toMemberId": "01a1dffc-077a-7945-aaa0-205d934da197", "amount": 100000}, {"fromMemberId": "01a1dffc-077d-7597-95ca-4677ef5ec1e5", "toMemberId": "01a1dffc-0778-7f94-827b-639f64427c4e", "amount": 200000}]}]
+```
+
+### Stage 1B gate — permission matrix
+```text
+GET /group minh: 200
+GET /group lan: 200
+GET /group ngan: 200
+GET /group hung: 404
+GET /group signed-out: 401
+GET /group malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /group random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /members minh: 200
+GET /members lan: 200
+GET /members ngan: 200
+GET /members hung: 404
+GET /members signed-out: 401
+GET /members malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /members random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /users minh: 200
+GET /users lan: 200
+GET /users ngan: 200
+GET /users hung: 404
+GET /users signed-out: 401
+GET /users malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /users random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /transactions minh: 200
+GET /transactions lan: 200
+GET /transactions ngan: 200
+GET /transactions hung: 404
+GET /transactions signed-out: 401
+GET /transactions malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /transactions random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /balances minh: 200
+GET /balances lan: 200
+GET /balances ngan: 200
+GET /balances hung: 404
+GET /balances signed-out: 401
+GET /balances malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /balances random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /events minh: 200
+GET /events lan: 200
+GET /events ngan: 200
+GET /events hung: 404
+GET /events signed-out: 401
+GET /events malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /events random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /invite minh: 200
+GET /invite lan: 200
+GET /invite ngan: 403
+GET /invite hung: 404
+GET /invite signed-out: 401
+GET /invite malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+GET /invite random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /members minh: 201
+POST /members lan: 201
+POST /members ngan: 403
+POST /members hung: 404
+POST /members signed-out: 401
+POST /members malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /members random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 minh: 200
+PATCH /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 lan: 200
+PATCH /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 ngan: 403
+PATCH /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 hung: 404
+PATCH /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 signed-out: 401
+PATCH /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /transactions minh: 201
+POST /transactions lan: 201
+POST /transactions ngan: 403
+POST /transactions hung: 404
+POST /transactions signed-out: 401
+POST /transactions malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /transactions random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /transactions/preview minh: 200
+POST /transactions/preview lan: 200
+POST /transactions/preview ngan: 403
+POST /transactions/preview hung: 404
+POST /transactions/preview signed-out: 401
+POST /transactions/preview malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /transactions/preview random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /group minh: 200
+PATCH /group lan: 403
+PATCH /group ngan: 403
+PATCH /group hung: 404
+PATCH /group signed-out: 401
+PATCH /group malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /group random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /invite minh: 200
+PATCH /invite lan: 403
+PATCH /invite ngan: 403
+PATCH /invite hung: 404
+PATCH /invite signed-out: 401
+PATCH /invite malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /invite random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /invite/rotate minh: 200
+POST /invite/rotate lan: 403
+POST /invite/rotate ngan: 403
+POST /invite/rotate hung: 404
+POST /invite/rotate signed-out: 401
+POST /invite/rotate malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /invite/rotate random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e minh: 200
+PATCH /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e lan: 403
+PATCH /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e ngan: 403
+PATCH /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e hung: 404
+PATCH /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e signed-out: 401
+PATCH /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PATCH /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PUT /me/member minh: 200
+PUT /me/member lan: 200
+PUT /me/member ngan: 200
+PUT /me/member hung: 404
+PUT /me/member signed-out: 401
+POST /transfer-ownership lan: 403
+POST /transfer-ownership ngan: 403
+POST /transfer-ownership hung: 404
+POST /transfer-ownership signed-out: 401
+POST /transfer-ownership minh: 200
+DELETE /users/user lan: 403
+DELETE /users/user ngan: 403
+DELETE /users/user hung: 404
+DELETE /users/user signed-out: 401
+DELETE /users/user minh: 204
+POST /leave minh: 422
+POST /leave lan: 204
+POST /leave ngan: 204
+POST /leave hung: 404
+POST /leave signed-out: 401
+DELETE /members/member minh: 204
+DELETE /members/member lan: 204
+DELETE /members/member ngan: 403
+DELETE /members/member hung: 404
+DELETE /members/member signed-out: 401
+PUT /me/member malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+PUT /me/member random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /transfer-ownership malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /transfer-ownership random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+DELETE /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+DELETE /users/01a1dff9-e1c4-7545-9879-42a58cb63f2e random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /leave malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+POST /leave random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+DELETE /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 malformed: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+DELETE /members/01a1dffc-e198-740b-9ec9-8e09c41038e1 random: 404 {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}
+```
+
+### Task 1B.12 — Gate result
+Gate passed after one build fix.
+- pnpm check: passed (175 files; all workspace typechecks Done).
+- pnpm build with outbound network denied: first failed fetching Be Vietnam Pro from fonts.googleapis.com. D23 replaces the remote build dependency with unchanged cached source WOFF2 assets and the local existing OFL license. Second build: compiled successfully, TypeScript finished, 11/11 static pages generated, all routes listed.
+- Reset: docker compose down -v; up --pull never -d --wait db; migrate → `Migrations applied`; seed → `Development users seeded`.
+- 1B acceptance: all real outputs above. Verified-email write guard 403 before verification; joins and balances correct; viewer write 403/read 200; SSE line in less than two seconds; removal preserves balances; rotated token invalid; password reset revokes both old sessions; known/new registration and known/unknown forgot responses each identical empty 204.
+- Replayed 1A acceptance on a separate fresh group: exact balances 566666/-33333/-333333/-200000, minimized transfers 333333/200000/33333; pairwise transfers 133333/233333/100000/200000. Taxi shares 30000 each; inactive Thu remains -200000.
+- Full existing endpoint matrix recorded above: owner/editor/viewer/outsider/signed-out outcomes match; malformed/random group IDs share the normalized NOT_FOUND body for every route.
+- pnpm db:check-balances: both groups sum 0/mismatches 0; `All groups balanced`.
+- Production web local font URL → `200 font/woff2 4720`; missing font → 404. Source font assets plus license use 200 KiB. Security review relevant items 1, 6, 7, 8: static licensed files, no external font URL, no credential/configuration/dependency change; no generated build folders committed.
+Decisions: D23. Not verified: visual font comparison, precise QR bundle delta, real Google roundtrip and the browser/device checks already listed under the preceding tasks. No gate item remains failed. No external registry, font service, Google service, deployment or push performed.

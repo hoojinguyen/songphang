@@ -148,3 +148,9 @@ Choice: qrcode 1.5.4 and @types/qrcode 1.5.6, installed with --offline (download
 Reason: QR encoding/error correction cannot be implemented safely in a few dozen lines; a real QR is required. Render the standard library's module matrix with React SVG rather than inserting its serialized markup.
 License: MIT. Maintenance: established library, installed stable release; current upstream maintenance/latest version could not be verified without a forbidden external call.
 Added size: 29 runtime packages and one declaration package in the offline install; bundle impact will be measured at the stage build. This is a material deviation from the planned uqr dependency for advisor review.
+
+## D23 — Self-host the existing product font for offline builds
+Problem: stage 1B build with outbound networking denied failed because next/font/google tried to fetch Be Vietnam Pro from fonts.googleapis.com.
+Options: permit external requests (forbidden); fall back to a different font; self-host the exact cached font resources.
+Choice: keep all six approved weights and Vietnamese/Latin/Latin-extended subsets as source WOFF2 assets under public/fonts/be-vietnam-pro, with explicit CSS faces and the same fallback metrics. Copy the existing SIL OFL 1.1 license from the local Kệ Hàng font source. No download or new dependency.
+Reason: preserves the approved typography while making builds independent of a remote service. The source font bytes are unchanged; generated Next CSS, source maps and build directories are not committed.

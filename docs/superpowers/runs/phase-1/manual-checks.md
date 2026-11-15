@@ -133,3 +133,7 @@ Written by the implementation agent from the "Manual checks for the project owne
 3. As a Chỉ xem person try every screen → nothing lets you add or change; direct transaction form shows the permission message.
 4. Turn Wi-Fi off and on with a group open → after reconnecting a change from the other window appears.
 5. Check dialogs: cancel initially focused, Tab stays inside, Escape cancels, opener regains focus. Transfer ownership → settings access moves to the new owner.
+
+## Stage 1B
+1. With two phones or browser profiles, go through flow A and flow B from sign-up to both people seeing the same new expense.
+2. Confirm sign-in, registration and forgot-password screens do not disclose whether an email already has an account.
