@@ -13,6 +13,7 @@ import { registerDevRoutes } from "./routes/dev.js";
 import { registerGoogleRoutes } from "./routes/google.js";
 import { registerGroupRoutes } from "./routes/groups.js";
 import { registerHealthRoute } from "./routes/health.js";
+import { registerInviteRoutes } from "./routes/invites.js";
 import { registerMeRoute } from "./routes/me.js";
 import { registerMemberRoutes } from "./routes/members.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
@@ -64,6 +65,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerHealthRoute(app, deps.db);
 	registerMeRoute(app, deps);
 	registerGroupRoutes(app, deps);
+	registerInviteRoutes(app, deps);
 	registerMemberRoutes(app, deps);
 	registerTransactionRoutes(app, deps);
 	registerBalanceRoutes(app, deps);

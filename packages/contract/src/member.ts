@@ -43,6 +43,7 @@ export const MemberDto = z
 		shape: MemberShapeCode,
 		color: MemberColorCode,
 		isMe: z.boolean(),
+		claimed: z.boolean(),
 	})
 	.openapi("MemberDto");
 export type MemberDto = z.infer<typeof MemberDto>;

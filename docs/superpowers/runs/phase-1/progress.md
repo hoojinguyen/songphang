@@ -34,7 +34,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.3 API: forgot, reset and change password; delete account
 - [x] 1B.4 API: Google sign-in
 - [x] 1B.5 Web: sign-in, register, verify, forgot and reset screens
-- [ ] 1B.6 Web: account screen
+- [x] 1B.6 Web: account screen
 - [ ] 1B.7 API: invites, joining, member selection
 - [ ] 1B.8 API: users in a group, roles, leaving, ownership
 - [ ] 1B.9 API: realtime events
@@ -898,4 +898,21 @@ Browser: signed-out /account redirected to /login?next=%2Faccount. Ngân's accou
 Security review: relevant items 1, 2, 6, 7, 8 checked against actual page, cards, hooks and avatar diff. No credentials stored beyond component state; typed owner-count details; same-origin writes; deletion requires exact email; no dependency changes. API remains authoritative. Network audit not run (external services forbidden).
 Decisions: none. Deviations: none.
 Not verified: browser credential changes and destructive account submission were not performed because the browser policy requires a handoff/action-time confirmation. API password/session behavior was exercised in 1B.3. Joined-member preservation remains scheduled after 1B.7/1B.10.
+Out of scope: none.
+
+Commit 1B.6: `80c0124`.
+
+## Task 1B.7 — Approach
+- Add bounded invite contracts and group-scoped query functions; keep raw invite links out of reports.
+- Reuse group locking and member creation so simultaneous claims serialize and member limits stay consistent.
+- Lock the joining account before the group to preserve account-deletion ordering.
+- Require shared group authorization for management/selection and existing verified/write/origin guards for writes.
+- Add claimed to the existing member DTO and correlated database selection instead of a second member representation.
+
+### Task 1B.7 — Results
+pnpm check: passed (154 files; all workspace typechecks Done). Balance checker: all three groups sum 0, mismatches 0; `All groups balanced`.
+Local curl exercises on the retained two-expense regression group: invite token length 43, active true. Preview → 200, owner Minh, four active members, two transactions, Minh claimed/balance null, Hùng unclaimed/-300000. Lan join → 200; list myBalance 0. Hùng claim Lan → 409 MEMBER_ALREADY_CLAIMED. Concurrent Thu claims → one 200, one 409. New Hùng em → 200/fifth member; Lan repeat → 200/no extra member. Hùng choose original Hùng → 200/new myMemberId, choose Lan → 409. Editor toggle → 403. Disable/unknown/old-after-rotation → identical INVITE_INVALID 404 apart from requestId; new token preview → 200. Unverified preview → 200, join → 403 EMAIL_NOT_VERIFIED. Preview limiter returned 429 after 24 further successful requests in the already-used 30-request window. Outsider GET/PATCH invite, POST rotate and PUT member → NOT_FOUND 404 each.
+Security review: relevant items 1–8 checked against actual contract/query/service/route diff. Bounded Zod inputs, same-origin and verified/write guards, shared group authorization, account-before-group locks, group lock plus unique member constraint for claims, transaction for every multirow write, no emails in preview. Invite tokens omitted from logs/reports. No dependencies added; network audit not run.
+Decisions: reused the existing group lock to serialize claim races; the unique constraint remains the database backstop. Invite route file is 208 lines because the six explicit OpenAPI contracts and thin handlers belong together; no abstraction introduced.
+Deviations: exercise reused the existing two-expense regression group with a different name; its amounts and expected balances match the plan. Not verified: fresh-window exact 31st request (the exercised window already had requests); account deletion preserving joined authored transactions is carried to the joining UI exercise in 1B.10.
 Out of scope: none.

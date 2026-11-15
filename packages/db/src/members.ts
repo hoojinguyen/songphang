@@ -1,9 +1,10 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
-import { members } from "./schema-groups.js";
+import { groupUsers, members } from "./schema-groups.js";
 import { transactionPayers, transactionShares } from "./schema-transactions.js";
 export const MEMBER_COLUMNS = {
 	id: members.id,
+	claimed: sql<boolean>`exists(select 1 from ${groupUsers} where ${groupUsers.groupId} = ${members.groupId} and ${groupUsers.memberId} = ${members.id})`,
 	groupId: members.groupId,
 	name: members.name,
 	active: members.active,

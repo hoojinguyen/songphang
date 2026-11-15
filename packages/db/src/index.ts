@@ -10,6 +10,7 @@ export {
 export * from "./google-accounts.js";
 export * from "./groups.js";
 export * from "./idempotency.js";
+export * from "./invites.js";
 export * from "./members.js";
 export { runMigrations } from "./migrate.js";
 export { sessions, users } from "./schema.js";
