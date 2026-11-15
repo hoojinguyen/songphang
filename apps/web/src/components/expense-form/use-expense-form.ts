@@ -11,6 +11,7 @@ import { useCreateTransaction, usePreviewShares } from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
 import { vi } from "../../messages/vi";
 import type { FormTransactionType } from "./TypeSwitch";
+import { useSplitState } from "./use-split-state";
 
 function localDateTime() {
 	const now = new Date();
@@ -32,7 +33,7 @@ export function useExpenseForm(
 		useState<SplitTransactionRequest["category"]>(null);
 	const [payerIds, setPayerIds] = useState<string[]>(initial ? [initial] : []);
 	const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
-	const [sharers, setSharers] = useState(active.map((member) => member.id));
+
 	const [transferFrom, setTransferFrom] = useState(initial);
 	const [transferTo, setTransferTo] = useState<string | null>(null);
 	const [occurredAt, setOccurredAt] = useState(localDateTime);
@@ -42,6 +43,7 @@ export function useExpenseForm(
 	const router = useRouter();
 	useSessionGuard(mutation.error);
 	const amount = parseAmountInput(amountText);
+	const splitState = useSplitState(active, amount ?? 0);
 	const date = new Date(occurredAt);
 	const timestamp = Number.isNaN(date.getTime()) ? "" : date.toISOString();
 	const title =
@@ -75,7 +77,7 @@ export function useExpenseForm(
 					occurredAt: timestamp,
 					category,
 					payers,
-					split: { method: "equal", members: sharers },
+					split: splitState.split,
 				},
 	);
 	const request =
@@ -135,8 +137,13 @@ export function useExpenseForm(
 		payerAmounts,
 		setPayerAmount: (id: string, value: string) =>
 			setPayerAmounts((current) => ({ ...current, [id]: value })),
-		sharers,
-		setSharers,
+		sharers: splitState.ids,
+		setSharers: (ids: string[]) => {
+			for (const id of active.map((m) => m.id))
+				if (ids.includes(id) !== splitState.ids.includes(id))
+					splitState.toggle(id);
+		},
+		splitState,
 		transferFrom,
 		setTransferFrom: (id: string) => {
 			setTransferFrom(id);

@@ -54,7 +54,7 @@ Not verified:
 
 - [x] 1C.1 `core`: rounding function, all split methods, debt attribution
 - [x] 1C.2 API: every transaction type and split
-- [ ] 1C.3 Web: transaction type, several payers, transfer and income forms
+- [x] 1C.3 Web: transaction type, several payers, transfer and income forms
 - [ ] 1C.4 Web: split editor
 - [ ] 1C.5 Web: settling, and transfers and income in the stream
 - [ ] 1C.6 Stage gate 1C
@@ -1539,4 +1539,23 @@ Security review: relevant items 1, 2, 6, 7, 8 checked against form/controller, g
 Decisions: D25. Header lives with form state; type buttons use the mandatory 44px hit area although the mockup specifies 40px.
 Deviations: exact weighted T2 UI exercise carried into 1C.4 (split editor not yet introduced); hotel saved here uses equal split. Controller exceeds 40 lines because it keeps one coherent form state; files remain below 200 lines.
 Not verified: GE19 visual comparison; date preservation was observed in native displayed value without changing its default date.
+Out of scope: none.
+
+Commit 1C.3: `d5c1d25`.
+
+## Task 1C.4 — Approach
+- Keep split participants/mode/typed values in a focused controller used by both form and overlay.
+- Build exact remainder and percent-status feedback from integer totals; official shares still come only from preview.
+- Add the four specified split components and a full-height panel that preserves state on close.
+- Disable preview/save for invalid totals, and render validated API mismatch details as the specified status copy.
+- Exercise exact/private-plus-common, blank remainder, overage, weights, percentages and the deferred T2 UI case.
+
+### Task 1C.4 — Results
+pnpm check: passed (188 files; all workspace typechecks Done). Balance checker: four groups sum 0/mismatches 0; `All groups balanced`.
+Browser exact 300000 with 80000/60000/40000 → `Còn dư 120.000 đ · chưa lưu được`; spread → previews 120000/100000/80000 and match copy. Saved API read retained equal_among_all and original entries. Blank case 150000/empty/empty → exact blank copy, preview 150000/75000/75000; saved equal_among_blank. Total 320000 → `Vượt 20.000 đ · chưa lưu được`; closed panel and save was disabled; reopened and 200000 field persisted.
+Shares mode 100 with 1,5/1/1 → API preview 43/29/28. Rendered geometry widths 76/69/69px, with initials visible. Added/removed Thu and switched modes. Percent 50/30/19 → `Còn thiếu 1% · chưa lưu được`; 99999 with 50/30/20 → 49999/30000/20000 and Khớp 100%, saved with percent input intact. Deferred full T2 UI exercise completed: payers 800000/400000; weights 2/1/1/1; preview and stored shares 480000/240000/240000/240000.
+Security review: relevant items 1, 2, 6, 7, 8 inspected across all new/changed form/controller/component diff. Bounded contract input, integer total/percentage feedback, no official share calculation in web, invalid requests never preview/save, validated mismatch details. Pixel geometry uses an integer ratio solely for 56–104px rendering; no financial value is divided/rounded outside core. No storage/raw HTML/dependencies/external calls.
+Decisions: same-directory ParticipantFields and use-split-state split keep ExpenseForm below 200 lines; aria labels use localized wording. Pixel size is integer geometry derived from the server preview, distinct from money allocation.
+Deviations: none in behavior; focused form/split controller functions exceed 40 lines because they own the single coherent state. No extra state framework introduced.
+Not verified: complete keyboard-only traversal and visual comparison with GE4/GE16; field labels and button semantics were inspected/exercised through the browser. Debounced preview can briefly retain the prior valid preview until the new response arrives, as with the existing preview hook.
 Out of scope: none.

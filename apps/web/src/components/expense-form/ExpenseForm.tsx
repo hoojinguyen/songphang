@@ -1,13 +1,15 @@
 "use client";
 import type { MemberDto } from "@songphang/contract";
+import { useState } from "react";
+import { z } from "zod";
 import { formatAmount } from "../../lib/money";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
 import { ScreenHeader } from "../ui/ScreenHeader";
 import { AmountField } from "./AmountField";
-import { CategoryPicker } from "./CategoryPicker";
-import { MemberToggleGrid } from "./MemberToggleGrid";
-import { PayerAmounts } from "./PayerAmounts";
+import { ParticipantFields } from "./ParticipantFields";
+import { SplitEditor } from "./SplitEditor";
+import { SplitStatus } from "./SplitStatus";
 import { TransferFields } from "./TransferFields";
 import { TypeSwitch } from "./TypeSwitch";
 import { useExpenseForm } from "./use-expense-form";
@@ -20,35 +22,75 @@ export function ExpenseForm({
 	members: MemberDto[];
 	myMemberId: string | null;
 }) {
+	const [splitOpen, setSplitOpen] = useState(false);
+	const form = useExpenseForm(groupId, members, myMemberId);
 	const {
 		active,
 		amountText,
 		setAmountText,
 		description,
 		setDescription,
-		category,
-		setCategory,
 		type,
 		setType,
 		title,
 		amount,
 		payerIds,
-		togglePayer,
-		payerAmounts,
-		setPayerAmount,
 		transferFrom,
 		setTransferFrom,
 		transferTo,
 		setTransferTo,
-		sharers,
-		setSharers,
+		splitState,
 		occurredAt,
 		setOccurredAt,
 		preview,
 		mutation,
 		request,
 		submit,
-	} = useExpenseForm(groupId, members, myMemberId);
+	} = form;
+	const serverMismatch =
+		mutation.error?.code === "SPLIT_TOTAL_MISMATCH"
+			? z
+					.object({ expected: z.number().int(), actual: z.number().int() })
+					.safeParse(mutation.error.details)
+			: null;
+	const status = serverMismatch?.success
+		? {
+				matched: false,
+				text: t(
+					serverMismatch.data.actual > serverMismatch.data.expected
+						? vi.split.over
+						: vi.split.short,
+					{
+						amount:
+							formatAmount(
+								Math.abs(
+									serverMismatch.data.actual - serverMismatch.data.expected,
+								),
+							) +
+							" " +
+							vi.common.currency,
+					},
+				),
+			}
+		: splitState.status;
+	if (splitOpen)
+		return (
+			<SplitEditor
+				state={splitState}
+				members={active}
+				amount={amount}
+				description={description || title}
+				payerLine={t(vi.expenseForm.payerAmountLabel, {
+					name: active
+						.filter((member) => payerIds.includes(member.id))
+						.map((member) => member.name)
+						.join(", "),
+				})}
+				shares={request === null ? [] : (preview.data?.shares ?? [])}
+				onDone={() => setSplitOpen(false)}
+			/>
+		);
+
 	return (
 		<div className="flex flex-1 flex-col gap-3">
 			<ScreenHeader
@@ -81,73 +123,11 @@ export function ExpenseForm({
 					onTo={setTransferTo}
 				/>
 			) : (
-				<>
-					<CategoryPicker value={category} onChange={setCategory} />
-					<section className="rounded-[30px] bg-surface p-3">
-						<h2 className="mb-2 text-sm font-extrabold">
-							{type === "income"
-								? vi.expenseForm.receiverTitle
-								: vi.expenseForm.payerTitle}
-						</h2>
-						<MemberToggleGrid
-							members={active}
-							selectedIds={payerIds}
-							onToggle={togglePayer}
-							captionFor={(member) =>
-								member.id === myMemberId ? vi.common.you : member.name
-							}
-							label={
-								type === "income"
-									? vi.expenseForm.receiverTitle
-									: vi.expenseForm.payerTitle
-							}
-						/>
-					</section>
-					{payerIds.length > 1 && (
-						<PayerAmounts
-							members={active.filter((member) => payerIds.includes(member.id))}
-							values={payerAmounts}
-							amount={amount}
-							onChange={setPayerAmount}
-						/>
-					)}
-					<section className="rounded-[30px] bg-surface p-3">
-						<div className="mb-2 flex items-center justify-between">
-							<h2 className="text-sm font-extrabold">
-								{vi.expenseForm.sharersTitle}
-							</h2>
-							<span className="rounded-[22px] bg-phrase-split px-3 py-1 text-xs">
-								{vi.expenseForm.equalSplit}
-							</span>
-						</div>
-						<MemberToggleGrid
-							members={active}
-							selectedIds={sharers}
-							onToggle={(id) =>
-								setSharers(
-									sharers.includes(id)
-										? sharers.filter((memberId) => memberId !== id)
-										: [...sharers, id],
-								)
-							}
-							captionFor={(member) => {
-								if (!sharers.includes(member.id)) return member.name;
-								const share = preview.data?.shares.find(
-									(share) => share.memberId === member.id,
-								);
-								return share
-									? formatAmount(share.amount)
-									: vi.common.pendingValue;
-							}}
-							label={vi.expenseForm.sharersTitle}
-						/>
-						{sharers.length === 0 && (
-							<p role="alert" className="mt-2 text-xs text-muted">
-								{vi.expenseForm.needSharer}
-							</p>
-						)}
-					</section>
-				</>
+				<ParticipantFields
+					form={form}
+					myMemberId={myMemberId}
+					onEdit={() => setSplitOpen(true)}
+				/>
 			)}
 			<label className="grid gap-1 text-xs text-muted">
 				{vi.expenseForm.occurredAtLabel}
@@ -166,6 +146,7 @@ export function ExpenseForm({
 				</p>
 			)}
 			{preview.isError && <p role="alert">{vi.common.loadError}</p>}
+			{type !== "transfer" && <SplitStatus {...status} />}
 			<Button
 				variant="accent"
 				size="lg"

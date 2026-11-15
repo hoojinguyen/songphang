@@ -150,3 +150,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Record a hotel bill paid 800.000 by Minh and 400.000 by Lan → both payers, status Khớp 1.200.000 đ.
 3. Record a refund received by Lan → Lan now owes the others on balances.
 4. Enter mismatched payer totals or omit a transfer receiver → saving disabled. Switch types → amount, description and date stay.
+
+## Split editor — 1C.4
+1. Compare with GE4/GE16: tabs with Số tiền, rows, status bar and lilac button.
+2. Enter 300000 and private amounts 80000/60000/40000, spread remainder → 120000/100000/80000. Enter 150000 with two blanks → 150000/75000/75000.
+3. Try a 320000 split on 300000 or percent total 99 → save disabled; correct the total → save enabled.
+4. Close/reopen and remove/add participants → state remains as specified; every field is labelled with the member name.

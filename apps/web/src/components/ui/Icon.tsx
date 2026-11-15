@@ -1,4 +1,6 @@
 const PATHS = {
+	check: "M5 12l5 5 9-10",
+	warning: "M12 8v5M12 17h.01",
 	plus: "M12 5v14M5 12h14",
 	back: "M15 18l-6-6 6-6",
 	close: "M6 6l12 12M18 6L6 18",
