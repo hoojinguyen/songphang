@@ -6,6 +6,7 @@ import {
 } from "@songphang/db";
 import { createApp } from "./app.js";
 import { type Config, loadConfig } from "./config.js";
+import { createEventHub } from "./events/hub.js";
 import { createConsoleMailer } from "./mailer.js";
 import { createRateLimiter } from "./rate-limit.js";
 
@@ -42,6 +43,7 @@ try {
 	);
 	cleanupTimer.unref();
 	const app = createApp({
+		events: createEventHub(),
 		config,
 		db,
 		now: () => new Date(),

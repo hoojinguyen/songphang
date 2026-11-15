@@ -76,6 +76,12 @@ export async function changeGroupUser(
 			createdAt: deps.now(),
 		});
 	});
+	deps.events.publishChanged(input.groupId, [
+		"users",
+		"members",
+		"group",
+		"activity",
+	]);
 	return getGroupUsers(deps, input);
 }
 export async function removeGroupUser(deps: AppDeps, input: UserOperation) {
@@ -102,6 +108,13 @@ export async function removeGroupUser(deps: AppDeps, input: UserOperation) {
 			createdAt: deps.now(),
 		});
 	});
+	deps.events.publishRemoved(input.groupId, input.targetId);
+	deps.events.publishChanged(input.groupId, [
+		"users",
+		"members",
+		"group",
+		"activity",
+	]);
 }
 export async function leaveGroup(
 	deps: AppDeps,
@@ -123,9 +136,16 @@ export async function leaveGroup(
 			createdAt: deps.now(),
 		});
 	});
+	deps.events.publishRemoved(input.groupId, input.userId);
+	deps.events.publishChanged(input.groupId, [
+		"users",
+		"members",
+		"group",
+		"activity",
+	]);
 }
 export async function transferOwnership(deps: AppDeps, input: UserOperation) {
-	return deps.db.transaction(async (tx) => {
+	const result = await deps.db.transaction(async (tx) => {
 		for (const id of [...new Set([input.userId, input.targetId])].sort())
 			await lockAccount(tx, id);
 		await lockGroup(tx, input.groupId);
@@ -153,4 +173,11 @@ export async function transferOwnership(deps: AppDeps, input: UserOperation) {
 		});
 		return getGroup(tx, input.groupId, input.userId);
 	});
+	deps.events.publishChanged(input.groupId, [
+		"users",
+		"members",
+		"group",
+		"activity",
+	]);
+	return result;
 }

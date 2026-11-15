@@ -128,3 +128,15 @@ Problem: Offline arctic@3.7.0 installation fails ERR_PNPM_NO_OFFLINE_META; cache
 Options: Fetch the package despite the prohibition; leave Google unbuilt; implement the specified authorization-code protocol with standard Node/Web APIs.
 Choice: A small built-in adapter with fixed Google endpoints, standard crypto primitives, PKCE/state cookies and Zod-validated claims; no third-party package added.
 Reason: Continue the authorized phase run without remote calls, account creation or custom cryptographic algorithms. This differs materially from the advisor's chosen arctic integration and requires explicit attention in final review; real Google exchange remains unverified.
+
+## D20 — Realtime publication at transaction ownership boundaries
+Problem: create services run inside runIdempotent and cannot know when the outer transaction commits.
+Options: publish in the service (could announce rolled-back writes); add a generic transaction event framework; add an optional committed callback to the existing wrapper input.
+Choice: optional onCommitted callback, invoked only after a newly committed transaction; ordinary services publish after their own transaction resolves.
+Reason: fewest concepts, no event on rollback or idempotent replay, while keeping routes thin orchestration.
+
+## D21 — Serialize ownership changes with account deletion
+Problem: ownership transfer can race an account deletion and violate the deletion precondition if ownership is granted after the owner count is read.
+Options: group-only locking; lock both accounts before the group.
+Choice: lock both account rows in sorted UUID order, then lock the group and recheck ownership/target membership.
+Reason: matches the established account-first ordering and avoids opposing-transfer deadlocks.

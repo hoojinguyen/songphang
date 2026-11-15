@@ -104,6 +104,13 @@ export function registerGroupRoutes(
 				{
 					userId: context.var.user.id,
 					key: context.req.valid("header")["idempotency-key"],
+					onCommitted: (body) =>
+						deps.events.publishChanged(GroupResponse.parse(body).group.id, [
+							"group",
+							"members",
+							"users",
+							"activity",
+						]),
 					requestHash: hashRequest("POST", context.req.path, request),
 				},
 				async (transaction) => ({

@@ -92,7 +92,7 @@ export async function editMember(
 	deps: AppDeps,
 	input: MemberOperation & { memberId: string; request: UpdateMemberRequest },
 ) {
-	return deps.db.transaction(async (transaction) => {
+	const result = await deps.db.transaction(async (transaction) => {
 		await lockGroup(transaction, input.groupId);
 		const before = await getMember(transaction, input.groupId, input.memberId);
 		const { name, active, defaultWeight } = input.request;
@@ -127,6 +127,12 @@ export async function editMember(
 			member: { ...member, isMe: member.id === input.myMemberId },
 		});
 	});
+	deps.events.publishChanged(input.groupId, [
+		"members",
+		"balances",
+		"activity",
+	]);
+	return result;
 }
 export async function removeMember(
 	deps: AppDeps,
@@ -153,4 +159,9 @@ export async function removeMember(
 			createdAt: deps.now(),
 		});
 	});
+	deps.events.publishChanged(input.groupId, [
+		"members",
+		"balances",
+		"activity",
+	]);
 }

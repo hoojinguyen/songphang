@@ -5,11 +5,13 @@ import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
+import type { createEventHub } from "./events/hub.js";
 import type { Mailer } from "./mailer.js";
 import type { createRateLimiter } from "./rate-limit.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerDevRoutes } from "./routes/dev.js";
+import { registerEventRoutes } from "./routes/events.js";
 import { registerGoogleRoutes } from "./routes/google.js";
 import { registerGroupUserRoutes } from "./routes/group-users.js";
 import { registerGroupRoutes } from "./routes/groups.js";
@@ -29,6 +31,7 @@ export type AppEnv = {
 	};
 };
 export type AppDeps = {
+	events: ReturnType<typeof createEventHub>;
 	config: Config;
 	db: Db;
 	now: () => Date;
@@ -66,6 +69,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerHealthRoute(app, deps.db);
 	registerMeRoute(app, deps);
 	registerGroupRoutes(app, deps);
+	registerEventRoutes(app, deps);
 	registerGroupUserRoutes(app, deps);
 	registerInviteRoutes(app, deps);
 	registerMemberRoutes(app, deps);

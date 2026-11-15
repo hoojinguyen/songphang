@@ -155,13 +155,14 @@ export async function changeInvite(
 			createdAt: deps.now(),
 		});
 	});
+	deps.events.publishChanged(input.groupId, ["group", "activity"]);
 	return getInvite(deps, input.groupId);
 }
 export async function chooseMember(
 	deps: AppDeps,
 	input: { groupId: string; userId: string; memberId: string },
 ) {
-	return deps.db.transaction(async (tx) => {
+	const result = await deps.db.transaction(async (tx) => {
 		await lockAccount(tx, input.userId);
 		await lockGroup(tx, input.groupId);
 		const access = await findGroupAccess(tx, input.groupId, input.userId);
@@ -186,4 +187,11 @@ export async function chooseMember(
 		});
 		return getGroup(tx, input.groupId, input.userId);
 	});
+	deps.events.publishChanged(input.groupId, [
+		"users",
+		"members",
+		"group",
+		"activity",
+	]);
+	return result;
 }

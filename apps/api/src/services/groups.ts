@@ -115,7 +115,7 @@ export async function editGroup(
 	deps: AppDeps,
 	input: { groupId: string; userId: string; changes: UpdateGroupRequest },
 ) {
-	return deps.db.transaction(async (transaction) => {
+	const result = await deps.db.transaction(async (transaction) => {
 		await lockGroup(transaction, input.groupId);
 		const before = await getGroup(transaction, input.groupId, input.userId);
 		if (before.group.role !== "owner")
@@ -152,4 +152,6 @@ export async function editGroup(
 		});
 		return after;
 	});
+	deps.events.publishChanged(input.groupId, ["group", "balances", "activity"]);
+	return result;
 }

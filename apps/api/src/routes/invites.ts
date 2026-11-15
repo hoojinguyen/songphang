@@ -152,6 +152,13 @@ export function registerInviteRoutes(app: OpenAPIHono<AppEnv>, deps: AppDeps) {
 			{
 				userId: c.var.user.id,
 				key: c.req.valid("header")["idempotency-key"],
+				onCommitted: (body) =>
+					deps.events.publishChanged(JoinResponse.parse(body).groupId, [
+						"users",
+						"members",
+						"group",
+						"activity",
+					]),
 				requestHash: hashRequest("POST", c.req.path, request),
 			},
 			async (tx) => ({

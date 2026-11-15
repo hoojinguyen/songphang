@@ -36,7 +36,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.5 Web: sign-in, register, verify, forgot and reset screens
 - [x] 1B.6 Web: account screen
 - [x] 1B.7 API: invites, joining, member selection
-- [ ] 1B.8 API: users in a group, roles, leaving, ownership
+- [x] 1B.8 API: users in a group, roles, leaving, ownership
 - [ ] 1B.9 API: realtime events
 - [ ] 1B.10 Web: joining and inviting
 - [ ] 1B.11 Web: roles, settings, leaving, read-only, realtime
@@ -1042,4 +1042,29 @@ Security review: relevant items 1–8 inspected in contracts, queries, services,
 Decisions: owner/target accounts are locked in sorted order for ownership transfer to coordinate with account deletion and opposing transfers.
 Deviations: no separate count SQL was run; the real users responses after each transfer showed exactly one owner, backed by the unique owner constraint.
 Not verified: none beyond the count SQL noted above.
+Out of scope: none.
+
+Commit 1B.8: `50a7422`.
+
+## Task 1B.9 — Approach
+- Use the installed Hono streaming helper, read from its exact source and type declarations.
+- Keep a process-local event hub indexed by group, with explicit unsubscribe/removal handling.
+- Publish ordinary service writes only after transactions resolve; publish idempotent creates from the transaction wrapper's committed path.
+- Send comments every 25 seconds, clear timers/listeners on abort, and serialize stream writes before closing removed connections.
+- Exercise direct/proxied delivery, idle comments, removal, failed writes, replay and disconnect cleanup locally.
+
+### Task 1B.9 — Results
+pnpm check: passed (160 files; all workspace typechecks Done), after correcting a missing member-edit return during publication refactoring.
+Direct port 4000 and proxied port 3000 streams both printed within the two-second exercise window:
+```text
+: connected
+
+event: changed
+data: {"resources":["transactions","balances","activity"]}
+```
+Create/replay → 201/201, invalid write → 400; each stream contained exactly one changed event. After 62 seconds each contained exactly two `: keep-alive` lines. Outsider events → 404; signed-out → 401. Removing Lan → 204, stream printed `event: removed` / `data: {}` and curl exited 0 before its timeout; reconnect → 404. Opened/closed 50 real curl streams; temporary numeric diagnostic printed 50 cleanup lines, final `SSE remaining listeners 0`. Diagnostic removed from source before final check/commit.
+Security review: relevant items 1–8 inspected against actual hub, SSE route, transaction wrapper and publication diff. Group stream uses shared authorization; payloads contain resource names only, no group data or credentials. Removal drops targeted listeners before notifying remaining users. Abort clears timer/subscription; no publication before commit, on failure or on idempotent replay. No dependencies changed; network audit not run.
+Decisions: D20; D21 records the preceding task's ownership lock ordering.
+Deviations: committed callback in the existing transaction wrapper handles creates; no rewrite/proxy fix needed because the existing Next rewrite streamed promptly.
+Not verified: explicit HTTP header capture was not performed; headers were inspected in the route source. Cross-process delivery is outside the specified single-process hub.
 Out of scope: none.
