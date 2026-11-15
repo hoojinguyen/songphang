@@ -113,3 +113,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 3. Register with a nine-character password and with password123 → the two messages of spec 9.2.
 4. Read every sentence on the five screens for tone and spelling.
 5. Try an invalid token, wrong password repeatedly, and //evil.example as next → recovery copy, rate limit, and internal landing respectively.
+
+## Account — 1B.6
+1. Tap your shape on the group list → the account screen, not an immediate sign-out.
+2. Change your password with the box ticked while signed in on a second browser → the second browser is signed out on its next action.
+3. Try to delete an account that owns a group → the message names how many groups.
+4. Enter a wrong current password → the specified warning; use a wrong confirmation email → deletion stays disabled.

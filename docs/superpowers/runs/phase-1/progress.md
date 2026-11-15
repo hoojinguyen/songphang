@@ -33,7 +33,7 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 - [x] 1B.2 API: register, sign in, verify email
 - [x] 1B.3 API: forgot, reset and change password; delete account
 - [x] 1B.4 API: Google sign-in
-- [ ] 1B.5 Web: sign-in, register, verify, forgot and reset screens
+- [x] 1B.5 Web: sign-in, register, verify, forgot and reset screens
 - [ ] 1B.6 Web: account screen
 - [ ] 1B.7 API: invites, joining, member selection
 - [ ] 1B.8 API: users in a group, roles, leaving, ownership
@@ -881,4 +881,21 @@ Responsive DOM measurements at CSS 360px: login, register, forgot-password, veri
 Security review: relevant items 1, 2, 6, 7, 8 checked against the complete source diff. Typed error details validated before use; same-origin writes; internal-only return paths; no storage of credentials; no raw HTML or credentials in committed files. No dependency changes. Network audit not run because external services are forbidden.
 Deviations: LoginShapes is a same-directory presentational split. Fixed accessible labels after a browser exercise showed the hint was part of the password label. Restarted the development server after stale route/SSR output caused a temporary 404 and hydration warning; fresh SSR then matched the source.
 Not verified: browser submission of password reset requires credential-change handoff under the browser tool policy and was not performed; API reset was exercised in 1B.3. Real Google sign-in remains unverified. Full keyboard-only traversal was not completed.
+Out of scope: none.
+
+Commit 1B.5: `c21e611`.
+
+## Task 1B.6 — Approach
+- Add account mutation hooks and two focused cards using existing TextField and Button components.
+- Keep password fields in component state and clear them only after a successful change.
+- Validate the owner-count error details before interpolating localized copy.
+- Replace the group-list avatar action with an account link; retain logout on the account page.
+- Exercise read states in the browser and the write endpoints locally; credential-change/deletion browser policy limits are recorded explicitly.
+
+### Task 1B.6 — Results
+pnpm check: passed (150 files; all workspace typechecks Done). Corrected a typed interpolation error by converting the validated integer count to a string.
+Browser: signed-out /account redirected to /login?next=%2Faccount. Ngân's account displayed identity, password card, checkbox, logout and deletion card. Empty and wrong email left deletion disabled. Logout returned to login. Minh's passwordless account hid the password card. API DELETE for Ngân returned OWNER_REQUIRED with groupCount 1, preserving the account.
+Security review: relevant items 1, 2, 6, 7, 8 checked against actual page, cards, hooks and avatar diff. No credentials stored beyond component state; typed owner-count details; same-origin writes; deletion requires exact email; no dependency changes. API remains authoritative. Network audit not run (external services forbidden).
+Decisions: none. Deviations: none.
+Not verified: browser credential changes and destructive account submission were not performed because the browser policy requires a handoff/action-time confirmation. API password/session behavior was exercised in 1B.3. Joined-member preservation remains scheduled after 1B.7/1B.10.
 Out of scope: none.

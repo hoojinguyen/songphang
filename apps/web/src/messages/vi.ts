@@ -1,4 +1,19 @@
 export const vi = {
+	account: {
+		title: "Tài khoản",
+		changePassword: "Đổi mật khẩu",
+		currentPassword: "Mật khẩu hiện tại",
+		newPassword: "Mật khẩu mới",
+		revokeOthers: "Đăng xuất khỏi các thiết bị khác",
+		savePassword: "Lưu mật khẩu",
+		wrongPassword: "Mật khẩu hiện tại không đúng.",
+		passwordChanged: "Đã đổi mật khẩu.",
+		delete: "Xoá tài khoản",
+		deleteHint:
+			"Tên bạn vẫn ở lại trong các nhóm, nhưng không còn gắn với tài khoản nào. Gõ lại email của bạn để xác nhận.",
+		ownerRequired:
+			"Bạn còn là chủ của {count} nhóm. Hãy chuyển quyền chủ nhóm hoặc xoá nhóm trước.",
+	},
 	resetPassword: {
 		title: "Đặt mật khẩu mới",
 		field: "Mật khẩu mới",

@@ -8,7 +8,7 @@ import { LoadError } from "../components/ui/LoadError";
 import { MemberShape } from "../components/ui/MemberShape";
 import { VerifyEmailBanner } from "../components/ui/VerifyEmailBanner";
 import { useGroups } from "../lib/groups";
-import { useLogout, useMe } from "../lib/session";
+import { useMe } from "../lib/session";
 import { useSessionGuard } from "../lib/use-session-guard";
 import { t, vi } from "../messages/vi";
 
@@ -24,45 +24,30 @@ function GroupsSkeleton() {
 		</main>
 	);
 }
-function GroupsHeader({
-	name,
-	isPending,
-	onLogout,
-}: {
-	name: string;
-	isPending: boolean;
-	onLogout: () => void;
-}) {
+function GroupsHeader({ name }: { name: string }) {
 	return (
 		<header className="flex items-center justify-between gap-4">
 			<div>
 				<p className="text-sm text-muted">{t(vi.groups.greeting, { name })}</p>
 				<h1 className="text-title font-black">{vi.groups.title}</h1>
 			</div>
-			<button
-				type="button"
-				aria-label={vi.common.logout}
-				disabled={isPending}
-				onClick={onLogout}
+			<Link
+				href="/account"
+				aria-label={vi.account.title}
 				className="shrink-0 rounded-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
 			>
 				<MemberShape shape="circle" color="mint" size={52} name={name} />
-			</button>
+			</Link>
 		</header>
 	);
 }
 function GroupsContent({ name }: { name: string }) {
-	const logout = useLogout();
 	const me = useMe();
 	const groups = useGroups();
 	useSessionGuard(groups.error);
 	return (
 		<main className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-5 pb-5 pt-6">
-			<GroupsHeader
-				name={name}
-				isPending={logout.isPending}
-				onLogout={() => logout.mutate()}
-			/>
+			<GroupsHeader name={name} />
 			<div className="flex flex-1 flex-col gap-4 py-6">
 				{groups.isPending ? (
 					<div aria-busy="true" className="h-56 rounded-[40px] bg-sunken" />
@@ -87,7 +72,6 @@ function GroupsContent({ name }: { name: string }) {
 						),
 					)
 				)}
-				{logout.isError && <p role="alert">{vi.common.loadError}</p>}
 			</div>
 			{me.data?.emailVerified === false ? (
 				<VerifyEmailBanner />

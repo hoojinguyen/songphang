@@ -1,5 +1,7 @@
 "use client";
 import {
+	type ChangePasswordRequest,
+	type DeleteAccountRequest,
 	type ForgotPasswordRequest,
 	type LoginRequest,
 	ProvidersResponse,
@@ -7,6 +9,7 @@ import {
 	type ResetPasswordRequest,
 } from "@songphang/contract";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { vi } from "../messages/vi";
 import { type ApiError, apiFetch, apiSend } from "./api";
@@ -77,4 +80,23 @@ export function authErrorMessage(error: ApiError | null): string | null {
 					: vi.auth.tooCommon;
 	}
 	return vi.common.saveError;
+}
+
+export function useChangePassword() {
+	return useMutation<void, ApiError, ChangePasswordRequest>({
+		mutationFn: (request) =>
+			apiSend("/auth/change-password", jsonRequest("POST", request)),
+	});
+}
+export function useDeleteAccount() {
+	const router = useRouter();
+	const client = useQueryClient();
+	return useMutation<void, ApiError, DeleteAccountRequest>({
+		mutationFn: (request) => apiSend("/me", jsonRequest("DELETE", request)),
+		onSuccess: async () => {
+			await client.cancelQueries();
+			client.clear();
+			router.replace("/login");
+		},
+	});
 }
