@@ -3,58 +3,93 @@ import {
 	CreateTransactionRequest,
 	type MemberDto,
 	type SplitTransactionRequest,
+	type TransactionDto,
 } from "@songphang/contract";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useDraft } from "../../lib/draft-context";
 import { parseAmountInput } from "../../lib/money";
+import {
+	transactionRequestOf,
+	useUpdateTransaction,
+} from "../../lib/transaction-changes";
 import { useCreateTransaction, usePreviewShares } from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
 import { vi } from "../../messages/vi";
 import type { FormTransactionType } from "./TypeSwitch";
 import { useSplitState } from "./use-split-state";
 
-function localDateTime() {
-	const now = new Date();
+export function localDateTime(value?: string) {
+	const now = value ? new Date(value) : new Date();
 	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 export function useExpenseForm(
 	groupId: string,
 	members: MemberDto[],
 	myMemberId: string | null,
+	transaction?: TransactionDto,
 ) {
 	const memory = useDraft();
-	const draft = memory.draft?.draft;
-	const active = members.filter((member) => member.active);
+	const draft = transaction ?? memory.draft?.draft;
+	const active = members.filter((member) => transaction || member.active);
 	const initial = active.some((member) => member.id === myMemberId)
 		? myMemberId
 		: null;
-	const [type, setTransactionType] = useState<FormTransactionType>("expense");
+	const [type, setTransactionType] = useState<FormTransactionType>(
+		transaction?.type ?? "expense",
+	);
 	const [amountText, setAmountText] = useState(
 		draft?.amount ? String(draft.amount) : "",
 	);
 	const [description, setDescription] = useState(draft?.description ?? "");
-	const [category, setCategory] =
-		useState<SplitTransactionRequest["category"]>(null);
+	const [category, setCategory] = useState<SplitTransactionRequest["category"]>(
+		transaction?.category ?? null,
+	);
 	const [payerIds, setPayerIds] = useState<string[]>(
 		draft ? draft.payers.map((p) => p.memberId) : initial ? [initial] : [],
 	);
-	const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
+	const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>(
+		Object.fromEntries(
+			transaction?.payers.map((p) => [p.memberId, String(p.amount)]) ?? [],
+		),
+	);
 
-	const [transferFrom, setTransferFrom] = useState(initial);
-	const [transferTo, setTransferTo] = useState<string | null>(null);
-	const [occurredAt, setOccurredAt] = useState(localDateTime);
+	const [transferFrom, setTransferFrom] = useState(
+		transaction?.payers[0]?.memberId ?? initial,
+	);
+	const [transferTo, setTransferTo] = useState<string | null>(
+		transaction?.shares[0]?.memberId ?? null,
+	);
+	const [occurredAt, setOccurredAt] = useState(() =>
+		localDateTime(transaction?.occurredAt),
+	);
 	const [key] = useState(() => crypto.randomUUID());
 	const submitting = useRef(false);
-	const mutation = useCreateTransaction(groupId);
+	const create = useCreateTransaction(groupId);
+	const update = useUpdateTransaction(
+		groupId,
+		transaction?.id ?? "",
+		transaction?.version ?? 1,
+	);
+	const mutation = transaction ? update : create;
 	const router = useRouter();
 	useSessionGuard(mutation.error);
 	const amount = parseAmountInput(amountText);
 	const splitState = useSplitState(active, amount ?? 0, draft?.split);
 	const date = new Date(occurredAt);
-	const timestamp = Number.isNaN(date.getTime()) ? "" : date.toISOString();
-	const title =
-		type === "expense"
+	const timestamp =
+		transaction && occurredAt === localDateTime(transaction.occurredAt)
+			? transaction.occurredAt
+			: Number.isNaN(date.getTime())
+				? ""
+				: date.toISOString();
+	const title = transaction
+		? type === "expense"
+			? vi.expenseForm.titleEdit
+			: type === "income"
+				? vi.expenseForm.titleEditIncome
+				: vi.expenseForm.titleEditTransfer
+		: type === "expense"
 			? vi.expenseForm.title
 			: type === "income"
 				? vi.expenseForm.titleIncome
@@ -131,6 +166,12 @@ export function useExpenseForm(
 		);
 	};
 	return {
+		changed:
+			!transaction ||
+			JSON.stringify(request) !==
+				JSON.stringify(
+					CreateTransactionRequest.parse(transactionRequestOf(transaction)),
+				),
 		active,
 		type,
 		setType,

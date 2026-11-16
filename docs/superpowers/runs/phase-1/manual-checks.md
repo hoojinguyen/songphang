@@ -198,3 +198,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Delete a transaction: its delete entries canRestore=true; restore: false. Outsider history: 404.
 3. Editor group delete: 403. Owner wrong/case-changed/empty/trailing-space names: 400. Exact name: 204, removed event, later reads 404, dependent rows zero, other groups unchanged.
 4. An account with no other owned group can now delete itself.
+
+### 1E.3 — Edit, conflict and undo (S5)
+1. Open original exact/blanks/remainder, weighted, percent, two-payer, income and transfer records: all typed inputs and fixed type preserved; unchanged save disabled.
+2. Two windows edit one record: save first, second retains local text with conflict notice; Xem bản mới loads it, then a new edit saves.
+3. Delete and tap Hoàn tác within six seconds: restored at original time; let snackbar expire: restore remains available in history.
+4. Viewer has no row links; direct edit URL shows forbidden. Missing/outside transaction shows not found. Run balance checker after edits.

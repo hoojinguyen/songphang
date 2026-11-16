@@ -41,6 +41,13 @@ export function ExpenseRow({
 						{formatAmount(transaction.amount)}
 					</p>
 				</div>
+				{transaction.version > 1 && (
+					<span
+						className={`text-[11px] font-bold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
+					>
+						{vi.feed.edited}
+					</span>
+				)}
 				{isMine ? (
 					<div className="mt-2 flex flex-wrap gap-1">
 						{transaction.shares.slice(0, 4).map((share) => {

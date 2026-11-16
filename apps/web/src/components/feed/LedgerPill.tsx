@@ -33,6 +33,11 @@ export function LedgerPill({
 		<div className="mx-auto flex max-w-full items-center gap-2 rounded-[18px] bg-sunken py-1.5 pl-2 pr-3 text-xs font-semibold">
 			<MemberShape {...from} size={18} />
 			<span>{text}</span>
+			{transaction.version > 1 && (
+				<span className="text-[11px] font-bold text-muted">
+					{vi.feed.edited}
+				</span>
+			)}
 		</div>
 	);
 }

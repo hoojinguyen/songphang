@@ -86,7 +86,7 @@ Not verified:
 ## Stage 1E — History and polish
 
 - [x] 1E.1 API: read, edit, delete and restore a transaction
-- [ ] 1E.2 API: activity feed and group deletion
+- [x] 1E.2 API: activity feed and group deletion
 - [ ] 1E.3 Web: edit, delete with undo, conflict
 - [ ] 1E.4 Web: history and deleting a group
 - [ ] 1E.5 Web: offline state, new-item pill, motion
@@ -2429,3 +2429,19 @@ delete account after owned group removed 204
 ```
 SQL on the initially failed group after successful retry: members=0, transactions=0, activity=0. Balance checker: all seven remaining groups sum 0/mismatches 0; `All groups balanced`. Existing pre-1E.2 create activities had no after snapshot; newly created records now carry required type/amount/payers/shares/split, member count, target name, invite state and member choice. No dev-data backfill is needed; gates reset the database.
 Security review: items 1–7 inspected; viewer activity reads authorized, outsider 404, bounded/validated cursor, group-scoped parameterized joins, public actor fields only, owner confirmation exact without trimming, lock/access recheck and atomic deletion, removed published after commit. Full diff reviewed. Decisions: D28. Deviations: explicit transaction deletion before cascading group deletion is necessary for the existing RESTRICT FKs. Not verified: final matrix and full history copy exercise follow in E4/E6. Out of scope: none.
+
+Commit 1E.2: `dc2351a`.
+
+## Task 1E.3 — Approach
+- Add transaction detail/update/delete/restore hooks and an edit page retaining a loaded version while realtime data refreshes.
+- Initialize the existing form from original split and payer inputs, fix its type, and enable update only for changed valid fields.
+- Surface current server data in a conflict notice without overwriting local edits; reload only on explicit action.
+- Add a group-layout snackbar for six-second undo and editor-only stream links/edited tags.
+
+### Task 1E.3 — Result
+`pnpm check`: passed (223 files; all workspace typechecks Done).
+Browser edit: loaded 800000/Vé A, type switch absent, save disabled before edits. Typed “Vé đang sửa”; a separate HTTP editor saved “Vé bản mới” → realtime notice “Minh vừa sửa khoản này. Xem bản mới rồi sửa lại nếu cần.”, local text retained, save disabled. Xem bản mới explicitly loaded server content. Delete showed deleted notice and snackbar. First manual undo click was inconclusive across navigation/expiry; repeated with semantic locator within the six-second window → restored row and “Đã khôi phục.”. Changed amount to 900000 and saved → stream, balance 675000; HTTP detail amount=900000/version=15/deletedAt=null/shares=[225000,225000,225000,225000]. Every balance checker row sum 0/mismatches 0; All groups balanced.
+Security review: items 1,2,7,8 checked against all new UI/hook code; same-origin validated DTOs, untrusted conflict data parsed before use, no raw HTML/storage/new dependencies; viewer address is forbidden and viewer stream has no edit links in code. Full diff reviewed. No issues found.
+Decisions: last-editor attribution D26. The 247-line form renderer and 212-line controller were reconsidered: retaining one state owner and one renderer avoids splitting tightly coupled fields; adjacent mutation hooks, conflict and snackbar components contain independent behavior. Original inactive participants remain available when editing an old transaction. Original timestamp seconds are preserved unless the time field changes.
+Deviations: browser observer plus HTTP actor exercises realtime; two independent browser profiles remain manual. A root dev command was accidentally invoked during startup, reran idempotent migrations/seeding and failed its duplicate API bind; stopped it and used web-only dev. No repository/config changes resulted.
+Not verified: every original split mode, two-payer/income/transfer prefill, blank exact input, snackbar expiry, viewer address and physical screen-reader checks remain for E6/manual checks. No claim that these UI cases ran. Out of scope: none.

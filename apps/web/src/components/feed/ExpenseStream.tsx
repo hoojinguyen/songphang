@@ -1,16 +1,21 @@
 "use client";
 import type { MemberDto } from "@songphang/contract";
+import Link from "next/link";
 import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 import { dayLabel, type useTransactions } from "../../lib/transactions";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import { LoadError } from "../ui/LoadError";
 import { ExpenseRow } from "./ExpenseRow";
 import { LedgerPill } from "./LedgerPill";
 export function ExpenseStream({
+	groupId,
+	canEdit = false,
 	query,
 	members,
 	myMemberId,
 }: {
+	groupId: string;
+	canEdit?: boolean;
 	query: ReturnType<typeof useTransactions>;
 	members: MemberDto[];
 	myMemberId: string | null;
@@ -91,23 +96,51 @@ export function ExpenseStream({
 									{label}
 								</p>
 							)}
-							{transaction.type === "expense" ? (
-								<ExpenseRow
-									transaction={transaction}
-									members={members}
-									myMemberId={myMemberId}
-								/>
-							) : (
-								<LedgerPill
-									transaction={transaction}
-									members={members}
-									myMemberId={myMemberId}
-								/>
-							)}
+							<FeedLink
+								href={`/g/${groupId}/tx/${transaction.id}`}
+								enabled={canEdit}
+								label={t(vi.feed.editRow, {
+									description: transaction.description,
+								})}
+							>
+								{transaction.type === "expense" ? (
+									<ExpenseRow
+										transaction={transaction}
+										members={members}
+										myMemberId={myMemberId}
+									/>
+								) : (
+									<LedgerPill
+										transaction={transaction}
+										members={members}
+										myMemberId={myMemberId}
+									/>
+								)}
+							</FeedLink>
 						</Fragment>
 					);
 				})}
 			</div>
 		</div>
+	);
+}
+
+function FeedLink({
+	href,
+	enabled,
+	label,
+	children,
+}: {
+	href: string;
+	enabled: boolean;
+	label: string;
+	children: import("react").ReactNode;
+}) {
+	return enabled ? (
+		<Link href={href} aria-label={label}>
+			{children}
+		</Link>
+	) : (
+		children
 	);
 }

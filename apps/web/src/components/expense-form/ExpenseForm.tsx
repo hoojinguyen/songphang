@@ -1,13 +1,20 @@
 "use client";
-import type { MemberDto } from "@songphang/contract";
+import { type MemberDto, TransactionDto } from "@songphang/contract";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
 import { useDraft } from "../../lib/draft-context";
 import { formatAmount } from "../../lib/money";
+import {
+	useDeleteTransaction,
+	useRestoreTransaction,
+} from "../../lib/transaction-changes";
 import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
 import { ScreenHeader } from "../ui/ScreenHeader";
+import { useSnackbar } from "../ui/Snackbar";
 import { AmountField } from "./AmountField";
+import { ConflictNotice } from "./ConflictNotice";
 import { ParticipantFields } from "./ParticipantFields";
 import { SplitEditor } from "./SplitEditor";
 import { SplitStatus } from "./SplitStatus";
@@ -18,17 +25,29 @@ import { useExpenseForm } from "./use-expense-form";
 export function ExpenseForm({
 	groupId,
 	members,
+	transaction,
+	current,
+	onReload,
 	myMemberId,
 }: {
 	groupId: string;
 	members: MemberDto[];
 	myMemberId: string | null;
+	transaction?: TransactionDto;
+	current?: TransactionDto;
+	onReload?: (t: TransactionDto) => void;
 }) {
 	const memory = useDraft();
+	const router = useRouter();
+	const snackbar = useSnackbar();
+	const deletion = useDeleteTransaction(groupId);
+	const restore = useRestoreTransaction(groupId);
 	const [splitOpen, setSplitOpen] = useState(
-		memory.draft?.issues.some((i) => i.code === "SUM_MISMATCH") ?? false,
+		(!transaction &&
+			memory.draft?.issues.some((i) => i.code === "SUM_MISMATCH")) ??
+			false,
 	);
-	const form = useExpenseForm(groupId, members, myMemberId);
+	const form = useExpenseForm(groupId, members, myMemberId, transaction);
 	const {
 		active,
 		amountText,
@@ -52,6 +71,31 @@ export function ExpenseForm({
 		request,
 		submit,
 	} = form;
+	const conflictPayload = TransactionDto.safeParse(
+		mutation.error?.details?.current,
+	);
+	const conflict =
+		current ?? (conflictPayload.success ? conflictPayload.data : undefined);
+	const deleteItem = () => {
+		if (!transaction || deletion.isPending) return;
+		deletion.mutate(transaction.id, {
+			onSuccess: () => {
+				router.replace(`/g/${groupId}`);
+				snackbar({
+					text: vi.expenseForm.deleted,
+					action: {
+						label: vi.expenseForm.undo,
+						run: () => {
+							void restore
+								.mutateAsync(transaction.id)
+								.then(() => snackbar({ text: vi.expenseForm.restored }))
+								.catch(() => snackbar({ text: vi.common.saveError }));
+						},
+					},
+				});
+			},
+		});
+	};
 	const serverMismatch =
 		mutation.error?.code === "SPLIT_TOTAL_MISMATCH"
 			? z
@@ -81,7 +125,9 @@ export function ExpenseForm({
 	if (splitOpen)
 		return (
 			<SplitEditor
-				banner={<UnparsedBanner activeCount={active.length} />}
+				banner={
+					!transaction ? <UnparsedBanner activeCount={active.length} /> : null
+				}
 				state={splitState}
 				members={active}
 				amount={amount}
@@ -105,7 +151,11 @@ export function ExpenseForm({
 				backHref={memory.draft ? `/g/${groupId}/tx/new` : `/g/${groupId}`}
 				backLabel={vi.common.cancel}
 				backIcon="close"
-				trailing={<TypeSwitch value={type} onChange={setType} />}
+				trailing={
+					transaction ? undefined : (
+						<TypeSwitch value={type} onChange={setType} />
+					)
+				}
 			/>
 			<AmountField value={amountText} onChange={setAmountText} />
 			<input
@@ -154,23 +204,44 @@ export function ExpenseForm({
 			)}
 			{preview.isError && <p role="alert">{vi.common.loadError}</p>}
 			{type !== "transfer" && <SplitStatus {...status} />}
+			{conflict && (
+				<ConflictNotice
+					current={conflict}
+					onReload={() => onReload?.(conflict)}
+				/>
+			)}
+			{deletion.isError && <p role="alert">{vi.common.saveError}</p>}
 			<Button
 				variant="accent"
 				size="lg"
 				onClick={submit}
 				disabled={
+					!!conflict ||
+					!form.changed ||
 					request === null ||
 					(type !== "transfer" && !description.trim()) ||
 					mutation.isPending
 				}
 				className="mt-auto w-full"
 			>
-				{type === "transfer"
-					? vi.expenseForm.saveTransfer
-					: type === "income"
-						? vi.expenseForm.saveIncome
-						: vi.expenseForm.save}
+				{transaction
+					? vi.expenseForm.saveChanges
+					: type === "transfer"
+						? vi.expenseForm.saveTransfer
+						: type === "income"
+							? vi.expenseForm.saveIncome
+							: vi.expenseForm.save}
 			</Button>
+			{transaction && (
+				<Button
+					variant="surface"
+					onClick={deleteItem}
+					disabled={deletion.isPending}
+					className="w-full bg-debt-soft"
+				>
+					{vi.expenseForm.delete}
+				</Button>
+			)}
 		</div>
 	);
 }
