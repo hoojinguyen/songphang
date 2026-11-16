@@ -1,5 +1,6 @@
 import type { MemberDto } from "@songphang/contract";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineButton } from "../ui/OnlineButton";
 export function MemberToggleGrid({
 	members,
 	selectedIds,
@@ -18,7 +19,7 @@ export function MemberToggleGrid({
 	return (
 		<fieldset aria-label={label} className="grid min-w-0 grid-cols-4 gap-1">
 			{members.map((member) => (
-				<button
+				<OnlineButton
 					key={member.id}
 					type="button"
 					disabled={disabledIds.includes(member.id)}
@@ -31,7 +32,7 @@ export function MemberToggleGrid({
 					<span className="max-w-full break-words text-xs">
 						{captionFor(member)}
 					</span>
-				</button>
+				</OnlineButton>
 			))}
 		</fieldset>
 	);

@@ -1,3 +1,4 @@
+import { OnlineButton } from "./OnlineButton";
 export function SegmentedControl({
 	label,
 	options,
@@ -14,7 +15,7 @@ export function SegmentedControl({
 	return (
 		<fieldset aria-label={label} className="flex rounded-[18px] bg-sunken p-1">
 			{options.map((option) => (
-				<button
+				<OnlineButton
 					key={option.value}
 					type="button"
 					aria-pressed={value === option.value}
@@ -23,7 +24,7 @@ export function SegmentedControl({
 					className={`min-h-11 flex-1 rounded-[18px] px-3 text-sm font-bold disabled:opacity-60 ${value === option.value ? "bg-ink text-surface" : "text-ink"}`}
 				>
 					{option.label}
-				</button>
+				</OnlineButton>
 			))}
 		</fieldset>
 	);

@@ -1,6 +1,7 @@
 import type { InvitePreviewResponse } from "@songphang/contract";
 import { vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineButton } from "../ui/OnlineButton";
 export function normalizeMemberName(name: string) {
 	return name
 		.normalize("NFD")
@@ -23,7 +24,7 @@ export function ClaimGrid({
 	return (
 		<div className="grid grid-cols-2 gap-2.5">
 			{members.map((member) => (
-				<button
+				<OnlineButton
 					key={member.id}
 					type="button"
 					aria-pressed={selected === member.id}
@@ -43,7 +44,7 @@ export function ClaimGrid({
 								? vi.join.sameName
 								: vi.join.unclaimed}
 					</span>
-				</button>
+				</OnlineButton>
 			))}
 		</div>
 	);

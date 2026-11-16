@@ -1,4 +1,6 @@
 const PATHS = {
+	"wifi-off":
+		"M3 9c5-5 13-5 18 0M6.5 12.5c3-3 8-3 11 0M10 16c1.2-1 2.8-1 4 0M4 4l16 16",
 	send: "M12 19V5M6 11l6-6 6 6",
 	"arrow-right": "M4 12h16M14 6l6 6-6 6",
 	check: "M5 12l5 5 9-10",

@@ -14,6 +14,9 @@ export function ShareShapes({
 					<div
 						className="share-shape"
 						style={{
+							height:
+								56 +
+								(total ? Number((BigInt(amount) * 48n) / BigInt(total)) : 0),
 							width:
 								56 +
 								(total ? Number((BigInt(amount) * 48n) / BigInt(total)) : 0),

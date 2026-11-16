@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { formatAmount, parseAmountInput } from "../../lib/money";
 import { vi } from "../../messages/vi";
+import { OnlineButton } from "../ui/OnlineButton";
 export function AmountField({
 	value,
 	onChange,
@@ -32,13 +33,13 @@ export function AmountField({
 			<span className="text-[22px] font-black text-muted">
 				{vi.common.currency}
 			</span>
-			<button
+			<OnlineButton
 				type="button"
 				onClick={() => change(`${value}000`)}
 				className="min-h-11 min-w-11 rounded-pill bg-sunken text-xs font-bold"
 			>
 				{vi.expenseForm.addThousands}
-			</button>
+			</OnlineButton>
 		</div>
 	);
 }

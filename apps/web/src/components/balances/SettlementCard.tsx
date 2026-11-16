@@ -1,9 +1,9 @@
 import type { BalancesResponse, MemberDto } from "@songphang/contract";
-import Link from "next/link";
 import { settlementHref } from "../../lib/balances";
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineLink } from "../ui/OnlineLink";
 export function SettlementCard({
 	groupId,
 	canEdit,
@@ -28,7 +28,7 @@ export function SettlementCard({
 				? t(vi.balances.memberPaysYou, { name: from.name })
 				: t(vi.balances.memberPaysMember, { from: from.name, to: to.name });
 	return (
-		<div className="grid gap-4 rounded-[36px] bg-surface p-5">
+		<div className="settlement-card grid gap-4 rounded-[36px] bg-surface p-5">
 			<div className="flex items-center gap-4">
 				<MemberShape {...other} size={76} />
 				<div className="min-w-0">
@@ -41,14 +41,14 @@ export function SettlementCard({
 				</div>
 			</div>
 			{canEdit && (
-				<Link
+				<OnlineLink
 					href={settlementHref(groupId, transfer)}
 					className="flex min-h-[60px] items-center justify-center rounded-[30px] bg-accent font-extrabold"
 				>
 					{transfer.toMemberId === myMemberId
 						? vi.balances.received
 						: vi.balances.record}
-				</Link>
+				</OnlineLink>
 			)}
 		</div>
 	);

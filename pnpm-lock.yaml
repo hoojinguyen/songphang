@@ -51,6 +51,9 @@ importers:
       '@songphang/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@songphang/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@tanstack/react-query':
         specifier: 5.107.1
         version: 5.107.1(@types/react@19.3.0)(react@19.3.1)

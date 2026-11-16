@@ -1,5 +1,7 @@
+"use client";
 import Link from "next/link";
 import { formatMoney } from "../../lib/money";
+import { useCountedBalance } from "../../lib/use-counted-balance";
 import { vi } from "../../messages/vi";
 export function BalanceBlock({
 	groupId,
@@ -8,6 +10,7 @@ export function BalanceBlock({
 	groupId: string;
 	balance: number;
 }) {
+	const display = useCountedBalance(balance);
 	const caption =
 		balance > 0
 			? vi.feed.owedToYou
@@ -24,7 +27,7 @@ export function BalanceBlock({
 			<div className="min-w-0">
 				<p className="text-[13px] font-semibold">{caption}</p>
 				<p className="break-words text-[40px] font-black tracking-tight">
-					{formatMoney(Math.abs(balance))}
+					{formatMoney(Math.abs(display))}
 				</p>
 			</div>
 			<span className="flex h-12 shrink-0 items-center whitespace-nowrap rounded-pill bg-ink px-5 text-sm font-bold text-surface">

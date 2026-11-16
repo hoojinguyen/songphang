@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Button } from "../../components/ui/Button";
 import { MemberShape } from "../../components/ui/MemberShape";
+import { OnlineButton } from "../../components/ui/OnlineButton";
 import { type ApiError, apiFetch, apiSend } from "../../lib/api";
 import { devShapeFor } from "../../lib/dev-shapes";
 import { safeNext } from "../../lib/session";
@@ -54,7 +55,7 @@ function LoginChoices({
 	return (
 		<div className="grid grid-cols-2 gap-4">
 			{users.map((user, index) => (
-				<button
+				<OnlineButton
 					key={user.id}
 					type="button"
 					aria-label={t(vi.devLogin.enterAs, { name: user.name })}
@@ -64,7 +65,7 @@ function LoginChoices({
 				>
 					<MemberShape {...devShapeFor(index)} size={84} name={user.name} />
 					<span>{user.name}</span>
-				</button>
+				</OnlineButton>
 			))}
 		</div>
 	);

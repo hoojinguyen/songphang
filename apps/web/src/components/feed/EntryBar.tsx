@@ -1,4 +1,6 @@
+"use client";
 import Link from "next/link";
+import { useOnline } from "../../lib/use-online";
 import { vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
 export function EntryBar({
@@ -8,6 +10,18 @@ export function EntryBar({
 	groupId: string;
 	readOnly?: boolean;
 }) {
+	const online = useOnline();
+	if (!online)
+		return (
+			<div className="fixed bottom-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-bg px-5 pb-5 pt-3">
+				<div
+					aria-disabled="true"
+					className="flex h-16 items-center justify-center rounded-[32px] bg-sunken text-sm text-muted"
+				>
+					{vi.offline.entry}
+				</div>
+			</div>
+		);
 	if (readOnly)
 		return (
 			<div className="fixed bottom-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-bg px-5 pb-5 pt-3">

@@ -1,3 +1,4 @@
+import { OnlineButton } from "./OnlineButton";
 export function Switch({
 	checked,
 	onChange,
@@ -10,7 +11,7 @@ export function Switch({
 	disabled?: boolean;
 }) {
 	return (
-		<button
+		<OnlineButton
 			type="button"
 			role="switch"
 			aria-checked={checked}
@@ -22,6 +23,6 @@ export function Switch({
 			<span
 				className={`size-9 rounded-pill ${checked ? "bg-accent" : "bg-surface"}`}
 			/>
-		</button>
+		</OnlineButton>
 	);
 }

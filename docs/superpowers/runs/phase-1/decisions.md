@@ -190,3 +190,9 @@ Problem: the history sentence table omits the existing member defaultWeight upda
 Options: show an inaccurate rename sentence; describe that field explicitly.
 Choice: add `activity.memberWeight` = `“{actor} đổi phần mặc định của {member}”`, with the existing Phần label on the value chip.
 Reason: accurately describes the already-supported action without adding a feature. All other history templates match the approved table.
+
+## D30 — Offline controls and integer display animation
+Problem: native buttons, shared controls and mutations must agree on offline state; balance animation must not introduce floating-point money arithmetic or a second allocator.
+Options: duplicate online checks at every handler and interpolate money in web; share a connection store/control wrappers and call the existing core allocator for display frames.
+Choice: OnlineButton/OnlineLink plus the existing Button guard all write controls; the API client rejects offline writes and mutations use networkMode always with retries off, so nothing is queued. Browser online events and a five-second local health probe recover the shared state. Web links to the existing core workspace package for integer-only display interpolation through allocateByWeights; official targets still come only from API responses.
+Reason: one connectivity state, no persisted data, no external service/library. Offline install reused the workspace package with downloaded 0/added 0; lockfile contains only its local link.

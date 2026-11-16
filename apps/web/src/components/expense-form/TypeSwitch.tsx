@@ -1,4 +1,5 @@
 import { vi } from "../../messages/vi";
+import { OnlineButton } from "../ui/OnlineButton";
 export type FormTransactionType = "expense" | "transfer" | "income";
 export function TypeSwitch({
 	value,
@@ -19,7 +20,7 @@ export function TypeSwitch({
 					["income", vi.expenseForm.typeIncome],
 				] as const
 			).map(([type, label]) => (
-				<button
+				<OnlineButton
 					key={type}
 					type="button"
 					aria-pressed={value === type}
@@ -27,7 +28,7 @@ export function TypeSwitch({
 					className={`min-h-11 min-w-11 rounded-[18px] px-2 text-xs font-bold ${value === type ? "bg-ink text-surface" : "text-ink"}`}
 				>
 					{label}
-				</button>
+				</OnlineButton>
 			))}
 		</fieldset>
 	);

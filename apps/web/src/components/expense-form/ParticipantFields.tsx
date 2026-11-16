@@ -1,5 +1,6 @@
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
+import { OnlineButton } from "../ui/OnlineButton";
 import { CategoryPicker } from "./CategoryPicker";
 import { MemberToggleGrid } from "./MemberToggleGrid";
 import { PayerAmounts } from "./PayerAmounts";
@@ -65,13 +66,13 @@ export function ParticipantFields({
 					<h2 className="text-sm font-extrabold">
 						{vi.expenseForm.sharersTitle}
 					</h2>
-					<button
+					<OnlineButton
 						type="button"
 						onClick={() => onEdit()}
 						className="min-h-11 rounded-[22px] bg-phrase-split px-3 text-xs font-extrabold"
 					>
 						{t(vi.split.change, { method: SPLIT_NAMES[splitState.method] })}
-					</button>
+					</OnlineButton>
 				</div>
 				<MemberToggleGrid
 					members={active}

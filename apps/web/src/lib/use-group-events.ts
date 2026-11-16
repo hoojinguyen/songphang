@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { z } from "zod";
 
+import { requestFailed } from "./network-state";
+import { useOnline } from "./use-online";
+
 const Resources = z.object({
 	resources: z
 		.array(
@@ -19,14 +22,17 @@ const Resources = z.object({
 		.max(6),
 });
 export function useGroupEvents(groupId: string) {
+	const online = useOnline();
 	const client = useQueryClient();
 	const router = useRouter();
 	useEffect(() => {
+		if (!online) return;
 		const source = new EventSource(
 			`/api/v1/groups/${encodeURIComponent(groupId)}/events`,
 		);
 		let failed = false;
 		source.onerror = () => {
+			requestFailed();
 			failed = true;
 		};
 		source.onopen = () => {
@@ -68,5 +74,5 @@ export function useGroupEvents(groupId: string) {
 			});
 		});
 		return () => source.close();
-	}, [client, groupId, router]);
+	}, [client, groupId, router, online]);
 }

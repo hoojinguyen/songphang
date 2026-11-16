@@ -1,6 +1,7 @@
 import type { MemberDto } from "@songphang/contract";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineButton } from "../ui/OnlineButton";
 export function ChoicePanel({
 	members,
 	selected,
@@ -29,7 +30,7 @@ export function ChoicePanel({
 			</div>
 			<div className="grid grid-cols-4 gap-2">
 				{members.map((m) => (
-					<button
+					<OnlineButton
 						key={m.id}
 						type="button"
 						aria-pressed={selected.includes(m.id)}
@@ -43,7 +44,7 @@ export function ChoicePanel({
 					>
 						<MemberShape {...m} size={52} />
 						{m.name}
-					</button>
+					</OnlineButton>
 				))}
 			</div>
 			<p className="text-xs text-muted">{reason}</p>

@@ -51,7 +51,11 @@ export default function NewExpensePage() {
 				<div className="h-64 rounded-card bg-sunken" />
 			</main>
 		);
-	if (me.isError || group.isError || members.isError)
+	if (
+		(me.isError && !me.data) ||
+		(group.isError && !group.data) ||
+		(members.isError && !members.data)
+	)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
 				<LoadError

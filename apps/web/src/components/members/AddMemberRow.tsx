@@ -5,6 +5,7 @@ import { useCreateMember } from "../../lib/members";
 import { useSessionGuard } from "../../lib/use-session-guard";
 import { vi } from "../../messages/vi";
 import { NewMemberRow } from "../groups/NewMemberRow";
+import { OnlineButton } from "../ui/OnlineButton";
 
 function OpenMemberRow({
 	groupId,
@@ -53,12 +54,12 @@ export function AddMemberRow({
 			/>
 		);
 	return (
-		<button
+		<OnlineButton
 			type="button"
 			onClick={() => setIsOpen(true)}
 			className="h-14 w-full rounded-[28px] border-2 border-dashed border-[var(--color-dashed)] bg-transparent font-bold"
 		>
 			{vi.members.addName}
-		</button>
+		</OnlineButton>
 	);
 }

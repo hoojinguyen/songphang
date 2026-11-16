@@ -72,7 +72,12 @@ function SettleScreen() {
 				className="mx-auto h-dvh max-w-[430px] bg-sunken"
 			/>
 		);
-	if (group.isError || members.isError || balances.isError || me.isError)
+	if (
+		(group.isError && !group.data) ||
+		(members.isError && !members.data) ||
+		(balances.isError && !balances.data) ||
+		(me.isError && !me.data)
+	)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
 				<LoadError

@@ -5,6 +5,7 @@ import { t, vi } from "../../messages/vi";
 import { ShareShapes } from "../quick-entry/ShareShapes";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
+import { OnlineButton } from "../ui/OnlineButton";
 import { SplitMemberRow } from "./SplitMemberRow";
 import { SplitModeTabs } from "./SplitModeTabs";
 import { SplitStatus } from "./SplitStatus";
@@ -35,14 +36,15 @@ export function SplitEditor({
 		>
 			{banner}
 			<header className="flex items-center gap-3">
-				<button
+				<OnlineButton
+					allowOffline
 					type="button"
 					onClick={onDone}
 					aria-label={vi.common.back}
 					className="flex size-11 shrink-0 items-center justify-center rounded-pill bg-surface"
 				>
 					<Icon name="back" size={22} />
-				</button>
+				</OnlineButton>
 				<div className="min-w-0 flex-1">
 					<h1 className="break-words text-[17px] font-extrabold">
 						{description}
@@ -74,14 +76,14 @@ export function SplitEditor({
 			{members
 				.filter((member) => !state.ids.includes(member.id))
 				.map((member) => (
-					<button
+					<OnlineButton
 						key={member.id}
 						type="button"
 						className="min-h-14 rounded-[26px] border-2 border-dashed border-muted p-3 text-sm font-bold"
 						onClick={() => state.toggle(member.id)}
 					>
 						{t(vi.split.addMember, { name: member.name })}
-					</button>
+					</OnlineButton>
 				))}
 			{state.method === "exact" && state.blankCount === 0 && state.rest > 0 && (
 				<Button
@@ -99,7 +101,7 @@ export function SplitEditor({
 			)}
 			<div className="mt-auto grid gap-3">
 				<SplitStatus {...state.status} />
-				<Button variant="primary" size="lg" onClick={onDone}>
+				<Button variant="primary" size="lg" onClick={onDone} allowOffline>
 					{vi.split.done}
 				</Button>
 			</div>

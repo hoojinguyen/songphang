@@ -73,10 +73,10 @@ export default function BalancesPage() {
 			</main>
 		);
 	if (
-		me.isError ||
-		group.isError ||
-		members.isError ||
-		balances.isError ||
+		(me.isError && !me.data) ||
+		(group.isError && !group.data) ||
+		(members.isError && !members.data) ||
+		(balances.isError && !balances.data) ||
 		transactions.isError
 	)
 		return (

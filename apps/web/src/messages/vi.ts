@@ -1,4 +1,10 @@
 export const vi = {
+	offline: {
+		banner: "Mất mạng. Bạn vẫn xem được sổ.",
+		entry: "Có mạng lại là gõ tiếp được",
+		since: "lúc {time}",
+		writeDisabled: "Cần có mạng để lưu.",
+	},
 	activity: {
 		title: "Lịch sử",
 		headline: "Ai đã đổi gì",
@@ -363,6 +369,7 @@ export const vi = {
 		save: "Lưu khoản chi",
 	},
 	feed: {
+		newItems: "Có khoản mới",
 		edited: "đã sửa",
 		editRow: "Sửa {description}",
 		samples: ["cà phê 180k", "taxi 250k mình trả", "ăn trưa 240k chia đều"],

@@ -209,3 +209,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 1. Compare history with GE10; read every sentence type. Verify 600.000 struck through and 800.000 new, labelled chips for multi-field edits.
 2. Restore after undo expires: row returns, history updates, restore button disappears. Viewer sees history without restore controls; second window receives changes live.
 3. Delete a disposable group: empty/wrong/case-changed name disables confirm; exact name deletes, owner sees Đã xoá nhóm., watching member returns to groups with removed message.
+
+### 1E.5 — Offline and motion
+1. Compare offline screen with GE17. Open stream/balances/members/history, enable airplane mode: cached data remains readable; every write control disabled with reason; no queued writes on reconnect.
+2. Stop only API: same state after first failure. Restart: banner leaves, controls enable and changes made elsewhere appear without reload.
+3. Scroll up more than one screen; another person adds an expense: position stays and Có khoản mới appears; tap it to reach newest row.
+4. Judge shape resizing, new-row entrance, settlement collapse and balance count; enable reduced motion: all change instantly.

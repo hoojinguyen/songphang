@@ -88,7 +88,7 @@ Not verified:
 - [x] 1E.1 API: read, edit, delete and restore a transaction
 - [x] 1E.2 API: activity feed and group deletion
 - [x] 1E.3 Web: edit, delete with undo, conflict
-- [ ] 1E.4 Web: history and deleting a group
+- [x] 1E.4 Web: history and deleting a group
 - [ ] 1E.5 Web: offline state, new-item pill, motion
 - [ ] 1E.6 Non-functional checks and final gate
 
@@ -2491,3 +2491,18 @@ create group Minh tạo nhóm với 4 người []
 Browser: history shows all 29 entries, including actors and labelled multi-field chips. DOM del elements include 600.000, old payer/share values and old description; after amount 800.000. Khôi phục after the original undo period added newest “Minh khôi phục Vé mới · 800.000 đ”, removed restore controls and showed “Đã khôi phục.”. Settings dialog: empty/case-changed name leaves delete disabled; exact History Exercise enables; Thôi closes and restores focus to opener.
 Security review: items 1,2,7,8 inspected: activity unknown fields are validated before formatting, React text nodes only, restore/create/delete use existing authorized APIs, no persistent draft/secret state or new dependencies. Full diff reviewed. Decisions: D29. The 219-line history formatter keeps its finite sentence mapping together; field rendering and changed-field extraction are separate functions. Deviations: none.
 Not verified: final deletion through the UI button was not clicked; API deletion/cascade/removed passed in E2. Viewer history and second independent browser window remain owner checks; current code gates restore on role and verification. Physical screen-reader/visual judgment remains manual. Out of scope: none.
+
+Commit 1E.4: `a0417ef`.
+
+## Task 1E.5 — Approach
+- Track browser connectivity and API network failures in a shared memory store; probe only the local health endpoint for recovery.
+- Disable write requests at the API client as well as UI controls, without mutation queuing; keep cached reads visible.
+- Add an offline banner and recovery invalidation/SSE reconnection, plus a new-item pill preserving a scrolled-up position.
+- Add CSS-only shape/card/row motion and integer display interpolation through the existing core allocator; honor reduced motion everywhere.
+
+### Task 1E.5 — Result
+`pnpm check`: passed (236 files; all workspace typechecks Done).
+Stopped only API while browser remained connected to the web server: banner “Mất mạng. Bạn vẫn xem được sổ.” / “lúc 20:14”. Cached balances remained 550000/-50000/-150000/-350000; cached stream/member/settings navigation stayed readable. Entry bar became “Có mạng lại là gõ tiếp được”. Member role controls, remove, claim, add, and settings save/minimize/default role/invite/ownership/delete controls were disabled, with “Cần có mạng để lưu.”. Restarted API: local health probe recovered, banner and explanations disappeared and controls enabled without reload. SSE lifecycle follows shared connectivity; recovery invalidates queries. Offline mutations use always-network mode with no retries and the API client rejects writes before fetch, so no queue exists.
+Offline install for the existing core workspace link: `downloaded 0, added 0`, `Already up to date`. No new third-party dependency. Display frames use integer allocations in core; official balances are unchanged API values.
+Security review: items 1,2,7,8 inspected against complete diff; only local health probing, no persistence/secrets, same-origin requests/origin checks retained, no permission checks weakened. Full diff reviewed. Decisions: D30. Deviations: native controls use shared wrappers so disabled and aria-disabled remain consistent; pure back/close/new-item navigation remains usable offline.
+Not verified: browser devtools offline emulation, cached history offline, the new-item pill on a long stream, physical reduced-motion and owner judgment of the four motions remain for E6/manual checks. API-stop/recovery and cached stream/balances/members/settings were observed directly. Out of scope: none.

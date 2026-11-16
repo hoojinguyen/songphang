@@ -7,6 +7,7 @@ import { formatMoney } from "../../lib/money";
 import { useSessionGuard } from "../../lib/use-session-guard";
 import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
+import { OnlineButton } from "../ui/OnlineButton";
 import { TextField } from "../ui/TextField";
 import { VerifyEmailBanner } from "../ui/VerifyEmailBanner";
 import { ClaimGrid, normalizeMemberName } from "./ClaimGrid";
@@ -76,7 +77,7 @@ export function JoinForm({
 					onChange={(event) => setName(event.target.value)}
 				/>
 			) : (
-				<button
+				<OnlineButton
 					type="button"
 					className="min-h-[60px] rounded-[30px] border-2 border-dashed border-muted px-4 font-bold"
 					onClick={() => {
@@ -85,7 +86,7 @@ export function JoinForm({
 					}}
 				>
 					{vi.join.newMember}
-				</button>
+				</OnlineButton>
 			)}
 			{member && (
 				<BalanceHint name={member.name} balance={member.balance ?? 0} />

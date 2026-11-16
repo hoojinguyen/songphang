@@ -1,9 +1,9 @@
 import type { BalancesResponse, MemberDto } from "@songphang/contract";
-import Link from "next/link";
 import { settlementHref } from "../../lib/balances";
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineLink } from "../ui/OnlineLink";
 export function OwnSettlementCard({
 	groupId,
 	transfer,
@@ -25,12 +25,12 @@ export function OwnSettlementCard({
 			</p>
 			<p className="text-[40px] font-black">{formatAmount(transfer.amount)}</p>
 			{canEdit && (
-				<Link
+				<OnlineLink
 					href={settlementHref(groupId, transfer)}
 					className="flex min-h-[60px] w-full items-center justify-center rounded-[30px] bg-accent font-extrabold"
 				>
 					{vi.balances.paid}
-				</Link>
+				</OnlineLink>
 			)}
 		</section>
 	);

@@ -46,7 +46,7 @@ export default function JoinPage() {
 				<div className="h-96 rounded-card bg-sunken" />
 			</main>
 		);
-	if (me.isError || preview.isError)
+	if ((me.isError && !me.data) || preview.isError)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
 				<LoadError

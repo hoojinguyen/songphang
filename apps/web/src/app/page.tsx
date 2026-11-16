@@ -8,6 +8,7 @@ import { Button } from "../components/ui/Button";
 import { Icon } from "../components/ui/Icon";
 import { LoadError } from "../components/ui/LoadError";
 import { MemberShape } from "../components/ui/MemberShape";
+import { OnlineLink } from "../components/ui/OnlineLink";
 import { VerifyEmailBanner } from "../components/ui/VerifyEmailBanner";
 import { useGroups } from "../lib/groups";
 import { useMe } from "../lib/session";
@@ -91,13 +92,13 @@ function GroupsContent({ name }: { name: string }) {
 			{me.data?.emailVerified === false ? (
 				<VerifyEmailBanner />
 			) : (
-				<Link
+				<OnlineLink
 					href="/groups/new"
 					className="flex h-control-lg items-center justify-center gap-2 rounded-pill bg-ink font-bold text-surface"
 				>
 					<Icon name="plus" size={24} />
 					{vi.groups.create}
-				</Link>
+				</OnlineLink>
 			)}
 		</main>
 	);

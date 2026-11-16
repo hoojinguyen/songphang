@@ -1,9 +1,9 @@
 import type { BalancesResponse, MemberDto } from "@songphang/contract";
-import Link from "next/link";
 import { settlementHref } from "../../lib/balances";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineLink } from "../ui/OnlineLink";
 export function OtherSettlements({
 	groupId,
 	transfers,
@@ -39,12 +39,12 @@ export function OtherSettlements({
 							{formatMoney(transfer.amount)}
 						</span>
 						{canEdit && (
-							<Link
+							<OnlineLink
 								href={settlementHref(groupId, transfer)}
 								className="flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold"
 							>
 								{vi.balances.record}
-							</Link>
+							</OnlineLink>
 						)}
 					</div>
 				);

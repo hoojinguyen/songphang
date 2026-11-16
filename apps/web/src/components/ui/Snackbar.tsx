@@ -8,6 +8,7 @@ import {
 } from "react";
 import { vi } from "../../messages/vi";
 import { Icon } from "./Icon";
+import { OnlineButton } from "./OnlineButton";
 
 type Notice = { text: string; action?: { label: string; run: () => void } };
 const Context = createContext<((notice: Notice) => void) | null>(null);
@@ -28,7 +29,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
 				>
 					<span className="flex-1">{notice.text}</span>
 					{notice.action && (
-						<button
+						<OnlineButton
 							type="button"
 							className="min-h-11 font-bold"
 							onClick={() => {
@@ -38,7 +39,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
 							}}
 						>
 							{notice.action.label}
-						</button>
+						</OnlineButton>
 					)}
 					<button
 						type="button"

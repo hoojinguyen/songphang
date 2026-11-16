@@ -2,6 +2,7 @@ import { MEMBER_APPEARANCES } from "@songphang/contract";
 import { t, vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineButton } from "../ui/OnlineButton";
 import { NewMemberRow } from "./NewMemberRow";
 export function NewGroupMembers({
 	creatorName,
@@ -35,7 +36,7 @@ export function NewGroupMembers({
 					<span className="min-w-0 flex-1 break-words font-extrabold">
 						{member.name}
 					</span>
-					<button
+					<OnlineButton
 						type="button"
 						aria-label={t(vi.newGroup.removeMember, { name: member.name })}
 						onClick={() =>
@@ -44,7 +45,7 @@ export function NewGroupMembers({
 						className="flex size-11 items-center justify-center"
 					>
 						<Icon name="close" size={20} />
-					</button>
+					</OnlineButton>
 				</div>
 			))}
 			<NewMemberRow

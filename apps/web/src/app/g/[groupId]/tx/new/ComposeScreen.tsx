@@ -11,6 +11,7 @@ import { ConfirmationCard } from "../../../../../components/quick-entry/Confirma
 import { QuestionCard } from "../../../../../components/quick-entry/QuestionCard";
 import { SentenceInput } from "../../../../../components/quick-entry/SentenceInput";
 import { Icon } from "../../../../../components/ui/Icon";
+import { OnlineButton } from "../../../../../components/ui/OnlineButton";
 import { ScreenHeader } from "../../../../../components/ui/ScreenHeader";
 import { useDraft } from "../../../../../lib/draft-context";
 import { useParseSentence } from "../../../../../lib/quick-entry";
@@ -158,7 +159,7 @@ export function ComposeScreen({
 					onChange={setSentence}
 					onSend={query.send}
 				/>
-				<button
+				<OnlineButton
 					type="button"
 					aria-label={vi.compose.send}
 					onClick={query.send}
@@ -166,7 +167,7 @@ export function ComposeScreen({
 					className="flex size-[52px] shrink-0 items-center justify-center rounded-[20px] bg-ink text-surface"
 				>
 					<Icon name="send" size={24} />
-				</button>
+				</OnlineButton>
 			</div>
 		</div>
 	);

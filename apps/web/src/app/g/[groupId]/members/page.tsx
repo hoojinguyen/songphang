@@ -59,10 +59,10 @@ export default function MembersPage() {
 			</main>
 		);
 	if (
-		users.isError ||
-		me.isError ||
-		group.isError ||
-		members.isError ||
+		(users.isError && !users.data) ||
+		(me.isError && !me.data) ||
+		(group.isError && !group.data) ||
+		(members.isError && !members.data) ||
 		balances.isError
 	)
 		return (

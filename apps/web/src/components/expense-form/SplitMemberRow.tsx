@@ -3,6 +3,7 @@ import { formatAmount, parseAmountInput } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineButton } from "../ui/OnlineButton";
 import type { SplitMethod } from "./use-split-state";
 export function SplitMemberRow({
 	member,
@@ -57,14 +58,14 @@ export function SplitMemberRow({
 					</span>
 				</label>
 			)}
-			<button
+			<OnlineButton
 				type="button"
 				aria-label={t(vi.split.removeMember, { name: member.name })}
 				onClick={onRemove}
 				className="flex size-11 shrink-0 items-center justify-center rounded-pill bg-bg"
 			>
 				<Icon name="close" size={18} />
-			</button>
+			</OnlineButton>
 		</div>
 	);
 }

@@ -9,6 +9,7 @@ import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
+import { OnlineButton } from "../ui/OnlineButton";
 import { ScreenHeader } from "../ui/ScreenHeader";
 import { VerifyEmailBanner } from "../ui/VerifyEmailBanner";
 
@@ -41,6 +42,7 @@ export function SettlementForm({
 	const [otherDay, setOtherDay] = useState(false);
 	const [key] = useState(() => crypto.randomUUID());
 	const sending = useRef(false);
+	const [recorded, setRecorded] = useState(false);
 	const mutation = useCreateTransaction(groupId);
 	const router = useRouter();
 	useSessionGuard(mutation.error);
@@ -54,7 +56,9 @@ export function SettlementForm({
 				? vi.settle.titlePaid
 				: vi.settle.title;
 	return (
-		<main className="mx-auto grid min-h-dvh max-w-[430px] content-start gap-5 px-5 py-6">
+		<main
+			className={`settlement-card mx-auto grid min-h-dvh max-w-[430px] content-start gap-5 px-5 py-6 ${recorded ? "settlement-recorded" : ""}`}
+		>
 			<ScreenHeader
 				title={title}
 				backHref={`/g/${groupId}/balances`}
@@ -100,7 +104,7 @@ export function SettlementForm({
 					{ label: vi.settle.yesterday, days: 1 },
 					{ label: vi.settle.otherDay, days: null },
 				].map((option) => (
-					<button
+					<OnlineButton
 						key={option.label}
 						type="button"
 						aria-pressed={
@@ -115,7 +119,7 @@ export function SettlementForm({
 						className={`min-h-11 flex-1 rounded-pill px-2 text-sm font-bold ${(option.days === null ? otherDay : !otherDay && day === dateValue(option.days)) ? "bg-ink text-surface" : "bg-surface"}`}
 					>
 						{option.label}
-					</button>
+					</OnlineButton>
 				))}
 			</fieldset>
 			{otherDay && (
@@ -163,7 +167,16 @@ export function SettlementForm({
 								},
 							},
 							{
-								onSuccess: () => router.replace(`/g/${groupId}/balances`),
+								onSuccess: () => {
+									setRecorded(true);
+									setTimeout(
+										() => router.replace(`/g/${groupId}/balances`),
+										window.matchMedia("(prefers-reduced-motion: reduce)")
+											.matches
+											? 0
+											: 200,
+									);
+								},
 								onSettled: () => {
 									sending.current = false;
 								},
