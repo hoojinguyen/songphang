@@ -7,3 +7,10 @@ dist/
 .DS_Store
 *.tsbuildinfo
 apps/web/next-env.d.ts
+
+# Xcode and Swift (apps/ios)
+DerivedData/
+.build/
+.swiftpm/
+xcuserdata/
+*.xcuserstate

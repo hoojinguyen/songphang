@@ -11,7 +11,8 @@
 			"!!GEMINI.md",
 			"!!settle-up-research.md",
 			"!!.agents",
-			"!!.claude"
+			"!!.claude",
+			"!!apps/ios"
 		]
 	},
 	"linter": {
