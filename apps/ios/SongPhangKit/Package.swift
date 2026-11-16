@@ -25,6 +25,8 @@ let package = Package(
     .library(name: "DesignSystem", targets: ["DesignSystem"]),
     .library(name: "PreviewSupport", targets: ["PreviewSupport"]),
     .library(name: "AuthFeature", targets: ["AuthFeature"]),
+    .library(name: "GroupsFeature", targets: ["GroupsFeature"]),
+    .library(name: "AccountFeature", targets: ["AccountFeature"]),
     .library(name: "AppShell", targets: ["AppShell"]),
   ],
   targets: [
@@ -51,8 +53,25 @@ let package = Package(
       swiftSettings: mainActorSwiftSettings
     ),
     .target(
+      name: "GroupsFeature",
+      dependencies: ["Domain", "DesignSystem", "PreviewSupport"],
+      swiftSettings: mainActorSwiftSettings
+    ),
+    .target(
+      name: "AccountFeature",
+      dependencies: ["Domain", "DesignSystem", "PreviewSupport"],
+      swiftSettings: mainActorSwiftSettings
+    ),
+    .target(
       name: "AppShell",
-      dependencies: ["Domain", "DesignSystem", "PreviewSupport", "AuthFeature"],
+      dependencies: [
+        "Domain",
+        "DesignSystem",
+        "PreviewSupport",
+        "AuthFeature",
+        "GroupsFeature",
+        "AccountFeature",
+      ],
       swiftSettings: mainActorSwiftSettings
     ),
   ]

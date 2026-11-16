@@ -9,7 +9,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] U.2 Strings
 - [x] U.3 Domain, repository protocols, scripted fakes
 - [x] U.4 Shell, debug panel, sign-in
-- [ ] U.5 Groups, members, invites, account
+- [x] U.5 Groups, members, invites, account
 - [ ] U.6 The group screen
 - [ ] U.7 Entering and editing
 - [ ] U.8 Stage gate and hand-over
@@ -171,6 +171,45 @@ For each task, under its heading: the approach note, the commit hash, the real o
   - `docs/superpowers/runs/ios-ui/screens/verify-email-banner.png`
 - Exercised Debug Panel (scenario, latency, snapshot, failure, role, realtime events, sign out):
   - `docs/superpowers/runs/ios-ui/screens/debug-panel.png`
+- **Commit:** `52960b316abf2a8071b68afc5f6bf7747790f30d`
+
+### U.5 Groups, members, invites, account
+
+**Approach:** Add `GroupsFeature` (`GroupList`, `CreateGroup`, `Members`, `GroupSettings`, `Join`) and `AccountFeature` (`Account`), plus shared controls (`SPSegmentedControl`, `SPSwitch`, `SPQRCodeView` using Core Image `CIFilter.qrCodeGenerator()`, `NewMemberInputRow`) in `DesignSystem`. Persist screen models in `RouteDestination` `@State` so `@Observable` tracking works across async loads and actions.
+
+**Gate output:**
+- `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build` → `** BUILD SUCCEEDED **`
+- `xcrun swift-format lint --strict --recursive apps/ios` → no output (exit code 0)
+
+**Exercise results & screenshots:**
+| Screen & State | Screenshot | Web source ported from | Differences & reason |
+|---|---|---|---|
+| S2 Group List — loading | `docs/superpowers/runs/ios-ui/screens/s2-groups-loading.png` | `apps/web/src/app/page.tsx` | None |
+| S2 Group List — loaded | `docs/superpowers/runs/ios-ui/screens/s2-groups-loaded.png` | `apps/web/src/app/page.tsx`, `components/groups/FeaturedGroupCard.tsx`, `GroupCard.tsx` | Native pull-to-refresh added; debug toolbar button in `#if DEBUG` |
+| S2 Group List — empty | `docs/superpowers/runs/ios-ui/screens/s2-groups-empty.png` | `apps/web/src/app/page.tsx` | None |
+| S2 Group List — failed (no snapshot) | `docs/superpowers/runs/ios-ui/screens/s2-groups-failed.png` | `apps/web/src/app/page.tsx`, `components/ui/LoadError.tsx` | None |
+| S2 Group List — stale (failure + snapshot) | `docs/superpowers/runs/ios-ui/screens/s2-groups-stale.png` | `apps/web/src/app/page.tsx`, `components/ui/OfflineBanner.tsx` | Content stays on screen with `OfflineBanner` at top and write button disabled |
+| S3 Create Group — loaded | `docs/superpowers/runs/ios-ui/screens/s3-create-group-loaded.png` | `apps/web/src/app/groups/new/page.tsx`, `components/groups/NewGroupMembers.tsx`, `NewMemberRow.tsx` | None |
+| S10 Members — loading | `docs/superpowers/runs/ios-ui/screens/s10-members-loading.png` | `apps/web/src/app/g/[groupId]/members/page.tsx` | None |
+| S10 Members — owner | `docs/superpowers/runs/ios-ui/screens/s10-members-owner.png` | `apps/web/src/app/g/[groupId]/members/page.tsx`, `components/members/*` | QR code rendered with Core Image `CIFilter.qrCodeGenerator()`; share uses system `ShareLink`; remove-user confirmation uses iOS `.confirmationDialog` |
+| S10 Members — editor | `docs/superpowers/runs/ios-ui/screens/s10-members-editor.png` | `apps/web/src/app/g/[groupId]/members/page.tsx` | Editor sees member edit, add member, invite card, and `Rời nhóm`, without owner `UserControls` or `Cài đặt nhóm` |
+| S10 Members — viewer | `docs/superpowers/runs/ios-ui/screens/s10-members-viewer.png` | `apps/web/src/app/g/[groupId]/members/page.tsx` | Viewer has no write controls (`Thêm một cái tên`, member editor, invite card absent), sees `Rời nhóm` and `Lịch sử` |
+| S10 Members — failed | `docs/superpowers/runs/ios-ui/screens/s10-members-failed.png` | `apps/web/src/app/g/[groupId]/members/page.tsx` | None |
+| S10 Members — stale | `docs/superpowers/runs/ios-ui/screens/s10-members-stale.png` | `apps/web/src/app/g/[groupId]/members/page.tsx` | Snapshot remains visible with `OfflineBanner` |
+| S11 Settings — loading | `docs/superpowers/runs/ios-ui/screens/s11-settings-loading.png` | `apps/web/src/app/g/[groupId]/settings/page.tsx` | None |
+| S11 Settings — loaded (owner) | `docs/superpowers/runs/ios-ui/screens/s11-settings-loaded.png` | `apps/web/src/app/g/[groupId]/settings/page.tsx`, `components/settings/*` | Transfer ownership uses `.confirmationDialog`; delete group opens a `.sheet` with the group name confirmation field |
+| S11 Settings — delete group sheet | `docs/superpowers/runs/ios-ui/screens/s11-settings-delete-sheet.png` | `apps/web/src/components/settings/DeleteGroupCard.tsx` | Native iOS `.sheet` in place of HTML `<dialog>` |
+| S11 Settings — viewer forbidden | `docs/superpowers/runs/ios-ui/screens/s11-settings-viewer-forbidden.png` | `apps/web/src/app/g/[groupId]/settings/page.tsx` | Shows `"Bạn không có quyền làm việc này."` and `"Về danh sách nhóm"` |
+| S11 Settings — failed | `docs/superpowers/runs/ios-ui/screens/s11-settings-failed.png` | `apps/web/src/app/g/[groupId]/settings/page.tsx` | None |
+| S11 Settings — stale | `docs/superpowers/runs/ios-ui/screens/s11-settings-stale.png` | `apps/web/src/app/g/[groupId]/settings/page.tsx` | Snapshot remains visible with `OfflineBanner` |
+| S12 Join — loading | `docs/superpowers/runs/ios-ui/screens/s12-join-loading.png` | `apps/web/src/app/join/[token]/page.tsx` | None |
+| S12 Join — loaded | `docs/superpowers/runs/ios-ui/screens/s12-join-loaded.png` | `apps/web/src/app/join/[token]/page.tsx`, `components/join/JoinForm.tsx`, `ClaimGrid.tsx` | None |
+| S12 Join — invalid token | `docs/superpowers/runs/ios-ui/screens/s12-join-invalid.png` | `apps/web/src/app/join/[token]/page.tsx` | None |
+| S12 Join — failed | `docs/superpowers/runs/ios-ui/screens/s12-join-failed.png` | `apps/web/src/app/join/[token]/page.tsx` | None |
+| S13 Account — loading | `docs/superpowers/runs/ios-ui/screens/s13-account-loading.png` | `apps/web/src/app/account/page.tsx` | None |
+| S13 Account — loaded | `docs/superpowers/runs/ios-ui/screens/s13-account-loaded.png` | `apps/web/src/app/account/page.tsx`, `components/account/*` | Uses native `Toggle` for `Đăng xuất khỏi các thiết bị khác` |
+| S13 Account — failed | `docs/superpowers/runs/ios-ui/screens/s13-account-failed.png` | `apps/web/src/app/account/page.tsx` | None |
+| S13 Account — stale | `docs/superpowers/runs/ios-ui/screens/s13-account-stale.png` | `apps/web/src/app/account/page.tsx` | Snapshot remains visible with `OfflineBanner` |
 
 ## Gate not passed
 

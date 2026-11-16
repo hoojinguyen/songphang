@@ -1,6 +1,8 @@
+import AccountFeature
 import AuthFeature
 import DesignSystem
 import Domain
+import GroupsFeature
 public import SwiftUI
 import UIKit
 
@@ -24,10 +26,11 @@ extension UIWindow {
 public struct RootView: View {
   private let dependencies: AppDependencies
   @State private var sessionModel: SessionModel
-  @State private var path: [Route] = []
-  @State private var isShowingDebugPanel = false
-
+  @State private var groupListModel: GroupListModel
   @State private var signInModel: SignInModel
+  @State private var path: [Route] = []
+  @State private var statusNotice: String?
+  @State private var isShowingDebugPanel = false
 
   public init(dependencies: AppDependencies? = nil) {
     #if DEBUG
@@ -37,12 +40,50 @@ public struct RootView: View {
       } else {
         let args = ProcessInfo.processInfo.arguments
         let signedIn = !args.contains("--signed-out")
-        let world = FakeWorld(preset: .tripStep4, behavior: FakeBehavior(), signedIn: signedIn)
+        let preset: ScenarioPreset
+        if args.contains("--scenario-empty") {
+          preset = .empty
+        } else if args.contains("--scenario-trip0") {
+          preset = .tripStep0
+        } else if args.contains("--scenario-large") {
+          preset = .large
+        } else {
+          preset = .tripStep4
+        }
+
+        var behavior = FakeBehavior()
+        if args.contains("--latency-2s") {
+          behavior.latency = .seconds(2)
+        } else if args.contains("--latency-300ms") {
+          behavior.latency = .milliseconds(300)
+        }
+        if args.contains("--no-snapshot") {
+          behavior.hasSnapshot = false
+        }
+        if args.contains("--role-editor") {
+          behavior.role = .editor
+        } else if args.contains("--role-viewer") {
+          behavior.role = .viewer
+        }
+        if args.contains("--fail-offline") {
+          behavior.failure = .offline
+        } else if args.contains("--fail-rate-limited") && !signedIn {
+          behavior.failure = .rateLimited
+        }
+
+        let world = FakeWorld(preset: preset, behavior: behavior, signedIn: signedIn)
         resolved = .scripted(world: world)
       }
       self.dependencies = resolved
-      let session = SessionModel(authRepository: resolved.auth)
+      let session = SessionModel(
+        authRepository: resolved.auth,
+        initialState: ProcessInfo.processInfo.arguments.contains("--signed-out")
+          ? .signedOut : .signedIn(PreviewSamples.user)
+      )
       self._sessionModel = State(initialValue: session)
+      self._groupListModel = State(
+        initialValue: GroupListModel(repository: resolved.groups)
+      )
       let args = ProcessInfo.processInfo.arguments
       let initialError: AppError?
       if args.contains("--fail-rate-limited") {
@@ -85,8 +126,26 @@ public struct RootView: View {
         isShowingDebugPanel = true
       }
       .onAppear {
-        if ProcessInfo.processInfo.arguments.contains("--open-debug") {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--open-debug") {
           isShowingDebugPanel = true
+        }
+        if args.contains("--route-register") {
+          path = [.register]
+        } else if args.contains("--route-forgot") {
+          path = [.forgotPassword]
+        } else if args.contains("--route-create-group") {
+          path = [.createGroup]
+        } else if args.contains("--route-account") {
+          path = [.account]
+        } else if args.contains("--route-members") {
+          path = [.groupMembers(groupId: TripScenario.groupId)]
+        } else if args.contains("--route-settings") {
+          path = [.groupSettings(groupId: TripScenario.groupId)]
+        } else if args.contains("--route-join") {
+          path = [.joinGroup(token: TripScenario.invite.token)]
+        } else if args.contains("--route-join-invalid") {
+          path = [.joinGroup(token: "invalid-token")]
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
@@ -101,6 +160,7 @@ public struct RootView: View {
           },
           onDismiss: {
             isShowingDebugPanel = false
+            Task { await groupListModel.load() }
           }
         )
       }
@@ -112,15 +172,6 @@ public struct RootView: View {
           await dependencies.world.setCurrentUser(PreviewSamples.unverifiedUser)
           sessionModel.didSignIn(PreviewSamples.unverifiedUser)
         #endif
-      } else if args.contains("--signed-out") {
-        sessionModel = SessionModel(authRepository: dependencies.auth, initialState: .signedOut)
-        if args.contains("--route-register") {
-          path = [.register]
-        } else if args.contains("--route-forgot") {
-          path = [.forgotPassword]
-        }
-      } else {
-        await sessionModel.loadSession()
       }
     }
   }
@@ -153,75 +204,72 @@ public struct RootView: View {
           #endif
         }
         .navigationDestination(for: Route.self) { route in
-          RouteDestination(
-            route: route,
-            dependencies: dependencies,
-            sessionModel: sessionModel,
-            onNavigate: { path.append($0) },
-            onPop: {
-              if !path.isEmpty { path.removeLast() }
-            },
-            onPopToRoot: { path.removeAll() }
-          )
+          destinationView(for: route, currentUser: nil)
         }
       }
 
     case .signedIn(let user):
       NavigationStack(path: $path) {
-        signedInHomePlaceholder(user: user)
-          .toolbar {
-            #if DEBUG
-              ToolbarItem(placement: .topBarTrailing) {
-                Button("Debug") {
-                  isShowingDebugPanel = true
-                }
+        GroupListView(
+          model: groupListModel,
+          user: user,
+          statusNotice: statusNotice,
+          onOpenGroup: { groupId in
+            statusNotice = nil
+            path.append(.groupFeed(groupId: groupId))
+          },
+          onOpenCreateGroup: {
+            statusNotice = nil
+            path.append(.createGroup)
+          },
+          onOpenAccount: {
+            statusNotice = nil
+            path.append(.account)
+          },
+          onResendVerification: { () async throws(AppError) in
+            try await dependencies.auth.resendVerification()
+          }
+        )
+        .toolbar {
+          #if DEBUG
+            ToolbarItem(placement: .topBarTrailing) {
+              Button("Debug") {
+                isShowingDebugPanel = true
               }
-            #endif
-          }
-          .navigationDestination(for: Route.self) { route in
-            RouteDestination(
-              route: route,
-              dependencies: dependencies,
-              sessionModel: sessionModel,
-              onNavigate: { path.append($0) },
-              onPop: {
-                if !path.isEmpty { path.removeLast() }
-              },
-              onPopToRoot: { path.removeAll() }
-            )
-          }
+            }
+          #endif
+        }
+        .navigationDestination(for: Route.self) { route in
+          destinationView(for: route, currentUser: user)
+        }
       }
     }
   }
 
-  private func signedInHomePlaceholder(user: User) -> some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        if !user.emailVerified {
-          VerifyEmailBannerView(
-            model: VerifyEmailBannerModel(repository: dependencies.auth)
-          )
+  private func destinationView(for route: Route, currentUser: User?) -> some View {
+    RouteDestination(
+      route: route,
+      dependencies: dependencies,
+      sessionModel: sessionModel,
+      currentUser: currentUser,
+      onNavigate: { path.append($0) },
+      onReplaceTop: { newRoute in
+        if path.isEmpty {
+          path = [newRoute]
+        } else {
+          path[path.count - 1] = newRoute
         }
-
-        HStack {
-          VStack(alignment: .leading, spacing: 4) {
-            Text(L10n.t("groups.greeting", ["name": user.name]))
-              .font(Typography.subheadlineBold)
-              .foregroundStyle(Tokens.muted)
-            Text(L10n.tr("groups.title"))
-              .font(Typography.pageTitle)
-              .foregroundStyle(Tokens.ink)
-          }
-          Spacer()
-          MemberShapeView(shape: .circle, color: .mint, name: user.name, size: 48)
+      },
+      onPop: {
+        if !path.isEmpty { path.removeLast() }
+      },
+      onPopToRoot: { notice in
+        if let notice {
+          statusNotice = notice
         }
-
-        SPButton(L10n.tr("common.logout"), variant: .surface) {
-          Task { await sessionModel.signOut() }
-        }
+        path.removeAll()
+        Task { await groupListModel.load() }
       }
-      .padding(20)
-    }
-    .background(Tokens.bg.ignoresSafeArea())
+    )
   }
 }
