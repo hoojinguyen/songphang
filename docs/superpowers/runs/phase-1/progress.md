@@ -72,7 +72,7 @@ Not verified:
 - [x] 1D.1 `core`: the sentence reader
 - [x] 1D.2 API: parse endpoint
 - [x] 1D.3 Web: typing box and confirmation card
-- [ ] 1D.4 Web: questions and sentences that are not understood
+- [x] 1D.4 Web: questions and sentences that are not understood
 - [ ] 1D.5 Stage gate 1D
 
 ### Gate 1D
@@ -2026,3 +2026,309 @@ Browser A46: 0/3 → 2/3 leaves “Chọn thêm 1 người” disabled; at 3/3 t
 Security review: relevant items 1, 2, 7, 8 inspected; user choices resolve only via validated parse/preview/create responses, no save of unresolved data, no HTML injection/storage/new dependency. Full diff reviewed. A separate current-preview flag prevents a previous preview being saved during debounce.
 Decisions: original sentence and original highlight spans remain untouched while chosen full names are reparsed internally. No new grammar. Deviations: none.
 Not verified: API-stop save recovery, individual A50/A55/A57/A59 browser lines, multiple simultaneous ambiguous words, and remaining D.3 visual exercises require the combined/manual checks. Their API rows passed. Out of scope: none.
+
+Commit 1D.4: `a19b8fb`.
+
+## Task 1D.5 — Approach
+- Reset the local development database and replay all existing A/B/C acceptance requests.
+- Rebuild sample groups A/B/C and compare every parse result; save the four required drafts and count only saves.
+- Extend the role matrix with parse; run offline build, check and the balance checker.
+- Record every actual output, including any gate item that cannot be verified.
+
+### Task 1D.5 — Gate output
+```text
+dev login minh [204, null]
+dev login lan [204, null]
+dev login hung [204, null]
+dev login thu [204, null]
+create group 201
+1C T1 [201, [{"memberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 120000}, {"memberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "amount": 100000}, {"memberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "amount": 80000}]]
+1C T2 [201, [{"memberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 480000}, {"memberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "amount": 240000}, {"memberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "amount": 240000}, {"memberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "amount": 240000}]]
+1C T3 [201, [{"memberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 50000}, {"memberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "amount": 50000}, {"memberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "amount": 50000}, {"memberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "amount": 50000}]]
+1C T4 [201, [{"memberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 49999}, {"memberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "amount": 30000}, {"memberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "amount": 20000}]]
+1C minimized [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "balance": 500001}, {"memberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "balance": -120000}, {"memberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "balance": -170001}, {"memberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "balance": -210000}], "transfers": [{"fromMemberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "toMemberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 210000}, {"fromMemberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "toMemberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 170001}, {"fromMemberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "toMemberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 120000}]}]
+1C T5 201
+1C after T5 [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "balance": 290001}, {"memberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "balance": -120000}, {"memberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "balance": -170001}, {"memberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "balance": 0}], "transfers": [{"fromMemberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "toMemberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 170001}, {"fromMemberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "toMemberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 120000}]}]
+1C pairwise [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "balance": 290001}, {"memberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "balance": -120000}, {"memberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "balance": -170001}, {"memberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "balance": 0}], "transfers": [{"fromMemberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "toMemberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "amount": 50000}, {"fromMemberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "toMemberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 150000}, {"fromMemberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "toMemberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 190001}, {"fromMemberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "toMemberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "amount": 30000}, {"fromMemberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "toMemberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "amount": 20000}]}]
+1C received minus paid {"Minh": 290001, "Lan": -120000, "Hùng": -170001, "Thu": 0}
+1C exact mismatch [400, {"error": {"code": "SPLIT_TOTAL_MISMATCH", "message": "Split total differs from amount", "details": {"expected": 300000, "actual": 320000}, "requestId": "01a1e466-2913-7ee8-a8b4-17bd8e468603"}}]
+1C payer mismatch [400, {"error": {"code": "PAYER_TOTAL_MISMATCH", "message": "Payer total differs from amount", "details": {"expected": 1200000, "actual": 1100000}, "requestId": "01a1e466-2921-778d-b16f-1656c7b72731"}}]
+1C percent mismatch [400, {"error": {"code": "SPLIT_TOTAL_MISMATCH", "message": "Split total differs from amount", "details": {"expected": 100, "actual": 99}, "requestId": "01a1e466-292e-7cd5-9530-71d5f371423c"}}]
+1C self transfer [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"body": ["Invalid input"]}, "requestId": "01a1e466-293b-7522-9097-3e1632b3cca3"}}]
+1C weight precision [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.entries.0.weight": ["Invalid string: must match pattern /^\\d{1,4}(\\.\\d{1,2})?$/"]}, "requestId": "01a1e466-2945-738a-894a-52baecf85678"}}]
+1C negative percent [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.entries.0.percent": ["Invalid string: must match pattern /^\\d{1,3}(\\.\\d{1,2})?$/"]}, "requestId": "01a1e466-294f-77c4-8729-56418d85b086"}}]
+1C outside entry [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split": ["Invalid input"]}, "requestId": "01a1e466-2958-77f9-b19c-5ddc54d605e1"}}]
+1C preview [200, {"shares": [{"memberId": "01a1e466-2860-7e2c-ba9b-ef5acec7a784", "amount": 480000}, {"memberId": "01a1e466-2861-777e-8ab6-5bd30d664de2", "amount": 240000}, {"memberId": "01a1e466-2862-787e-a5c6-ae2961f311dd", "amount": 240000}, {"memberId": "01a1e466-2863-74cf-89e1-bfccb5a45a22", "amount": 240000}]}]
+1C stored count 5
+1B register [204, null]
+1B unverified write [403, {"error": {"code": "EMAIL_NOT_VERIFIED", "message": "Email verification required", "requestId": "01a1e466-29b3-761c-9c3b-4e1b69b13cd7"}}]
+1B verify [204, null]
+create group 201
+1B preview [200, {"group": {"id": "01a1e466-29fa-7d6a-8c8e-9f0f36cc8c17", "name": "Đà Lạt 12/2026"}, "ownerName": "Minh", "memberCount": 4, "transactionCount": 2, "members": [{"id": "01a1e466-29fb-7bb9-8c2b-5bfff46bdcaf", "name": "Minh", "shape": "circle", "color": "mint", "claimed": true, "balance": null}, {"id": "01a1e466-29fb-7bb9-8c2b-5c00fbc19d3d", "name": "Lan", "shape": "diamond", "color": "sky", "claimed": false, "balance": 0}, {"id": "01a1e466-29fc-7f1a-b7a5-0bd43152fdbb", "name": "Hùng", "shape": "squircle", "color": "coral", "claimed": false, "balance": -300000}, {"id": "01a1e466-29fd-79bf-a6e5-f16bd8fd102f", "name": "Thu", "shape": "leaf", "color": "lilac", "claimed": false, "balance": -200000}], "alreadyJoined": false}]
+1B Lan join [200, {"groupId": "01a1e466-29fa-7d6a-8c8e-9f0f36cc8c17"}]
+1B Ngân join [200, {"groupId": "01a1e466-29fa-7d6a-8c8e-9f0f36cc8c17"}]
+1B Hùng join [200, {"groupId": "01a1e466-29fa-7d6a-8c8e-9f0f36cc8c17"}]
+1B Lan list [200, {"groups": [{"id": "01a1e466-29fa-7d6a-8c8e-9f0f36cc8c17", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1e466-29fb-7bb9-8c2b-5bfff46bdcaf", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1e466-29fb-7bb9-8c2b-5c00fbc19d3d", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1e466-29fc-7f1a-b7a5-0bd43152fdbb", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1e466-29fd-79bf-a6e5-f16bd8fd102f", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": 0}]}]
+1B Hùng list [200, {"groups": [{"id": "01a1e466-29fa-7d6a-8c8e-9f0f36cc8c17", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1e466-29fb-7bb9-8c2b-5bfff46bdcaf", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1e466-29fb-7bb9-8c2b-5c00fbc19d3d", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1e466-29fc-7f1a-b7a5-0bd43152fdbb", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1e466-29fd-79bf-a6e5-f16bd8fd102f", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": -300000}]}]
+1B viewer write [403, {"error": {"code": "FORBIDDEN", "message": "Insufficient group role", "requestId": "01a1e466-2aa7-74e7-aebc-479d26f10eb7"}}]
+1B viewer read 200
+1B SSE within 2s ": connected\n\nevent: changed\ndata: {\"resources\":[\"transactions\",\"balances\",\"activity\"]}\n\n"
+1B remove Hùng [204, null]
+1B removed read [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found", "requestId": "01a1e466-2d19-7206-925a-aa19b8d4a427"}}]
+1B preserved balance [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e466-29fb-7bb9-8c2b-5bfff46bdcaf", "balance": 566666}, {"memberId": "01a1e466-29fb-7bb9-8c2b-5c00fbc19d3d", "balance": -33333}, {"memberId": "01a1e466-29fc-7f1a-b7a5-0bd43152fdbb", "balance": -333333}, {"memberId": "01a1e466-29fd-79bf-a6e5-f16bd8fd102f", "balance": -200000}, {"memberId": "01a1e466-2a64-752c-8c7f-6953dcd27cf5", "balance": 0}], "transfers": [{"fromMemberId": "01a1e466-29fc-7f1a-b7a5-0bd43152fdbb", "toMemberId": "01a1e466-29fb-7bb9-8c2b-5bfff46bdcaf", "amount": 333333}, {"fromMemberId": "01a1e466-29fd-79bf-a6e5-f16bd8fd102f", "toMemberId": "01a1e466-29fb-7bb9-8c2b-5bfff46bdcaf", "amount": 200000}, {"fromMemberId": "01a1e466-29fb-7bb9-8c2b-5c00fbc19d3d", "toMemberId": "01a1e466-29fb-7bb9-8c2b-5bfff46bdcaf", "amount": 33333}]}]
+1B old invite [404, {"error": {"code": "INVITE_INVALID", "message": "Invite is invalid", "requestId": "01a1e466-2d4f-7433-9c5e-74b2779afaca"}}]
+1B forgot [204, null]
+1B reset [204, null]
+1B sessions after reset [401, 401]
+1B existing register [204, null]
+1B new register [204, null]
+1B known forgot [204, null]
+1B unknown forgot [204, null]
+create group 201
+1A Vé cáp treo 201
+1A Lẩu 201
+1A Cà phê 201
+1A minimized [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "balance": 566666}, {"memberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "balance": -33333}, {"memberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "balance": -333333}, {"memberId": "01a1e466-2e25-7a5c-8e2b-456522a0a1a1", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 333333}, {"fromMemberId": "01a1e466-2e25-7a5c-8e2b-456522a0a1a1", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 200000}, {"fromMemberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 33333}]}]
+1A pairwise [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "balance": 566666}, {"memberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "balance": -33333}, {"memberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "balance": -333333}, {"memberId": "01a1e466-2e25-7a5c-8e2b-456522a0a1a1", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 133333}, {"fromMemberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 233333}, {"fromMemberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "toMemberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "amount": 100000}, {"fromMemberId": "01a1e466-2e25-7a5c-8e2b-456522a0a1a1", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 200000}]}]
+1A taxi [201, [{"memberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 30000}, {"memberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "amount": 30000}, {"memberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "amount": 30000}]]
+1A inactive balance [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "balance": 626666}, {"memberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "balance": -63333}, {"memberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "balance": -363333}, {"memberId": "01a1e466-2e25-7a5c-8e2b-456522a0a1a1", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 163333}, {"fromMemberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 263333}, {"fromMemberId": "01a1e466-2e25-7a5c-8e2b-45643b3f7120", "toMemberId": "01a1e466-2e24-780c-8652-a98f8098b5e6", "amount": 100000}, {"fromMemberId": "01a1e466-2e25-7a5c-8e2b-456522a0a1a1", "toMemberId": "01a1e466-2e23-7e10-aa3b-a8a95e42a58a", "amount": 200000}]}]
+matrix GET /group minh 200
+matrix GET /group lan 200
+matrix GET /group ngan 200
+matrix GET /group hung 404
+matrix GET /group None 401
+matrix GET  malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET  random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /members minh 200
+matrix GET /members lan 200
+matrix GET /members ngan 200
+matrix GET /members hung 404
+matrix GET /members None 401
+matrix GET /members malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /members random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /users minh 200
+matrix GET /users lan 200
+matrix GET /users ngan 200
+matrix GET /users hung 404
+matrix GET /users None 401
+matrix GET /users malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /users random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /transactions minh 200
+matrix GET /transactions lan 200
+matrix GET /transactions ngan 200
+matrix GET /transactions hung 404
+matrix GET /transactions None 401
+matrix GET /transactions malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /transactions random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /balances minh 200
+matrix GET /balances lan 200
+matrix GET /balances ngan 200
+matrix GET /balances hung 404
+matrix GET /balances None 401
+matrix GET /balances malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /balances random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /events minh 200
+matrix GET /events lan 200
+matrix GET /events ngan 200
+matrix GET /events hung 404
+matrix GET /events None 401
+matrix GET /events malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /events random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /invite minh 200
+matrix GET /invite lan 200
+matrix GET /invite ngan 403
+matrix GET /invite hung 404
+matrix GET /invite None 401
+matrix GET /invite malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /invite random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /members minh 201
+matrix POST /members lan 201
+matrix POST /members ngan 403
+matrix POST /members hung 404
+matrix POST /members None 401
+matrix POST /members malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /members random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /members/01a1e466-2ee2-76ae-bc61-6d258b847076 minh 200
+matrix PATCH /members/01a1e466-2ee2-76ae-bc61-6d258b847076 lan 200
+matrix PATCH /members/01a1e466-2ee2-76ae-bc61-6d258b847076 ngan 403
+matrix PATCH /members/01a1e466-2ee2-76ae-bc61-6d258b847076 hung 404
+matrix PATCH /members/01a1e466-2ee2-76ae-bc61-6d258b847076 None 401
+matrix PATCH /members/01a1e466-2ee2-76ae-bc61-6d258b847076 malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /members/01a1e466-2ee2-76ae-bc61-6d258b847076 random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions minh 201
+matrix POST /transactions lan 201
+matrix POST /transactions ngan 403
+matrix POST /transactions hung 404
+matrix POST /transactions None 401
+matrix POST /transactions malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions/preview minh 200
+matrix POST /transactions/preview lan 200
+matrix POST /transactions/preview ngan 403
+matrix POST /transactions/preview hung 404
+matrix POST /transactions/preview None 401
+matrix POST /transactions/preview malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions/preview random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /group minh 200
+matrix PATCH /group lan 403
+matrix PATCH /group ngan 403
+matrix PATCH /group hung 404
+matrix PATCH /group None 401
+matrix PATCH  malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH  random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /invite minh 200
+matrix PATCH /invite lan 403
+matrix PATCH /invite ngan 403
+matrix PATCH /invite hung 404
+matrix PATCH /invite None 401
+matrix PATCH /invite malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /invite random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /invite/rotate minh 200
+matrix POST /invite/rotate lan 403
+matrix POST /invite/rotate ngan 403
+matrix POST /invite/rotate hung 404
+matrix POST /invite/rotate None 401
+matrix POST /invite/rotate malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /invite/rotate random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e minh 200
+matrix PATCH /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e lan 403
+matrix PATCH /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e ngan 403
+matrix PATCH /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e hung 404
+matrix PATCH /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e None 401
+matrix PATCH /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PUT /me/member minh 200
+matrix PUT /me/member lan 200
+matrix PUT /me/member ngan 200
+matrix PUT /me/member hung 404
+matrix PUT /me/member None 401
+matrix POST /transfer-ownership lan 403
+matrix POST /transfer-ownership ngan 403
+matrix POST /transfer-ownership hung 404
+matrix POST /transfer-ownership None 401
+matrix POST /transfer-ownership minh 200
+matrix DELETE /users/user lan 403
+matrix DELETE /users/user ngan 403
+matrix DELETE /users/user hung 404
+matrix DELETE /users/user None 401
+matrix DELETE /users/user minh 204
+matrix POST /leave minh 422
+matrix POST /leave lan 204
+matrix POST /leave ngan 204
+matrix POST /leave hung 404
+matrix POST /leave None 401
+matrix DELETE /members/member minh 204
+matrix DELETE /members/member lan 204
+matrix DELETE /members/member ngan 403
+matrix DELETE /members/member hung 404
+matrix DELETE /members/member None 401
+matrix PUT /me/member malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PUT /me/member random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transfer-ownership malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transfer-ownership random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /users/01a1e465-dbbc-7f6b-8fa8-5cb2e8fce48e random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /leave malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /leave random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /members/01a1e466-2ee2-76ae-bc61-6d258b847076 malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /members/01a1e466-2ee2-76ae-bc61-6d258b847076 random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+A01 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A02 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A03 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A04 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A05 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A06 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A07 200 ok match [{'memberId': 'Minh', 'amount': 250000}, {'memberId': 'Lan', 'amount': 250000}, {'memberId': 'Hùng', 'amount': 250000}, {'memberId': 'Thu', 'amount': 250000}]
+A08 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A09 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A10 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A11 200 ok match [{'memberId': 'Minh', 'amount': 375000}, {'memberId': 'Lan', 'amount': 375000}, {'memberId': 'Hùng', 'amount': 375000}, {'memberId': 'Thu', 'amount': 375000}]
+A12 200 ok match [{'memberId': 'Minh', 'amount': 375000}, {'memberId': 'Lan', 'amount': 375000}, {'memberId': 'Hùng', 'amount': 375000}, {'memberId': 'Thu', 'amount': 375000}]
+A13 200 ok match [{'memberId': 'Minh', 'amount': 500000}, {'memberId': 'Lan', 'amount': 500000}, {'memberId': 'Hùng', 'amount': 500000}, {'memberId': 'Thu', 'amount': 500000}]
+A14 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A15 200 ok match [{'memberId': 'Minh', 'amount': 24750}, {'memberId': 'Lan', 'amount': 24750}, {'memberId': 'Hùng', 'amount': 24750}, {'memberId': 'Thu', 'amount': 24750}]
+A16 200 ok match [{'memberId': 'Minh', 'amount': 2500}, {'memberId': 'Lan', 'amount': 2500}, {'memberId': 'Hùng', 'amount': 2500}, {'memberId': 'Thu', 'amount': 2500}]
+A17 200 ok match [{'memberId': 'Minh', 'amount': 250}, {'memberId': 'Lan', 'amount': 250}, {'memberId': 'Hùng', 'amount': 250}, {'memberId': 'Thu', 'amount': 250}]
+A18 200 ok match [{'memberId': 'Minh', 'amount': 251}, {'memberId': 'Lan', 'amount': 250}, {'memberId': 'Hùng', 'amount': 250}, {'memberId': 'Thu', 'amount': 250}]
+A19 200 ok match [{'memberId': 'Minh', 'amount': 400000}, {'memberId': 'Lan', 'amount': 400000}, {'memberId': 'Hùng', 'amount': 400000}, {'memberId': 'Thu', 'amount': 400000}]
+A20 200 ok match [{'memberId': 'Minh', 'amount': 25000}, {'memberId': 'Lan', 'amount': 25000}, {'memberId': 'Hùng', 'amount': 25000}, {'memberId': 'Thu', 'amount': 25000}]
+A21 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A22 200 ok match [{'memberId': 'Minh', 'amount': 200000}, {'memberId': 'Lan', 'amount': 200000}, {'memberId': 'Hùng', 'amount': 200000}, {'memberId': 'Thu', 'amount': 200000}]
+A23 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A24 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A25 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A26 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A27 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A28 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A29 200 ok match [{'memberId': 'Minh', 'amount': 100000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 100000}, {'memberId': 'Thu', 'amount': 100000}]
+A30 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A31 200 ok match [{'memberId': 'Lan', 'amount': 33334}, {'memberId': 'Hùng', 'amount': 33333}, {'memberId': 'Thu', 'amount': 33333}]
+A32 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 120000}]
+A33 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 120000}]
+A34 200 ok match [{'memberId': 'Lan', 'amount': 22500}, {'memberId': 'Hùng', 'amount': 22500}]
+A35 200 ok match [{'memberId': 'Thu', 'amount': 50000}]
+A36 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A37 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A38 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A39 200 ok match [{'memberId': 'Minh', 'amount': 150000}, {'memberId': 'Lan', 'amount': 150000}]
+A40 200 ok match [{'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 400000}]
+A41 200 ok match [{'memberId': 'Minh', 'amount': 250000}, {'memberId': 'Lan', 'amount': 250000}, {'memberId': 'Hùng', 'amount': 250000}, {'memberId': 'Thu', 'amount': 250000}]
+A42 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+A43 200 ok match [{'memberId': 'Lan', 'amount': 33334}, {'memberId': 'Hùng', 'amount': 33333}, {'memberId': 'Thu', 'amount': 33333}]
+A44 200 ok match [{'memberId': 'Lan', 'amount': 200000}, {'memberId': 'Thu', 'amount': 300000}]
+A45 200 ok match [{'memberId': 'Lan', 'amount': 1500}, {'memberId': 'Hùng', 'amount': 248500}]
+A46 200 needs_input match None
+A47 200 needs_input match None
+A48 200 needs_input match None
+A49 200 needs_input match None
+A50 200 unparsed match None
+A51 200 unparsed match None
+A52 200 unparsed match None
+A53 200 unparsed match None
+A54 200 unparsed match None
+A55 200 unparsed match None
+A56 200 unparsed match None
+A57 200 unparsed match None
+A58 200 unparsed match None
+A59 200 unparsed match None
+A60 200 unparsed match None
+A61 200 unparsed match None
+A62 200 unparsed match None
+A63 200 unparsed match None
+A parse count 0 0
+save A01 201 True
+save A31 201 True
+save A36 201 True
+save A43 201 True
+B01 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B02 200 needs_input match None
+B03 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B04 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B05 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B06 200 needs_input match None
+B07 200 ok match [{'memberId': 'Minh Đức', 'amount': 100000}, {'memberId': 'Lan', 'amount': 50000}]
+B08 200 ok match [{'memberId': 'Minh Đức', 'amount': 100000}, {'memberId': 'Lan', 'amount': 50000}]
+B parse count 0 0
+C01 200 ok match [{'memberId': 'Minh', 'amount': 60000}, {'memberId': 'Lan', 'amount': 60000}, {'memberId': 'Hùng', 'amount': 60000}]
+C02 200 ok match [{'memberId': 'Minh', 'amount': 60000}, {'memberId': 'Lan', 'amount': 60000}, {'memberId': 'Hùng', 'amount': 60000}]
+C03 200 unparsed match None
+C04 200 unparsed match None
+C parse count 0 0
+301 400
+empty 400
+outsider 404
+viewer 403
+matrix parse minh 200
+matrix parse lan 200
+matrix parse ngan 403
+matrix parse hung 404
+matrix parse None 401
+matrix parse bad group invalid (404, {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e466-a493-70d0-84f3-1b7db8633b41'}})
+matrix parse bad group 00000000-0000-4000-8000-000000000000 (404, {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e466-a49c-7288-bdee-9214fdc6290b'}})
+rate sweep {200: 42, 429: 79} total successes before429 includes previous samples
+gate stored count A 4
+gate stored count B 0
+gate stored count C 0
+```
+Gate passed. Outbound-denied pnpm build passed (11/11 static pages); reset database migrated/seeded. All 75 parser comparisons match; A01/A31/A36/A43 saves match stored shares; counts A=4/B=0/C=0. A/B/C acceptance and full existing role matrix replayed above; parse matrix 200/200/403/404/401 with normalized malformed/random 404. `pnpm db:check-balances`: six groups sum 0, mismatches 0; `All groups balanced`. `pnpm check`: passed (213 files, all workspace typechecks Done).
+Security review: relevant items 1,4,6,8 checked against documentation diff and actual responses; no secret output. No implementation changes or dependencies. Gate not passed: none. Not verified: UI/device items previously listed remain; Google remains unverified.
