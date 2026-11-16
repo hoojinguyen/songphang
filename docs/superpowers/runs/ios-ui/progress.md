@@ -12,7 +12,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] U.5 Groups, members, invites, account
 - [x] U.6 The group screen
 - [x] U.7 Entering and editing
-- [ ] U.8 Stage gate and hand-over
+- [x] U.8 Stage gate and hand-over
 
 ### U.0 Baseline
 
@@ -360,14 +360,143 @@ For each task, under its heading: the approach note, the commit hash, the real o
   | S8 Expense Form — `.conflict` notice | `docs/superpowers/runs/ios-ui/screens/s8-expense-form-conflict.png` | `apps/web/src/components/expense-form/ConflictNotice.tsx` | Shows `"Minh vừa sửa khoản này."` and `"Xem bản mới"` button |
   | S4 Group Feed — delete + `Hoàn tác` toast | `docs/superpowers/runs/ios-ui/screens/s4-feed-deleted-undo.png` | `apps/web/src/components/expense-form/ExpenseForm.tsx`, `components/ui/Snackbar.tsx` | Shows `"Đã xoá."` + `"Hoàn tác"` pill above entry bar |
   | S9 Settle — loaded | `docs/superpowers/runs/ios-ui/screens/s9-settle-loaded.png` | `apps/web/src/app/g/[groupId]/settle/page.tsx`, `components/balances/SettlementForm.tsx` | None |
+- **Commit:** `525f31b5946ef1e7019b6b3bea4b579c5c421896`
+
+### U.8 Stage gate and hand-over
+
+**Approach:** Execute all eight steps of the interface stage gate: run the automated gate and `check-strings.sh`; verify the full Phase 1 journey screenshots on `trip`; verify accessibility labels and capture all 13 screens at the largest accessibility Dynamic Type size (`accessibility-extra-extra-extra-large` / `AX5`); verify module dependencies in `Package.swift` against AD section 5 and confirm zero `import PreviewSupport` outside `#if DEBUG` / `#Preview` in the feature modules; verify the Release build fails at `AppShell/AppDependencies.swift` with `#error("Live repositories arrive in the integration stage")`; record AD 8.3 performance measurements on `large`; write `apps/ios/README.md`, `manual-checks.md`, and complete `"For the integration stage"`.
+
+**Step 1 — Automated gate & string check:**
+- `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build` → `** BUILD SUCCEEDED **`
+- `xcrun swift-format lint --strict --recursive apps/ios` → no output (exit code 0)
+- `./apps/ios/Scripts/check-strings.sh`:
+  ```
+  OK: 392 web keys verified, 0 missing, 0 differing.
+  ```
+
+**Step 2 — Phase 1 journey on `trip` in Simulator:**
+- Sign-in (S1): `docs/superpowers/runs/ios-ui/screens/s1-signin-loaded.png`
+- Create group (S3): `docs/superpowers/runs/ios-ui/screens/s3-create-group-loaded.png`
+- Empty group stream (S4 step 0): `docs/superpowers/runs/ios-ui/screens/s4-feed-empty.png`
+- Invite & members (S10): `docs/superpowers/runs/ios-ui/screens/s10-members-owner.png`
+- Quick entry & confirmation cards (S7): `docs/superpowers/runs/ios-ui/screens/s7-parse-1.png` through `s7-parse-10.png`
+- Manual form, split editor, edit & conflict (S8): `docs/superpowers/runs/ios-ui/screens/s8-expense-form-new.png`, `s8-expense-form-edit.png`, `s8-split-editor.png`, `s8-expense-form-conflict.png`
+- Balances after each step T1–T4 (S5): `docs/superpowers/runs/ios-ui/screens/s5-step1-balances.png`, `s5-step2-balances.png`, `s5-step3-balances.png`, `s5-step4-balances.png`
+- Delete & undo toast (S4): `docs/superpowers/runs/ios-ui/screens/s4-feed-deleted-undo.png`
+- Activity & restore (S6): `docs/superpowers/runs/ios-ui/screens/s6-activity-loaded.png`, `s6-activity-restore.png`
+- Settle transfer & all-settled state (S9 → S5): `docs/superpowers/runs/ios-ui/screens/s9-settle-loaded.png`, `s5-balances-all-settled.png`
+
+**Step 3 — Accessibility & largest text size (`accessibility-extra-extra-extra-large` / `AX5`):**
+- Accessibility audit of controls & labels:
+  - `MemberShapeView`: `.accessibilityElement(children: .ignore)` with `.accessibilityLabel(name)` so every member shape announces the member's name instead of a raw shape or single initial letter.
+  - `HighlightedSentenceView`: phrase spans expose `.accessibilityLabel("\(kindLabel): \(spanText)")` (`Số tiền`, `Người trả`, `Cách chia`, `Phần còn lại`).
+  - `FeedTransactionRowView`: editable rows expose `.accessibilityLabel(L10n.t("feed.editRow", ["description": transaction.description]))`.
+  - Icon-only buttons (`SPScreenHeader` back button, `QuickEntryView` send button, `SplitEditorView` back and remove-member buttons, `UnparsedBannerView` close button) expose explicit `.accessibilityLabel(...)` strings from `Localizable.xcstrings`.
+  - All interactive controls maintain `minWidth: 44, minHeight: 44` hit targets (`SPButton`, `SPSegmentedControl`, `MemberToggleGridView`, `TypeSwitchView`, `CategoryPickerView`).
+- Screenshots at `accessibility-extra-extra-extra-large` (`AX5`):
+  - S1 Sign-In: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s1-signin.png`
+  - S2 Group List: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s2-groups.png`
+  - S3 Create Group: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s3-create-group.png`
+  - S4 Group Feed: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s4-feed.png`
+  - S5 Balances: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s5-balances.png`
+  - S6 Activity: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s6-activity.png`
+  - S7 Quick Entry: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s7-quick-entry.png`
+  - S8 Expense Form: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s8-expense-form.png`
+  - S9 Settle: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s9-settle.png`
+  - S10 Members: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s10-members.png`
+  - S11 Settings: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s11-settings.png`
+  - S12 Join: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s12-join.png`
+  - S13 Account: `docs/superpowers/runs/ios-ui/screens/u8-ax5-s13-account.png`
+
+**Step 4 — Architecture check (Review Focus 2):**
+- Target `dependencies` in `apps/ios/SongPhangKit/Package.swift` vs AD section 5:
+  | Target | AD section 5 `dependencies` | `Package.swift` `dependencies` | Match |
+  |---|---|---|---|
+  | `Domain` | `[]` | `[]` | Identical |
+  | `DesignSystem` | `["Domain"]` | `["Domain"]` | Identical |
+  | `PreviewSupport` | `["Domain"]` | `["Domain"]` | Identical |
+  | `AuthFeature` | `["Domain", "DesignSystem", "PreviewSupport"]` | `["Domain", "DesignSystem", "PreviewSupport"]` | Identical |
+  | `GroupsFeature` | `["Domain", "DesignSystem", "PreviewSupport"]` | `["Domain", "DesignSystem", "PreviewSupport"]` | Identical |
+  | `LedgerFeature` | `["Domain", "DesignSystem", "PreviewSupport"]` | `["Domain", "DesignSystem", "PreviewSupport"]` | Identical |
+  | `AccountFeature` | `["Domain", "DesignSystem", "PreviewSupport"]` | `["Domain", "DesignSystem", "PreviewSupport"]` | Identical |
+  | `AppShell` | `["Domain", "DesignSystem", "PreviewSupport", "AuthFeature", "GroupsFeature", "LedgerFeature", "AccountFeature"]` (plus `Repositories` in integration stage) | `["Domain", "DesignSystem", "PreviewSupport", "AuthFeature", "GroupsFeature", "LedgerFeature", "AccountFeature"]` | Identical for interface-stage modules |
+- Search `AuthFeature`, `GroupsFeature`, `LedgerFeature`, `AccountFeature` for `import PreviewSupport`:
+  Every single occurrence (16 view files) is inside `#if DEBUG` guarding `#Preview` blocks, and zero occurrences exist in any `*Model.swift` or outside `#if DEBUG` (additionally proven by the Release build compiling all four feature modules cleanly).
+
+**Step 5 — Release check (Review Focus 5):**
+- Command:
+  ```bash
+  xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -configuration Release -destination 'generic/platform=iOS Simulator' build
+  ```
+- Real output:
+  ```
+  /Users/hoojinguyen/Projects/songphang-ios-ui/apps/ios/SongPhangKit/Sources/AppShell/AppDependencies.swift:36:12: error: Live repositories arrive in the integration stage (in target 'AppShell' from project 'SongPhangKit')
+  ** BUILD FAILED **
+  ```
+
+**Step 6 — AD 8.3 performance measures on `large`:**
+- Recorded under Task U.6 above:
+  - `App Launch` (`dyld-activity-interval` `Launch Executable`): **361.17 ms** (budget: `< 400 ms`).
+  - `Hangs` (`potential-hangs` with 100 ms threshold during 500-row scroll): **0 hangs**, **0 hang risks**.
+  - Group screen tap-to-content with snapshot: **0 skeleton frames** (hydrates synchronously before first network await).
+  - `Hitches` / `SwiftUI` instruments on Simulator: recorded under `Not verified` with exact `xctrace` CLI error.
 
 ## Gate not passed
 
+None. Every automated gate (`xcodebuild ... SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build`, `xcrun swift-format lint --strict --recursive apps/ios`, `./apps/ios/Scripts/check-strings.sh`, and the Release `#error` check) passed.
+
 ## Not verified
 
-- Be Vietnam Pro bundled font registration on iOS: `apps/web/public/fonts/be-vietnam-pro/` contains only `.woff2` files, which iOS cannot register directly, and downloading `.ttf`/`.otf` files is forbidden in this run (see decision D1). The app uses the system font with Dynamic Type scaling.
-- `xctrace` `Hitches` and `SwiftUI` instruments on iOS Simulator: running `xcrun xctrace record --template 'Animation Hitches'` and `xcrun xctrace record --template 'SwiftUI'` against `iPhone 17 Pro (iOS 26.5 Simulator)` fails with `* [Error] Hitches is not supported on this platform.`, and `xcrun xctrace record --instrument 'SwiftUI'` completes with `* [Warning] Trace file had no SwiftUI data`. Similarly, the `life-cycle-period` table in `--template 'App Launch'` emits `* [Warning] This configuration of instruments creates 1 table without a known input source` on Simulator (while `dyld-activity-interval` records `361.17 ms`). Real-device hitch and `life-cycle-period` measurements require a physical iPhone.
+- **Be Vietnam Pro bundled font registration on iOS:** `apps/web/public/fonts/be-vietnam-pro/` contains only `.woff2` web font files, which iOS cannot register directly, and downloading `.ttf`/`.otf` files from the network is forbidden in this run (see decision D1). `Typography.swift` uses the iOS system font with Dynamic Type text styles.
+- **`xctrace` `Hitches`, `SwiftUI`, and `life-cycle-period` instruments on iOS Simulator:** running `xcrun xctrace record --template 'Animation Hitches'` and `xcrun xctrace record --template 'SwiftUI'` against the iOS Simulator fails with `* [Error] Hitches is not supported on this platform.`, `xcrun xctrace record --instrument 'SwiftUI'` completes with `* [Warning] Trace file had no SwiftUI data`, and the `life-cycle-period` table in `--template 'App Launch'` emits `* [Warning] This configuration of instruments creates 1 table without a known input source` (while `dyld-activity-interval` records `361.17 ms`). Real-device cold start, scrolling hitch rate, and battery measurements require a physical iPhone.
+- **Interactive VoiceOver rotor and Accessibility Inspector GUI audit:** VoiceOver labels, traits, grouping, hit-target sizes (≥ 44×44 pt), and `AX5` Dynamic Type layouts were verified in code and via `simctl` screenshots (`u8-ax5-s1-signin.png` through `u8-ax5-s13-account.png`), but interactive VoiceOver swipe navigation with audio output requires manual verification by the project owner.
 
 ## Out of scope
 
+- None observed in `apps/web` or `packages/`.
+
 ## For the integration stage
+
+### 1. Web baseline commit hash
+- **`bb1e0432fef6f1ceb4cf2ee960948129210626b2`** (`feat(phase-1): complete core expense splitting`)
+- Before starting the integration stage, run:
+  ```bash
+  git diff bb1e0432fef6f1ceb4cf2ee960948129210626b2..main -- packages/contract apps/web/src/messages/vi.ts apps/web/src/app apps/web/src/components
+  ```
+  to identify any contract or web UI changes landed after this baseline.
+
+### 2. Domain guesses checklist
+From `decisions.md`:
+- **DG1 — Server feature flags (`GET /api/v1/auth/features` vs P5 section 5.3):**
+  - The baseline web contract (`packages/contract/src/auth.ts`) does not yet define a `/auth/features` schema, while P5 section 5.3 specifies `AuthRepository.serverFeatures() -> ServerFeatures` (`googleEnabled: Bool`, `appleEnabled: Bool`). Stage 5A adds this endpoint; verify its exact JSON property names when wiring `GeneratedAPI` in `Repositories`.
+- **DG2 — Apple sign-in and Google sign-in repository methods:**
+  - Per Task U.3 instructions, `AuthRepository` currently has `signInWithGoogle()` and `signInWithApple()` taking no parameters so S1 can exercise sign-in against `FakeWorld`. In the integration stage, split or parameterize them with the Apple identity token / nonce (`ASAuthorizationAppleIDCredential`) and Google OAuth code (`ASWebAuthenticationSession`).
+- **DG3 — `ActivityItem.SnapshotValues` typed fields:**
+  - On the web (`packages/contract/src/activity.ts`), `before` and `after` are untyped `z.record(z.string(), z.unknown()).nullable()`. In `Domain/Models/ActivityItem.swift`, `SnapshotValues` models the exact keys read by `apps/web/src/lib/activity-sentences.ts` (`transactionType`, `amount`, `description`, `occurredAt`, `category`, `payers`, `shares`, `split`, `name`, `defaultWeight`, `active`, `role`, `defaultRole`, `minimizeDebts`, `inviteActive`, `inviteRotated`, `memberCount`). When mapping `GeneratedAPI` in `Repositories/Activity`, decode those known keys from the raw JSON object into `ActivityItem.SnapshotValues`.
+
+### 3. Screen-to-web source mapping
+| Screen | iOS module & files | Web files ported from |
+|---|---|---|
+| S1 Sign-In | `AuthFeature/SignIn/{SignInModel,SignInView}.swift` | `apps/web/src/app/login/page.tsx` |
+| Register | `AuthFeature/Register/{RegisterModel,RegisterView}.swift` | `apps/web/src/app/register/page.tsx` |
+| Forgot Password | `AuthFeature/ForgotPassword/{ForgotPasswordModel,ForgotPasswordView}.swift` | `apps/web/src/app/forgot-password/page.tsx` |
+| Verify Email Banner | `AuthFeature/VerifyEmailBanner/VerifyEmailBannerView.swift` | `apps/web/src/components/ui/VerifyEmailBanner.tsx` |
+| S2 Group List | `GroupsFeature/GroupList/{GroupListModel,GroupListView}.swift` | `apps/web/src/app/page.tsx`, `components/groups/{FeaturedGroupCard,GroupCard}.tsx` |
+| S3 Create Group | `GroupsFeature/CreateGroup/{CreateGroupModel,CreateGroupView}.swift` | `apps/web/src/app/groups/new/page.tsx`, `components/groups/{NewGroupMembers,NewMemberRow}.tsx` |
+| S4 Group Feed | `LedgerFeature/GroupFeed/{GroupFeedModel,GroupFeedView,GroupFeedSubViews}.swift` | `apps/web/src/app/g/[groupId]/page.tsx`, `components/feed/*`, `lib/use-group-events.ts` |
+| S5 Balances | `LedgerFeature/Balances/{BalancesModel,BalancesView}.swift` | `apps/web/src/app/g/[groupId]/balances/page.tsx`, `components/balances/{AllSettled,BalanceBars,OtherSettlements,OwnSettlementCard,SettlementCard}.tsx` |
+| S6 Activity | `LedgerFeature/Activity/{ActivityModel,ActivitySentenceFormatter,ActivityView}.swift` | `apps/web/src/app/g/[groupId]/activity/page.tsx`, `components/activity/{ActivityRow,ChangeChips}.tsx`, `lib/activity-sentences.ts` |
+| S7 Quick Entry & Confirm Card | `LedgerFeature/QuickEntry/{QuickEntryModel,QuickEntryView}.swift`, `LedgerFeature/ConfirmCard/*` | `apps/web/src/app/g/[groupId]/tx/new/{page,ComposeScreen}.tsx`, `components/quick-entry/*` |
+| S8 Expense Form & Split Editor | `LedgerFeature/ExpenseForm/{ExpenseFormModel,ExpenseFormView,ExpenseFormSubViews}.swift`, `LedgerFeature/SplitEditor/*` | `apps/web/src/app/g/[groupId]/tx/[transactionId]/page.tsx`, `components/expense-form/*` |
+| S9 Settle | `LedgerFeature/Settle/{SettleModel,SettleView}.swift` | `apps/web/src/app/g/[groupId]/settle/page.tsx`, `components/balances/SettlementForm.tsx` |
+| S10 Members & Invites | `GroupsFeature/Members/{MembersModel,MembersView,MembersSubViews}.swift` | `apps/web/src/app/g/[groupId]/members/page.tsx`, `components/members/*` |
+| S11 Group Settings | `GroupsFeature/GroupSettings/{GroupSettingsModel,GroupSettingsView}.swift` | `apps/web/src/app/g/[groupId]/settings/page.tsx`, `components/settings/*` |
+| S12 Join Group | `GroupsFeature/Join/{JoinModel,JoinView}.swift` | `apps/web/src/app/join/[token]/page.tsx`, `components/join/{JoinForm,ClaimGrid}.tsx` |
+| S13 Account | `AccountFeature/Account/{AccountModel,AccountView}.swift` | `apps/web/src/app/account/page.tsx`, `components/account/*` |
+
+### 4. What was intentionally not built in Stage 5U (arrives in Integration Stage)
+- `GeneratedAPI` and `Repositories` targets in `SongPhangKit/Package.swift` (OpenAPI code generation, `URLSession` transport, Keychain bearer token storage, on-disk JSON snapshots in `Application Support/snapshots/`, SSE client for `/events`, and `NWPathMonitor`).
+- Live `AppDependencies.live(...)` constructor in `AppShell/AppDependencies.swift` (replacing the `#error("Live repositories arrive in the integration stage")` in `#else`).
+- Native `ASAuthorizationController` (Sign in with Apple) and `ASWebAuthenticationSession` (Google OAuth) system sheets.
+- Deep-link routing from `/verify-email?token=...` and `/reset-password?token=...` universal links, push notification registration, home-screen quick actions, and `.ttf` font files for Be Vietnam Pro.
+
