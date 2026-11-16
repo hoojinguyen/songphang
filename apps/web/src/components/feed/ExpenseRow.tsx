@@ -33,6 +33,13 @@ export function ExpenseRow({
 			return `${label} ${formatMoney(entry.amount)}`;
 		})
 		.join(" · ");
+	const method = transaction.split.method;
+	const methodLabel =
+		method === "exact"
+			? vi.feed.splitExact
+			: method === "shares"
+				? vi.feed.splitShares
+				: vi.feed.splitPercent;
 	const myShare = transaction.shares.find(
 		(share) => share.memberId === myMemberId,
 	);
@@ -100,13 +107,25 @@ export function ExpenseRow({
 						className={`mt-1 text-[13px] ${isMine ? "text-on-ink-muted" : "text-muted"}`}
 					>
 						{myShare
-							? t(vi.feed.equalSplitMine, {
-									count: String(transaction.shares.length),
-									amount: formatAmount(myShare.amount),
-								})
-							: t(vi.feed.equalSplitNotMine, {
-									count: String(transaction.shares.length),
-								})}
+							? t(
+									method === "equal"
+										? vi.feed.equalSplitMine
+										: vi.feed.splitMine,
+									{
+										method: methodLabel,
+										count: String(transaction.shares.length),
+										amount: formatAmount(myShare.amount),
+									},
+								)
+							: t(
+									method === "equal"
+										? vi.feed.equalSplitNotMine
+										: vi.feed.splitNotMine,
+									{
+										method: methodLabel,
+										count: String(transaction.shares.length),
+									},
+								)}
 					</p>
 				)}
 			</div>

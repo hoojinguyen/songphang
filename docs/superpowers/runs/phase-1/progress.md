@@ -3080,3 +3080,13 @@ Result: pnpm check passed. Browser as Thu reads the T2 row: `Minh trả 800.000 
 Security review: items 2,6,7 checked; amounts remain API values, plain React text escapes names, no new product literal or endpoint. Whole diff reviewed: PASS. Not verified: current-user co-payer browser variant is carried to R9; physical screen reader. Out of scope: R9 caption tracked separately.
 Manual checks: 1. Record Minh 800000/Lan 400000 → both paid amounts appear. 2. Open as Lan → her paid amount is identified as yours. 3. A single-payer row retains its existing wording; unmatched totals cannot save.
 Commit reference: `fix(web): show every payer on expense rows`.
+
+### R9 — accurate split captions
+Approach:
+- Select the stream caption from the stored split method, retaining the approved equal wording unchanged.
+- Add exact/weight/percent labels and a shared own-share/not-included template only to vi.ts.
+- Reuse the API share amount; do not infer the method from rounded amounts or calculate money in web.
+Result: pnpm check passed. Browser as Thu: weighted `Theo phần 4 · phần bạn 240.000`; exact excluding Thu `Theo số tiền 3 · bạn không có phần`; percent `Theo phần trăm 3 · phần bạn 20.000`; equal unchanged `Chia đều 4 · phần bạn 25.000`. Browser switched to co-payer Lan: `Minh trả 800.000 đ · Bạn trả 400.000 đ`, chips 480/240/240/240, own share caption `Theo phần 4 · phần bạn 240.000`. All three additional API fixtures returned 201. R8's invalid payer total 400 and outsider 404 remain unchanged.
+Security review: items 2,6,7 checked; plain localized text, no official web calculation, existing colors retained including on-ink caption contrast. Whole diff reviewed: PASS. Decision D35 records the authorized copy addition. Not verified: physical screen reader/owner visual judgment. Out of scope: none.
+Manual checks: 1. Open exact/weighted/percent rows → each names its persisted method. 2. Equal rows keep their existing caption. 3. A nonparticipant sees no personal share, and a co-payer sees their own paid amount/share.
+Commit reference: `fix(web): label expense rows by their stored split method`.

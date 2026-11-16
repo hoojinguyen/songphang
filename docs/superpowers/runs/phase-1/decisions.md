@@ -220,3 +220,9 @@ Problem: a long-lived event subscription outlives its authentication middleware 
 Options: periodic revalidation only; session-hash revocation plus delivery-time checks.
 Choice: hash-only subscription metadata, immediate post-commit session/user revocation, and session/group revalidation at connection, changed delivery and the existing 25-second keep-alive.
 Reason: no resource event is delivered using expired access; idle expiry closes by the next keep-alive. No raw token enters the hub or logs, no new public event type or external service. An internal revoked signal closes the stream without falsely announcing group removal.
+
+## D35 — Stream captions for non-equal splits (review R9)
+Problem: the original stream copy only defines equal splits although Phase 1 supports three more methods.
+Options: show a generic split caption; name the persisted method with the existing own-share structure.
+Choice: vi.ts labels `Theo số tiền`, `Theo phần`, `Theo phần trăm`, and templates `{method} {count} · phần bạn {amount}` / `{method} {count} · bạn không có phần`; leave equal captions unchanged.
+Reason: the owner explicitly authorized fixing R9's misleading text. These labels state the stored mode and keep the already-approved share wording and API figures.
