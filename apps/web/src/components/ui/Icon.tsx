@@ -1,4 +1,5 @@
 const PATHS = {
+	send: "M12 19V5M6 11l6-6 6 6",
 	"arrow-right": "M4 12h16M14 6l6 6-6 6",
 	check: "M5 12l5 5 9-10",
 	warning: "M12 8v5M12 17h.01",

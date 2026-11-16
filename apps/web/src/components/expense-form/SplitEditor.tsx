@@ -1,9 +1,9 @@
 import type { MemberDto } from "@songphang/contract";
-import { formatAmount, formatMoney } from "../../lib/money";
+import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
+import { ShareShapes } from "../quick-entry/ShareShapes";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
-import { MemberShape } from "../ui/MemberShape";
 import { SplitMemberRow } from "./SplitMemberRow";
 import { SplitModeTabs } from "./SplitModeTabs";
 import { SplitStatus } from "./SplitStatus";
@@ -48,26 +48,12 @@ export function SplitEditor({
 				<p className="text-[22px] font-black">{formatMoney(amount)}</p>
 			</header>
 			<SplitModeTabs value={state.method} onChange={state.changeMode} />
-			<div className="flex flex-wrap items-end justify-center gap-2 rounded-[40px] bg-surface p-4">
-				{state.selected.map((member) => {
-					const share = shares.find((s) => s.memberId === member.id)?.amount;
-					const size =
-						56 +
-						(share === undefined || amount === 0
-							? 0
-							: Number((BigInt(share) * 48n) / BigInt(amount)));
-					return (
-						<div key={member.id} className="grid justify-items-center gap-2">
-							<MemberShape {...member} size={size} />
-							<span className="text-[13px] font-extrabold">
-								{share === undefined
-									? vi.common.pendingValue
-									: formatAmount(share)}
-							</span>
-						</div>
-					);
-				})}
-			</div>
+			<ShareShapes
+				shares={state.selected.map((member) => ({
+					member,
+					amount: shares.find((s) => s.memberId === member.id)?.amount ?? 0,
+				}))}
+			/>
 			{state.selected.map((member) => (
 				<SplitMemberRow
 					key={member.id}

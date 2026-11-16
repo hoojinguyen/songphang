@@ -26,7 +26,7 @@ export function EntryBar({
 				{vi.feed.manualEntry}
 			</Link>
 			<Link
-				href={`/g/${groupId}/tx/new?form`}
+				href={`/g/${groupId}/tx/new`}
 				className="flex h-16 min-w-0 flex-1 items-center rounded-[32px] bg-surface px-4 text-[15px] text-muted"
 			>
 				{vi.feed.entryPlaceholder}

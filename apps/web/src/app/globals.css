@@ -24,3 +24,49 @@
 	--text-title: 32px;
 	--text-title--line-height: 1.25;
 }
+
+@theme {
+	--color-phrase-amount: #ffe99a;
+	--color-phrase-payer: #cfe3ff;
+}
+.phrase-mark {
+	color: inherit;
+	border-radius: 6px;
+	background-repeat: no-repeat;
+}
+.phrase-amount {
+	background-color: var(--color-phrase-amount);
+}
+.phrase-payer {
+	background-color: var(--color-phrase-payer);
+}
+.phrase-equal,
+.phrase-exact {
+	background-color: var(--color-phrase-split);
+}
+.phrase-remainder {
+	background-color: var(--color-phrase-rest);
+}
+@media (prefers-reduced-motion: no-preference) {
+	.phrase-mark {
+		animation: phrase-grow 150ms ease-out;
+	}
+	@keyframes phrase-grow {
+		from {
+			background-size: 0% 100%;
+		}
+		to {
+			background-size: 100% 100%;
+		}
+	}
+	.compose-card {
+		transition:
+			opacity 250ms,
+			transform 250ms;
+		transform-origin: bottom;
+	}
+	.compose-collapsing {
+		opacity: 0;
+		transform: translateY(40px) scaleY(0);
+	}
+}

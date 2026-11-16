@@ -6,6 +6,7 @@ import {
 } from "@songphang/contract";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { useDraft } from "../../lib/draft-context";
 import { parseAmountInput } from "../../lib/money";
 import { useCreateTransaction, usePreviewShares } from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
@@ -22,16 +23,22 @@ export function useExpenseForm(
 	members: MemberDto[],
 	myMemberId: string | null,
 ) {
+	const memory = useDraft();
+	const draft = memory.draft?.draft;
 	const active = members.filter((member) => member.active);
 	const initial = active.some((member) => member.id === myMemberId)
 		? myMemberId
 		: null;
 	const [type, setTransactionType] = useState<FormTransactionType>("expense");
-	const [amountText, setAmountText] = useState("");
-	const [description, setDescription] = useState("");
+	const [amountText, setAmountText] = useState(
+		draft?.amount ? String(draft.amount) : "",
+	);
+	const [description, setDescription] = useState(draft?.description ?? "");
 	const [category, setCategory] =
 		useState<SplitTransactionRequest["category"]>(null);
-	const [payerIds, setPayerIds] = useState<string[]>(initial ? [initial] : []);
+	const [payerIds, setPayerIds] = useState<string[]>(
+		draft ? draft.payers.map((p) => p.memberId) : initial ? [initial] : [],
+	);
 	const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({});
 
 	const [transferFrom, setTransferFrom] = useState(initial);
@@ -43,7 +50,7 @@ export function useExpenseForm(
 	const router = useRouter();
 	useSessionGuard(mutation.error);
 	const amount = parseAmountInput(amountText);
-	const splitState = useSplitState(active, amount ?? 0);
+	const splitState = useSplitState(active, amount ?? 0, draft?.split);
 	const date = new Date(occurredAt);
 	const timestamp = Number.isNaN(date.getTime()) ? "" : date.toISOString();
 	const title =
@@ -113,7 +120,10 @@ export function useExpenseForm(
 		mutation.mutate(
 			{ request, key },
 			{
-				onSuccess: () => router.replace(`/g/${groupId}`),
+				onSuccess: () => {
+					memory.clear();
+					router.replace(`/g/${groupId}`);
+				},
 				onSettled: () => {
 					submitting.current = false;
 				},

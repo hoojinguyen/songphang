@@ -172,3 +172,10 @@ Written by the implementation agent from the "Manual checks for the project owne
 ### 1D.2 — Parse endpoint
 1. Send the 75 documented samples to the parse endpoint as editor; compare draft and shares, then save a draft and compare stored shares.
 2. Send empty/301-character text: 400. Viewer: 403; outsider: 404. Parsing must never add a transaction.
+
+### 1D.3 — Compose (S5)
+1. Compare compose with GE3 and an empty group with GE14; tap each sample and check it opens filled.
+2. Type A01, A23, A36, A43; compare the card, save and compare stored amounts. Double-tap Lưu: one expense.
+3. Type A36; marks cover amount, payer, exact parts, remainder; shares 120.000/100.000/80.000. Chỉnh tay preserves 80.000/60.000/40.000 and the remainder choice.
+4. Type slowly with double spaces and paste a sentence containing a line break; accents and marks stay aligned. A viewer sees no entry box.
+5. With a screen reader, confirm marked phrases announce their kind. Judge reduced-motion and card collapse behavior.

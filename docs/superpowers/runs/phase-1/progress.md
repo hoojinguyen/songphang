@@ -1996,3 +1996,18 @@ rate sweep {200: 43, 429: 78} total successes before429 includes previous sample
 ```
 75/75 API statuses, draft fields, spans, issues match core sample results. Five stored share arrays equal their parse responses. Count stayed zero throughout parsing in each group. Rate limiter counts boundary-invalid requests too: 75 sample requests + 2 invalid lengths + 43 successes = 120; the next request returned 429.
 Security review: items 1–6, 8 inspected; shared group authorization, bounded Zod body, separate per-user rate limit, parameterized group-member lookup, no write/log/secret exposure. Full diff reviewed. Not verified: online audit prohibited; real browser integration follows. Out of scope: none.
+
+Commit 1D.2: `9056858`.
+
+## Task 1D.3 — Approach
+- Add group-scoped memory state, a debounced parse query and components for highlighted text and confirmation.
+- Keep the server response as the source of all displayed official shares; disable saving stale/loading results.
+- Extract the existing proportional shape display and initialize the manual form from the understood draft, preserving raw split inputs.
+- Wire sample buttons and entry links to compose; retain the sentence during in-group navigation without storage or URL payloads.
+
+### Task 1D.3 — Result
+`pnpm check`: passed (209 files; all workspace typechecks Done).
+Browser: dev-login Minh → compose A36. Card: 300.000, Minh trả, Riêng: Minh 80 · Lan 60 · Hùng 40, Còn 120.000 chia đều 3; shares Minh 120.000/Lan 100.000/Hùng 80.000; Thu excluded. DOM marks: `300k`, `mình trả`, `mình 80 lan 60 hùng 40`, `còn lại chia đều`. “Chỉnh tay” opens exact mode with 80000/60000/40000 and “Bỏ chia đều phần còn lại”. Back retained the sentence. Double-click Lưu returned to the stream; HTTP read count 6 (five prior API saves plus one UI save), newest lẩu shares 120000/100000/80000.
+Security review: relevant items 1, 2, 7, 8 inspected; only React text nodes; response schemas validated, same-origin requests, memory-only drafts, no new dependency. Diff reviewed. The form controller is over 200 lines after initialization; it retains one state owner for the existing form and will be factored with edit support.
+Decisions: accessible phrase labels use `role="img"` on marks because the implicit mark role does not support aria-label. Description remains ordinary text. Deviations: none.
+Not verified: A01/A23/A43 browser saves, slow typing/double spaces/paste and empty sample/viewer checks remain for the combined D UI verification; API coverage for all four samples passed in 1D.2. Real screen-reader announcement and motion judgment require owner check. Out of scope: none.

@@ -13,11 +13,36 @@ function percentText(value: number): string {
 	const digits = String(value).padStart(3, "0");
 	return `${digits.slice(0, -2)}.${digits.slice(-2)}`.replace(/\.?0+$/, "");
 }
-export function useSplitState(members: MemberDto[], amount: number) {
-	const [method, setMethod] = useState<SplitMethod>("equal");
-	const [ids, setIds] = useState(members.map((member) => member.id));
-	const [values, setValues] = useState<Record<string, string>>({});
-	const [spread, setSpread] = useState(false);
+export function useSplitState(
+	members: MemberDto[],
+	amount: number,
+	initial?: SplitInput | null,
+) {
+	const [method, setMethod] = useState<SplitMethod>(initial?.method ?? "equal");
+	const [ids, setIds] = useState(
+		initial
+			? initial.method === "equal" || initial.method === "exact"
+				? initial.members
+				: initial.entries.map((e) => e.memberId)
+			: members.map((member) => member.id),
+	);
+	const [values, setValues] = useState<Record<string, string>>(() =>
+		initial && initial.method !== "equal"
+			? Object.fromEntries(
+					initial.entries.map((e) => [
+						e.memberId,
+						"amount" in e
+							? String(e.amount)
+							: "weight" in e
+								? e.weight
+								: e.percent,
+					]),
+				)
+			: {},
+	);
+	const [spread, setSpread] = useState(
+		initial?.method === "exact" && initial.remainder === "equal_among_all",
+	);
 	const selected = members.filter((member) => ids.includes(member.id));
 	const blank = selected.filter((member) => !values[member.id]);
 	const total = selected.reduce(

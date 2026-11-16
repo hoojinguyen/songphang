@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { ExpenseForm } from "../../../../../components/expense-form/ExpenseForm";
 import { LoadError } from "../../../../../components/ui/LoadError";
 import { VerifyEmailBanner } from "../../../../../components/ui/VerifyEmailBanner";
@@ -9,8 +9,11 @@ import { useMembers } from "../../../../../lib/members";
 import { useMe } from "../../../../../lib/session";
 import { useSessionGuard } from "../../../../../lib/use-session-guard";
 import { vi } from "../../../../../messages/vi";
+import { ComposeScreen } from "./ComposeScreen";
 export default function NewExpensePage() {
 	const { groupId } = useParams<{ groupId: string }>();
+	const search = useSearchParams();
+
 	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
@@ -65,6 +68,12 @@ export default function NewExpensePage() {
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-4 px-5 py-5">
 			{!me.data.emailVerified ? (
 				<VerifyEmailBanner />
+			) : !search.has("form") ? (
+				<ComposeScreen
+					groupId={groupId}
+					groupName={group.data.name}
+					members={members.data}
+				/>
 			) : (
 				<ExpenseForm
 					groupId={groupId}
