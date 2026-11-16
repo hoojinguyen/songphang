@@ -164,7 +164,7 @@ Phiên bản cụ thể của từng công nghệ sẽ được chốt khi khở
 
 **Trạng thái:** đã chốt.
 
-**Quyết định.** Một kho mã chứa API, web và các gói dùng chung, quản lý bằng pnpm workspaces. Mã iOS và Android nằm ở kho riêng khi bắt đầu.
+**Quyết định.** Một kho mã chứa API, web và các gói dùng chung, quản lý bằng pnpm workspaces. Mã iOS và Android nằm ở kho riêng khi bắt đầu. *(The last sentence is replaced for iOS by ADR-033, 2026-11-16.)*
 
 **Đã cân nhắc.** Nhiều kho: thay đổi hợp đồng API phải đồng bộ qua nhiều nơi. Turborepo hoặc Nx: chưa cần ở quy mô hai ứng dụng.
 
@@ -244,3 +244,16 @@ Phiên bản cụ thể của từng công nghệ sẽ được chốt khi khở
 **Considered.** Task-by-task approval (phase 0): safest, but every task waits for a person. One run without gates: fastest, but with no automated tests an early money or permission defect would be built upon by every later stage.
 
 **Consequences.** Far fewer hand-offs. Visual defects are found only at the final manual check, and that check is long. The agent's exercises are self-graded, so the advisor re-runs every gate. Google sign-in in phase 1 ships unverified until the owner creates the OAuth app.
+
+## ADR-033 — iOS code in this repository; interface built first on scripted data
+
+**Status:** decided 2026-11-16 by the project owner. Replaces the last sentence of ADR-012 for iOS. (Numbers 019–032 are reserved by the specs of the remaining phases.)
+
+**Context.** ADR-012 put the mobile code in separate repositories. The project is built by one person through agents: the agent porting a screen needs the web source, the strings and the API contract beside it, and one set of documents and rules. The owner also wants the iPhone interface built now, in parallel with the API and web work, without conflicting with it.
+
+**Decision.** The iOS application lives in `apps/ios/` of this repository, with its own `AGENTS.md` for Swift-specific rules. It is built in two stages. The interface stage (5U) builds every phase 1 screen on scripted fakes, on branch `ios-ui` in its own git worktree, writing only under `apps/ios/` and its run directory. The integration stage follows stage 5A of phase 5: it adds the generated client and the live repositories, replaces the fakes at the composition root, and brings the screens up to date with whatever changed in the web and the contract since the recorded baseline commit.
+
+**Considered.** A separate repository (ADR-012): isolation for free, but a second set of rules and documents, a copied contract file, and no single commit spanning API and application. Waiting for the API: no rework, but the interface, which is most of the work, starts months later.
+
+**Consequences.** `biome.json` and `.gitignore` gain entries for `apps/ios`. Parallel agents must each work in their own worktree. The domain types of the interface stage are written against today's contract; a later change to the contract is paid for once, in the integration stage, and is confined to `Domain`, the mappings and the screens that use the changed field. The interface stage proves nothing about networking, sign-in or real launch time. Whether Android follows the same arrangement is decided with phase 6.
+

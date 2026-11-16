@@ -1,6 +1,6 @@
 # Phase 5 — Stages 5B to 5E: The iOS Application
 
-> Part of the phase 5 plan. Read `00-overview.md` first. Tasks here are in `../songphang-ios` unless a task says otherwise.
+> Part of the phase 5 plan. Read `00-overview.md` first, including its amendment of 2026-11-16: tasks here are in `apps/ios/`, and stage 5B is to be rewritten as integration after the interface stage (`../2026-11-16-ios-ui.md`). The "Rules for every task" below already apply to the interface stage.
 
 **Spec:** sections 3, 5, 6, 7 of the phase 5 spec, and the whole of `docs/superpowers/specs/2026-11-16-ios-codebase-architecture-design.md` ("the architecture design", cited below as AD).
 

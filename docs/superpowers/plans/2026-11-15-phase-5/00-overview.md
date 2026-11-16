@@ -2,6 +2,8 @@
 
 > **For the implementation agent:** read `AGENTS.md` of **both** repositories, the spec, `../2026-11-15-common.md`, then this file. Work through the stage files in order without stopping between tasks.
 
+> **Amended 2026-11-16 (ADR-033).** The application lives in `apps/ios/` of this repository, and its phase 1 screens are built first by the interface stage, `../2026-11-16-ios-ui.md`, on scripted fakes. Read "the iOS repository" and `../songphang-ios` as `apps/ios/`; there is one working directory and `Scripts/sync-openapi.sh` is not needed. **Before this plan is run, the advisor rewrites stage 5B as integration:** add `GeneratedAPI` and `Repositories`, replace the fakes at the composition root, and bring the screens up to date from the interface stage's web baseline. Stage 5B as written below describes building the screens from nothing and must not be run as is.
+
 **Goal:** A native iPhone application with every feature the web application has when the run starts, signing in with Apple, Google or email, receiving push notifications, and opening invite links directly.
 
 **Architecture:** The server stays the only place with logic. Stage 5A freezes the API contract into a committed OpenAPI file and adds what native clients need. The application is one Swift package of compiler-enforced modules (domain, generated client, repositories, design system, feature areas, shell): screens know only the domain, repositories alone touch the generated client, the Keychain and the snapshot files. It keeps no database, computes no official amount, and stores its session token in the Keychain.

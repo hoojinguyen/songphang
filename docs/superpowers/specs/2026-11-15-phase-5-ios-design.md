@@ -28,8 +28,9 @@ A native iPhone application that does everything the web application does at the
 
 ## 3. Repository and rules
 
-- A separate repository, `songphang-ios`, beside this one (ADR-012). The advisor creates it with the plan, containing an `AGENTS.md` adapted from this repository's: the same sections, with the automated gate replaced by `xcodebuild build` with warnings treated as errors and `swift format lint --strict`, and the same rule that no automated tests are written.
-- The run has two working directories. Run files stay in this repository under `docs/superpowers/runs/phase-5/`; commits in the iOS repository are recorded there by hash.
+- **Amended 2026-11-16 (ADR-033):** the application lives in `apps/ios/` of this repository, not in a separate one, and its interface is built first on scripted data (architecture design, section 13). Wherever this spec or its plan says "the iOS repository", read `apps/ios/`.
+- `apps/ios/AGENTS.md`, written by the advisor, is adapted from the root one: the same sections, with the automated gate replaced by `xcodebuild build` with warnings treated as errors and `swift format lint --strict`, and the same rule that no automated tests are written.
+- Run files are under `docs/superpowers/runs/ios-ui/` for the interface stage and `docs/superpowers/runs/phase-5/` for the rest.
 - Engineering artifacts in English; user-visible strings Vietnamese, in one String Catalog, **identical character for character** to `apps/web/src/messages/vi.ts`. A string that exists on the web is never reworded for iOS.
 
 ## 4. API work (5A)

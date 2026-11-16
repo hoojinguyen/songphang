@@ -223,6 +223,8 @@ Simulator numbers show regressions, not what a phone does. Cold start, scrolling
 
 ## 10. Repository layout
 
+Everything is under `apps/ios/` of this repository (ADR-033).
+
 ```
 SongPhang.xcodeproj
 App/                 SongPhangApp.swift, Info.plist, Assets.xcassets, PrivacyInfo.xcprivacy, entitlements
@@ -231,13 +233,13 @@ SongPhangKit/
   Package.swift
   Sources/
     Domain/          Models/, Repositories/ (protocols), AppError.swift, Loadable.swift, Money.swift
-    GeneratedAPI/    openapi.json, openapi-generator-config.yaml
+    GeneratedAPI/    openapi.json (a link to packages/contract/openapi.json), openapi-generator-config.yaml
     Repositories/    one folder per resource, Snapshots/, Realtime/, Session/, Transport/
     DesignSystem/    Tokens/, Components/, States/, Resources/ (Localizable.xcstrings, Fonts/)
     PreviewSupport/  Fakes/, Samples/
     AuthFeature/ GroupsFeature/ LedgerFeature/ AccountFeature/    one folder per screen
     AppShell/
-Scripts/             sync-openapi.sh, check-strings.sh
+Scripts/             check-strings.sh
 AGENTS.md
 ```
 
@@ -266,3 +268,17 @@ Calls made by the advisor in this document, for the owner to check: four feature
 | `docs/04-adr.md` | Written during the phase 5 run, as the phase 5 spec's section 9 lists: ADR-014 gains the versions of section 4; ADR-032 |
 
 The phase 5 spec and plan were updated with these changes on 2026-11-16.
+
+## 13. Delivery in two stages (added 2026-11-16, ADR-033)
+
+The owner chose to build the interface first, in parallel with the API and web work.
+
+| Stage | Builds | Runs on | Plan |
+|---|---|---|---|
+| 5U — interface | `Domain`, `DesignSystem`, `PreviewSupport`, the feature modules, `AppShell`; every phase 1 screen in every state | Scripted fakes in `PreviewSupport`; no server | `docs/superpowers/plans/2026-11-16-ios-ui.md` |
+| Integration | `GeneratedAPI`, `Repositories`; real sign-in, snapshots, realtime; then push, links, later phases, release | The API, after stage 5A | The phase 5 plan, whose stage 5B the advisor rewrites as integration before that run |
+
+- The fakes hold literals only. A fake never divides or allocates money; every amount it returns is copied from a named document. Unscripted input is refused, not estimated.
+- The architecture is what makes the split cheap: the integration stage replaces the fakes at the composition root and does not edit a screen unless a domain type changed.
+- The interface stage records the commit it ported from. The integration stage diffs `apps/web` and `packages/contract` against it to list what must be brought up to date.
+- If the generator's build plugin does not follow the link to `openapi.json`, the integration stage copies the file with a script and adds a check that the copy is current; recorded as a decision.
