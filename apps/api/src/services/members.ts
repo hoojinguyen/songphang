@@ -170,6 +170,8 @@ export async function removeMember(
 		});
 	});
 	deps.events.publishChanged(input.groupId, [
+		"group",
+		"users",
 		"members",
 		"balances",
 		"activity",

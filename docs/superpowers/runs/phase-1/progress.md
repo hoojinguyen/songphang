@@ -3051,3 +3051,13 @@ Result: pnpm check passed. Browser: dev-login Mới, revoke its session in the l
 Security review: items 1,3,6,7 checked against the whole diff; cancelled queries cannot refill the old identity cache, no credentials/storage/redirect rules added. Self-review: PASS for expired-session recovery and identity switch. Not verified: password-form sign-in itself (API password success/refusal exercised in R2); physical device. Out of scope: none.
 Manual checks: 1. Revoke an open session, then navigate → login form stays usable. 2. Sign into another account → only that account's groups/profile appear. 3. Wrong credentials stay on login; unchecked external next must resolve to `/`.
 Commit reference: `fix(web): clear stale identity state after session loss`.
+
+### R6 — claimed-member cache invalidation
+Approach:
+- Publish group/users alongside member/balance/activity after member deletion, because SET NULL changes identity links.
+- Add exact group and users invalidation to the existing member-mutation refresh helper for the initiating tab.
+- Retain member deletion constraints and all shared authorization checks.
+Result: pnpm check passed. Claimed-member deletion 204; fresh group myMemberId null; live event now names group/users/members/balances/activity. Outsider deletion 404; unsigned 401. Whole source diff reviewed; the initiating mutation invalidates the same identity queries even without SSE.
+Security review: items 2,4–7 checked; no new payload fields or write permissions. Self-review: PASS. Not verified: multi-profile prompt timing; final browser checks follow. Out of scope: R7's empty-group balance case handled separately.
+Manual checks: 1. Delete a linked member with no ledger history while their group is open → choose-shape prompt appears without reload. 2. Members/users view shows no stale claim. 3. Outsider/unsigned deletion → 404/401.
+Commit reference: `fix(web): refresh identity links after member deletion`.

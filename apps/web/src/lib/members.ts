@@ -27,6 +27,8 @@ async function invalidateMembers(
 	groupId: string,
 ) {
 	await Promise.all([
+		client.invalidateQueries({ queryKey: ["group", groupId], exact: true }),
+		client.invalidateQueries({ queryKey: ["group", groupId, "users"] }),
 		client.invalidateQueries({ queryKey: ["group", groupId, "members"] }),
 		client.invalidateQueries({ queryKey: ["group", groupId, "balances"] }),
 		client.invalidateQueries({ queryKey: ["groups"] }),
