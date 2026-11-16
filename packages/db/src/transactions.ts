@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { members } from "./schema-groups.js";
@@ -7,6 +8,8 @@ import {
 	transactionShares,
 	transactions,
 } from "./schema-transactions.js";
+
+const editor = alias(users, "transaction_editor");
 export const TRANSACTION_COLUMNS = {
 	id: transactions.id,
 	groupId: transactions.groupId,
@@ -22,6 +25,7 @@ export const TRANSACTION_COLUMNS = {
 	updatedAt: transactions.updatedAt,
 	deletedAt: transactions.deletedAt,
 	createdBy: { id: users.id, name: users.name },
+	updatedBy: { id: editor.id, name: editor.name },
 };
 export type TransactionCursor = { occurredAt: string; id: string };
 export function listTransactionRows(
@@ -33,6 +37,7 @@ export function listTransactionRows(
 		.select(TRANSACTION_COLUMNS)
 		.from(transactions)
 		.leftJoin(users, eq(users.id, transactions.createdBy))
+		.leftJoin(editor, eq(editor.id, transactions.updatedBy))
 		.where(
 			and(
 				eq(transactions.groupId, input.groupId),
@@ -60,6 +65,7 @@ export async function findTransactionRow(
 		.select(TRANSACTION_COLUMNS)
 		.from(transactions)
 		.leftJoin(users, eq(users.id, transactions.createdBy))
+		.leftJoin(editor, eq(editor.id, transactions.updatedBy))
 		.where(
 			and(
 				eq(transactions.groupId, groupId),

@@ -47,7 +47,7 @@ export async function previewTransaction(
 		shares: await calculateShares(deps.db, groupId, request),
 	});
 }
-async function mapTransactions(
+export async function mapTransactions(
 	executor: DbExecutor,
 	groupId: string,
 	rows: Awaited<ReturnType<typeof listTransactionRows>>,

@@ -186,3 +186,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 3. Return to compose from the manual form: original sentence remains. Stop API during save: choices and sentence remain; retry after restart.
 4. Check database before Lưu: no transaction. Try five personal sentences and record read/asked/refused judgments for the advisor.
 5. Nhập tay is available in one tap, including after returning from an unparsed sentence.
+
+### 1E.1 — Safe transaction changes
+1. Create Vé 600000 for four, edit to 800000 at version 1: version 2, shares 200000 each. Repeat version 1: 409, current version 2.
+2. Wrong exact total/type: 400 and unchanged ledger. Identical content: unchanged version and history.
+3. Delete: gone from feed, detail still readable; repeated delete/edit deleted: 404. Restore: original position/balances; repeated restore: 404.
+4. Concurrent same-version edits: one success, one conflict. Viewer writes: 403, outsider: 404. Run pnpm db:check-balances after each.

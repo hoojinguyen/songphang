@@ -24,6 +24,7 @@ import {
 	listTransactions,
 	previewTransaction,
 } from "../services/transactions.js";
+import { registerTransactionChangeRoutes } from "./transaction-changes.js";
 
 const parseRoute = createRoute({
 	method: "post",
@@ -120,6 +121,7 @@ export function registerTransactionRoutes(
 				200,
 			),
 	);
+	registerTransactionChangeRoutes(app, deps);
 	const read = [requireUser(deps), requireGroupRole(deps, "viewer")];
 	const write = [
 		requireUser(deps),

@@ -3,6 +3,7 @@ import { z } from "@hono/zod-openapi";
 export const ErrorCode = z
 	.enum([
 		"VALIDATION_FAILED",
+		"VERSION_CONFLICT",
 		"UNAUTHENTICATED",
 		"NOT_FOUND",
 		"INTERNAL",

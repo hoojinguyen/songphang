@@ -73,7 +73,7 @@ Not verified:
 - [x] 1D.2 API: parse endpoint
 - [x] 1D.3 Web: typing box and confirmation card
 - [x] 1D.4 Web: questions and sentences that are not understood
-- [ ] 1D.5 Stage gate 1D
+- [x] 1D.5 Stage gate 1D
 
 ### Gate 1D
 
@@ -2332,3 +2332,63 @@ gate stored count C 0
 ```
 Gate passed. Outbound-denied pnpm build passed (11/11 static pages); reset database migrated/seeded. All 75 parser comparisons match; A01/A31/A36/A43 saves match stored shares; counts A=4/B=0/C=0. A/B/C acceptance and full existing role matrix replayed above; parse matrix 200/200/403/404/401 with normalized malformed/random 404. `pnpm db:check-balances`: six groups sum 0, mismatches 0; `All groups balanced`. `pnpm check`: passed (213 files, all workspace typechecks Done).
 Security review: relevant items 1,4,6,8 checked against documentation diff and actual responses; no secret output. No implementation changes or dependencies. Gate not passed: none. Not verified: UI/device items previously listed remain; Google remains unverified.
+
+Commit 1D.5: `94ae2f1`.
+
+## Task 1E.1 — Approach
+- Reuse create validation and DTO mapping for scoped detail reads and transactional edits.
+- Lock group then transaction, recheck access and compare version before changing any payer/share rows; no-op edits retain version.
+- Store changed-field snapshots for updates and full snapshots for delete/restore, publishing only after commit.
+- Split mutation helpers/routes into adjacent files to keep the existing list/create code small.
+
+### Task 1E.1 — Result
+`pnpm check`: passed (216 files, all typechecks Done).
+```text
+create group 201
+create 201 {'description': 'Vé', 'amount': 600000, 'version': 1, 'shares': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 150000}, {'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', 'amount': 150000}, {'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', 'amount': 150000}, {'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1', 'amount': 150000}], 'deletedAt': None, 'updatedBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}}
+balance checker 0 All groups balanced
+edit 200 {'description': 'Vé', 'amount': 800000, 'version': 2, 'shares': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 200000}, {'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', 'amount': 200000}, {'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', 'amount': 200000}, {'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1', 'amount': 200000}], 'deletedAt': None, 'updatedBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}}
+balance checker 0 All groups balanced
+stale 409 {'error': {'code': 'VERSION_CONFLICT', 'message': 'Transaction has changed', 'details': {'current': {'type': 'expense', 'description': 'Vé', 'amount': 800000, 'occurredAt': '2026-11-15T00:00:00.000Z', 'category': None, 'payers': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 800000}], 'split': {'method': 'equal', 'members': ['01a1e469-2ec4-7b5b-8220-0816da5945d2', '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', '01a1e469-2ecc-707b-b853-44d7315d2bf1']}, 'id': '01a1e469-2ef4-78d1-897e-50682c2d1423', 'currency': 'VND', 'shares': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 200000}, {'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', 'amount': 200000}, {'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', 'amount': 200000}, {'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1', 'amount': 200000}], 'version': 2, 'updatedBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}, 'createdBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}, 'createdAt': '2026-11-16T12:51:00.978Z', 'updatedAt': '2026-11-16T12:51:01.962Z', 'deletedAt': None}}, 'requestId': '01a1e469-35a8-7256-b570-86fea5da5c35'}}
+balance checker 0 All groups balanced
+wrong sum 400 {'error': {'code': 'SPLIT_TOTAL_MISMATCH', 'message': 'Split total differs from amount', 'details': {'expected': 800000, 'actual': 400000}, 'requestId': '01a1e469-38b2-7151-b0f4-958fc4375fba'}}
+balance checker 0 All groups balanced
+wrong type 400 {'error': {'code': 'VALIDATION_FAILED', 'message': 'Transaction type cannot change', 'requestId': '01a1e469-3b95-7d5b-8413-9e547c65941b'}}
+balance checker 0 All groups balanced
+no-op 200 {'description': 'Vé', 'amount': 800000, 'version': 2, 'shares': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 200000}, {'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', 'amount': 200000}, {'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', 'amount': 200000}, {'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1', 'amount': 200000}], 'deletedAt': None, 'updatedBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}}
+balance checker 0 All groups balanced
+delete 204 None
+balance checker 0 All groups balanced
+deleted get 200 {'description': 'Vé', 'amount': 800000, 'version': 3, 'shares': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 200000}, {'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', 'amount': 200000}, {'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', 'amount': 200000}, {'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1', 'amount': 200000}], 'deletedAt': '2026-11-16T12:51:05.710Z', 'updatedBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}}
+balance checker 0 All groups balanced
+deleted list count 0
+delete again 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e469-4739-7b3a-9848-a73363353eea'}}
+balance checker 0 All groups balanced
+patch deleted 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e469-4a17-7a2b-9756-ca08127021ce'}}
+balance checker 0 All groups balanced
+restore 200 {'description': 'Vé', 'amount': 800000, 'version': 4, 'shares': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 200000}, {'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', 'amount': 200000}, {'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', 'amount': 200000}, {'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1', 'amount': 200000}], 'deletedAt': None, 'updatedBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}}
+balance checker 0 All groups balanced
+restore again 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e469-4fee-7a96-babc-d05110c87777'}}
+balance checker 0 All groups balanced
+concurrent 200 {'description': 'Vé A', 'amount': 800000, 'version': 5, 'shares': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 200000}, {'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', 'amount': 200000}, {'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', 'amount': 200000}, {'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1', 'amount': 200000}], 'deletedAt': None, 'updatedBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}}
+balance checker 0 All groups balanced
+concurrent 409 {'error': {'code': 'VERSION_CONFLICT', 'message': 'Transaction has changed', 'details': {'current': {'type': 'expense', 'description': 'Vé A', 'amount': 800000, 'occurredAt': '2026-11-15T00:00:00.000Z', 'category': None, 'payers': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 800000}], 'split': {'method': 'equal', 'members': ['01a1e469-2ec4-7b5b-8220-0816da5945d2', '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', '01a1e469-2ecc-707b-b853-44d7315d2bf1']}, 'id': '01a1e469-2ef4-78d1-897e-50682c2d1423', 'currency': 'VND', 'shares': [{'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2', 'amount': 200000}, {'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', 'amount': 200000}, {'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', 'amount': 200000}, {'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1', 'amount': 200000}], 'version': 5, 'updatedBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}, 'createdBy': {'id': '01a1e465-dbb7-7574-9975-b8ef6e67339d', 'name': 'Minh'}, 'createdAt': '2026-11-16T12:51:00.978Z', 'updatedAt': '2026-11-16T12:51:10.184Z', 'deletedAt': None}}, 'requestId': '01a1e469-52df-73c9-8eaa-10d8a5fdf1cc'}}
+balance checker 0 All groups balanced
+permissions ngan GET  200
+permissions ngan PATCH  403
+permissions ngan DELETE  403
+permissions ngan POST /restore 403
+permissions hung GET  404
+permissions hung PATCH  404
+permissions hung DELETE  404
+permissions hung POST /restore 404
+permissions None GET  401
+permissions None PATCH  401
+permissions None DELETE  401
+permissions None POST /restore 401
+bad id invalid (404, {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e469-5905-769e-8f89-49bff94cadf6'}})
+bad id 00000000-0000-4000-8000-000000000000 (404, {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e469-5911-7557-b20c-1503cd9cafcc'}})
+```
+Direct database read: exactly five transaction activity rows (create, update, delete, restore, concurrent update); no row for no-op/failed edits. First edit before.amount=600000/after.amount=800000; before shares 150000 each/after shares 200000 each; changed fields only amount,payers,shares. Delete/restore snapshots retain original split.
+Security review: items 1–7 inspected against added routes/services/queries; shared role checks, bounded params/body, malformed transaction IDs normalized 404, group-scoped lock and access recheck, atomic side replacement/deferred constraints, post-commit events, safe public last-editor identity. No issues found. Full diff reviewed. Mutations remain cohesive transaction functions; the 40-line guidance was reconsidered and helpers extracted for locks/snapshots/mapping.
+Decisions: D26, D27. Deviations: adjacent helper files keep list/create files small. Not verified: owner/editor full new-route matrix will be replayed in the final gate; viewer/outsider/signed-out exercised above. Online audit prohibited. Out of scope: none.

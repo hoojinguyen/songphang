@@ -166,3 +166,15 @@ Problem: 1C.3 asks for T2's weighted split through the form, but the weighted ed
 Options: build the editor early; exercise the new two-payer input with equal shares now and replay full T2 in 1C.4.
 Choice: exercise two payers now and carry the exact weighted T2 form exercise into 1C.4.
 Reason: preserves task order and one commit per task without claiming an unavailable control was exercised.
+
+## D26 — Last editor in conflict responses
+Problem: the specified conflict UI needs the last editor's name, but TransactionDto exposes only the creator.
+Options: show the unknown-person fallback for every conflict; add the stored updated_by user's public id/name to the DTO.
+Choice: add nullable updatedBy, using a second user alias in the existing row query.
+Reason: the existing database already stores this field; a constant join supplies accurate attribution without guessing from the creator or adding an endpoint.
+
+## D27 — Delete and restore concurrency versions
+Problem: a form opened before a delete/restore cycle must not overwrite that newer state silently.
+Options: leave version unchanged on deletion/restoration; increment it on each state change.
+Choice: increment version, updatedBy and updatedAt on both operations.
+Reason: the same monotonic version protects open editors; no-op edits remain version-neutral. No database schema change.

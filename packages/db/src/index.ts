@@ -30,5 +30,6 @@ export {
 	findUserBySessionHash,
 	insertSession,
 } from "./sessions.js";
+export * from "./transaction-changes.js";
 export * from "./transactions.js";
 export { findUserById, listUsers } from "./users.js";

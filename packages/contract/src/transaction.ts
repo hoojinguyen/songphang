@@ -127,6 +127,7 @@ export const TransactionDto = z
 		currency: z.literal("VND"),
 		shares: z.array(ShareDto),
 		version: z.int().positive(),
+		updatedBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
 		createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
 		createdAt: z.iso.datetime(),
 		updatedAt: z.iso.datetime(),
@@ -151,3 +152,9 @@ export const TransactionsResponse = z
 		nextCursor: z.string().nullable(),
 	})
 	.openapi("TransactionsResponse");
+
+export const UpdateTransactionRequest = z.intersection(
+	CreateTransactionRequest,
+	z.object({ version: z.int().positive() }),
+);
+export type UpdateTransactionRequest = z.infer<typeof UpdateTransactionRequest>;
