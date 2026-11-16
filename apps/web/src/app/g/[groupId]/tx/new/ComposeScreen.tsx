@@ -18,10 +18,12 @@ import { useParseSentence } from "../../../../../lib/quick-entry";
 import { useCreateTransaction } from "../../../../../lib/transactions";
 import { vi } from "../../../../../messages/vi";
 export function ComposeScreen({
+	writerMemberId,
 	groupId,
 	groupName,
 	members,
 }: {
+	writerMemberId: string | null;
 	groupId: string;
 	groupName: string;
 	members: MemberDto[];
@@ -116,6 +118,7 @@ export function ComposeScreen({
 			>
 				{result?.status === "needs_input" ? (
 					<QuestionCard
+						writerMemberId={writerMemberId}
 						key={result.text}
 						result={result}
 						members={members}

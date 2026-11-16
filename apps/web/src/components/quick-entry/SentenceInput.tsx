@@ -1,6 +1,6 @@
 "use client";
 import type { ParseResponse } from "@songphang/contract";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { vi } from "../../messages/vi";
 import { HighlightedSentence } from "./HighlightedSentence";
 export function SentenceInput({
@@ -14,6 +14,7 @@ export function SentenceInput({
 	onChange: (s: string) => void;
 	onSend: () => void;
 }) {
+	const highlightsId = useId();
 	const ref = useRef<HTMLTextAreaElement>(null);
 	useEffect(() => {
 		ref.current?.focus();
@@ -26,7 +27,11 @@ export function SentenceInput({
 			>
 				<HighlightedSentence text={text || " "} spans={spans} />
 			</div>
+			<p id={highlightsId} className="sr-only" aria-live="polite">
+				<HighlightedSentence text={text} spans={spans} />
+			</p>
 			<textarea
+				aria-describedby={highlightsId}
 				ref={ref}
 				aria-label={vi.compose.inputLabel}
 				maxLength={300}

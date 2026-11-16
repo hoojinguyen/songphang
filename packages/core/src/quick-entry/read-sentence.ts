@@ -29,6 +29,13 @@ function descriptionOf(context: ReaderContext, end: number): string | null {
 	}
 	addDescription(context, start, end, pieces);
 	const description = pieces.join(" ").replace(/\s+/g, " ").trim();
+	if (description.length > 200)
+		context.issues.push({
+			code: "TEXT_NOT_UNDERSTOOD",
+			start: 0,
+			end,
+			candidates: [],
+		});
 	if (!description)
 		context.issues.push({
 			code: "DESCRIPTION_MISSING",
@@ -87,6 +94,7 @@ export function readSentence(input: {
 	text: string;
 	members: readonly QuickEntryMember[];
 	writerMemberId: string | null;
+	memberChoices?: Readonly<Record<number, string>>;
 }): QuickEntryResult {
 	const members = input.members
 		.filter((member) => member.active)
@@ -98,6 +106,7 @@ export function readSentence(input: {
 		writerMemberId: members.some((member) => member.id === input.writerMemberId)
 			? input.writerMemberId
 			: null,
+		memberChoices: input.memberChoices ?? {},
 		used: new Set(),
 		spans: [],
 		issues: [],

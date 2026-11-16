@@ -4,16 +4,15 @@ import {
 	type MemberDto,
 	ParseResponse,
 } from "@songphang/contract";
-import { useMutation } from "@tanstack/react-query";
+import { readSentence } from "@songphang/core";
 import { useState } from "react";
-import { type ApiError, apiFetch } from "../../lib/api";
-import { jsonRequest } from "../../lib/request";
 import { usePreviewShares } from "../../lib/transactions";
 import { t, vi } from "../../messages/vi";
 import { ChoicePanel } from "./ChoicePanel";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { DescriptionPrompt } from "./DescriptionPrompt";
 export function QuestionCard({
+	writerMemberId,
 	result,
 	members,
 	groupId,
@@ -21,6 +20,7 @@ export function QuestionCard({
 	onEdit,
 	disabled,
 }: {
+	writerMemberId: string | null;
 	result: ParseResponse;
 	members: MemberDto[];
 	groupId: string;
@@ -28,62 +28,52 @@ export function QuestionCard({
 	onEdit: (r: ParseResponse) => void;
 	disabled: boolean;
 }) {
-	const [resolved, setResolved] = useState(result);
 	const [selected, setSelected] = useState<string[]>([]);
 	const [description, setDescription] = useState(
 		result.draft.description ?? "",
 	);
 	const [names, setNames] = useState<Record<number, string>>({});
+
+	const local = Object.keys(names).length
+		? readSentence({
+				text: result.text,
+				members,
+				writerMemberId,
+				memberChoices: names,
+			})
+		: null;
+	const resolved = ParseResponse.parse(
+		local
+			? {
+					...result,
+					status: local.status,
+					issues: local.issues,
+					draft: {
+						type: "expense",
+						description: local.draft.description,
+						amount: local.draft.amount,
+						split: local.draft.split,
+						payers:
+							local.draft.payerMemberId && local.draft.amount !== null
+								? [
+										{
+											memberId: local.draft.payerMemberId,
+											amount: local.draft.amount,
+										},
+									]
+								: [],
+					},
+				}
+			: result,
+	);
 	const issue = resolved.issues.find((i) => i.code === "MEMBER_AMBIGUOUS");
 	const count = resolved.issues.find((i) => i.code === "COUNT_MISMATCH");
 	const missing = resolved.issues.some((i) => i.code === "DESCRIPTION_MISSING");
-	const reparse = useMutation<
-		ParseResponse,
-		ApiError,
-		{ text: string; names: Record<number, string> }
-	>({
-		mutationFn: (input) =>
-			apiFetch(
-				`/groups/${groupId}/transactions/parse`,
-				ParseResponse,
-				jsonRequest("POST", { text: input.text }),
-			),
-		onSuccess: (next, input) => {
-			setNames(input.names);
-			setResolved({
-				...next,
-				text: result.text,
-				spans: result.spans,
-				issues: next.issues.map((i) => {
-					const original = result.issues.find(
-						(o) =>
-							o.code === i.code &&
-							names[o.start] === undefined &&
-							input.names[o.start] === undefined,
-					);
-					return original ?? i;
-				}),
-			});
-		},
-	});
 	const chooseName = (id: string) => {
-		if (!issue) return;
-		const name = members.find((m) => m.id === id)?.name;
-		if (!name) return;
-		const next = { ...names, [issue.start]: name };
-		let text = result.text;
-		for (const original of result.issues
-			.filter((i) => i.code === "MEMBER_AMBIGUOUS")
-			.toSorted((a, b) => b.start - a.start)) {
-			const chosen = next[original.start];
-			if (chosen)
-				text =
-					original.start === original.end
-						? `${text} ${chosen} trả`
-						: text.slice(0, original.start) + chosen + text.slice(original.end);
-		}
-		reparse.mutate({ text, names: next });
+		if (issue?.candidates.includes(id))
+			setNames((current) => ({ ...current, [issue.start]: id }));
 	};
+
 	const draft = {
 		...resolved.draft,
 		description: missing
@@ -101,6 +91,7 @@ export function QuestionCard({
 			: resolved.draft.split,
 	};
 	const complete =
+		resolved.status !== "unparsed" &&
 		!issue &&
 		(!count || selected.length === count.count) &&
 		(!missing || !!description.trim());
@@ -119,14 +110,13 @@ export function QuestionCard({
 		preview.current &&
 		!preview.isFetching &&
 		!preview.isPlaceholderData &&
-		!!preview.data &&
-		!reparse.isPending;
+		!!preview.data;
 	const effective: ParseResponse = {
 		...resolved,
 		draft,
 		status: ready ? "ok" : "needs_input",
 		issues: ready ? [] : resolved.issues,
-		shares: complete ? preview.data?.shares : undefined,
+		shares: complete && preview.current ? preview.data?.shares : undefined,
 	};
 	const word = issue ? result.text.slice(issue.start, issue.end) : "";
 	return (
@@ -182,9 +172,7 @@ export function QuestionCard({
 			{missing && !issue && (
 				<DescriptionPrompt value={description} onChange={setDescription} />
 			)}
-			{(preview.isError || reparse.isError) && (
-				<p role="alert">{vi.common.loadError}</p>
-			)}
+			{preview.isError && <p role="alert">{vi.common.loadError}</p>}
 		</ConfirmationCard>
 	);
 }

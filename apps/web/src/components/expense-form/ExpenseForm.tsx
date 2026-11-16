@@ -138,7 +138,11 @@ export function ExpenseForm({
 						.map((member) => member.name)
 						.join(", "),
 				})}
-				shares={request === null ? [] : (preview.data?.shares ?? [])}
+				shares={
+					request === null || !preview.current
+						? []
+						: (preview.data?.shares ?? [])
+				}
 				onDone={() => setSplitOpen(false)}
 			/>
 		);

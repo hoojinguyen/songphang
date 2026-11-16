@@ -19,10 +19,10 @@ export function GroupCard({ group }: { group: GroupSummaryDto }) {
 	return (
 		<Link
 			href={`/g/${group.id}`}
-			className="flex items-center justify-between gap-3 rounded-[32px] bg-surface px-5 py-[18px]"
+			className="flex flex-wrap items-center justify-between gap-3 rounded-[32px] bg-surface px-5 py-[18px]"
 		>
 			<div className="min-w-0">
-				<div className="flex items-center gap-1">
+				<div className="flex flex-wrap items-center gap-1">
 					{group.previewMembers.map((member) => (
 						<MemberShape key={member.id} {...member} size={22} />
 					))}
@@ -40,7 +40,7 @@ export function GroupCard({ group }: { group: GroupSummaryDto }) {
 				</p>
 			</div>
 			<div className={`shrink-0 rounded-[18px] px-3 py-2 text-right ${tone}`}>
-				<p className="text-[18px] font-black">
+				<p className="break-words text-[18px] font-black">
 					{formatSignedAmount(group.myBalance)}
 				</p>
 				<p className="text-[11px] font-bold">{caption}</p>

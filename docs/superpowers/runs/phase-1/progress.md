@@ -44,11 +44,11 @@ Not verified: external mockup comparison and real screen-reader speech are owner
 
 ### Gate 1B
 
-Result:
+Result: passed. Accounts/invites/roles/SSE, reset acceptance and permissions passed; replayed again in the final gate. Google and device-specific checks remain unverified.
 
-Gate not passed:
+Gate not passed: none.
 
-Not verified:
+Not verified: see final summary and the per-task evidence below.
 
 ## Stage 1C — Splits and settlements
 
@@ -61,11 +61,11 @@ Not verified:
 
 ### Gate 1C
 
-Result:
+Result: passed. Fixed split/type/settlement figures, reset acceptance, balances and permissions passed; replayed again in the final gate.
 
-Gate not passed:
+Gate not passed: none.
 
-Not verified:
+Not verified: see final summary and the per-task evidence below.
 
 ## Stage 1D — Quick entry
 
@@ -77,11 +77,11 @@ Not verified:
 
 ### Gate 1D
 
-Result:
+Result: passed. All 75 samples, four saved drafts, stored counts, reset prior acceptance and permissions passed; replayed again in the final gate.
 
-Gate not passed:
+Gate not passed: none.
 
-Not verified:
+Not verified: see final summary and the per-task evidence below.
 
 ## Stage 1E — History and polish
 
@@ -89,18 +89,26 @@ Not verified:
 - [x] 1E.2 API: activity feed and group deletion
 - [x] 1E.3 Web: edit, delete with undo, conflict
 - [x] 1E.4 Web: history and deleting a group
-- [ ] 1E.5 Web: offline state, new-item pill, motion
-- [ ] 1E.6 Non-functional checks and final gate
+- [x] 1E.5 Web: offline state, new-item pill, motion
+- [x] 1E.6 Non-functional checks and final gate
 
 ### Final gate
 
-Result:
+Result: passed. Outbound-denied build, pnpm check, reset sample trip, replayed 1A–1D acceptance, complete endpoint permission matrix and final balance checker passed.
 
-Gate not passed:
+Gate not passed: none.
 
-Not verified:
+Not verified: physical/device, external Google/mail and 4G items listed in the final summary; no result is claimed for them.
 
 ## Final summary
+
+- Completed: 41/41 tasks, 1A.1 through 1E.6, on phase-1. One commit per task; no push, merge, branch change or automated tests. The final task commit is uniquely identified by `docs(run): complete phase 1 run records` (D33).
+- Gates: all five stage acceptance gates passed, including a reset final trip and complete role matrix. Final pnpm check passed (236 files; all workspace typechecks Done); outbound-denied pnpm build passed; final balance checker found six groups, sum 0/mismatches 0, `All groups balanced`.
+- Unresolved implementation items: none. Gate not passed: none. Non-functional verification is scoped to the actual local evidence below.
+- Decisions: 33 recorded decisions, D1–D33. Advisor attention: D19 native OAuth adapter instead of unavailable arctic; D22 cached qrcode instead of unavailable uqr; D24 API import of the pure Vietnamese message source; D26 last-editor DTO; D28 deletion order; D32 explicit identity choices. These are review inputs, not external-service verification.
+- Not verified: real Google round trip; real mail/HTTPS/deployment/backups (server step); online dependency audit (external calls forbidden); 4G cold time-to-visible; physical screen-reader speech/software-keyboard reach; valid-invite S12 narrow layout; real native share/camera delivery; two physical phones/independent profiles through the whole trip; owner visual/mockup and reduced-motion judgment; passage of the hourly cleanup timer. Browser observer + HTTP actor exercises are distinguished from two real browser profiles.
+- Later evidence supersedes earlier deferred UI checks: all original edit split/payer/type inputs, A01/A23/A43 browser saves, refusal banners, paste/NFC, viewer restrictions, history live updates and new-item scroll behavior were exercised in 1E.6. Temporary curl printers and comparison loops stayed outside Git and contain no test framework/assertions.
+- Owner checklist: manual-checks.md is consolidated by S1–S13, then flows A–H, with Google checks separate. The run stops after the final task commit; the advisor reviews this branch before owner manual acceptance/merge.
 
 
 ## Task 1A.1 — Approach
@@ -2506,3 +2514,485 @@ Stopped only API while browser remained connected to the web server: banner “M
 Offline install for the existing core workspace link: `downloaded 0, added 0`, `Already up to date`. No new third-party dependency. Display frames use integer allocations in core; official balances are unchanged API values.
 Security review: items 1,2,7,8 inspected against complete diff; only local health probing, no persistence/secrets, same-origin requests/origin checks retained, no permission checks weakened. Full diff reviewed. Decisions: D30. Deviations: native controls use shared wrappers so disabled and aria-disabled remain consistent; pure back/close/new-item navigation remains usable offline.
 Not verified: browser devtools offline emulation, cached history offline, the new-item pill on a long stream, physical reduced-motion and owner judgment of the four motions remain for E6/manual checks. API-stop/recovery and cached stream/balances/members/settings were observed directly. Out of scope: none.
+
+Commit 1E.5: `d511e98`.
+
+## Task 1E.6 — Approach
+- Populate a four-member local group with 500 API-created transactions while honoring per-user rate limits; measure five read samples and SQL statement counts.
+- Inspect contrast tokens, 360×640 layouts, keyboard/accessibility naming and outstanding UI cases; fix concrete findings.
+- Document Phase 1/dev mail/Google/balance checking in README, then reset and replay the full sample trip, prior gates and complete permission matrix.
+- Consolidate the owner checklist by screen/flow and record final unresolved/unverified items before the final task commit.
+
+### Task 1E.6 — Load and non-functional evidence (before final reset)
+```text
+create group 201
+join lan 200
+join hung 200
+join thu 200
+inserted 50
+inserted 100
+inserted 150
+inserted 200
+rate window wait 58 seconds
+inserted 250
+inserted 300
+inserted 350
+inserted 400
+inserted 450
+rate window wait 58 seconds
+inserted 500
+stored 500
+transactions runs [['200', '0.010554', '49146'], ['200', '0.007636', '49146'], ['200', '0.006140', '49146'], ['200', '0.006827', '49146'], ['200', '0.008333', '49146']] median ms 7.636 bytes 49146
+balances minimized runs [['200', '0.004337', '727'], ['200', '0.003791', '727'], ['200', '0.003741', '727'], ['200', '0.003681', '727'], ['200', '0.003989', '727']] median ms 3.791 bytes 727
+groups runs [['200', '0.005677', '4519'], ['200', '0.003833', '4519'], ['200', '0.003905', '4519'], ['200', '0.003694', '4519'], ['200', '0.003920', '4519']] median ms 3.9050000000000002 bytes 4519
+pairwise mode 200
+balances pairwise runs [['200', '0.021571', '728'], ['200', '0.020161', '728'], ['200', '0.025184', '728'], ['200', '0.018771', '728'], ['200', '0.018249', '728']] median ms 20.160999999999998 bytes 728
+SQL statements including authentication/authorization: transactions limit=50: 5; limit=1: 5; balances minimized: 4; balances pairwise: 6; groups: 4.
+Temporary PostgreSQL logging had parameter values disabled (log_parameter_max_length=0); restored log_statement=none and log_parameter_max_length=-1 afterwards.
+```
+
+| Foreground | Background | Ratio | Result |
+|---|---|---|---|
+| ink | mint | 12.28:1 | pass |
+| ink | sky | 10.09:1 | pass |
+| ink | coral | 7.43:1 | pass |
+| ink | lilac | 9.82:1 | pass |
+| ink | accent | 12.35:1 | pass |
+| ink | phrase-amount | 14.13:1 | pass |
+| ink | phrase-payer | 13.09:1 | pass |
+| ink | phrase-split | 14.46:1 | pass |
+| ink | phrase-rest | 12.83:1 | pass |
+| ink | debt-soft | 13.10:1 | pass |
+| ink | sunken | 13.71:1 | pass |
+| ink | bg | 15.47:1 | pass |
+| ink | surface | 17.08:1 | pass |
+| muted | bg | 6.36:1 | pass |
+| muted | surface | 7.02:1 | pass |
+| muted | sunken | 5.64:1 | pass |
+| on-ink-muted | ink | 10.12:1 | pass |
+| on-ink-muted | ink-raised | 7.45:1 | pass |
+| surface | ink | 17.08:1 | pass |
+All required text pairs exceed 4.5:1; no color-token change was needed.
+
+Browser viewport override measured 360×640 CSS pixels initially; native zoom rounding produced 359–361px on later navigations. Screens S1–S13 inspected at this size (S12 invalid-link state); no unnamed product control found. Keyboard walks recorded normal order and 2px/2px focus on application controls; a native date sub-control initially used its browser outline, so date focus was explicitly covered too. Development tool focus is outside the product. S2 initially overflowed to 384px due to the featured 52px balance; wrapping repaired it (D31). Real software-keyboard reach and actual screen-reader speech remain Not verified.
+New-item exercise on the 500-record group: scrollTop=2756, viewport height=141/scrollHeight=5882; remote insert 201 → Có khoản mới and same scrollTop=2756. Tapping pill → scrollTop=5741.33 and pill removed. The extra record was added after load measurements.
+Original edit inputs observed for remainder 80000/60000/40000, weights 2/1/1/1 with payers 800000/400000, percent 50/30/20, income 200000, transfer 210000, and exact-with-blanks 40000/blank/blank/blank. All unchanged save buttons disabled; no type switch.
+Browser A01/A23/A43 cards and saves completed: 45000 each / Lan payer 62500 each / 33334,33333,33333 with 70000 remainder. A36 already observed in D3. Pasted `cà  phê 180k\nmình trả` became `cà  phê 180k mình trả`; marks covered exactly 180k and mình trả. A50/A55/A57/A59 banners matched the approved sentences; back retained A59.
+Viewer Lan observed live history deletion with two API-restorable entries and zero restore controls; newest row changed without reload. Direct edit address showed forbidden, stream had zero edit/entry links and Chỉ xem.
+Duplicate-name exercise: unchosen reader needs_input; explicit second Minh choice produced ok, server preview and a successful UI save (writer balance -60000). Unlinked pronoun/default choices were exercised through core and resolved only to the chosen id. 75 core samples still match, including A01/A36 spans; huge count and long description return unparsed.
+Not verified: 4G throttling/time-to-visible is unavailable in the provided browser capabilities; these latency numbers are localhost only. Physical screen reader, software keyboard, OS reduced-motion judgment, valid-invite S12 narrow layout and native share/QR camera remain manual.
+
+### Task 1E.6 — Final gate outputs
+
+#### Reset final trip
+```text
+trip login minh 204
+trip login lan 204
+trip login hung 204
+trip login thu 204
+create group 201
+trip join lan 200
+trip join hung 200
+trip register 204
+trip verify 204
+trip Ngân join 200
+trip viewer role 200
+trip parse 200 ok [{'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', 'amount': 300000}] [{'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', 'amount': 120000}, {'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25', 'amount': 80000}, {'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d', 'amount': 100000}]
+trip save 201 [{'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', 'amount': 120000}, {'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25', 'amount': 80000}, {'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d', 'amount': 100000}]
+trip T2 201 [{'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b', 'amount': 480000}, {'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', 'amount': 240000}, {'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25', 'amount': 240000}, {'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d', 'amount': 240000}]
+trip T3 201 [{'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b', 'amount': 50000}, {'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', 'amount': 50000}, {'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25', 'amount': 50000}, {'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d', 'amount': 50000}]
+trip T4 201 [{'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b', 'amount': 49999}, {'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', 'amount': 30000}, {'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d', 'amount': 20000}]
+trip edit 200 2 [{'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', 'amount': 130000}, {'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25', 'amount': 90000}, {'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d', 'amount': 110000}]
+trip conflict 409 VERSION_CONFLICT 2
+trip Hùng delete T4 204
+trip activity canRestore True
+trip Hùng restore T4 200
+trip balances before settle [('Minh', 320001), ('Lan', 180000), ('Hùng', -180001), ('Thu', -320000), ('Ngân', 0)]
+trip settlement 201 {'fromMemberId': '01a1e493-9468-7662-90bd-188c5a4f819d', 'toMemberId': '01a1e493-9463-7da3-b67d-24ab1990a06b', 'amount': 320000}
+trip settlement 201 {'fromMemberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25', 'toMemberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', 'amount': 180000}
+trip settlement 201 {'fromMemberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25', 'toMemberId': '01a1e493-9463-7da3-b67d-24ab1990a06b', 'amount': 1}
+trip final balances [('Minh', 0), ('Lan', 0), ('Hùng', 0), ('Thu', 0), ('Ngân', 0)] transfers []
+trip history [('Minh', 'create', 'transaction', 'Chuyển khoản', None, {'type': 'transfer', 'split': {'method': 'exact', 'entries': [{'amount': 1, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}], 'members': ['01a1e493-9463-7da3-b67d-24ab1990a06b'], 'remainder': 'none'}, 'amount': 1, 'payers': [{'amount': 1, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}], 'shares': [{'amount': 1, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}], 'category': None, 'occurredAt': '2026-11-16T01:00:00.000Z', 'description': 'Chuyển khoản'}), ('Minh', 'create', 'transaction', 'Chuyển khoản', None, {'type': 'transfer', 'split': {'method': 'exact', 'entries': [{'amount': 180000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}], 'members': ['01a1e493-9466-70e4-a0d1-d6b39e8be6a6'], 'remainder': 'none'}, 'amount': 180000, 'payers': [{'amount': 180000, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}], 'shares': [{'amount': 180000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}], 'category': None, 'occurredAt': '2026-11-16T01:00:00.000Z', 'description': 'Chuyển khoản'}), ('Minh', 'create', 'transaction', 'Chuyển khoản', None, {'type': 'transfer', 'split': {'method': 'exact', 'entries': [{'amount': 320000, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}], 'members': ['01a1e493-9463-7da3-b67d-24ab1990a06b'], 'remainder': 'none'}, 'amount': 320000, 'payers': [{'amount': 320000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'shares': [{'amount': 320000, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}], 'category': None, 'occurredAt': '2026-11-16T01:00:00.000Z', 'description': 'Chuyển khoản'}), ('Hùng', 'restore', 'transaction', 'Vé', {'type': 'expense', 'split': {'method': 'percent', 'entries': [{'percent': '50', 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'percent': '30', 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'percent': '20', 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}]}, 'amount': 99999, 'payers': [{'amount': 99999, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}], 'shares': [{'amount': 49999, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'amount': 30000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 20000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé'}, {'type': 'expense', 'split': {'method': 'percent', 'entries': [{'percent': '50', 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'percent': '30', 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'percent': '20', 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}]}, 'amount': 99999, 'payers': [{'amount': 99999, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}], 'shares': [{'amount': 49999, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'amount': 30000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 20000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé'}), ('Hùng', 'delete', 'transaction', 'Vé', {'type': 'expense', 'split': {'method': 'percent', 'entries': [{'percent': '50', 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'percent': '30', 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'percent': '20', 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}]}, 'amount': 99999, 'payers': [{'amount': 99999, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}], 'shares': [{'amount': 49999, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'amount': 30000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 20000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé'}, None), ('Minh', 'update', 'transaction', 'lẩu', {'amount': 300000, 'payers': [{'amount': 300000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}], 'shares': [{'amount': 120000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 80000, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}, {'amount': 100000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}]}, {'amount': 330000, 'payers': [{'amount': 330000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}], 'shares': [{'amount': 130000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 90000, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}, {'amount': 110000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}]}), ('Minh', 'create', 'transaction', 'Vé', None, {'type': 'expense', 'split': {'method': 'percent', 'entries': [{'percent': '50', 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'percent': '30', 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'percent': '20', 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}]}, 'amount': 99999, 'payers': [{'amount': 99999, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}], 'shares': [{'amount': 49999, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'amount': 30000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 20000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé'}), ('Minh', 'create', 'transaction', 'Hoàn cọc', None, {'type': 'income', 'split': {'method': 'equal', 'members': ['01a1e493-9463-7da3-b67d-24ab1990a06b', '01a1e493-9466-70e4-a0d1-d6b39e8be6a6', '01a1e493-9467-7b5d-9ed4-37cd5f602c25', '01a1e493-9468-7662-90bd-188c5a4f819d']}, 'amount': 200000, 'payers': [{'amount': 200000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}], 'shares': [{'amount': 50000, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'amount': 50000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 50000, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}, {'amount': 50000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Hoàn cọc'}), ('Minh', 'create', 'transaction', 'Khách sạn', None, {'type': 'expense', 'split': {'method': 'shares', 'entries': [{'weight': '2', 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'weight': '1', 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'weight': '1', 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}, {'weight': '1', 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}]}, 'amount': 1200000, 'payers': [{'amount': 800000, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'amount': 400000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}], 'shares': [{'amount': 480000, 'memberId': '01a1e493-9463-7da3-b67d-24ab1990a06b'}, {'amount': 240000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 240000, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}, {'amount': 240000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Khách sạn'}), ('Lan', 'create', 'transaction', 'lẩu', None, {'type': 'expense', 'split': {'method': 'exact', 'entries': [{'amount': 80000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 40000, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}, {'amount': 60000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'members': ['01a1e493-9466-70e4-a0d1-d6b39e8be6a6', '01a1e493-9467-7b5d-9ed4-37cd5f602c25', '01a1e493-9468-7662-90bd-188c5a4f819d'], 'remainder': 'equal_among_all'}, 'amount': 300000, 'payers': [{'amount': 300000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}], 'shares': [{'amount': 120000, 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}, {'amount': 80000, 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}, {'amount': 100000, 'memberId': '01a1e493-9468-7662-90bd-188c5a4f819d'}], 'category': None, 'occurredAt': '2026-11-16T00:00:00.000Z', 'description': 'lẩu'}), ('Minh', 'role_change', 'group_user', 'Group role changed', {'role': 'editor'}, {'name': 'Ngân', 'role': 'viewer'}), ('Ngân', 'join', 'group_user', 'Ngân', None, {'name': 'Ngân', 'memberId': '01a1e493-94f0-711d-bf8c-faba4ec1aee0'}), ('Ngân', 'create', 'member', 'Ngân', None, None), ('Hùng', 'join', 'group_user', 'Hùng', None, {'name': 'Hùng', 'memberId': '01a1e493-9467-7b5d-9ed4-37cd5f602c25'}), ('Lan', 'join', 'group_user', 'Lan', None, {'name': 'Lan', 'memberId': '01a1e493-9466-70e4-a0d1-d6b39e8be6a6'}), ('Minh', 'create', 'group', 'Đà Lạt 12/2026', None, {'memberCount': 4})]
+trip delete group 204
+trip removed : connected
+
+event: removed
+data: {}
+
+
+trip Lan later  404
+trip Lan later /members 404
+trip Lan later /transactions 404
+trip Lan later /activity 404
+trip Lan later /balances 404
+trip cascade counts members|0
+transactions|0
+activity|0
+$ pnpm --filter @songphang/db check-balances
+$ tsx --env-file=../../.env src/check-balances.ts
+No groups
+```
+
+#### Replay 1A–1C and existing permission matrix
+```text
+dev login minh [204, null]
+dev login lan [204, null]
+dev login hung [204, null]
+dev login thu [204, null]
+create group 201
+1C T1 [201, [{"memberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 120000}, {"memberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "amount": 100000}, {"memberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "amount": 80000}]]
+1C T2 [201, [{"memberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 480000}, {"memberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "amount": 240000}, {"memberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "amount": 240000}, {"memberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "amount": 240000}]]
+1C T3 [201, [{"memberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 50000}, {"memberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "amount": 50000}, {"memberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "amount": 50000}, {"memberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "amount": 50000}]]
+1C T4 [201, [{"memberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 49999}, {"memberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "amount": 30000}, {"memberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "amount": 20000}]]
+1C minimized [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "balance": 500001}, {"memberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "balance": -120000}, {"memberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "balance": -170001}, {"memberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "balance": -210000}], "transfers": [{"fromMemberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "toMemberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 210000}, {"fromMemberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "toMemberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 170001}, {"fromMemberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "toMemberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 120000}]}]
+1C T5 201
+1C after T5 [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "balance": 290001}, {"memberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "balance": -120000}, {"memberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "balance": -170001}, {"memberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "balance": 0}], "transfers": [{"fromMemberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "toMemberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 170001}, {"fromMemberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "toMemberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 120000}]}]
+1C pairwise [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "balance": 290001}, {"memberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "balance": -120000}, {"memberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "balance": -170001}, {"memberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "balance": 0}], "transfers": [{"fromMemberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "toMemberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "amount": 50000}, {"fromMemberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "toMemberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 150000}, {"fromMemberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "toMemberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 190001}, {"fromMemberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "toMemberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "amount": 30000}, {"fromMemberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "toMemberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "amount": 20000}]}]
+1C received minus paid {"Minh": 290001, "Lan": -120000, "Hùng": -170001, "Thu": 0}
+1C exact mismatch [400, {"error": {"code": "SPLIT_TOTAL_MISMATCH", "message": "Split total differs from amount", "details": {"expected": 300000, "actual": 320000}, "requestId": "01a1e494-887e-72e6-ac68-3112441c8485"}}]
+1C payer mismatch [400, {"error": {"code": "PAYER_TOTAL_MISMATCH", "message": "Payer total differs from amount", "details": {"expected": 1200000, "actual": 1100000}, "requestId": "01a1e494-888a-7f48-afab-6c89f1248f2e"}}]
+1C percent mismatch [400, {"error": {"code": "SPLIT_TOTAL_MISMATCH", "message": "Split total differs from amount", "details": {"expected": 100, "actual": 99}, "requestId": "01a1e494-8897-72af-996a-ee09656384fa"}}]
+1C self transfer [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"body": ["Invalid input"]}, "requestId": "01a1e494-88a2-7a14-ba6f-fcff0a9d04a9"}}]
+1C weight precision [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.entries.0.weight": ["Invalid string: must match pattern /^\\d{1,4}(\\.\\d{1,2})?$/"]}, "requestId": "01a1e494-88ab-79ab-bddc-5719b50d5a53"}}]
+1C negative percent [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split.entries.0.percent": ["Invalid string: must match pattern /^\\d{1,3}(\\.\\d{1,2})?$/"]}, "requestId": "01a1e494-88b4-7526-82e8-e39b6d36880f"}}]
+1C outside entry [400, {"error": {"code": "VALIDATION_FAILED", "message": "Request validation failed", "details": {"split": ["Invalid input"]}, "requestId": "01a1e494-88bd-7629-8c08-46586100d8ce"}}]
+1C preview [200, {"shares": [{"memberId": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c", "amount": 480000}, {"memberId": "01a1e494-87d3-78a1-9a20-65b96c16705f", "amount": 240000}, {"memberId": "01a1e494-87d4-78e3-8830-d897cda22a89", "amount": 240000}, {"memberId": "01a1e494-87d6-7c78-92cf-a8d38028627e", "amount": 240000}]}]
+1C stored count 5
+1B register [204, null]
+1B unverified write [403, {"error": {"code": "EMAIL_NOT_VERIFIED", "message": "Email verification required", "requestId": "01a1e494-890f-7100-a066-b2f1aa924706"}}]
+1B verify [204, null]
+create group 201
+1B preview [200, {"group": {"id": "01a1e494-8953-707a-a3f9-0375c6e131d6", "name": "Đà Lạt 12/2026"}, "ownerName": "Minh", "memberCount": 4, "transactionCount": 2, "members": [{"id": "01a1e494-8953-707a-a3f9-037668238cb1", "name": "Minh", "shape": "circle", "color": "mint", "claimed": true, "balance": null}, {"id": "01a1e494-8954-7867-8c59-91826be6f222", "name": "Lan", "shape": "diamond", "color": "sky", "claimed": false, "balance": 0}, {"id": "01a1e494-8955-75a5-ad24-bb2bccab74bd", "name": "Hùng", "shape": "squircle", "color": "coral", "claimed": false, "balance": -300000}, {"id": "01a1e494-8955-75a5-ad24-bb2c99e331a1", "name": "Thu", "shape": "leaf", "color": "lilac", "claimed": false, "balance": -200000}], "alreadyJoined": false}]
+1B Lan join [200, {"groupId": "01a1e494-8953-707a-a3f9-0375c6e131d6"}]
+1B Ngân join [200, {"groupId": "01a1e494-8953-707a-a3f9-0375c6e131d6"}]
+1B Hùng join [200, {"groupId": "01a1e494-8953-707a-a3f9-0375c6e131d6"}]
+1B Lan list [200, {"groups": [{"id": "01a1e494-8953-707a-a3f9-0375c6e131d6", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1e494-8953-707a-a3f9-037668238cb1", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1e494-8954-7867-8c59-91826be6f222", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1e494-8955-75a5-ad24-bb2bccab74bd", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1e494-8955-75a5-ad24-bb2c99e331a1", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": 0}]}]
+1B Hùng list [200, {"groups": [{"id": "01a1e494-8953-707a-a3f9-0375c6e131d6", "name": "Đà Lạt 12/2026", "currency": "VND", "memberCount": 5, "previewMembers": [{"id": "01a1e494-8953-707a-a3f9-037668238cb1", "name": "Minh", "shape": "circle", "color": "mint"}, {"id": "01a1e494-8954-7867-8c59-91826be6f222", "name": "Lan", "shape": "diamond", "color": "sky"}, {"id": "01a1e494-8955-75a5-ad24-bb2bccab74bd", "name": "Hùng", "shape": "squircle", "color": "coral"}, {"id": "01a1e494-8955-75a5-ad24-bb2c99e331a1", "name": "Thu", "shape": "leaf", "color": "lilac"}], "myBalance": -300000}]}]
+1B viewer write [403, {"error": {"code": "FORBIDDEN", "message": "Insufficient group role", "requestId": "01a1e494-89ff-75f8-b571-e9bd95b76963"}}]
+1B viewer read 200
+1B SSE within 2s ": connected\n\nevent: changed\ndata: {\"resources\":[\"transactions\",\"balances\",\"activity\"]}\n\n"
+1B remove Hùng [204, null]
+1B removed read [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found", "requestId": "01a1e494-8c7c-7b9f-8c0c-b8190b1cf4ad"}}]
+1B preserved balance [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e494-8953-707a-a3f9-037668238cb1", "balance": 566666}, {"memberId": "01a1e494-8954-7867-8c59-91826be6f222", "balance": -33333}, {"memberId": "01a1e494-8955-75a5-ad24-bb2bccab74bd", "balance": -333333}, {"memberId": "01a1e494-8955-75a5-ad24-bb2c99e331a1", "balance": -200000}, {"memberId": "01a1e494-89ba-760d-8413-308037953a24", "balance": 0}], "transfers": [{"fromMemberId": "01a1e494-8955-75a5-ad24-bb2bccab74bd", "toMemberId": "01a1e494-8953-707a-a3f9-037668238cb1", "amount": 333333}, {"fromMemberId": "01a1e494-8955-75a5-ad24-bb2c99e331a1", "toMemberId": "01a1e494-8953-707a-a3f9-037668238cb1", "amount": 200000}, {"fromMemberId": "01a1e494-8954-7867-8c59-91826be6f222", "toMemberId": "01a1e494-8953-707a-a3f9-037668238cb1", "amount": 33333}]}]
+1B old invite [404, {"error": {"code": "INVITE_INVALID", "message": "Invite is invalid", "requestId": "01a1e494-8cb6-7780-b984-d529e71c672c"}}]
+1B forgot [204, null]
+1B reset [204, null]
+1B sessions after reset [401, 401]
+1B existing register [204, null]
+1B new register [204, null]
+1B known forgot [204, null]
+1B unknown forgot [204, null]
+create group 201
+1A Vé cáp treo 201
+1A Lẩu 201
+1A Cà phê 201
+1A minimized [200, {"currency": "VND", "minimized": true, "balances": [{"memberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "balance": 566666}, {"memberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "balance": -33333}, {"memberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "balance": -333333}, {"memberId": "01a1e494-8d79-7213-b761-475eddb8b7d9", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 333333}, {"fromMemberId": "01a1e494-8d79-7213-b761-475eddb8b7d9", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 200000}, {"fromMemberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 33333}]}]
+1A pairwise [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "balance": 566666}, {"memberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "balance": -33333}, {"memberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "balance": -333333}, {"memberId": "01a1e494-8d79-7213-b761-475eddb8b7d9", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 133333}, {"fromMemberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 233333}, {"fromMemberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "toMemberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "amount": 100000}, {"fromMemberId": "01a1e494-8d79-7213-b761-475eddb8b7d9", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 200000}]}]
+1A taxi [201, [{"memberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 30000}, {"memberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "amount": 30000}, {"memberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "amount": 30000}]]
+1A inactive balance [200, {"currency": "VND", "minimized": false, "balances": [{"memberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "balance": 626666}, {"memberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "balance": -63333}, {"memberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "balance": -363333}, {"memberId": "01a1e494-8d79-7213-b761-475eddb8b7d9", "balance": -200000}], "transfers": [{"fromMemberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 163333}, {"fromMemberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 263333}, {"fromMemberId": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f", "toMemberId": "01a1e494-8d78-7c1b-bb35-13fabaf260bf", "amount": 100000}, {"fromMemberId": "01a1e494-8d79-7213-b761-475eddb8b7d9", "toMemberId": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce", "amount": 200000}]}]
+matrix GET /group minh 200
+matrix GET /group lan 200
+matrix GET /group ngan 200
+matrix GET /group hung 404
+matrix GET /group None 401
+matrix GET  malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET  random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /members minh 200
+matrix GET /members lan 200
+matrix GET /members ngan 200
+matrix GET /members hung 404
+matrix GET /members None 401
+matrix GET /members malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /members random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /users minh 200
+matrix GET /users lan 200
+matrix GET /users ngan 200
+matrix GET /users hung 404
+matrix GET /users None 401
+matrix GET /users malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /users random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /transactions minh 200
+matrix GET /transactions lan 200
+matrix GET /transactions ngan 200
+matrix GET /transactions hung 404
+matrix GET /transactions None 401
+matrix GET /transactions malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /transactions random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /balances minh 200
+matrix GET /balances lan 200
+matrix GET /balances ngan 200
+matrix GET /balances hung 404
+matrix GET /balances None 401
+matrix GET /balances malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /balances random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /events minh 200
+matrix GET /events lan 200
+matrix GET /events ngan 200
+matrix GET /events hung 404
+matrix GET /events None 401
+matrix GET /events malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /events random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /invite minh 200
+matrix GET /invite lan 200
+matrix GET /invite ngan 403
+matrix GET /invite hung 404
+matrix GET /invite None 401
+matrix GET /invite malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /invite random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /members minh 201
+matrix POST /members lan 201
+matrix POST /members ngan 403
+matrix POST /members hung 404
+matrix POST /members None 401
+matrix POST /members malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /members random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /members/01a1e494-8e30-7a92-9e4a-df4738342f2b minh 200
+matrix PATCH /members/01a1e494-8e30-7a92-9e4a-df4738342f2b lan 200
+matrix PATCH /members/01a1e494-8e30-7a92-9e4a-df4738342f2b ngan 403
+matrix PATCH /members/01a1e494-8e30-7a92-9e4a-df4738342f2b hung 404
+matrix PATCH /members/01a1e494-8e30-7a92-9e4a-df4738342f2b None 401
+matrix PATCH /members/01a1e494-8e30-7a92-9e4a-df4738342f2b malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /members/01a1e494-8e30-7a92-9e4a-df4738342f2b random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions minh 201
+matrix POST /transactions lan 201
+matrix POST /transactions ngan 403
+matrix POST /transactions hung 404
+matrix POST /transactions None 401
+matrix POST /transactions malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions/preview minh 200
+matrix POST /transactions/preview lan 200
+matrix POST /transactions/preview ngan 403
+matrix POST /transactions/preview hung 404
+matrix POST /transactions/preview None 401
+matrix POST /transactions/preview malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions/preview random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /group minh 200
+matrix PATCH /group lan 403
+matrix PATCH /group ngan 403
+matrix PATCH /group hung 404
+matrix PATCH /group None 401
+matrix PATCH  malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH  random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /invite minh 200
+matrix PATCH /invite lan 403
+matrix PATCH /invite ngan 403
+matrix PATCH /invite hung 404
+matrix PATCH /invite None 401
+matrix PATCH /invite malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /invite random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /invite/rotate minh 200
+matrix POST /invite/rotate lan 403
+matrix POST /invite/rotate ngan 403
+matrix POST /invite/rotate hung 404
+matrix POST /invite/rotate None 401
+matrix POST /invite/rotate malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /invite/rotate random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 minh 200
+matrix PATCH /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 lan 403
+matrix PATCH /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 ngan 403
+matrix PATCH /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 hung 404
+matrix PATCH /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 None 401
+matrix PATCH /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PUT /me/member minh 200
+matrix PUT /me/member lan 200
+matrix PUT /me/member ngan 200
+matrix PUT /me/member hung 404
+matrix PUT /me/member None 401
+matrix POST /transfer-ownership lan 403
+matrix POST /transfer-ownership ngan 403
+matrix POST /transfer-ownership hung 404
+matrix POST /transfer-ownership None 401
+matrix POST /transfer-ownership minh 200
+matrix DELETE /users/user lan 403
+matrix DELETE /users/user ngan 403
+matrix DELETE /users/user hung 404
+matrix DELETE /users/user None 401
+matrix DELETE /users/user minh 204
+matrix POST /leave minh 422
+matrix POST /leave lan 204
+matrix POST /leave ngan 204
+matrix POST /leave hung 404
+matrix POST /leave None 401
+matrix DELETE /members/member minh 204
+matrix DELETE /members/member lan 204
+matrix DELETE /members/member ngan 403
+matrix DELETE /members/member hung 404
+matrix DELETE /members/member None 401
+matrix PUT /me/member malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PUT /me/member random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transfer-ownership malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transfer-ownership random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /users/01a1e491-721d-7bc6-9bd3-0928fde1c128 random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /leave malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /leave random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /members/01a1e494-8e30-7a92-9e4a-df4738342f2b malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /members/01a1e494-8e30-7a92-9e4a-df4738342f2b random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+```
+
+#### Replay 1D and parse permissions
+```text
+A01 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A02 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A03 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A04 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A05 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A06 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A07 200 ok match [{'memberId': 'Minh', 'amount': 250000}, {'memberId': 'Lan', 'amount': 250000}, {'memberId': 'Hùng', 'amount': 250000}, {'memberId': 'Thu', 'amount': 250000}]
+A08 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A09 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A10 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A11 200 ok match [{'memberId': 'Minh', 'amount': 375000}, {'memberId': 'Lan', 'amount': 375000}, {'memberId': 'Hùng', 'amount': 375000}, {'memberId': 'Thu', 'amount': 375000}]
+A12 200 ok match [{'memberId': 'Minh', 'amount': 375000}, {'memberId': 'Lan', 'amount': 375000}, {'memberId': 'Hùng', 'amount': 375000}, {'memberId': 'Thu', 'amount': 375000}]
+A13 200 ok match [{'memberId': 'Minh', 'amount': 500000}, {'memberId': 'Lan', 'amount': 500000}, {'memberId': 'Hùng', 'amount': 500000}, {'memberId': 'Thu', 'amount': 500000}]
+A14 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A15 200 ok match [{'memberId': 'Minh', 'amount': 24750}, {'memberId': 'Lan', 'amount': 24750}, {'memberId': 'Hùng', 'amount': 24750}, {'memberId': 'Thu', 'amount': 24750}]
+A16 200 ok match [{'memberId': 'Minh', 'amount': 2500}, {'memberId': 'Lan', 'amount': 2500}, {'memberId': 'Hùng', 'amount': 2500}, {'memberId': 'Thu', 'amount': 2500}]
+A17 200 ok match [{'memberId': 'Minh', 'amount': 250}, {'memberId': 'Lan', 'amount': 250}, {'memberId': 'Hùng', 'amount': 250}, {'memberId': 'Thu', 'amount': 250}]
+A18 200 ok match [{'memberId': 'Minh', 'amount': 251}, {'memberId': 'Lan', 'amount': 250}, {'memberId': 'Hùng', 'amount': 250}, {'memberId': 'Thu', 'amount': 250}]
+A19 200 ok match [{'memberId': 'Minh', 'amount': 400000}, {'memberId': 'Lan', 'amount': 400000}, {'memberId': 'Hùng', 'amount': 400000}, {'memberId': 'Thu', 'amount': 400000}]
+A20 200 ok match [{'memberId': 'Minh', 'amount': 25000}, {'memberId': 'Lan', 'amount': 25000}, {'memberId': 'Hùng', 'amount': 25000}, {'memberId': 'Thu', 'amount': 25000}]
+A21 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A22 200 ok match [{'memberId': 'Minh', 'amount': 200000}, {'memberId': 'Lan', 'amount': 200000}, {'memberId': 'Hùng', 'amount': 200000}, {'memberId': 'Thu', 'amount': 200000}]
+A23 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A24 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A25 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A26 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A27 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A28 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A29 200 ok match [{'memberId': 'Minh', 'amount': 100000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 100000}, {'memberId': 'Thu', 'amount': 100000}]
+A30 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A31 200 ok match [{'memberId': 'Lan', 'amount': 33334}, {'memberId': 'Hùng', 'amount': 33333}, {'memberId': 'Thu', 'amount': 33333}]
+A32 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 120000}]
+A33 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 120000}]
+A34 200 ok match [{'memberId': 'Lan', 'amount': 22500}, {'memberId': 'Hùng', 'amount': 22500}]
+A35 200 ok match [{'memberId': 'Thu', 'amount': 50000}]
+A36 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A37 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A38 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A39 200 ok match [{'memberId': 'Minh', 'amount': 150000}, {'memberId': 'Lan', 'amount': 150000}]
+A40 200 ok match [{'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 400000}]
+A41 200 ok match [{'memberId': 'Minh', 'amount': 250000}, {'memberId': 'Lan', 'amount': 250000}, {'memberId': 'Hùng', 'amount': 250000}, {'memberId': 'Thu', 'amount': 250000}]
+A42 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+A43 200 ok match [{'memberId': 'Lan', 'amount': 33334}, {'memberId': 'Hùng', 'amount': 33333}, {'memberId': 'Thu', 'amount': 33333}]
+A44 200 ok match [{'memberId': 'Lan', 'amount': 200000}, {'memberId': 'Thu', 'amount': 300000}]
+A45 200 ok match [{'memberId': 'Lan', 'amount': 1500}, {'memberId': 'Hùng', 'amount': 248500}]
+A46 200 needs_input match None
+A47 200 needs_input match None
+A48 200 needs_input match None
+A49 200 needs_input match None
+A50 200 unparsed match None
+A51 200 unparsed match None
+A52 200 unparsed match None
+A53 200 unparsed match None
+A54 200 unparsed match None
+A55 200 unparsed match None
+A56 200 unparsed match None
+A57 200 unparsed match None
+A58 200 unparsed match None
+A59 200 unparsed match None
+A60 200 unparsed match None
+A61 200 unparsed match None
+A62 200 unparsed match None
+A63 200 unparsed match None
+A parse count 0 0
+save A01 201 True
+save A31 201 True
+save A36 201 True
+save A43 201 True
+B01 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B02 200 needs_input match None
+B03 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B04 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B05 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B06 200 needs_input match None
+B07 200 ok match [{'memberId': 'Minh Đức', 'amount': 100000}, {'memberId': 'Lan', 'amount': 50000}]
+B08 200 ok match [{'memberId': 'Minh Đức', 'amount': 100000}, {'memberId': 'Lan', 'amount': 50000}]
+B parse count 0 0
+C01 200 ok match [{'memberId': 'Minh', 'amount': 60000}, {'memberId': 'Lan', 'amount': 60000}, {'memberId': 'Hùng', 'amount': 60000}]
+C02 200 ok match [{'memberId': 'Minh', 'amount': 60000}, {'memberId': 'Lan', 'amount': 60000}, {'memberId': 'Hùng', 'amount': 60000}]
+C03 200 unparsed match None
+C04 200 unparsed match None
+C parse count 0 0
+301 400
+empty 400
+outsider 404
+viewer 403
+matrix parse minh 200
+matrix parse lan 200
+matrix parse ngan 403
+matrix parse hung 404
+matrix parse None 401
+matrix parse bad group invalid (404, {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e495-857f-7603-91c0-325760e12c71'}})
+matrix parse bad group 00000000-0000-4000-8000-000000000000 (404, {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e495-8588-7cf0-b473-ae6dcb2e1447'}})
+rate sweep {200: 42, 429: 79} total successes before429 includes previous samples
+gate stored count A 4
+gate stored count B 0
+gate stored count C 0
+```
+
+#### New 1E endpoints and group deletion permissions
+```text
+final matrix GET detail minh 200
+final matrix GET activity minh 200
+final matrix GET detail lan 200
+final matrix GET activity lan 200
+final matrix GET detail ngan 200
+final matrix GET activity ngan 200
+final matrix GET detail hung 404
+final matrix GET activity hung 404
+final matrix GET detail None 401
+final matrix GET activity None 401
+final matrix PATCH detail minh 200
+final matrix PATCH detail lan 200
+final matrix PATCH detail ngan 403
+final matrix PATCH detail hung 404
+final matrix PATCH detail None 401
+final matrix DELETE detail minh 204
+final matrix restore minh 200
+final matrix DELETE detail lan 204
+final matrix restore lan 200
+final matrix DELETE detail ngan 403
+final matrix restore ngan 403
+final matrix DELETE detail hung 404
+final matrix restore hung 404
+final matrix DELETE detail None 401
+final matrix restore None 401
+final matrix malformed/random group GET /transactions/01a1e494-9332-7915-a7b5-7b4933f03690 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group GET /transactions/01a1e494-9332-7915-a7b5-7b4933f03690 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group GET /activity 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group GET /activity 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group PATCH /transactions/01a1e494-9332-7915-a7b5-7b4933f03690 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group PATCH /transactions/01a1e494-9332-7915-a7b5-7b4933f03690 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group DELETE /transactions/01a1e494-9332-7915-a7b5-7b4933f03690 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group DELETE /transactions/01a1e494-9332-7915-a7b5-7b4933f03690 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group POST /transactions/01a1e494-9332-7915-a7b5-7b4933f03690/restore 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group POST /transactions/01a1e494-9332-7915-a7b5-7b4933f03690/restore 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group DELETE  404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group DELETE  404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix missing detail invalid minh 404
+final matrix missing detail invalid lan 404
+final matrix missing detail invalid ngan 404
+final matrix missing detail invalid hung 404
+final matrix missing detail invalid None 401
+final matrix missing detail 0a4e613e-1d6f-451f-bf2f-8500d99fe43f minh 404
+final matrix missing detail 0a4e613e-1d6f-451f-bf2f-8500d99fe43f lan 404
+final matrix missing detail 0a4e613e-1d6f-451f-bf2f-8500d99fe43f ngan 404
+final matrix missing detail 0a4e613e-1d6f-451f-bf2f-8500d99fe43f hung 404
+final matrix missing detail 0a4e613e-1d6f-451f-bf2f-8500d99fe43f None 401
+final matrix DELETE group lan 403
+final matrix DELETE group ngan 403
+final matrix DELETE group hung 404
+final matrix DELETE group None 401
+final matrix DELETE group minh 204
+```
+
+### Task 1E.6 — Final result
+`pnpm check`: passed (236 files, all workspace typechecks Done). `pnpm build` with outbound networking denied: compiled successfully, TypeScript finished, 11/11 static pages; activity and transaction-detail routes included. Reset database migrations/seed passed before the trip. The final trip produced the required 130000/90000/110000 edited shares and 409 on the old version, Hùng's delete/restore, all five balances zero, no suggested transfers, correct actors/snapshots, removed event, later 404s and zero dependent rows. Replayed A/B/C fixed figures and refusals matched; D was 75/75 match, four matching saves and counts 4/0/0. Complete existing/new permissions matched every role, including normalized malformed/random 404s.
+Final balance checker after all acceptance and matrix operations: six groups, each sum 0/mismatches 0; `All groups balanced`. The extra narrow-layout fixture was created after the gate and deleted after observation (204); balances were checked again. Production-build browser verification at exactly 360×640: featured +37.500.000 line has clientWidth=261/scrollWidth=261; document scrollWidth=345 ≤ viewport 360. An initial full-page screenshot artifact compressed layout; read-only DOM geometry and viewport capture showed normal header/card widths, so the artifact was discarded. Final viewport proof is /tmp/songphang-phase1-proof.jpg (JPEG, local artifact outside Git). The A36 card showed 300000, shares 120000/100000/80000 and excluded Thu without saving.
+Extra HTTP boundary checks on the final API: 220-character description plus amount → 200 unparsed/TEXT_NOT_UNDERSTOOD; 280-digit chia count → 200 unparsed/TEXT_NOT_UNDERSTOOD; NFD input → 200 ok, response text `cà phê 180k` in NFC. All 75 original samples remained unchanged. No external request was needed.
+Security review: relevant items 1,2,7,8 checked against every final changed source file and staged/run output; no secrets, raw HTML, unchecked redirect, storage, external service or new dependency. D32 choices are candidate-checked in core and still use server-authorized preview/create; no API authorization or integrity rule changed. Final diff and whitespace reviewed. No new assertion/test scripts or build artifacts are staged. Offline dependency audit remains Not verified under the no-external-service rule.
+Manual-check list consolidated without obsolete stage-only instructions; README now includes the three-line Phase 1 feature list, dev mail console, optional Google variables/callback and balance command. Decisions: D31–D33. Deviations and Not verified: final summary above. Out of scope: none newly found. Unresolved: none.
+Final task commit reference: `docs(run): complete phase 1 run records`; resolve its hash with the D33 command. The owner-facing completion message records the actual hash.

@@ -86,9 +86,11 @@ export function ParticipantFields({
 					}
 					captionFor={(member) => {
 						if (!sharers.includes(member.id)) return member.name;
-						const share = preview.data?.shares.find(
-							(share) => share.memberId === member.id,
-						);
+						const share = preview.current
+							? preview.data?.shares.find(
+									(share) => share.memberId === member.id,
+								)
+							: undefined;
 						return share ? formatAmount(share.amount) : vi.common.pendingValue;
 					}}
 					label={vi.expenseForm.sharersTitle}

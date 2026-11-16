@@ -5,6 +5,7 @@ import { t, vi } from "../../messages/vi";
 import { ShareShapes } from "../quick-entry/ShareShapes";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
+import { MemberShape } from "../ui/MemberShape";
 import { OnlineButton } from "../ui/OnlineButton";
 import { SplitMemberRow } from "./SplitMemberRow";
 import { SplitModeTabs } from "./SplitModeTabs";
@@ -54,12 +55,25 @@ export function SplitEditor({
 				<p className="text-[22px] font-black">{formatMoney(amount)}</p>
 			</header>
 			<SplitModeTabs value={state.method} onChange={state.changeMode} />
-			<ShareShapes
-				shares={state.selected.map((member) => ({
-					member,
-					amount: shares.find((s) => s.memberId === member.id)?.amount ?? 0,
-				}))}
-			/>
+			{shares.length > 0 ? (
+				<ShareShapes
+					shares={state.selected.map((member) => ({
+						member,
+						amount: shares.find((s) => s.memberId === member.id)?.amount ?? 0,
+					}))}
+				/>
+			) : (
+				<div className="flex flex-wrap justify-center gap-3 rounded-[30px] bg-bg p-4">
+					{state.selected.map((member) => (
+						<div key={member.id} className="grid justify-items-center gap-2">
+							<MemberShape {...member} size={56} />
+							<span>{member.name}</span>
+							<span>{vi.common.pendingValue}</span>
+						</div>
+					))}
+				</div>
+			)}
+
 			{state.selected.map((member) => (
 				<SplitMemberRow
 					key={member.id}

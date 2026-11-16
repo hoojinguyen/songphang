@@ -16,6 +16,7 @@ export type ReaderContext = {
 	tokens: Token[];
 	members: QuickEntryMember[];
 	writerMemberId: string | null;
+	memberChoices: Readonly<Record<number, string>>;
 	used: Set<number>;
 	spans: import("./tokens.ts").Span[];
 	issues: Issue[];
@@ -28,9 +29,15 @@ export function readName(context: ReaderContext, start: number): NameResult {
 	const pronoun =
 		["toi", "to"].includes(first.value) ||
 		first.raw.toLocaleLowerCase("vi") === "mình";
+	const pronounChoice = context.memberChoices[first.start];
+	const pronounWriter =
+		writer ??
+		(context.members.some((m) => m.id === pronounChoice)
+			? pronounChoice
+			: null);
 	if (pronoun)
-		return writer
-			? { memberId: writer, candidates: [writer], length: 1 }
+		return pronounWriter
+			? { memberId: pronounWriter, candidates: [pronounWriter], length: 1 }
 			: {
 					memberId: null,
 					candidates: context.members.map((m) => m.id),
@@ -65,6 +72,9 @@ export function readName(context: ReaderContext, start: number): NameResult {
 	const candidates = context.members
 		.filter((member) => ids.has(member.id))
 		.map((member) => member.id);
+	const chosen = context.memberChoices[first.start];
+	if (chosen && candidates.includes(chosen))
+		return { memberId: chosen, candidates: [chosen], length: longest };
 	return {
 		memberId: candidates.length === 1 ? (candidates[0] ?? null) : null,
 		candidates,

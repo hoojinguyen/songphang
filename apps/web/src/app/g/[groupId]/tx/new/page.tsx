@@ -74,6 +74,7 @@ export default function NewExpensePage() {
 				<VerifyEmailBanner />
 			) : !search.has("form") ? (
 				<ComposeScreen
+					writerMemberId={group.data.myMemberId}
 					groupId={groupId}
 					groupName={group.data.name}
 					members={members.data}

@@ -38,7 +38,9 @@ export function ConfirmationCard({
 			<p className="text-[13px] font-semibold text-muted">
 				{vi.compose.understood}
 			</p>
-			<h2 className="text-lg font-extrabold">{draft.description}</h2>
+			{draft.description && (
+				<h2 className="text-lg font-extrabold">{draft.description}</h2>
+			)}
 			{draft.amount !== null && (
 				<p className="break-words text-[60px] font-black leading-tight">
 					<mark className="rounded-xl bg-phrase-amount">
@@ -103,6 +105,7 @@ export function ConfirmationCard({
 					variant="surface"
 					size="lg"
 					onClick={onEdit}
+					style={{ height: 60 }}
 					className="flex-1 bg-bg"
 				>
 					{vi.compose.edit}
@@ -112,6 +115,7 @@ export function ConfirmationCard({
 					size="lg"
 					onClick={onSave}
 					disabled={disabled}
+					style={{ height: 60 }}
 					className="flex-[1.6] text-[17px] font-black"
 				>
 					{saveLabel ?? vi.compose.save}

@@ -21,7 +21,7 @@ export function FeaturedGroupCard({ group }: { group: GroupSummaryDto }) {
 				))}
 			</div>
 			<h2 className="break-words text-xl font-extrabold">{group.name}</h2>
-			<p className="text-[52px] font-black tracking-tight">
+			<p className="break-words text-[52px] font-black tracking-tight">
 				{formatSignedAmount(group.myBalance)}
 			</p>
 			<p className="text-sm font-semibold">{caption}</p>

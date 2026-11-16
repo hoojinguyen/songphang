@@ -196,3 +196,21 @@ Problem: native buttons, shared controls and mutations must agree on offline sta
 Options: duplicate online checks at every handler and interpolate money in web; share a connection store/control wrappers and call the existing core allocator for display frames.
 Choice: OnlineButton/OnlineLink plus the existing Button guard all write controls; the API client rejects offline writes and mutations use networkMode always with retries off, so nothing is queued. Browser online events and a five-second local health probe recover the shared state. Web links to the existing core workspace package for integer-only display interpolation through allocateByWeights; official targets still come only from API responses.
 Reason: one connectivity state, no persisted data, no external service/library. Offline install reused the workspace package with downloaded 0/added 0; lockfile contains only its local link.
+
+## D31 — Final non-functional findings
+Problem: the 52px featured-group balance overflowed at 360px with 37.575.000; custom controls lacked the required uniform focus outline; the textarea's visual marks were hidden from assistive technology. Oversized descriptions and an unsafe-integer “chia” count could also produce an unsaveable ok draft or an invalid response.
+Options: reduce type sizes/relax boundaries; preserve sizes and refuse unsupported input while repairing wrapping/focus/accessible descriptions.
+Choice: wrap large balance text, allow compact group cards to wrap, apply the 2px ink/2px-offset focus rule, expose a polite screen-reader-only marked sentence, and refuse over-200-character descriptions or non-safe counts as TEXT_NOT_UNDERSTOOD. Pending/stale share previews now show the existing pending marker instead of invented zero amounts. Card action heights are corrected to the specified 60px.
+Reason: repairs observed/reproduced failures without changing money rules, approved sample results or product wording.
+
+## D32 — Explicit identity choices for identical names
+Problem: reparsing a chosen full name cannot resolve two members whose full names are identical. The allowed duplicate names reproduced this limitation.
+Options: forbid duplicate names (new product restriction); apply the user's chosen member id directly while retaining the same grammar and server preview.
+Choice: add optional in-memory memberChoices to the pure core reader, keyed by the original issue offset. Choices are accepted only among that issue's candidates; no API request contract changes. The web invokes the same reader with explicit choices, then requests the existing server preview before saving. API parsing without choices is unchanged.
+Reason: handles identical full names, unlinked writers and sequential ambiguities without guessing or reparsing a different sentence. All official displayed shares still come from the API. Core 75-sample comparison remained unchanged; duplicate-name UI choice saved the second Minh and gave the writer a -60000 balance.
+
+## D33 — Atomic final task record
+Problem: a commit cannot contain its own hash, while the final task must leave one commit and a committed completion checkbox without rewriting history.
+Options: leave the final tick/hash uncommitted; add a second task commit; store a uniquely resolvable commit reference in the atomic final commit.
+Choice: commit the final tick and report together, identify that commit by the exact subject `docs(run): complete phase 1 run records`, and report its actual hash to the owner after commit. Resolve it with `git log -1 --format=%h --grep='^docs(run): complete phase 1 run records$'`.
+Reason: leaves the branch/run records complete in one final task commit, without amend, history rewriting or an extra task commit.

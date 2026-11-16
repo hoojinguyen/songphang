@@ -5,7 +5,12 @@ export function readPayers(context: ReaderContext): {
 	explicit: boolean;
 } {
 	let explicit = false;
-	let payerMemberId = context.writerMemberId;
+	const defaultChoice = context.memberChoices[0];
+	let payerMemberId =
+		context.writerMemberId ??
+		(context.members.some((m) => m.id === defaultChoice)
+			? (defaultChoice ?? null)
+			: null);
 	for (let index = 0; index < context.tokens.length; index++) {
 		if (context.used.has(index) || context.tokens[index]?.kind !== "word")
 			continue;
@@ -96,6 +101,16 @@ export function readEqual(
 		if (next && /^\d+$/.test(next.value)) {
 			const count = Number(next.value);
 			consume(context, index, index + 2, "equal");
+			if (!Number.isSafeInteger(count)) {
+				split = null;
+				context.issues.push({
+					code: "TEXT_NOT_UNDERSTOOD",
+					start: start.start,
+					end: next.end,
+					candidates: [],
+				});
+				continue;
+			}
 			if (count !== all.length) {
 				split = null;
 				context.issues.push({

@@ -1,217 +1,133 @@
 # Phase 1 — manual checks for the project owner
 
-Written by the implementation agent from the "Manual checks for the project owner" blocks of the plan, reorganized by screen (S1–S13) and then by flow (A–H). Each line: what to do, where, and what must be true. Invalid cases are included.
+These are owner checks, not claims of verification. Use disposable local data and two independent browser profiles or phones. Evidence actually collected by the agent is in progress.md; decisions.md lists deviations for advisor review.
 
 ## Before you start
 
-## Screens
+1. Run `pnpm dev`, then open `http://localhost:3000`. Use Đăng nhập thử for seeded users or register an example.test account. Read verification/reset mail only in the API console; keep links/passwords out of reports and Git.
+2. Run `pnpm check`, `pnpm build`, `pnpm db:migrate` and `pnpm db:check-balances`. Migrations are repeatable; balance checking prints one balanced line per group and `All groups balanced`, or `No groups` on a clean database.
+3. Inspect database tables with `docker compose exec db psql -U songphang -d songphang -c '\dt'`; ledger, identity and auth-token tables must exist. In a disposable transaction, try a 300000 expense with payer 300000 and shares 150000+140000: commit must fail its integrity constraint. A cross-group participant must also be refused.
+4. From the root, run `node --input-type=module -e 'import {splitEqually} from "./packages/core/src/index.ts"; console.log(splitEqually(100000,["a","b","c"]))'`: 33334/33333/33333. Invalid zero total/empty participants throws RangeError. Pick three rows from each 1C.1 arithmetic table and compare exactly; largest remainders go to lower position on ties.
+5. Repeat the screen checks below at 360×640 and with keyboard only. Every product control has a name, visible 2px ink focus with 2px offset, and sensible Tab order. Dialogs focus cancel, trap Tab, close with Escape and return focus to the opener. With a real screen reader, verify member names/selected states, phrase kinds and status/alert announcements.
+6. With a group open, load stream, balances, members and history, then turn on airplane mode: cached data remains readable, write controls are disabled with `Cần có mạng để lưu.`, entry bar says `Có mạng lại là gõ tiếp được`, and nothing is queued. Restore network or stop/restart only the API: banner leaves, queries and events recover without reload. Judge shape resizing, row entrance, settlement collapse and balance count; reduced motion makes all instant. Check the primary action with a real software keyboard.
 
-## Flows
+## Screens S1–S13
+
+### S1 — Sign-in and account-entry screens
+
+1. Compare /login with GE7: approved shapes/headline and email/password form, with the obsolete no-password claim absent. Sign in from a protected URL: return to that internal URL; `next=//evil.example` never leaves the app.
+2. On /register, try a nine-character password and password123: exact approved weak-password messages. New and existing emails both produce the same 204/no-session result and generic confirmation. Uppercase email is treated consistently.
+3. Open the console verification link: success; reused/invalid/expired token: recovery copy. An unverified account sees the banner and cannot create/join/write. Repeated resend and login attempts produce rate-limit copy and Retry-After (sixth login for one email; fourth resend per hour).
+4. Unknown email and wrong-password login have identical INVALID_CREDENTIALS responses; known/unknown forgot-password submissions have identical generic results. Reset with a weak password leaves the token usable; successful reset revokes all old sessions, and replay is refused. Read every sentence on login/register/verify/forgot/reset for wording.
+
+### S2 — Group list
+
+1. Compare GE1: newest group is the large yellow card, others compact; four preview shapes and correct signed balance. Large balances and long names wrap without horizontal scrolling. Tap your own shape: account screen.
+2. In an unrelated profile, private groups are absent. Group creation/removal notices appear once; reload preserves ledger/session.
+
+### S3 — New group
+
+1. Compare GE8. Name a group and add Lan/Hùng/Thu: four shapes and `Tạo nhóm 4 người`. Enter/Tab works; blank/whitespace names add nothing; blank group name disables create; double-tap creates one group.
+2. Fail a save by stopping the API: all values remain. Restart and retry: one group. At 100 members, adding another is refused with the limit message.
+
+### S4 — Group stream
+
+1. Compare GE2 and empty GE14: approved title/hint and three marked sample buttons; a sample opens compose filled. Expense bubbles show the payer, original description/total and API shares; income/transfers are centered pills. Edited records have `đã sửa`.
+2. Check day separators and chronological order. Scroll up through several pages: no duplicates or position jump. A remote insert more than one screen below leaves position unchanged and shows `Có khoản mới`; tap to reach the newest row.
+3. Yellow balance and `Ai nợ ai?` open balances; `Nhập tay` opens the form. Viewer gets `Chỉ xem`, no entry/edit controls. An outsider/malformed group address shows not found; uncached network failure has retry, not a login redirect.
+
+### S5 — Balances and settlements
+
+1. Compare GE5/GE13: your transfers first, correct amounts and inactive-member badges. Sum signed balances: 0. Turn gộp nợ off: same balances, pairwise transfers; turn on: fewer transfers. A remote expense updates bars/cards live.
+2. Compare GE18 after full settlement: all balances 0, no suggestions, recorded count and recent entries correct. Empty ledger says `Chưa có gì để tính`. No reminder/confirmation features appear.
+
+### S6 — History
+
+1. Compare GE10: newest first, day separators, actors/member shapes, time and infinite older pages. Read every sentence type once, including join/leave/removal/roles/ownership/member choice and invite/settings changes. Deleted actors become `Ai đó`.
+2. Change Vé from 600000 to 800000: 600.000 struck through, 800.000 highlighted; multi-field changes have labelled payer/share/description chips reflecting stored values. API limit=2 pagination visits every entry once.
+3. Restore a deleted transaction after the undo period: row and balances return, `Đã khôi phục.` appears, restore controls disappear. Viewer sees history with no restore buttons. A second window sees history changes without reload; outsider gets 404.
+
+### S7 — Sentence compose
+
+1. Compare GE3. Type A01/A23/A36/A43 from docs/08-quick-entry-samples.md: exact totals, payer, split and rounding. A36 gives 120000/100000/80000 and excludes Thu; its four marks cover exactly the documented phrases. A43 gives 33334/33333/33333.
+2. Type slowly with accents/double spaces and paste a line break: NFC text and marks stay aligned, newline becomes space. Enter parses immediately; Shift+Enter adds nothing. No transaction exists until Lưu; double-tap Lưu creates one. Save failure keeps sentence/choices.
+3. Compare GE15 for A46: two choices leave save disabled, exactly three show 60000 each and enable it; a fourth cannot be chosen. B02 asks `minh nào?`; explicit Minh Đức is the saved payer. Identical full names remain selectable by shape; no linked writer asks who paid. Several ambiguities are answered sequentially.
+4. A48 requires a description. Chỉnh tay carries every understood field, including original exact inputs/remainder. Nhập tay stays one tap away. Query refresh and back navigation retain the sentence in the open tab; no draft is persisted across a full reload.
+
+### S8 — Manual create/edit and split editor
+
+1. Compare GE19/GE4/GE16: seven categories, labelled amounts, active participants, four split modes. New expense defaults to you/all active people; switching expense/income/transfer retains amount/description/date. In edit, type is fixed and unchanged save disabled.
+2. Enter 300000 with exact 80000/60000/40000 and explicitly spread remainder: 120000/100000/80000. A 300000 total with exact 150000 and two blanks yields 150000/75000/75000. Reopen editor: original values, blanks and choice survive; remove/add participants as specified.
+3. Weight 1.5/1/1 on 100 gives 43/29/28. Percent 50/30/20 on 99999 gives 49999/30000/20000. Over-summed exact parts, 99% total, mismatched payers, missing transfer receiver, empty description/no sharers or out-of-range amount cannot save. Pending preview never invents zeros.
+4. A53 opens the banner/editor with 80000/60000/40000, the approved 120000 shortage sentence/status and lilac resolution action. A50/A55/A57/A59 show their specific issue lines; return to compose retains the original sentence. Pick ten sample rows including three refused cases, then five personal sentences; record read/asked/refused judgments for the advisor.
+5. Reopen exact-with-blanks/remainder, weights, percent, two-payer, income and transfer records: original inputs, not final shares. Use a past date: row goes under that day. Change and save: row updates in place. Delete: six-second snackbar; Hoàn tác restores original position. Later recovery is in S6.
+
+### S9 — Recording a settlement
+
+1. Compare GE12. Suggested sender/receiver/amount are prefilled; record a full payment and a partial one: only unpaid debt remains. Date chips and another date work; no Nhắc/Xác nhận controls.
+2. Double-tap Ghi nhận: one transfer. Empty amount disables save; made-up/self/outside-member parameters return safely to balances. Failure retains values for retry.
+
+### S10 — Members and invitations
+
+1. Compare GE9. Add/rename: names update everywhere, shape/color/position stay. Unused member deletes; a member with transactions cannot. Blank name cannot save; default weight 1.5 is stored 1.50, negative/invalid weight refused.
+2. Deactivate a debtor: warning; Thôi keeps active, Vẫn ngừng excludes from new splits while retaining old rows/balance. Reactivate restores selection. Deleting a claimed unused member unlinks its user; that user sees the choose-shape prompt.
+3. Invite card copies the exact link and offers sharing/QR. Check clipboard copy, real native share delivery and phone camera scan (same join URL). Lịch sử is beside Cài đặt nhóm; settings is owner-only.
+
+### S11 — Group settings
+
+1. Compare GE11. Name, gộp nợ, default role, link toggle/rotation, ownership and delete rows are present. Empty name cannot save; failed toggle restores old state. Ownership transfer moves settings access and leaves the old owner an editor.
+2. Delete a disposable group: wrong/case-changed/empty/trailing-space name does not confirm; exact name enables. Delete returns owner to list with `Đã xoá nhóm.`; watching members receive removed message, all later group reads 404, dependent rows are gone and other groups unchanged.
+
+### S12 — Join
+
+1. Compare GE6. Open a valid invitation in an independent signed-in profile: group/owner and available shapes, claimed shapes disabled, selected balance shown before claiming. Choose your shape: join and land in stream. Alternatively create a new member; repeat join is harmless.
+2. Two people claim the same shape: one succeeds, the other gets the claimed-meanwhile message and can choose again. Already joined opens the group; signed-out sign-in returns to this link. Disabled/rotated/unknown link shows the approved invalid-link screen. Check valid and invalid layouts at 360×640.
+
+### S13 — Account
+
+1. Password accounts show current/new password and revoke-other-sessions checkbox; Google-only/dev accounts hide that card. Wrong current password shows the approved warning. Successful change with the box checked keeps the current session and signs out the other profile.
+2. Wrong confirmation email disables deletion; an owner sees the number of groups to transfer/delete first. Non-owner account deletion clears session; member names, balances and authored transactions remain, author becomes null. Sign out returns to login.
+
+## Flows A–H
+
+### A — Create and invite
+
+1. Use S1→S3→S4→S10 on two phones from registration through invitation, then a shared expense. Repeat the create request with the same Idempotency-Key/body: same id; changed body/key reuse: 409. No account-enumeration difference is visible.
+
+### B — Join, isolation and permissions
+
+1. Exercise S12's claim/new-member paths, then run every existing group endpoint as owner/editor/viewer/outsider/signed-out using the overview matrix: appropriate 2xx/403/404/401, owner leave 422. Malformed/random/outside ids have identical normalized 404 bodies except requestId. Foreign-group members never enter a ledger.
+
+### C — Equal-entry trip
+
+1. Record cable 800000 paid Minh/four, hotpot 300000 paid Lan/Minh,Lan,Hùng, coffee 100000 paid Minh/three: balances 566666/-33333/-333333/-200000. Minimized: 333333,200000,33333 to Minh. Pairwise: Lan→Minh 133333, Hùng→Minh 233333, Hùng→Lan 100000, Thu→Minh 200000.
+2. Record a simple coffee in three interactions after opening the manual form. Follow transaction cursors: no repeats. Amount 0/fraction, empty payer/share sets and malformed requests are refused.
+
+### D — Unequal-entry trip
+
+1. Record 1C T1–T4: balances 500001/-120000/-170001/-210000. T5 Thu→Minh 210000 leaves 290001/-120000/-170001/0. T3 alone: Lan owes the other three 50000 each.
+2. Enter a remembered restaurant bill with personal/shared dishes through the UI and compare each amount with your own arithmetic. API split/payer total mismatch, precision and self-transfer cases are refused without changing the ledger.
+
+### E — Reader refusal
+
+1. Send all 75 samples to the parse endpoint: documented statuses/drafts/shares; parsing changes no transaction count. Save returned drafts and compare stored shares. Empty/301 characters: 400; viewer: 403; outsider: 404; request 121/minute: 429. Oversized descriptions/unsafe counts are refused without 500.
+
+### F — Settle
+
+1. Settle all suggestions from the trip, including one partial payment, on two phones. Every balance becomes 0 and transfers is empty. Finish with `pnpm db:check-balances`: `All groups balanced`.
+
+### G — Concurrent correction
+
+1. Open the same record in two profiles. First save succeeds; second retains local work with the exact conflict notice, current version and reload action. Explicitly load the latest version, then edit successfully. Two simultaneous same-version API writes yield one 200 and one 409.
+2. An identical edit changes neither version nor history. Wrong split total/type rolls back. Deleted details remain readable but repeated delete/edit is 404; restore works once, then 404. Check balances after each state change.
+
+### H — Membership changes
+
+1. Add remotely: other profile updates without reload. Change a joined user to viewer: controls disappear; remove: group closes with removal message while member ledger remains. Reconnect after network loss: missed changes appear. Owner cannot leave or be removed/demoted; transfer before leaving.
+2. Delete a non-owning account with linked/paid transactions: identity/session disappears while name and financial records remain. If the deleted group was the account's only owned group, account deletion now succeeds.
 
 ## After the Google OAuth app exists
 
-
-## Core money functions (1A.1)
-1. From the repository root run `node --input-type=module -e 'import {splitEqually} from "./packages/core/src/index.ts"; console.log(splitEqually(100000,["a","b","c"]))'` → amounts 33334,33333,33333, summing to 100000.
-2. Call `netPairwiseDebts` with b→a 90 and c→b 90, order a,b,c → two transfers; call `suggestMinimizedSettlements` with a +90,b 0,c −90 → one c→a 90.
-3. Call `splitEqually(0,["a"])` or `splitEqually(1000,[])` → RangeError, no amounts.
-
-## Database integrity (1A.2)
-1. Run `pnpm db:migrate` → no error. Run `docker compose exec db psql -U songphang -c "\dt"` → ten tables.
-2. Run `pnpm db:check-balances` → `No groups` or one balanced line per group, exit 0.
-3. In one SQL transaction create an expense of 300000 with a payer of 300000 and shares of 150000 + 140000 → COMMIT is refused with `transaction shares total differs from amount`.
-
-## Groups API and access (1A.3)
-1. Sign in through the development login as Minh, then POST `/api/v1/groups` with name `Đà Lạt 12/2026`, memberNames `Lan`, `Hùng`, `Thu`, and an Idempotency-Key → 201 owner group. GET `/api/v1/groups` → four preview members.
-2. Sign in as Lan in a private window and open `http://localhost:4000/api/v1/groups` → empty list.
-3. As Lan open Minh's `/api/v1/groups/<groupId>` → NOT_FOUND, identical to a made-up UUID except requestId.
-4. Repeat the same POST body/key twice → same group id. Change the name but keep the key → 409 IDEMPOTENCY_KEY_REUSED.
-
-## Members API (1A.4)
-1. As Minh open `http://localhost:4000/api/v1/groups/<groupId>/members` → ordered members, each with shape/color, isMe only for Minh.
-2. POST a name with surrounding spaces using a new Idempotency-Key → trimmed name, last position and first unused appearance.
-3. PATCH Lan's name → name changes, shape/color/position unchanged. PATCH defaultWeight `1.5` → `1.50`; negative weight, empty name or empty PATCH → 400.
-4. As Lan open Minh's members URL → NOT_FOUND. Delete a member of another group through Minh's group URL → NOT_FOUND.
-
-## Expense API (1A.5)
-1. Create 100000 paid by Minh, split Minh/Lan/Hùng → shares 33334/33333/33333, version 1. Reverse the submitted member order → same amounts by position.
-2. Open `http://localhost:4000/api/v1/groups/<groupId>/transactions` → newest first with payers/shares. Follow nextCursor → no duplicate IDs.
-3. Run `pnpm db:check-balances` → All groups balanced.
-4. Repeat the create with one Idempotency-Key → same ID, stored once. Change amount with the same key → 409. Amount 0/fraction, no sharers or blank description → 400.
-
-## Balances API (1A.6)
-1. Create four people; record Minh 800000 split four, then Lan 300000 split Minh/Lan/Hùng → balances +500000,0,-300000,-200000; Hùng→Minh 300000 and Thu→Minh 200000.
-2. PATCH minimizeDebts false → unchanged balances; four pairwise transfers: Lan→Minh 100000, Hùng→Minh 200000, Hùng→Lan 100000, Thu→Minh 200000.
-3. Deactivate Thu → her -200000 remains; sum all balances → 0. As outsider GET balances → 404; without session → 401.
-
-## S2 — Group list (1A.7)
-1. As Minh create `Đà Lạt 12/2026` with Lan, Hùng, Thu → large yellow card with four shapes and 0; compare with GE1. Create a second group → newest large card, first compact.
-2. As Lan in a private window → no groups belonging to Minh.
-
-## S3 — New group (1A.7)
-1. Tap `Tạo nhóm`, name `Đà Lạt 12/2026`, add Lan/Hùng/Thu → compare with GE8, four shapes and `Tạo nhóm 4 người`.
-2. Empty group name → disabled create; Enter with spaces in `Tên người mới` → adds nothing.
-3. Use Tab/Enter to add a person and create → works; double-tap create → one group.
-4. Stop API and submit → save error, all form values retained. Restart and retry → one group.
-
-## S4 — Group and expense stream (1A.8)
-1. Open an empty group → compare GE14, without sentence samples/invite link; four shapes and `Ghi khoản chi đầu tiên`.
-2. Record Minh 800000/four and Lan 300000/Minh,Lan,Hùng → compare GE17; Minh right/black with four 200 chips, Lan left with `phần bạn 100.000`; official block 500.000 đ.
-3. Check one separator per day and newest expense just above bottom bar. With 120 expenses scroll up twice → no duplicate expense, visible row does not jump.
-4. Tap yellow block or `Ai nợ ai?` → balances URL. Tap `Nhập tay` → new expense URL.
-5. As Lan open Minh's private group or malformed ID → `Không tìm thấy nhóm này.`. Stop API/reload → retry error, no login redirect.
-
-## S8 — Manual expense form (1A.9)
-1. Open Nhập tay → compare GE19 without type/split switches; all seven categories. Amount is focused, you pay, all active people share.
-2. Enter 180000, Cà phê, save → new expense; four-person payer balance rises by 135000.
-3. Enter 100000 for three → 33334/33333/33333; save and run balance check → balanced. Double-tap save → one expense.
-4. Tab through fields and shapes; Space/Enter operates controls. Screen reader reads person names and selected states.
-5. Blank description/no sharers → disabled save, correct hint. Try letters and an over-limit amount → only allowed digits remain.
-6. Choose a date last week using native controls → expense is under that day. Stop API/save → error, values retained; restart/retry → one expense.
-
-## S5 — Balances and settlements (1A.10)
-1. Tap group balance → compare GE5 without settlement/reminder buttons. Cable 800000/four plus Lan 300000/three → two transfers 300000 and 200000 to Minh.
-2. Add signed bar values → 0. Turn Gộp nợ off → four transfers, same balances; viewer-involving cards first.
-3. Add expense in another tab, reload → bars/cards agree with group balance. Deactivate someone with debt → debt remains with inactive label.
-4. Open group with only a self-paid/self-shared expense → compare yellow all-settled card GE18. No expenses → `Chưa có gì để tính`. As outsider → group-not-found.
-
-## S10 — Members (1A.11)
-1. Compare GE9 without invite/claim/other-role/history controls. Add/rename an unused person → correct preview, stream/list names update; delete unused person → disappears.
-2. Delete Hùng with expenses → correct cannot-delete error. Deactivate with nonzero balance → warning; Thôi keeps active, Vẫn ngừng hides him in new form but retains old rows/balance. Reactivate → back in form.
-3. Your own row only edits name. Blank name → save disabled; add row at 100 members → limit message.
-
-## S11 — Group settings (1A.11)
-1. Compare name field and Gộp nợ row with GE11; no later-phase rows. Rename → group header/list update; empty name cannot save.
-2. Flip Gộp nợ and view balances → transfer count changes, each balance unchanged. Stop API and toggle → error and previous switch state restored.
-3. Tab/Space on switch → name Gộp nợ and correct on/off state announced by screen reader.
-
-## Stage 1A acceptance
-1. On a phone-size window create Đà Lạt 12/2026 with Minh/Lan/Hùng/Thu; record cable 800000 Minh/four, hotpot 300000 Lan/first three, coffee 100000 Minh/first three → balances +566666/-33333/-333333/-200000. Gộp nợ on → transfers 333333,200000,33333 to Minh; off → Lan→Minh 133333, Hùng→Minh 233333, Hùng→Lan 100000, Thu→Minh 200000.
-2. Record coffee in three interactions after opening the form. Reload any screen → ledger/session retained.
-3. Walk S2→S3→S4→S8→S5→S10→S11 with keyboard only.
-
-## Account API (1B.2)
-1. Register a fresh example.test email with a strong password → empty 204, no session. Use verification link from API console → verified account.
-2. Register the same email again or uppercase → same empty 204 and no cookie. Unknown email/wrong-password login → identical INVALID_CREDENTIALS.
-3. Before verification POST /groups → EMAIL_NOT_VERIFIED; after verification → succeeds. Reuse verification token → TOKEN_INVALID.
-4. Six login attempts for one email → sixth RATE_LIMITED with Retry-After. Fourth resend within one hour → RATE_LIMITED.
-
-## Password recovery and deletion API (1B.3)
-1. Request reset and use console link token → new password works and all old browser sessions get 401. Weak new password → token remains usable; replay → TOKEN_INVALID.
-2. Change with revokeOtherSessions true while signed in twice → current session remains, other session gets 401. Wrong current password → INVALID_CREDENTIALS.
-3. Delete with wrong email → 400; own one group → OWNER_REQUIRED/groupCount 1; non-owner account → 204, cleared cookie and next request 401. After 1B.7, confirm member/transactions remain after deleting a joined account.
-
-## After the Google OAuth app exists — 1B.4
-1. Create an OAuth client of type Web application with exact redirect URI `http://localhost:3000/api/v1/auth/google/callback`; put client ID/secret in local .env and restart.
-2. First real Google sign-in → verified account/identity; a matching verified password email → same account with Google identity.
-3. Matching unverified password email → google_unverified, no link; known Google subject → same user.
-4. Check next/redirect rejects external addresses; full round-trip and real mail remain unverified in this run. The built-in adapter replacing unavailable arctic needs advisor review before this check.
-
-## Authentication screens — 1B.5
-1. Compare /login with GE7: same shapes and headline, smaller, with the form beneath; the line about not needing a password is gone.
-2. Register, open the console verification link, and sign in; sign in from a protected group URL and confirm return to that URL.
-3. Register with a nine-character password and with password123 → the two messages of spec 9.2.
-4. Read every sentence on the five screens for tone and spelling.
-5. Try an invalid token, wrong password repeatedly, and //evil.example as next → recovery copy, rate limit, and internal landing respectively.
-
-## Account — 1B.6
-1. Tap your shape on the group list → the account screen, not an immediate sign-out.
-2. Change your password with the box ticked while signed in on a second browser → the second browser is signed out on its next action.
-3. Try to delete an account that owns a group → the message names how many groups.
-4. Enter a wrong current password → the specified warning; use a wrong confirmation email → deletion stays disabled.
-
-## Joining and invitation card — 1B.10
-1. Compare /join/<token> with GE6 and the yellow card on the members screen with GE9.
-2. As Minh copy the link; in a private window sign in as Lan, open it, pick Lan's shape → Lan lands in the group.
-3. In a third window sign in as Hùng and open the link → Lan's shape is greyed with “đã có người nhận”.
-4. Open a link after Minh has disabled it → “Link mời này không còn dùng được”.
-5. Scan the QR using a phone camera → the same localhost join URL. Check the balance sentence before claiming a shape.
-
-## Roles and realtime — 1B.11
-1. With two windows side by side, add an expense as Minh → Lan sees it and updated balance without reload; change Lan to viewer → entry bar becomes Chỉ xem; remove Lan → list and removal message.
-2. Compare settings with GE11: every row is there except Xoá nhóm (stage 1E).
-3. As a Chỉ xem person try every screen → nothing lets you add or change; direct transaction form shows the permission message.
-4. Turn Wi-Fi off and on with a group open → after reconnecting a change from the other window appears.
-5. Check dialogs: cancel initially focused, Tab stays inside, Escape cancels, opener regains focus. Transfer ownership → settings access moves to the new owner.
-
-## Stage 1B
-1. With two phones or browser profiles, go through flow A and flow B from sign-up to both people seeing the same new expense.
-2. Confirm sign-in, registration and forgot-password screens do not disclose whether an email already has an account.
-
-## Split arithmetic — 1C.1
-1. Run three rows of your choice from each task table → outputs match and each row adds up to its amount.
-
-## Transaction types and splits — 1C.2
-1. Run T1–T4 and read balances → 500001, -120000, -170001, -210000, summing to 0.
-2. Run T3 alone in a new group → Lan owes each of the other three 50.000 đ.
-
-## Transaction form — 1C.3
-1. Compare the header switch with GE19.
-2. Record a hotel bill paid 800.000 by Minh and 400.000 by Lan → both payers, status Khớp 1.200.000 đ.
-3. Record a refund received by Lan → Lan now owes the others on balances.
-4. Enter mismatched payer totals or omit a transfer receiver → saving disabled. Switch types → amount, description and date stay.
-
-## Split editor — 1C.4
-1. Compare with GE4/GE16: tabs with Số tiền, rows, status bar and lilac button.
-2. Enter 300000 and private amounts 80000/60000/40000, spread remainder → 120000/100000/80000. Enter 150000 with two blanks → 150000/75000/75000.
-3. Try a 320000 split on 300000 or percent total 99 → save disabled; correct the total → save enabled.
-4. Close/reopen and remove/add participants → state remains as specified; every field is labelled with the member name.
-
-## Settlement recording — 1C.5
-1. Compare GE5, GE13 and GE12; no Nhắc or Xác nhận buttons.
-2. Settle a suggested transfer in full and one in part → remaining suggestion is the unpaid part.
-3. After settling everything, compare with GE18 and inspect the recorded list.
-4. Double-tap Ghi nhận → one transfer. Empty amount disables saving; made-up member URL returns to balances.
-
-## Stage 1C
-1. Record a real restaurant bill you remember, with personal items and shared dishes, entirely through the screens; compare every person's amount with your arithmetic.
-
-### 1D.1 — Sentence reader
-1. Run ten rows from docs/08-quick-entry-samples.md through readSentence, including three refused rows; compare status, draft and computed shares with the document.
-
-### 1D.2 — Parse endpoint
-1. Send the 75 documented samples to the parse endpoint as editor; compare draft and shares, then save a draft and compare stored shares.
-2. Send empty/301-character text: 400. Viewer: 403; outsider: 404. Parsing must never add a transaction.
-
-### 1D.3 — Compose (S5)
-1. Compare compose with GE3 and an empty group with GE14; tap each sample and check it opens filled.
-2. Type A01, A23, A36, A43; compare the card, save and compare stored amounts. Double-tap Lưu: one expense.
-3. Type A36; marks cover amount, payer, exact parts, remainder; shares 120.000/100.000/80.000. Chỉnh tay preserves 80.000/60.000/40.000 and the remainder choice.
-4. Type slowly with double spaces and paste a sentence containing a line break; accents and marks stay aligned. A viewer sees no entry box.
-5. With a screen reader, confirm marked phrases announce their kind. Judge reduced-motion and card collapse behavior.
-
-### 1D.4 — Clarification and hand-off
-1. A46: choose two then three; save only at three with 60.000 each. B02: choose Minh Đức; he is the saved payer. A48: add description before save.
-2. A53: compare GE16, banner, 80.000/60.000/40.000, shortage and lilac choice. A50/A55/A57/A59 show their exact issue sentences.
-3. Return to compose from the manual form: original sentence remains. Stop API during save: choices and sentence remain; retry after restart.
-4. Check database before Lưu: no transaction. Try five personal sentences and record read/asked/refused judgments for the advisor.
-5. Nhập tay is available in one tap, including after returning from an unparsed sentence.
-
-### 1E.1 — Safe transaction changes
-1. Create Vé 600000 for four, edit to 800000 at version 1: version 2, shares 200000 each. Repeat version 1: 409, current version 2.
-2. Wrong exact total/type: 400 and unchanged ledger. Identical content: unchanged version and history.
-3. Delete: gone from feed, detail still readable; repeated delete/edit deleted: 404. Restore: original position/balances; repeated restore: 404.
-4. Concurrent same-version edits: one success, one conflict. Viewer writes: 403, outsider: 404. Run pnpm db:check-balances after each.
-
-### 1E.2 — Activity API and deletion
-1. Read activity after edits: actors and before/after values match, newest first. Walk limit=2 pages: no duplicate or missing entries.
-2. Delete a transaction: its delete entries canRestore=true; restore: false. Outsider history: 404.
-3. Editor group delete: 403. Owner wrong/case-changed/empty/trailing-space names: 400. Exact name: 204, removed event, later reads 404, dependent rows zero, other groups unchanged.
-4. An account with no other owned group can now delete itself.
-
-### 1E.3 — Edit, conflict and undo (S5)
-1. Open original exact/blanks/remainder, weighted, percent, two-payer, income and transfer records: all typed inputs and fixed type preserved; unchanged save disabled.
-2. Two windows edit one record: save first, second retains local text with conflict notice; Xem bản mới loads it, then a new edit saves.
-3. Delete and tap Hoàn tác within six seconds: restored at original time; let snackbar expire: restore remains available in history.
-4. Viewer has no row links; direct edit URL shows forbidden. Missing/outside transaction shows not found. Run balance checker after edits.
-
-### 1E.4 — History (S6) and deletion (S11)
-1. Compare history with GE10; read every sentence type. Verify 600.000 struck through and 800.000 new, labelled chips for multi-field edits.
-2. Restore after undo expires: row returns, history updates, restore button disappears. Viewer sees history without restore controls; second window receives changes live.
-3. Delete a disposable group: empty/wrong/case-changed name disables confirm; exact name deletes, owner sees Đã xoá nhóm., watching member returns to groups with removed message.
-
-### 1E.5 — Offline and motion
-1. Compare offline screen with GE17. Open stream/balances/members/history, enable airplane mode: cached data remains readable; every write control disabled with reason; no queued writes on reconnect.
-2. Stop only API: same state after first failure. Restart: banner leaves, controls enable and changes made elsewhere appear without reload.
-3. Scroll up more than one screen; another person adds an expense: position stays and Có khoản mới appears; tap it to reach newest row.
-4. Judge shape resizing, new-row entrance, settlement collapse and balance count; enable reduced motion: all change instantly.
+1. Create the OAuth Web application with exact callback `http://localhost:3000/api/v1/auth/google/callback`; keep client id/secret in local .env and restart. Review D19's native adapter deviation before real use; Google was never contacted in this run.
+2. First sign-in creates a verified user/identity. A matching verified password email links the same account; a matching unverified password email shows the approved warning and is not linked. Known subject returns to the same user.
+3. Verify state/PKCE cookies, expiry, failure/cancel handling and internal-only redirects in the real round trip. Remove optional credentials: button hidden/routes 404. Real mail delivery, deployment, HTTPS and backup checks belong to the server step.
