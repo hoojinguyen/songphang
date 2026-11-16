@@ -1,8 +1,10 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import { streamSSE } from "hono/streaming";
 import type { AppDeps, AppEnv } from "../app.js";
+import { hasGroupSession } from "../auth/event-access.js";
 import { requireGroupRole } from "../auth/group-access.js";
 import { requireUser } from "../auth/middleware.js";
+import { hashSessionToken } from "../auth/sessions.js";
 
 const route = createRoute({
 	method: "get",
@@ -27,13 +29,31 @@ export function registerEventRoutes(app: OpenAPIHono<AppEnv>, deps: AppDeps) {
 				const disconnected = new Promise<void>((resolve) => {
 					finish = resolve;
 				});
+				const access = {
+					groupId: c.var.groupAccess.groupId,
+					token: c.var.sessionToken,
+				};
 				let pending = Promise.resolve();
 				const unsubscribe = deps.events.subscribe(
-					c.var.groupAccess.groupId,
-					c.var.user.id,
+					{
+						groupId: c.var.groupAccess.groupId,
+						userId: c.var.user.id,
+						tokenHash: hashSessionToken(c.var.sessionToken),
+					},
 					(event) => {
+						if (event.type === "revoked") {
+							finish();
+							return;
+						}
 						pending = pending
 							.then(async () => {
+								if (
+									event.type === "changed" &&
+									!(await hasGroupSession(deps, access))
+								) {
+									finish();
+									return;
+								}
 								await stream.writeSSE({
 									event: event.type,
 									data: JSON.stringify(
@@ -51,11 +71,16 @@ export function registerEventRoutes(app: OpenAPIHono<AppEnv>, deps: AppDeps) {
 				const timer = setInterval(() => {
 					pending = pending
 						.then(async () => {
+							if (!(await hasGroupSession(deps, access))) {
+								finish();
+								return;
+							}
 							await stream.write(": keep-alive\n\n");
 						})
 						.catch(() => finish());
 				}, 25_000);
 				try {
+					if (!(await hasGroupSession(deps, access))) return;
 					await stream.write(": connected\n\n");
 					await disconnected;
 					await pending;

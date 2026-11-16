@@ -214,3 +214,9 @@ Problem: a commit cannot contain its own hash, while the final task must leave o
 Options: leave the final tick/hash uncommitted; add a second task commit; store a uniquely resolvable commit reference in the atomic final commit.
 Choice: commit the final tick and report together, identify that commit by the exact subject `docs(run): complete phase 1 run records`, and report its actual hash to the owner after commit. Resolve it with `git log -1 --format=%h --grep='^docs(run): complete phase 1 run records$'`.
 Reason: leaves the branch/run records complete in one final task commit, without amend, history rewriting or an extra task commit.
+
+## D34 — Session-bound event subscriptions (review R3)
+Problem: a long-lived event subscription outlives its authentication middleware result.
+Options: periodic revalidation only; session-hash revocation plus delivery-time checks.
+Choice: hash-only subscription metadata, immediate post-commit session/user revocation, and session/group revalidation at connection, changed delivery and the existing 25-second keep-alive.
+Reason: no resource event is delivered using expired access; idle expiry closes by the next keep-alive. No raw token enters the hub or logs, no new public event type or external service. An internal revoked signal closes the stream without falsely announcing group removal.

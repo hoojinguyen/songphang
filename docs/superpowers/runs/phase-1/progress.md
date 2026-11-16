@@ -3021,3 +3021,13 @@ Approach:
 Result: pnpm check passed. Reproduced reset/account-lock race now: reset 204; overlapping old-password login 401; resulting old session /me 401. New password login 204 and /me 200; unknown account 401; wrong password 401. No credential/token was printed. Security review: items 1–6 checked; Argon2 dummy comparison retained, hash never logged, session insert shares the account lock and transaction. Entire diff reviewed: PASS. Not verified: physical multi-device UI. Out of scope: none.
 Manual checks: 1. Reset while an old-password login is pending → that login cannot create a surviving session. 2. Sign in with the new password → succeeds. 3. Wrong password/unknown email → identical invalid-credentials response.
 Commit reference: `fix(auth): serialize session issuance with password changes`.
+
+### R3 — event access revocation
+Approach:
+- Track only session hashes in the in-process hub; close matching streams after logout/reset/change/delete commits.
+- Recheck the validated session and membership before changed-event delivery, at connect, and before every keep-alive; close on failure or expiry.
+- Publish member/user/group invalidation to remaining groups after account deletion. Keep removed semantics for actual group removal, not logout.
+Result: pnpm check passed. HTTP stream exercise: logout 204/closed true; change password 204/other-session closed true/current-session remained open and received changed; reset 204/closed true; database-expired session closed before the next owner changed event; delete wrong email 400, correct email 204/closed true, /me 401. Revoked stream captures contain only `: connected`, no later group event. Remaining owner received users/members/group/activity invalidation and subsequent member change. Outsider SSE 404; unsigned 401.
+Security review: items 1–6 checked; hash-only hub metadata, validated session checks, post-commit revocation/publication, no extra public payload or secret output. Entire diff reviewed: PASS. Decision D34. Not verified: waiting for the idle expiry keep-alive boundary (delivery-time expiry exercised); physical UI. Out of scope: none.
+Manual checks: 1. Open a group on two sessions; change password with revoke others → only the other stream closes. 2. Logout/reset/delete the account → its stream cannot receive another group event. 3. Expire a session while idle → stream closes by its next 25-second keep-alive; reconnect returns 401.
+Commit reference: `fix(auth): revoke session-bound event subscriptions`.

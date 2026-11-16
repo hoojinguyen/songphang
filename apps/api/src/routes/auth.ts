@@ -5,6 +5,7 @@ import type { AppDeps, AppEnv } from "../app.js";
 import { requireSameOrigin, requireUser } from "../auth/middleware.js";
 import {
 	deleteSession,
+	hashSessionToken,
 	SESSION_COOKIE,
 	sessionCookieAttributes,
 } from "../auth/sessions.js";
@@ -36,6 +37,7 @@ export function registerAuthRoutes(
 		}),
 		async (context) => {
 			await deleteSession(deps.db, context.get("sessionToken"));
+			deps.events.revokeSession(hashSessionToken(context.var.sessionToken));
 			deleteCookie(
 				context,
 				SESSION_COOKIE,

@@ -11,6 +11,7 @@ import {
 	deleteUserSessions,
 	findAccountByEmail,
 	findAccountById,
+	listUserGroups,
 	lockAccount,
 	updatePasswordHash,
 	verifyAccountEmail,
@@ -46,7 +47,7 @@ export async function resetPassword(
 ): Promise<void> {
 	requireStrongPassword(request.password);
 	const passwordHash = await hashPassword(request.password);
-	await deps.db.transaction(async (transaction) => {
+	const userId = await deps.db.transaction(async (transaction) => {
 		const now = deps.now();
 		const userId = await consumeToken(transaction, {
 			token: request.token,
@@ -58,7 +59,9 @@ export async function resetPassword(
 		await updatePasswordHash(transaction, { userId, passwordHash });
 		await verifyAccountEmail(transaction, { userId, now });
 		await deleteUserSessions(transaction, { userId });
+		return userId;
 	});
+	deps.events.revokeUserSessions(userId);
 }
 export async function changePassword(
 	deps: AppDeps,
@@ -96,6 +99,11 @@ export async function changePassword(
 				keepTokenHash: hashSessionToken(input.sessionToken),
 			});
 	});
+	if (input.request.revokeOtherSessions)
+		deps.events.revokeUserSessions(
+			input.userId,
+			hashSessionToken(input.sessionToken),
+		);
 }
 export async function deleteAccount(
 	deps: AppDeps,
@@ -107,7 +115,7 @@ export async function deleteAccount(
 			"VALIDATION_FAILED",
 			"Email confirmation does not match",
 		);
-	await deps.db.transaction(async (transaction) => {
+	const groups = await deps.db.transaction(async (transaction) => {
 		await lockAccount(transaction, input.user.id);
 		const groupCount = await countOwnedGroups(transaction, input.user.id);
 		if (groupCount > 0)
@@ -117,6 +125,18 @@ export async function deleteAccount(
 				"Transfer or delete owned groups first",
 				{ groupCount },
 			);
+		const groups = await listUserGroups(transaction, input.user.id);
 		await deleteAccountRow(transaction, input.user.id);
+		return groups;
 	});
+	deps.events.revokeUserSessions(input.user.id);
+	for (const group of groups) {
+		deps.events.publishRemoved(group.id, input.user.id);
+		deps.events.publishChanged(group.id, [
+			"users",
+			"members",
+			"group",
+			"activity",
+		]);
+	}
 }

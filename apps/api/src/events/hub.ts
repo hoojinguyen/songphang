@@ -7,17 +7,42 @@ export type GroupResource =
 	| "activity";
 export type GroupEvent =
 	| { type: "changed"; resources: GroupResource[] }
-	| { type: "removed" };
-type Subscriber = { userId: string; listener: (event: GroupEvent) => void };
+	| { type: "removed" }
+	| { type: "revoked" };
+type Subscriber = {
+	userId: string;
+	tokenHash: string;
+	listener: (event: GroupEvent) => void;
+};
 export function createEventHub() {
 	const groups = new Map<string, Set<Subscriber>>();
+	const revoke = (matches: (subscriber: Subscriber) => boolean) => {
+		for (const [groupId, listeners] of groups) {
+			for (const subscriber of listeners)
+				if (matches(subscriber)) {
+					listeners.delete(subscriber);
+					subscriber.listener({ type: "revoked" });
+				}
+			if (listeners.size === 0) groups.delete(groupId);
+		}
+	};
 	return {
+		revokeSession(tokenHash: string) {
+			revoke((subscriber) => subscriber.tokenHash === tokenHash);
+		},
+		revokeUserSessions(userId: string, keepTokenHash?: string) {
+			revoke(
+				(subscriber) =>
+					subscriber.userId === userId &&
+					subscriber.tokenHash !== keepTokenHash,
+			);
+		},
 		subscribe(
-			groupId: string,
-			userId: string,
+			input: { groupId: string; userId: string; tokenHash: string },
 			listener: (event: GroupEvent) => void,
 		) {
-			const subscriber = { userId, listener };
+			const { groupId, userId, tokenHash } = input;
+			const subscriber = { userId, listener, tokenHash };
 			const listeners = groups.get(groupId) ?? new Set<Subscriber>();
 			groups.set(groupId, listeners);
 			listeners.add(subscriber);
