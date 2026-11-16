@@ -1,7 +1,10 @@
 import DesignSystem
 import Domain
-import PreviewSupport
 public import SwiftUI
+
+#if DEBUG
+  import PreviewSupport
+#endif
 
 public struct DebugGalleryView: View {
   public enum SectionTab: String, CaseIterable {
@@ -147,7 +150,15 @@ public struct DebugGalleryView: View {
           .font(Typography.sectionTitle)
           .foregroundStyle(Tokens.ink)
 
-        ForEach(PreviewSamples.sampleMoneyValues, id: \.self) { value in
+        #if DEBUG
+          let values = PreviewSamples.sampleMoneyValues
+        #else
+          let values: [Money] = [
+            Money(0), Money(1000), Money(150_000), Money(999_999_999_999),
+          ]
+        #endif
+
+        ForEach(values, id: \.self) { value in
           ViewThatFits(in: .horizontal) {
             HStack {
               MoneyText(value, style: .full, font: Typography.bodyBold)

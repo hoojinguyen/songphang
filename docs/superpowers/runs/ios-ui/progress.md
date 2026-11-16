@@ -7,7 +7,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] U.0 Baseline
 - [x] U.1 Project, package, domain basics, design system
 - [x] U.2 Strings
-- [ ] U.3 Domain, repository protocols, scripted fakes
+- [x] U.3 Domain, repository protocols, scripted fakes
 - [ ] U.4 Shell, debug panel, sign-in
 - [ ] U.5 Groups, members, invites, account
 - [ ] U.6 The group screen
@@ -104,6 +104,48 @@ For each task, under its heading: the approach note, the commit hash, the real o
   ```
 - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build` → `** BUILD SUCCEEDED **`
 - `xcrun swift-format lint --strict --recursive apps/ios` → no output (exit code 0)
+- **Commit:** `446961afbb3eb3c4c2f57b3e67f1d263ac52dd95`
+
+### U.3 Domain, repository protocols, scripted fakes
+
+**Approach:** Define all domain models (`User`, `ServerFeatures`, `ExpenseGroup`, `Member`, `GroupUser`, `Role`, `Invite`, `InvitePreview`, `LedgerTransaction`, `TransactionDraft`, `SharePreview`, `Balance`, `SuggestedTransfer`, `GroupBalances`, `ActivityItem`, `QuickEntryReading`, `GroupEvent`, `Page`) and repository protocols (`AuthRepository`, `GroupsRepository`, `MembersRepository`, `InvitesRepository`, `TransactionsRepository`, `BalancesRepository`, `ActivityRepository`, `QuickEntryRepository`, `GroupEventsRepository`) in `Domain`. Implement `FakeWorld`, `FakeBehavior`, and all fake repositories in `PreviewSupport` (wrapped in `#if DEBUG`), with literal scenarios `EmptyScenario`, `TripScenario` (steps 0–4), `QuickEntryFixtures` (10 sentences), and `LargeScenario` (500 rows).
+
+**Gate & checks:**
+- `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build` → `** BUILD SUCCEEDED **`
+- `xcrun swift-format lint --strict --recursive apps/ios` → no output (exit code 0)
+- Search `PreviewSupport` for `/`, `*`, `%`, `.rounded`, `quotientAndRemainder`:
+  ```
+  $ grep -rnE "([/*%]|\.rounded|quotientAndRemainder)" apps/ios/SongPhangKit/Sources/PreviewSupport/ | grep -v "//"
+  (no output)
+  ```
+- Scenario file to fixture mapping:
+  | Scenario file | Transcribed from fixture files |
+  |---|---|
+  | `PreviewSupport/Scenarios/EmptyScenario.swift` | `01-me.json` |
+  | `PreviewSupport/Scenarios/TripScenario.swift` | `01-me.json`, `03-group-create.json`, `04-groups.json`, `05-group.json`, `06-members.json`, `07-users.json`, `08-invite.json`, `09-step0-transactions.json`, `10-step0-balances.json`, `11-t1-preview.json`, `12-t1-create.json`, `13-step1-transactions.json`, `14-step1-balances.json`, `15-t2-preview.json`, `16-t2-create.json`, `17-step2-transactions.json`, `18-step2-balances.json`, `19-t3-preview.json`, `20-t3-create.json`, `21-step3-transactions.json`, `22-step3-balances.json`, `23-t4-preview.json`, `24-t4-create.json`, `25-step4-transactions.json`, `26-step4-balances.json`, `27-transaction-detail.json`, `28-activity.json`, `45-invite-preview.json` |
+  | `PreviewSupport/Scenarios/QuickEntryFixtures.swift` | `29-parse-1.json` through `44-parse-10.json` |
+  | `PreviewSupport/Scenarios/LargeScenario.swift` | `12-t1-create.json`, `16-t2-create.json`, `20-t3-create.json`, `24-t4-create.json`, `26-step4-balances.json` |
+- Hand-checked 3 amounts per step against fixtures:
+  - **Step 0 (`10-step0-balances.json` vs `TripScenario.step0Balances`):**
+    - Minh balance: fixture `0` == `Money(0)`
+    - Lan balance: fixture `0` == `Money(0)`
+    - Hùng balance: fixture `0` == `Money(0)`
+  - **Step 1 (`11-t1-preview.json`, `14-step1-balances.json` vs `TripScenario`):**
+    - T1 Minh share: fixture `120000` == `Money(120_000)`
+    - Step 1 Minh balance: fixture `180000` == `Money(180_000)`
+    - Step 1 Lan → Minh transfer: fixture `100000` == `Money(100_000)`
+  - **Step 2 (`15-t2-preview.json`, `18-step2-balances.json` vs `TripScenario`):**
+    - T2 Minh share: fixture `480000` == `Money(480_000)`
+    - Step 2 Minh balance: fixture `500000` == `Money(500_000)`
+    - Step 2 Hùng → Minh transfer: fixture `320000` == `Money(320_000)`
+  - **Step 3 (`19-t3-preview.json`, `22-step3-balances.json` vs `TripScenario`):**
+    - T3 each share: fixture `50000` == `Money(50_000)`
+    - Step 3 Minh balance: fixture `550000` == `Money(550_000)`
+    - Step 3 Thu → Minh transfer: fixture `190000` == `Money(190_000)`
+  - **Step 4 (`23-t4-preview.json`, `26-step4-balances.json` vs `TripScenario`):**
+    - T4 Minh share: fixture `49999` == `Money(49_999)`
+    - Step 4 Minh balance: fixture `500001` == `Money(500_001)`
+    - Step 4 Hùng → Minh transfer: fixture `170001` == `Money(170_001)`
 
 ## Gate not passed
 
