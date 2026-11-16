@@ -226,3 +226,9 @@ Problem: the original stream copy only defines equal splits although Phase 1 sup
 Options: show a generic split caption; name the persisted method with the existing own-share structure.
 Choice: vi.ts labels `Theo số tiền`, `Theo phần`, `Theo phần trăm`, and templates `{method} {count} · phần bạn {amount}` / `{method} {count} · bạn không có phần`; leave equal captions unchanged.
 Reason: the owner explicitly authorized fixing R9's misleading text. These labels state the stored mode and keep the already-approved share wording and API figures.
+
+## D36 — No-active-member parse refusal (review R10)
+Problem: an empty default split cannot satisfy the existing split contract and offers no selectable clarification candidate.
+Options: add a new public issue/copy; use the existing count-too-large refusal for one required participant and zero active members.
+Choice: COUNT_MISMATCH with count 1/candidates [], unparsed and split null; preserve any understood amount/description. The existing localized banner states that the group has zero active people.
+Reason: accurate actionable refusal without changing public schemas or the 75 approved examples, inventing a payer, or weakening member/split rules.

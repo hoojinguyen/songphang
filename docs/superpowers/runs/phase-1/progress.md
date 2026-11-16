@@ -3090,3 +3090,13 @@ Result: pnpm check passed. Browser as Thu: weighted `Theo phần 4 · phần b�
 Security review: items 2,6,7 checked; plain localized text, no official web calculation, existing colors retained including on-ink caption contrast. Whole diff reviewed: PASS. Decision D35 records the authorized copy addition. Not verified: physical screen reader/owner visual judgment. Out of scope: none.
 Manual checks: 1. Open exact/weighted/percent rows → each names its persisted method. 2. Equal rows keep their existing caption. 3. A nonparticipant sees no personal share, and a co-payer sees their own paid amount/share.
 Commit reference: `fix(web): label expense rows by their stored split method`.
+
+### R10 — parser without active members
+Approach:
+- Keep understood text/amount/description but return split null when no member is active.
+- Add the existing COUNT_MISMATCH issue for the required minimum of one participant; its existing zero-active-member explanation routes to the manual form.
+- Refuse this state in pure core, so API and local explicit-choice parsing agree; retain every approved sample expectation.
+Result: pnpm check passed. No-active-member API parses (ordinary sentence, missing amount, chia 2, chia 0) all returned 200 unparsed/split null; ordinary sentence preserved description cà phê/amount 180000, payers []; no transaction stored. Empty HTTP text 400; outsider 404; unsigned 401. Reactivate 200; normal parse returned 200. All 75 approved core sample comparisons match, no DIFF. The final rg DIFF command exits 1 because no mismatch exists, not because a feature failed.
+Security review: items 2,4,6 checked; no new public schema/copy, no guessed member or stored expense, money core unchanged. Whole diff reviewed: PASS including zero-count/zero-active boundary. Decision D36. Not verified: physical UI; API and pure-core refusal exercised. Out of scope: none.
+Manual checks: 1. Deactivate everyone, type an expense → manual form explains zero active people; cannot save without participants. 2. Reactivate someone → normal parsing returns. 3. Missing amount still explains the missing amount; no parse saves data.
+Commit reference: `fix(core): refuse quick entry without active members`.

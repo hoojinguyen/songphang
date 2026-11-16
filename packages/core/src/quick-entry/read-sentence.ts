@@ -142,23 +142,42 @@ export function readSentence(input: {
 			end: input.text.length,
 			candidates: [],
 		});
-	const unparsed = context.issues.some(
-		(issue) =>
-			[
-				"AMOUNT_MISSING",
-				"MEMBER_UNKNOWN",
-				"SUM_MISMATCH",
-				"TEXT_NOT_UNDERSTOOD",
-			].includes(issue.code) ||
-			(issue.code === "COUNT_MISMATCH" && (issue.count ?? 0) > members.length),
-	);
+	if (
+		members.length === 0 &&
+		!context.issues.some((issue) => issue.code === "COUNT_MISMATCH")
+	)
+		context.issues.push({
+			code: "COUNT_MISMATCH",
+			count: 1,
+			candidates: [],
+			start: 0,
+			end: 0,
+		});
+	const unparsed =
+		members.length === 0 ||
+		context.issues.some(
+			(issue) =>
+				[
+					"AMOUNT_MISSING",
+					"MEMBER_UNKNOWN",
+					"SUM_MISMATCH",
+					"TEXT_NOT_UNDERSTOOD",
+				].includes(issue.code) ||
+				(issue.code === "COUNT_MISMATCH" &&
+					(issue.count ?? 0) > members.length),
+		);
 	return {
 		status: unparsed
 			? "unparsed"
 			: context.issues.length > 0
 				? "needs_input"
 				: "ok",
-		draft: { description, amount, payerMemberId: payer.payerMemberId, split },
+		draft: {
+			description,
+			amount,
+			payerMemberId: payer.payerMemberId,
+			split: members.length === 0 ? null : split,
+		},
 		spans: mergeSpans(input.text, context.spans),
 		issues: context.issues.toSorted((a, b) => a.start - b.start),
 	};
