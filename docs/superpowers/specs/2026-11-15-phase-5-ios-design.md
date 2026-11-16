@@ -2,13 +2,15 @@
 
 Date: 2026-11-15. Status: draft, waiting for the project owner's approval. Read `2026-11-15-roadmap-remaining-phases-overview.md` first; its sections 4, 5 and 7 apply here. Of all the specs this one is the furthest from being built and the most likely to be amended before its run.
 
+The inside of the iOS repository (modules, layers, dependency rules, performance) is designed in `2026-11-16-ios-codebase-architecture-design.md`, approved on 2026-11-16 and called "the architecture design" below. Where the two documents differ on the application's structure, the architecture design wins.
+
 ## 1. Intent
 
 A native iPhone application that does everything the web application does at the time it ships, opens faster, and tells people about changes with push notifications.
 
 **Goals:** FR-5.1 to FR-5.5; US-5.1 to US-5.3. Roadmap target: testers install through TestFlight and use it daily instead of the web.
 
-**Non-goals:** iPad layout; widgets; Apple Watch; working offline beyond what is already in memory; any logic that the server owns.
+**Non-goals:** iPad layout; widgets; Apple Watch; working offline (the last-known snapshots of the architecture design's section 8.1 show content at once; they do not allow writing or queue changes); any logic that the server owns.
 
 **Anti-goals:** a number computed on the phone that the server did not send; a session token anywhere but the Keychain; a contract change that breaks the installed application.
 
@@ -79,10 +81,10 @@ The web application serves `/.well-known/apple-app-site-association` (JSON conte
 
 | Choice | Decision |
 |---|---|
-| Language, UI | Swift 6, SwiftUI; minimum iOS 17 |
+| Language, UI | Swift 6, SwiftUI; minimum iOS 26 (architecture design, section 4) |
 | API client | Generated at build time from the committed `openapi.json` by Apple's `swift-openapi-generator`, with `swift-openapi-runtime` and `swift-openapi-urlsession` (all Apache-2.0, maintained by Apple) |
 | Other dependencies | None. Google sign-in uses `ASWebAuthenticationSession`, not Google's SDK; QR codes are drawn with Core Image from the server's payload; photos use PhotosUI and the system camera |
-| State | One `@Observable` model per screen; one `APIClient` actor; an in-memory cache keyed like the web's query keys. No database on the device |
+| Structure and state | The architecture design: one Swift package of compiler-enforced modules; one `@Observable` model per screen; repositories behind protocols. No database on the device; last-known read responses are kept as protected files |
 | Session | The token in the Keychain, accessible after first unlock, this device only. Never in user defaults, logs or crash text |
 | Realtime | The group's SSE stream read with `URLSession.bytes`; on an event, the named resources are refetched; on reconnect, everything for the open group |
 | Font | Be Vietnam Pro, bundled (SIL Open Font License) |
@@ -117,7 +119,7 @@ Release build configuration with the production API address; application icon fr
 
 ## 7. Verification
 
-- **Gate after each stage:** this repository's gates as usual; in the iOS repository `xcodebuild build` clean of warnings and the lint; the application run in the iOS Simulator against the local API (`http://localhost:4000`, allowed by an App Transport Security exception present only in the debug configuration), walking the stage's flows, with a screenshot of each screen recorded in `progress.md`.
+- **Gate after each stage:** this repository's gates as usual; in the iOS repository `xcodebuild build` clean of warnings and the lint; the application run in the iOS Simulator against the local API (`http://localhost:4000`, allowed by an App Transport Security exception present only in the debug configuration), walking the stage's flows, with a screenshot of each screen recorded in `progress.md`; from stage 5B on, the performance measures of the architecture design's section 8.3 with their real numbers.
 - **5A scripts:** `POST /auth/token` behaves as login does for known and unknown emails; an exchange code works once, fails with a wrong verifier, fails after 60 seconds; a locally signed Apple token signs in, and one with the wrong audience, a wrong nonce or an expired date is refused; the full permission matrix passes with Bearer sessions; `pnpm contract:check` fails on a hand-edited snapshot.
 - **5C:** a push payload delivered to the Simulator with `xcrun simctl push` opens the right screen; the console sender prints one push per device for a reminder and none for a muted group.
 
@@ -125,13 +127,13 @@ Release build configuration with the production API address; application icon fr
 
 ## 8. Left to the builder
 
-File layout inside the iOS project; model and view names; the cache's eviction; transitions; which system components back each web component.
+The list in the architecture design's section 11; transitions; which system components back each web component.
 
 ## 9. Changes to standing documents
 
 | Document | Change |
 |---|---|
-| `docs/04-adr.md` | ADR-029: API v1 is additive-only, with a committed OpenAPI snapshot. ADR-030: native apps sign in through the system browser and a PKCE-bound exchange code. ADR-014 gains the versions chosen here |
+| `docs/04-adr.md` | ADR-029: API v1 is additive-only, with a committed OpenAPI snapshot. ADR-030: native apps sign in through the system browser and a PKCE-bound exchange code. ADR-014 gains the versions chosen here and in the architecture design. ADR-032: the iOS application is one Swift package whose modules enforce the dependency rule; read responses are kept as last-known snapshots on the device |
 | `docs/05-api-spec.md` | Section 4.2–4.5 endpoints; the versioning rule |
 | `docs/05-database-design.md` | `push_devices`; new columns on `sessions` and `user_identities`; `apple` provider |
 | `docs/03-srs.md` | FR-5.x refined with sections 4 and 5.3 |

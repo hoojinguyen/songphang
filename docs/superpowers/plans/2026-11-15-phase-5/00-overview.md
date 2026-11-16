@@ -4,11 +4,11 @@
 
 **Goal:** A native iPhone application with every feature the web application has when the run starts, signing in with Apple, Google or email, receiving push notifications, and opening invite links directly.
 
-**Architecture:** The server stays the only place with logic. Stage 5A freezes the API contract into a committed OpenAPI file and adds what native clients need. The application is SwiftUI over a client generated from that file; it keeps no database, computes no official amount, and stores its session token in the Keychain.
+**Architecture:** The server stays the only place with logic. Stage 5A freezes the API contract into a committed OpenAPI file and adds what native clients need. The application is one Swift package of compiler-enforced modules (domain, generated client, repositories, design system, feature areas, shell): screens know only the domain, repositories alone touch the generated client, the Keychain and the snapshot files. It keeps no database, computes no official amount, and stores its session token in the Keychain.
 
-**Tech Stack:** this repository unchanged (no new library; Apple tokens and APNs use `node:crypto` and `node:http2`). iOS repository: Swift 6, SwiftUI, iOS 17 minimum, `swift-openapi-generator`, `swift-openapi-runtime`, `swift-openapi-urlsession`.
+**Tech Stack:** this repository unchanged (no new library; Apple tokens and APNs use `node:crypto` and `node:http2`). iOS repository: Swift 6, SwiftUI, iOS 26 minimum, `swift-openapi-generator`, `swift-openapi-runtime`, `swift-openapi-urlsession`.
 
-**Spec:** `docs/superpowers/specs/2026-11-15-phase-5-ios-design.md`
+**Spec:** `docs/superpowers/specs/2026-11-15-phase-5-ios-design.md`, and for everything inside the iOS repository `docs/superpowers/specs/2026-11-16-ios-codebase-architecture-design.md` ("the architecture design"). Read both.
 
 **Prompt placeholders:** `<SPEC>` the spec above; `<PLAN>` `docs/superpowers/plans/2026-11-15-phase-5`; `<BRANCH>` `phase-5`; `<LAST TASK>` `5E.2`.
 
@@ -34,6 +34,8 @@
 - Strings: `Localizable.xcstrings` holds exactly the strings of `apps/web/src/messages/vi.ts`, plus the iOS-only ones of spec 5.3. Task 5B.2 writes a script (in the iOS repository, `Scripts/check-strings.sh`) that lists web strings missing from the catalog; it reports, it does not assert, and its output is recorded at every gate.
 - The token is read from and written to the Keychain in one file. It is never printed, never put in a URL, never stored in `UserDefaults`.
 - No analytics, no crash-reporting SDK, no third-party SDK of any kind.
+- **Dependency rule:** each target in `Package.swift` depends on exactly the modules the architecture design's section 5 lists. Adding a dependency between existing modules to make something compile is never a "decide and record" matter; the code moves to the module where it belongs.
+- **Performance:** the rules of the architecture design's section 8.2 apply to every screen; the measures of its section 8.3 are taken at every stage gate from 5B on and recorded with their real numbers.
 - Screens: when a web screen exists, the iOS screen has the same content, order and strings; platform conventions replace only navigation chrome and controls (navigation stack, sheets, system pickers).
 - Screenshots recorded in `progress.md` are taken with the iOS Simulator tool or `xcrun simctl io booted screenshot`, saved under `docs/superpowers/runs/phase-5/screens/`.
 
@@ -44,3 +46,4 @@
 3. **A contract change breaks the installed application.** → 5A.1.
 4. **A push shows private data on a lock screen against the user's wish, or reaches a signed-out device.** → 5A.5, 5C.1.
 5. **A forged Apple token signs in.** → 5A.3.
+6. **A snapshot outlives its owner's session,** or shows one user's groups to the next person who signs in on the same phone. → 5B.3, 5B.4.
