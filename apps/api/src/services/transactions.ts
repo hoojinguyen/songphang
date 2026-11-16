@@ -131,24 +131,29 @@ export async function listTransactions(
 	groupId: string,
 	query: TransactionsQuery,
 ) {
-	const rows = await listTransactionRows(deps.db, {
-		groupId,
-		cursor: decodeCursor(query.cursor),
-		limit: query.limit + 1,
-	});
-	const page = rows.slice(0, query.limit);
-	const last = page.at(-1);
-	const nextCursor =
-		rows.length > query.limit && last !== undefined
-			? Buffer.from(
-					JSON.stringify({
-						occurredAt: last.occurredAt.toISOString(),
-						id: last.id,
-					}),
-				).toString("base64url")
-			: null;
-	return TransactionsResponse.parse({
-		transactions: await mapTransactions(deps.db, groupId, page),
-		nextCursor,
-	});
+	return deps.db.transaction(
+		async (executor) => {
+			const rows = await listTransactionRows(executor, {
+				groupId,
+				cursor: decodeCursor(query.cursor),
+				limit: query.limit + 1,
+			});
+			const page = rows.slice(0, query.limit);
+			const last = page.at(-1);
+			const nextCursor =
+				rows.length > query.limit && last !== undefined
+					? Buffer.from(
+							JSON.stringify({
+								occurredAt: last.occurredAt.toISOString(),
+								id: last.id,
+							}),
+						).toString("base64url")
+					: null;
+			return TransactionsResponse.parse({
+				transactions: await mapTransactions(executor, groupId, page),
+				nextCursor,
+			});
+		},
+		{ isolationLevel: "repeatable read", accessMode: "read only" },
+	);
 }

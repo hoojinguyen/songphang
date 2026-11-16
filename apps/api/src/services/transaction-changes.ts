@@ -20,7 +20,8 @@ import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { mapTransactions } from "./transactions.js";
-export async function getTransaction(
+
+async function readTransaction(
 	executor: DbExecutor,
 	groupId: string,
 	id: string,
@@ -32,6 +33,16 @@ export async function getTransaction(
 	const [transaction] = await mapTransactions(executor, groupId, [row]);
 	return TransactionResponse.parse({ transaction });
 }
+export async function getTransaction(
+	deps: AppDeps,
+	groupId: string,
+	id: string,
+) {
+	return deps.db.transaction(
+		(executor) => readTransaction(executor, groupId, id),
+		{ isolationLevel: "repeatable read", accessMode: "read only" },
+	);
+}
 type Operation = { groupId: string; id: string; userId: string };
 async function lockedTransaction(executor: DbExecutor, input: Operation) {
 	await lockGroup(executor, input.groupId);
@@ -41,7 +52,7 @@ async function lockedTransaction(executor: DbExecutor, input: Operation) {
 		!(await lockTransaction(executor, input.groupId, input.id))
 	)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
-	return (await getTransaction(executor, input.groupId, input.id)).transaction;
+	return (await readTransaction(executor, input.groupId, input.id)).transaction;
 }
 const fields = [
 	"description",
@@ -115,7 +126,7 @@ export async function editTransaction(
 			executor,
 			shares.map((s) => ({ ...s, transactionId: input.id })),
 		);
-		const after = (await getTransaction(executor, input.groupId, input.id))
+		const after = (await readTransaction(executor, input.groupId, input.id))
 			.transaction;
 		await insertActivity(executor, {
 			groupId: input.groupId,
@@ -151,7 +162,7 @@ export async function setTransactionDeleted(
 				updatedAt: deps.now(),
 			},
 		});
-		const after = (await getTransaction(executor, input.groupId, input.id))
+		const after = (await readTransaction(executor, input.groupId, input.id))
 			.transaction;
 		await insertActivity(executor, {
 			groupId: input.groupId,

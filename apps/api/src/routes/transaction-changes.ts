@@ -44,7 +44,7 @@ export function registerTransactionChangeRoutes(
 		async (c) =>
 			c.json(
 				await getTransaction(
-					deps.db,
+					deps,
 					c.var.groupAccess.groupId,
 					c.req.valid("param").id,
 				),

@@ -92,27 +92,32 @@ export async function createGroup(
 	return getGroup(executor, group.id, input.user.id);
 }
 export async function listGroups(deps: AppDeps, userId: string) {
-	const groups = await listUserGroups(deps.db, userId);
-	const ids = groups.map((group) => group.id);
-	const [members, balances] = await Promise.all([
-		listMembersForGroups(deps.db, ids),
-		listBalancesForGroups(deps.db, ids),
-	]);
-	return GroupsResponse.parse({
-		groups: groups.map((group) => ({
-			id: group.id,
-			name: group.name,
-			currency: group.currency,
-			memberCount: members.filter((member) => member.groupId === group.id)
-				.length,
-			previewMembers: members
-				.filter((member) => member.groupId === group.id)
-				.slice(0, 4),
-			myBalance:
-				balances.find((balance) => balance.memberId === group.memberId)
-					?.balance ?? 0,
-		})),
-	});
+	return deps.db.transaction(
+		async (executor) => {
+			const groups = await listUserGroups(executor, userId);
+			const ids = groups.map((group) => group.id);
+			const [members, balances] = await Promise.all([
+				listMembersForGroups(executor, ids),
+				listBalancesForGroups(executor, ids),
+			]);
+			return GroupsResponse.parse({
+				groups: groups.map((group) => ({
+					id: group.id,
+					name: group.name,
+					currency: group.currency,
+					memberCount: members.filter((member) => member.groupId === group.id)
+						.length,
+					previewMembers: members
+						.filter((member) => member.groupId === group.id)
+						.slice(0, 4),
+					myBalance:
+						balances.find((balance) => balance.memberId === group.memberId)
+							?.balance ?? 0,
+				})),
+			});
+		},
+		{ isolationLevel: "repeatable read", accessMode: "read only" },
+	);
 }
 export async function editGroup(
 	deps: AppDeps,

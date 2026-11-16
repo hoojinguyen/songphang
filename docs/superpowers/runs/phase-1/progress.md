@@ -3031,3 +3031,13 @@ Result: pnpm check passed. HTTP stream exercise: logout 204/closed true; change 
 Security review: items 1–6 checked; hash-only hub metadata, validated session checks, post-commit revocation/publication, no extra public payload or secret output. Entire diff reviewed: PASS. Decision D34. Not verified: waiting for the idle expiry keep-alive boundary (delivery-time expiry exercised); physical UI. Out of scope: none.
 Manual checks: 1. Open a group on two sessions; change password with revoke others → only the other stream closes. 2. Logout/reset/delete the account → its stream cannot receive another group event. 3. Expire a session while idle → stream closes by its next 25-second keep-alive; reconnect returns 401.
 Commit reference: `fix(auth): revoke session-bound event subscriptions`.
+
+### R4 — consistent ledger read snapshots
+Approach:
+- Wrap balances, transaction lists/details and group summaries in read-only repeatable-read transactions.
+- Keep transaction detail hydration inside existing write transactions on its current executor, avoiding nested isolation changes.
+- Use installed Drizzle PgTransactionConfig isolationLevel/accessMode; retain existing constant-query joins and all integer core calculations.
+Result: pnpm check passed. Concurrent replay: 80/80 balance reads returned 200; zero inconsistent responses; 80 additional list/detail reads preserved payer/share totals while 24 edits completed. Freshly authenticated outsider balances 404; invalid cursor 400; unsigned list 401. The first outsider call used an obsolete cookie and returned 401; repeated with a current outsider session returned 404.
+Security review: items 2,4–6 checked; the shared authorization middleware is unchanged, all queries remain group-scoped and parameterized, snapshots are read-only and repeatable-read. Entire diff reviewed: PASS, including in-write hydration on the original locked executor. Not verified: large-group latency is replayed in the final gate; physical UI. Out of scope: none.
+Manual checks: 1. Edit an amount repeatedly while another client reads pairwise balances → every response's transfers net to its balances. 2. Read transaction details/list concurrently → payer/share totals always equal that response's amount. 3. Outsider → 404; malformed cursor → 400.
+Commit reference: `fix(api): read ledger responses from consistent snapshots`.
