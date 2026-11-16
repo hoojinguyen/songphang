@@ -30,8 +30,8 @@ public struct LoadError: View {
   private let onRetry: () -> Void
 
   public init(
-    message: String = "Không tải được. Kiểm tra mạng rồi thử lại.",
-    retryTitle: String = "Thử lại",
+    message: String = L10n.tr("common.loadError"),
+    retryTitle: String = L10n.tr("common.retry"),
     isRetrying: Bool = false,
     onRetry: @escaping () -> Void
   ) {
@@ -114,11 +114,11 @@ public struct OfflineBanner: View {
         .accessibilityHidden(true)
 
       VStack(alignment: .leading, spacing: 2) {
-        Text("Mất mạng. Bạn vẫn xem được sổ.")
+        Text(L10n.tr("offline.banner"))
           .font(Typography.captionBold)
           .foregroundStyle(Tokens.surface)
         if let sinceTimeText {
-          Text("lúc \(sinceTimeText)")
+          Text(L10n.t("offline.since", ["time": sinceTimeText]))
             .font(Typography.caption)
             .foregroundStyle(Tokens.onInkMuted)
         }

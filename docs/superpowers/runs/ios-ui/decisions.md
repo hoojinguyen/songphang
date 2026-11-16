@@ -24,6 +24,12 @@ Options: (1) `swift-tools-version: 6.2`; (2) `swift-tools-version: 6.0`.
 Choice: Option 1 (`swift-tools-version: 6.2`).
 Reason: In the installed `PackageDescription.swiftinterface`, `.iOS(.v26)`, `.treatAllWarnings(as: .error)`, and `.defaultIsolation(MainActor.self)` are annotated `@available(_PackageDescription 6.2)`.
 
+## D3 — String Catalog access and placeholder interpolation (task U.2)
+Problem: AD section 11 leaves open whether the String Catalog is read through generated symbols or a small accessor, and `apps/web/src/messages/vi.ts` uses `{name}` placeholder templates and `feed.samples` as a 3-element array.
+Options: (1) Convert `{name}` to `%@` in `Localizable.xcstrings` and adjust `check-strings.sh` to normalize placeholders; (2) Keep every string value in `Localizable.xcstrings` identical character-for-character to `apps/web/src/messages/vi.ts` (with `feed.samples` indexed as `feed.samples.0`, `feed.samples.1`, `feed.samples.2`) and provide `L10n.tr(_:)` and `L10n.t(_:_:)` in `DesignSystem` using `Bundle.module`.
+Choice: Option 2.
+Reason: Keeps the String Catalog values 100% character-for-character identical to `apps/web/src/messages/vi.ts`, mirrors the web's `t(template, vars)` helper directly, and avoids discrepancy between named placeholders (`{actor}`, `{amount}`) and positional format specifiers.
+
 ## Web baseline
 
 `bb1e0432fef6f1ceb4cf2ee960948129210626b2`

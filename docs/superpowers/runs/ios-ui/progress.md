@@ -6,7 +6,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 
 - [x] U.0 Baseline
 - [x] U.1 Project, package, domain basics, design system
-- [ ] U.2 Strings
+- [x] U.2 Strings
 - [ ] U.3 Domain, repository protocols, scripted fakes
 - [ ] U.4 Shell, debug panel, sign-in
 - [ ] U.5 Groups, members, invites, account
@@ -91,6 +91,19 @@ For each task, under its heading: the approach note, the commit hash, the real o
     - `docs/superpowers/runs/ios-ui/screens/u1-gallery-shapes.png`
     - `docs/superpowers/runs/ios-ui/screens/u1-gallery-components.png`
     - `docs/superpowers/runs/ios-ui/screens/u1-gallery-ax5.png`
+- **Commit:** `6e9bbb49e7a84e71b11c99f30d5703a125b322f2`
+
+### U.2 Strings
+
+**Approach:** Create `DesignSystem/Resources/Localizable.xcstrings` containing all 392 leaf keys of `apps/web/src/messages/vi.ts` (character-for-character identical) plus the 10 iOS-specific strings of P5 section 5.3 under `ios.*`. Expose `L10n` in `DesignSystem` backed by `Bundle.module`, and write `apps/ios/Scripts/check-strings.sh` to verify that no web key is missing or differing.
+
+**Gate & script output:**
+- `./apps/ios/Scripts/check-strings.sh`:
+  ```
+  OK: 392 web keys verified, 0 missing, 0 differing.
+  ```
+- `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build` → `** BUILD SUCCEEDED **`
+- `xcrun swift-format lint --strict --recursive apps/ios` → no output (exit code 0)
 
 ## Gate not passed
 

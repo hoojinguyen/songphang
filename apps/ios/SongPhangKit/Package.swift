@@ -34,6 +34,9 @@ let package = Package(
     .target(
       name: "DesignSystem",
       dependencies: ["Domain"],
+      resources: [
+        .process("Resources")
+      ],
       swiftSettings: mainActorSwiftSettings
     ),
     .target(

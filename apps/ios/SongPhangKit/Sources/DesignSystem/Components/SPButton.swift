@@ -63,7 +63,7 @@ public struct SPButton: View {
       .disabled(isDisabled || isOfflineBlocked || isPending)
 
       if isOfflineBlocked {
-        Text("Cần có mạng để lưu.")
+        Text(L10n.tr("offline.writeDisabled"))
           .font(Typography.caption)
           .foregroundStyle(Tokens.muted)
       }
