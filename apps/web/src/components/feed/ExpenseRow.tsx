@@ -1,5 +1,9 @@
 import type { MemberDto, TransactionDto } from "@songphang/contract";
-import { formatAmount, formatCompactAmount } from "../../lib/money";
+import {
+	formatAmount,
+	formatCompactAmount,
+	formatMoney,
+} from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
 export function ExpenseRow({
@@ -14,7 +18,21 @@ export function ExpenseRow({
 	const payer = members.find(
 		(member) => member.id === transaction.payers[0]?.memberId,
 	);
-	const isMine = payer?.id === myMemberId;
+	const isMine = transaction.payers.some(
+		(entry) => entry.memberId === myMemberId,
+	);
+	const payerLine = transaction.payers
+		.map((entry) => {
+			const member = members.find((member) => member.id === entry.memberId);
+			const label =
+				entry.memberId === myMemberId
+					? vi.feed.youPaid
+					: t(vi.feed.memberPaid, {
+							name: member?.name ?? vi.activity.someone,
+						});
+			return `${label} ${formatMoney(entry.amount)}`;
+		})
+		.join(" · ");
 	const myShare = transaction.shares.find(
 		(share) => share.memberId === myMemberId,
 	);
@@ -29,9 +47,13 @@ export function ExpenseRow({
 				<p
 					className={`text-xs font-semibold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
 				>
-					{isMine
-						? vi.feed.youPaid
-						: t(vi.feed.memberPaid, { name: payer?.name ?? "" })}
+					{transaction.payers.length > 1
+						? payerLine
+						: isMine
+							? vi.feed.youPaid
+							: t(vi.feed.memberPaid, {
+									name: payer?.name ?? vi.activity.someone,
+								})}
 				</p>
 				<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
 					<p className="min-w-0 break-words text-[15px] font-bold">
@@ -48,7 +70,7 @@ export function ExpenseRow({
 						{vi.feed.edited}
 					</span>
 				)}
-				{isMine ? (
+				{isMine && (
 					<div className="mt-2 flex flex-wrap gap-1">
 						{transaction.shares.slice(0, 4).map((share) => {
 							const member = members.find(
@@ -72,8 +94,11 @@ export function ExpenseRow({
 							</span>
 						)}
 					</div>
-				) : (
-					<p className="mt-1 text-[13px] text-muted">
+				)}
+				{(!isMine || transaction.payers.length > 1) && (
+					<p
+						className={`mt-1 text-[13px] ${isMine ? "text-on-ink-muted" : "text-muted"}`}
+					>
 						{myShare
 							? t(vi.feed.equalSplitMine, {
 									count: String(transaction.shares.length),

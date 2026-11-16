@@ -3070,3 +3070,13 @@ Approach:
 Result: pnpm check passed. Delete last member 204; minimized and pairwise modes both returned 200 with balances []/transfers [], correct currency/mode. Outsider 404; unsigned 401. Add member 201; nonempty zero balance returned normally. Whole diff reviewed: PASS. Security review: items 4–6 checked, no authorization/query/core constraint change. Not verified: physical UI. Out of scope: none.
 Manual checks: 1. Delete all members without transactions → balances loads empty in both modes. 2. Add a member again → their zero balance appears. 3. Outsider and unsigned reads → 404/401.
 Commit reference: `fix(api): return empty balances for groups without members`.
+
+### R8 — all expense payers
+Approach:
+- Determine whether the current member is any payer, not only the first payer.
+- Render each payer's existing localized label and exact API-paid amount for multi-payer rows; retain the single-payer wording.
+- Keep own-share information visible for a co-payer and preserve existing share chips. Split-method caption wording remains R9's separate commit.
+Result: pnpm check passed. Browser as Thu reads the T2 row: `Minh trả 800.000 đ · Lan trả 400.000 đ`, total `1.200.000`, own share `240.000`. HTTP T2 201/shares 480000/240000/240000/240000; mismatched payer total 400; outsider list 404. The still-equal split caption is deliberately R9, not claimed fixed here.
+Security review: items 2,6,7 checked; amounts remain API values, plain React text escapes names, no new product literal or endpoint. Whole diff reviewed: PASS. Not verified: current-user co-payer browser variant is carried to R9; physical screen reader. Out of scope: R9 caption tracked separately.
+Manual checks: 1. Record Minh 800000/Lan 400000 → both paid amounts appear. 2. Open as Lan → her paid amount is identified as yours. 3. A single-payer row retains its existing wording; unmatched totals cannot save.
+Commit reference: `fix(web): show every payer on expense rows`.
