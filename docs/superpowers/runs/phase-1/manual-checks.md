@@ -192,3 +192,9 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Wrong exact total/type: 400 and unchanged ledger. Identical content: unchanged version and history.
 3. Delete: gone from feed, detail still readable; repeated delete/edit deleted: 404. Restore: original position/balances; repeated restore: 404.
 4. Concurrent same-version edits: one success, one conflict. Viewer writes: 403, outsider: 404. Run pnpm db:check-balances after each.
+
+### 1E.2 — Activity API and deletion
+1. Read activity after edits: actors and before/after values match, newest first. Walk limit=2 pages: no duplicate or missing entries.
+2. Delete a transaction: its delete entries canRestore=true; restore: false. Outsider history: 404.
+3. Editor group delete: 403. Owner wrong/case-changed/empty/trailing-space names: 400. Exact name: 204, removed event, later reads 404, dependent rows zero, other groups unchanged.
+4. An account with no other owned group can now delete itself.

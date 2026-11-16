@@ -8,6 +8,7 @@ import { AppError, handleError, validateRequest } from "./errors.js";
 import type { createEventHub } from "./events/hub.js";
 import type { Mailer } from "./mailer.js";
 import type { createRateLimiter } from "./rate-limit.js";
+import { registerActivityRoutes } from "./routes/activity.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerDevRoutes } from "./routes/dev.js";
@@ -75,6 +76,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerMemberRoutes(app, deps);
 	registerTransactionRoutes(app, deps);
 	registerBalanceRoutes(app, deps);
+	registerActivityRoutes(app, deps);
 	registerAuthRoutes(app, deps);
 	registerGoogleRoutes(app, deps);
 	if (deps.config.devLogin && deps.config.appEnv === "development") {

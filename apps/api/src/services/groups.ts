@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
 	type CreateGroupRequest,
+	type DeleteGroupRequest,
 	GroupResponse,
 	GroupsResponse,
 	nextMemberAppearance,
@@ -9,6 +10,7 @@ import {
 } from "@songphang/contract";
 import {
 	type DbExecutor,
+	deleteGroupRow,
 	findGroup,
 	findGroupAccess,
 	insertActivity,
@@ -84,6 +86,7 @@ export async function createGroup(
 		entityType: "group",
 		entityId: group.id,
 		summary: input.request.name,
+		after: { memberCount: input.request.memberNames.length + 1 },
 		createdAt: input.now,
 	});
 	return getGroup(executor, group.id, input.user.id);
@@ -154,4 +157,20 @@ export async function editGroup(
 	});
 	deps.events.publishChanged(input.groupId, ["group", "balances", "activity"]);
 	return result;
+}
+
+export async function deleteGroup(
+	deps: AppDeps,
+	input: { groupId: string; userId: string; request: DeleteGroupRequest },
+) {
+	await deps.db.transaction(async (tx) => {
+		await lockGroup(tx, input.groupId);
+		const current = await getGroup(tx, input.groupId, input.userId);
+		if (current.group.role !== "owner")
+			throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+		if (input.request.name !== current.group.name)
+			throw new AppError(400, "VALIDATION_FAILED", "Group name does not match");
+		await deleteGroupRow(tx, input.groupId);
+	});
+	deps.events.publishRemoved(input.groupId, null);
 }

@@ -29,10 +29,14 @@ async function ownerAndTarget(executor: DbExecutor, input: UserOperation) {
 	const actor = await groupUser(executor, input);
 	if (actor.role !== "owner")
 		throw new AppError(403, "FORBIDDEN", "Insufficient group role");
-	return groupUser(executor, {
+	const access = await groupUser(executor, {
 		groupId: input.groupId,
 		userId: input.targetId,
 	});
+	const target = (await listGroupUsers(executor, input.groupId)).find(
+		(u) => u.userId === input.targetId,
+	);
+	return { ...access, name: target?.name ?? null };
 }
 export async function getGroupUsers(
 	deps: AppDeps,
@@ -72,7 +76,7 @@ export async function changeGroupUser(
 			entityId: input.targetId,
 			summary: "Group role changed",
 			before: { role: target.role },
-			after: input.request,
+			after: { ...input.request, name: target.name },
 			createdAt: deps.now(),
 		});
 	});
@@ -105,6 +109,7 @@ export async function removeGroupUser(deps: AppDeps, input: UserOperation) {
 			entityType: "group_user",
 			entityId: input.targetId,
 			summary: "User removed",
+			after: { name: target.name },
 			createdAt: deps.now(),
 		});
 	});
@@ -149,7 +154,7 @@ export async function transferOwnership(deps: AppDeps, input: UserOperation) {
 		for (const id of [...new Set([input.userId, input.targetId])].sort())
 			await lockAccount(tx, id);
 		await lockGroup(tx, input.groupId);
-		await ownerAndTarget(tx, input);
+		const target = await ownerAndTarget(tx, input);
 		if (input.targetId === input.userId)
 			throw new AppError(422, "OWNER_REQUIRED", "Choose another group user");
 		await updateGroupUserRole(tx, {
@@ -169,6 +174,7 @@ export async function transferOwnership(deps: AppDeps, input: UserOperation) {
 			entityType: "group_user",
 			entityId: input.targetId,
 			summary: "Ownership transferred",
+			after: { name: target.name },
 			createdAt: deps.now(),
 		});
 		return getGroup(tx, input.groupId, input.userId);

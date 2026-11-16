@@ -114,6 +114,7 @@ export async function createTransaction(
 		entityType: "transaction",
 		entityId: row.id,
 		summary: request.description,
+		after: { ...request, shares },
 		createdAt: input.now,
 	});
 	const stored = await findTransactionRow(executor, input.groupId, row.id);

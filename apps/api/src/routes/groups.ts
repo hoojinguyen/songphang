@@ -1,6 +1,7 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import {
 	CreateGroupRequest,
+	DeleteGroupRequest,
 	GroupResponse,
 	GroupsResponse,
 	IdempotencyKeyHeader,
@@ -16,6 +17,7 @@ import {
 import { hashRequest, runIdempotent } from "../idempotency.js";
 import {
 	createGroup,
+	deleteGroup,
 	editGroup,
 	getGroup,
 	listGroups,
@@ -82,6 +84,35 @@ export function registerGroupRoutes(
 	app: OpenAPIHono<AppEnv>,
 	deps: AppDeps,
 ): void {
+	app.openapi(
+		createRoute({
+			method: "delete",
+			path: "/api/v1/groups/{groupId}",
+			middleware: [
+				requireUser(deps),
+				requireGroupRole(deps, "owner"),
+				requireVerifiedEmail(deps),
+				requireWriteLimit(deps),
+				requireSameOrigin(deps.config),
+			],
+			request: {
+				params: groupParams,
+				body: {
+					required: true,
+					content: { "application/json": { schema: DeleteGroupRequest } },
+				},
+			},
+			responses: { 204: { description: "Group deleted" } },
+		}),
+		async (c) => {
+			await deleteGroup(deps, {
+				groupId: c.var.groupAccess.groupId,
+				userId: c.var.user.id,
+				request: c.req.valid("json"),
+			});
+			return c.body(null, 204);
+		},
+	);
 	app.openapi(
 		{ ...listRoute, middleware: [requireUser(deps)] },
 		async (context) =>

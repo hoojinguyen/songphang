@@ -117,6 +117,7 @@ export async function joinInvite(
 		entityType: "group_user",
 		entityId: input.userId,
 		summary: member.name,
+		after: { memberId: member.id, name: member.name },
 		createdAt: input.now,
 	});
 	return { groupId: group.id };
@@ -152,6 +153,9 @@ export async function changeInvite(
 			entityType: "group",
 			entityId: input.groupId,
 			summary: input.rotate ? "Invite rotated" : "Invite status changed",
+			after: input.rotate
+				? { inviteRotated: true }
+				: { inviteActive: input.active },
 			createdAt: deps.now(),
 		});
 	});
@@ -183,6 +187,7 @@ export async function chooseMember(
 			entityType: "group_user",
 			entityId: input.userId,
 			summary: "Member chosen",
+			after: { memberId: member?.id, name: member?.name },
 			createdAt: deps.now(),
 		});
 		return getGroup(tx, input.groupId, input.userId);

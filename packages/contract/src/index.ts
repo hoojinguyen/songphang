@@ -1,3 +1,4 @@
+export * from "./activity.ts";
 export * from "./auth.ts";
 export * from "./balance.ts";
 export { ErrorCode, ErrorResponse } from "./error.ts";

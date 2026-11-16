@@ -85,7 +85,7 @@ Not verified:
 
 ## Stage 1E — History and polish
 
-- [ ] 1E.1 API: read, edit, delete and restore a transaction
+- [x] 1E.1 API: read, edit, delete and restore a transaction
 - [ ] 1E.2 API: activity feed and group deletion
 - [ ] 1E.3 Web: edit, delete with undo, conflict
 - [ ] 1E.4 Web: history and deleting a group
@@ -2392,3 +2392,40 @@ bad id 00000000-0000-4000-8000-000000000000 (404, {'error': {'code': 'NOT_FOUND'
 Direct database read: exactly five transaction activity rows (create, update, delete, restore, concurrent update); no row for no-op/failed edits. First edit before.amount=600000/after.amount=800000; before shares 150000 each/after shares 200000 each; changed fields only amount,payers,shares. Delete/restore snapshots retain original split.
 Security review: items 1–7 inspected against added routes/services/queries; shared role checks, bounded params/body, malformed transaction IDs normalized 404, group-scoped lock and access recheck, atomic side replacement/deferred constraints, post-commit events, safe public last-editor identity. No issues found. Full diff reviewed. Mutations remain cohesive transaction functions; the 40-line guidance was reconsidered and helpers extracted for locks/snapshots/mapping.
 Decisions: D26, D27. Deviations: adjacent helper files keep list/create files small. Not verified: owner/editor full new-route matrix will be replayed in the final gate; viewer/outsider/signed-out exercised above. Online audit prohibited. Out of scope: none.
+
+Commit 1E.1: `084ef4e`.
+
+## Task 1E.2 — Approach
+- Add one keyset-paginated, group-scoped activity query with public actor data and live restore eligibility.
+- Complete existing activity payloads for amounts, transaction type, member counts, chosen shapes and target names before exposing history.
+- Add owner-only group deletion with exact, untrimmed confirmation and a locked access recheck.
+- Exercise pagination, restore eligibility, role refusals, cascade deletion and the removed event using disposable local groups.
+
+### Task 1E.2 — Result
+`pnpm check`: passed (219 files, all typechecks Done).
+Initial group deletion failed 500. Root cause and fix: D28; one fix, successful replay. No security/integrity constraints changed.
+```text
+history 200 [('restore', 'Minh', {'type': 'expense', 'split': {'method': 'equal', 'members': ['01a1e469-2ec4-7b5b-8220-0816da5945d2', '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', '01a1e469-2ecc-707b-b853-44d7315d2bf1']}, 'amount': 800000, 'payers': [{'amount': 800000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}], 'shares': [{'amount': 200000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}, {'amount': 200000, 'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e'}, {'amount': 200000, 'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e'}, {'amount': 200000, 'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé A'}, {'type': 'expense', 'split': {'method': 'equal', 'members': ['01a1e469-2ec4-7b5b-8220-0816da5945d2', '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', '01a1e469-2ecc-707b-b853-44d7315d2bf1']}, 'amount': 800000, 'payers': [{'amount': 800000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}], 'shares': [{'amount': 200000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}, {'amount': 200000, 'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e'}, {'amount': 200000, 'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e'}, {'amount': 200000, 'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé A'}, False), ('delete', 'Minh', {'type': 'expense', 'split': {'method': 'equal', 'members': ['01a1e469-2ec4-7b5b-8220-0816da5945d2', '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', '01a1e469-2ecc-707b-b853-44d7315d2bf1']}, 'amount': 800000, 'payers': [{'amount': 800000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}], 'shares': [{'amount': 200000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}, {'amount': 200000, 'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e'}, {'amount': 200000, 'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e'}, {'amount': 200000, 'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé A'}, None, False), ('update', 'Minh', {'description': 'Vé'}, {'description': 'Vé A'}, False), ('restore', 'Minh', {'type': 'expense', 'split': {'method': 'equal', 'members': ['01a1e469-2ec4-7b5b-8220-0816da5945d2', '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', '01a1e469-2ecc-707b-b853-44d7315d2bf1']}, 'amount': 800000, 'payers': [{'amount': 800000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}], 'shares': [{'amount': 200000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}, {'amount': 200000, 'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e'}, {'amount': 200000, 'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e'}, {'amount': 200000, 'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé'}, {'type': 'expense', 'split': {'method': 'equal', 'members': ['01a1e469-2ec4-7b5b-8220-0816da5945d2', '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', '01a1e469-2ecc-707b-b853-44d7315d2bf1']}, 'amount': 800000, 'payers': [{'amount': 800000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}], 'shares': [{'amount': 200000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}, {'amount': 200000, 'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e'}, {'amount': 200000, 'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e'}, {'amount': 200000, 'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé'}, False), ('delete', 'Minh', {'type': 'expense', 'split': {'method': 'equal', 'members': ['01a1e469-2ec4-7b5b-8220-0816da5945d2', '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e', '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e', '01a1e469-2ecc-707b-b853-44d7315d2bf1']}, 'amount': 800000, 'payers': [{'amount': 800000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}], 'shares': [{'amount': 200000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}, {'amount': 200000, 'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e'}, {'amount': 200000, 'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e'}, {'amount': 200000, 'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1'}], 'category': None, 'occurredAt': '2026-11-15T00:00:00.000Z', 'description': 'Vé'}, None, False), ('update', 'Minh', {'amount': 600000, 'payers': [{'amount': 600000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}], 'shares': [{'amount': 150000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}, {'amount': 150000, 'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e'}, {'amount': 150000, 'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e'}, {'amount': 150000, 'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1'}]}, {'amount': 800000, 'payers': [{'amount': 800000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}], 'shares': [{'amount': 200000, 'memberId': '01a1e469-2ec4-7b5b-8220-0816da5945d2'}, {'amount': 200000, 'memberId': '01a1e469-2ec7-7c00-b46a-a9bbb4e63e3e'}, {'amount': 200000, 'memberId': '01a1e469-2ec9-7ef0-95cf-9ffb697b3e6e'}, {'amount': 200000, 'memberId': '01a1e469-2ecc-707b-b853-44d7315d2bf1'}]}, False), ('create', 'Minh', None, None, False), ('create', 'Minh', None, None, False)]
+pagination total 8 unique 8
+canRestore deleted [('delete', True), ('restore', False), ('delete', True), ('update', False), ('restore', False), ('delete', True), ('update', False), ('create', False), ('create', False)]
+canRestore restored [('restore', False), ('delete', False), ('restore', False), ('delete', False), ('update', False), ('restore', False), ('delete', False), ('update', False), ('create', False), ('create', False)]
+outsider history 404
+bad cursor 400
+editor delete 403
+wrong confirmation 'wrong' 400
+wrong confirmation 'delete exercise' 400
+wrong confirmation '' 400
+wrong confirmation 'Delete Exercise ' 400
+exact delete 204
+removed event : connected
+
+event: removed
+data: {}
+
+
+later requests [404, 404]
+other groups unchanged True
+delete account after owned group removed 204
+```
+SQL on the initially failed group after successful retry: members=0, transactions=0, activity=0. Balance checker: all seven remaining groups sum 0/mismatches 0; `All groups balanced`. Existing pre-1E.2 create activities had no after snapshot; newly created records now carry required type/amount/payers/shares/split, member count, target name, invite state and member choice. No dev-data backfill is needed; gates reset the database.
+Security review: items 1–7 inspected; viewer activity reads authorized, outsider 404, bounded/validated cursor, group-scoped parameterized joins, public actor fields only, owner confirmation exact without trimming, lock/access recheck and atomic deletion, removed published after commit. Full diff reviewed. Decisions: D28. Deviations: explicit transaction deletion before cascading group deletion is necessary for the existing RESTRICT FKs. Not verified: final matrix and full history copy exercise follow in E4/E6. Out of scope: none.

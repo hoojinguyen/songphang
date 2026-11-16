@@ -63,3 +63,6 @@ export const IdempotencyKeyHeader = z
 	.min(8)
 	.max(128)
 	.regex(/^[A-Za-z0-9_-]+$/);
+
+export const DeleteGroupRequest = z.object({ name: z.string().min(1).max(80) });
+export type DeleteGroupRequest = z.infer<typeof DeleteGroupRequest>;

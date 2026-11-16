@@ -178,3 +178,9 @@ Problem: a form opened before a delete/restore cycle must not overwrite that new
 Options: leave version unchanged on deletion/restoration; increment it on each state change.
 Choice: increment version, updatedBy and updatedAt on both operations.
 Reason: the same monotonic version protects open editors; no-op edits remain version-neutral. No database schema change.
+
+## D28 — Group cascade order with restricted member references
+Problem: deleting a group containing transactions returned 500; a rolled-back direct SQL reproduction showed transaction_payers_member_id_members_id_fk blocking the members cascade.
+Options: weaken the restricted member foreign key; delete the group's transactions first inside the same locked transaction.
+Choice: explicitly delete group-scoped transactions before the group. Their payer/share rows cascade, then the group's remaining rows cascade.
+Reason: preserves every integrity constraint and atomic deletion. Repeated API exercise returned 204, emitted removed and left no dependent rows.
