@@ -19,6 +19,8 @@ public final class GroupFeedModel {
   public private(set) var loadMoreError: AppError?
   public var hasNewItemsPill = false
   public var isScrolledAwayFromBottom = false
+  public var lastDeletedTransactionId: LedgerTransaction.ID?
+  public var toastMessage: String?
 
   private let groupsRepository: any GroupsRepository
   private let membersRepository: any MembersRepository
@@ -33,7 +35,8 @@ public final class GroupFeedModel {
     balancesRepository: any BalancesRepository,
     transactionsRepository: any TransactionsRepository,
     eventsRepository: any GroupEventsRepository,
-    initialHasNewItemsPill: Bool = false
+    initialHasNewItemsPill: Bool = false,
+    initialDeletedTransactionId: LedgerTransaction.ID? = nil
   ) {
     self.groupId = groupId
     self.groupsRepository = groupsRepository
@@ -42,6 +45,19 @@ public final class GroupFeedModel {
     self.transactionsRepository = transactionsRepository
     self.eventsRepository = eventsRepository
     self.hasNewItemsPill = initialHasNewItemsPill
+    self.lastDeletedTransactionId = initialDeletedTransactionId
+  }
+
+  public func undoDelete(restoredMessage: String, errorMessage: String) async {
+    guard let id = lastDeletedTransactionId else { return }
+    lastDeletedTransactionId = nil
+    do throws(AppError) {
+      _ = try await transactionsRepository.restore(groupId: groupId, id: id)
+      toastMessage = restoredMessage
+      await load()
+    } catch {
+      toastMessage = errorMessage
+    }
   }
 
   public var isOffline: Bool {

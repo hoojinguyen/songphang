@@ -11,7 +11,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] U.4 Shell, debug panel, sign-in
 - [x] U.5 Groups, members, invites, account
 - [x] U.6 The group screen
-- [ ] U.7 Entering and editing
+- [x] U.7 Entering and editing
 - [ ] U.8 Stage gate and hand-over
 
 ### U.0 Baseline
@@ -295,6 +295,71 @@ For each task, under its heading: the approach note, the commit hash, the real o
 | Scrolling the 500-transaction feed top to bottom | no hitch reported | `xcrun xctrace` `SwiftUI` and `Animation Hitches` | Not verified via `Hitches` instrument on Simulator: `xcrun xctrace` exited with `* [Error] Hitches is not supported on this platform.` and standalone `SwiftUI` instrument reported `* [Warning] Trace file had no SwiftUI data`. Recorded under Not verified per AD 8.3 & AD 11. |
 | Main-actor hangs during 500-row scroll | none over 100 ms | `xcrun xctrace record --instrument 'Hangs'` | `potential-hangs` (`hangs-threshold="100"`): **0 hangs** (`0 rows`). `hang-risks`: **0 rows**. |
 | Group screen, tap to content, with a snapshot | same frame as push transition | Observed | **0 frames of skeleton** when `hasSnapshot == true`; `GroupFeedModel.load()` hydrates `state = .loaded(...)` from `lastKnown*` before the first suspension point. |
+- **Commit:** `7192902206a2af58ff91e19b893774cdcbd9fd93`
+
+### U.7 Entering and editing
+
+**Approach:** Build `ConfirmCard/` (`HighlightedSentenceView`, `ShareShapesView`, `ConfirmationCardView`, `QuestionCardView`), `QuickEntry/` (`QuickEntryModel`, `QuickEntryView`), `SplitEditor/` (`SplitEditorState`, `SplitEditorView`), `ExpenseForm/` (`ExpenseFormModel`, `ExpenseFormSubViews`, `ExpenseFormView`), and `Settle/` (`SettleModel`, `SettleView`) inside `LedgerFeature`, and wire `.quickEntry`, `.newTransactionForm`, `.editTransaction`, and `.settle` in `AppShell`. While a share preview is pending (`isPreviewPending`), previous share numbers stay on screen dimmed (`opacity(0.45)`) and are never replaced by a local estimate; a failed or unscripted preview sets `previewError` and renders `common.loadError`. Every form model creates its `IdempotencyKey` in `init` (or per sentence in `QuickEntryModel`) so double-tapping `Lưu` submits the same key and produces one transaction. All four motions (confirmation card spring appearance, member shape resize spring, confirmation card collapse on save, settlement card spring on record) check `@Environment(\.accessibilityReduceMotion)` and disable animation when Reduce Motion is enabled.
+
+**Gate output:**
+- `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build` → `** BUILD SUCCEEDED **`
+- `xcrun swift-format lint --strict --recursive apps/ios` → no output (exit code 0)
+- Search `LedgerFeature` for `*`, `/`, `%`, `.rounded`, `quotientAndRemainder`: only date formatting strings in `LedgerDateLabels.swift` (`"%02d"`, `"\(day)/\(month)/\(year)"`); zero arithmetic operators on `Money`.
+
+**Exercise results & screenshots:**
+- **Ten scripted sentences (`29-parse-1.json` through `44-parse-10.json`):**
+  | # | Sentence | Fixture status | Rendered card / form | Screenshot |
+  |---|---|---|---|---|
+  | 1 | `"cà phê 180k chia 4"` | `ok` (`29-parse-1.json`) | ConfirmationCard: `cà phê`, `180.000 đ`, `Bạn trả (mặc định)`, `Chia đều 4 người · 45.000 mỗi người`, 4 × `45.000`, spans `180k` (`phraseAmount`) + `chia 4` (`phraseSplit`) | `docs/superpowers/runs/ios-ui/screens/s7-parse-1.png` |
+  | 2 | `"taxi 250k lan trả"` | `ok` (`31-parse-2.json`) | ConfirmationCard: `taxi`, `250.000 đ`, `Lan trả`, `Chia đều 4 người · 62.500 mỗi người`, 4 × `62.500`, spans `250k` (`phraseAmount`) + `lan trả` (`phrasePayer`) | `docs/superpowers/runs/ios-ui/screens/s7-parse-2.png` |
+  | 3 | `"nước 100k chia lan, hùng, thu"` | `ok` (`33-parse-3.json`) | ConfirmationCard: `nước`, `100.000 đ`, `Bạn trả (mặc định)`, `Chia 3 người · khoảng 33.334 mỗi người`, Lan `33.334`, Hùng `33.333`, Thu `33.333`, `Không tính Minh.` | `docs/superpowers/runs/ios-ui/screens/s7-parse-3.png` |
+  | 4 | `"lẩu 300k, mình trả. mình 80 lan 60 hùng 40, còn lại chia đều"` | `ok` (`35-parse-4.json`) | ConfirmationCard: `lẩu`, `300.000 đ`, `Minh trả`, `Riêng: Minh 80 · Lan 60 · Hùng 40`, `Còn 120.000 chia đều 3`, Minh `120.000`, Lan `100.000`, Hùng `80.000` | `docs/superpowers/runs/ios-ui/screens/s7-parse-4.png` |
+  | 5 | `"kẹo 1001"` | `ok` (`37-parse-5.json`) | ConfirmationCard: `kẹo`, `1.001 đ`, `Bạn trả (mặc định)`, `Chia 4 người · khoảng 251 mỗi người`, Minh `251`, Lan `250`, Hùng `250`, Thu `250` | `docs/superpowers/runs/ios-ui/screens/s7-parse-5.png` |
+  | 6 | `"chợ 500k thu trả, lan 200 thu 300"` | `ok` (`39-parse-6.json`) | ConfirmationCard: `chợ`, `500.000 đ`, `Thu trả`, `Riêng: Lan 200 · Thu 300`, Lan `200.000`, Thu `300.000`, `Không tính Minh, Hùng.` | `docs/superpowers/runs/ios-ui/screens/s7-parse-6.png` |
+  | 7 | `"cà phê 180k chia 3"` | `needs_input` (`41-parse-7.json`) | QuestionCard (`COUNT_MISMATCH`): `cà phê`, `180.000 đ`, `3 người nào?`, `đã chọn 0 / 3`, 4 member candidates, button `Chọn thêm 3 người` | `docs/superpowers/runs/ios-ui/screens/s7-parse-7.png` |
+  | 8 | `"180k"` | `needs_input` (`42-parse-8.json`) | QuestionCard (`DESCRIPTION_MISSING`): `180.000 đ`, 4 × `45.000`, prompt field `Khoản này chi cho việc gì?` | `docs/superpowers/runs/ios-ui/screens/s7-parse-8.png` |
+  | 9 | `"cà phê"` | `unparsed` (`43-parse-9.json`) | Transitions to ExpenseForm with `UnparsedBanner`: `Mình chưa hiểu hết câu này`, `cà phê`, `Mình chưa thấy số tiền trong câu.` | `docs/superpowers/runs/ios-ui/screens/s7-parse-9.png` |
+  | 10 | `"cà phê 180k chia 9"` | `unparsed` (`44-parse-10.json`) | Transitions to ExpenseForm with `UnparsedBanner`: `Mình chưa hiểu hết câu này`, `cà phê 180k chia 9`, `Nhóm chỉ có 4 người đang hoạt động.` | `docs/superpowers/runs/ios-ui/screens/s7-parse-10.png` |
+
+- **Entering T1–T4 in order from step 0 of `trip` and comparing S5 against each step's balances fixture:**
+  - **After T1 (`14-step1-balances.json` vs `s5-step1-balances.png` & `s5-step1-bars.png`):**
+    - Fixture `14-step1-balances.json`:
+      - Balances: Minh `180000`, Lan `-100000`, Hùng `-80000`, Thu `0`
+      - Transfers: Lan → Minh `100000`, Hùng → Minh `80000`
+    - Rendered on S5:
+      - Transfers: `Lan trả bạn 100.000`, `Hùng trả bạn 80.000`
+      - Balance bars: `Minh +180.000`, `Thu 0`, `Hùng −80.000`, `Lan −100.000`
+  - **After T2 (`18-step2-balances.json` vs `s5-step2-balances.png` & `s5-step2-bars.png`):**
+    - Fixture `18-step2-balances.json`:
+      - Balances: Minh `500000`, Lan `60000`, Hùng `-320000`, Thu `-240000`
+      - Transfers: Hùng → Minh `320000`, Thu → Minh `180000`, Thu → Lan `60000`
+    - Rendered on S5:
+      - Transfers: `Hùng trả bạn 320.000`, `Thu trả bạn 180.000`, `Thu trả Lan 60.000`
+      - Balance bars: `Minh +500.000`, `Lan +60.000`, `Thu −240.000`, `Hùng −320.000`
+  - **After T3 (`22-step3-balances.json` vs `s5-step3-balances.png` & `s5-step3-bars.png`):**
+    - Fixture `22-step3-balances.json`:
+      - Balances: Minh `550000`, Lan `-90000`, Hùng `-270000`, Thu `-190000`
+      - Transfers: Hùng → Minh `270000`, Thu → Minh `190000`, Lan → Minh `90000`
+    - Rendered on S5:
+      - Transfers: `Hùng trả bạn 270.000`, `Thu trả bạn 190.000`, `Lan trả bạn 90.000`
+      - Balance bars: `Minh +550.000`, `Lan −90.000`, `Thu −190.000`, `Hùng −270.000`
+  - **After T4 (`26-step4-balances.json` vs `s5-step4-balances.png` & `s5-step4-bars.png`):**
+    - Fixture `26-step4-balances.json`:
+      - Balances: Minh `500001`, Lan `-120000`, Hùng `-170001`, Thu `-210000`
+      - Transfers: Thu → Minh `210000`, Hùng → Minh `170001`, Lan → Minh `120000`
+    - Rendered on S5:
+      - Transfers: `Thu trả bạn 210.000`, `Hùng trả bạn 170.001`, `Lan trả bạn 120.000`
+      - Balance bars: `Minh +500.001`, `Lan −120.000`, `Hùng −170.001`, `Thu −210.000`
+
+- **Additional S8 / S9 screenshots:**
+  | Screen & State | Screenshot | Web source ported from | Differences & reason |
+  |---|---|---|---|
+  | S8 Expense Form — new | `docs/superpowers/runs/ios-ui/screens/s8-expense-form-new.png` | `apps/web/src/components/expense-form/ExpenseForm.tsx` | Native `DatePicker` for occurredAt |
+  | S8 Expense Form — edit T1 | `docs/superpowers/runs/ios-ui/screens/s8-expense-form-edit.png` | `apps/web/src/app/g/[groupId]/tx/[transactionId]/page.tsx`, `ExpenseForm.tsx` | None |
+  | S8 Split Editor | `docs/superpowers/runs/ios-ui/screens/s8-split-editor.png` | `apps/web/src/components/expense-form/SplitEditor.tsx` | None |
+  | S8 Expense Form — `.conflict` notice | `docs/superpowers/runs/ios-ui/screens/s8-expense-form-conflict.png` | `apps/web/src/components/expense-form/ConflictNotice.tsx` | Shows `"Minh vừa sửa khoản này."` and `"Xem bản mới"` button |
+  | S4 Group Feed — delete + `Hoàn tác` toast | `docs/superpowers/runs/ios-ui/screens/s4-feed-deleted-undo.png` | `apps/web/src/components/expense-form/ExpenseForm.tsx`, `components/ui/Snackbar.tsx` | Shows `"Đã xoá."` + `"Hoàn tác"` pill above entry bar |
+  | S9 Settle — loaded | `docs/superpowers/runs/ios-ui/screens/s9-settle-loaded.png` | `apps/web/src/app/g/[groupId]/settle/page.tsx`, `components/balances/SettlementForm.tsx` | None |
 
 ## Gate not passed
 

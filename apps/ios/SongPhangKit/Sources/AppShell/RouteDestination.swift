@@ -6,6 +6,10 @@ import GroupsFeature
 import LedgerFeature
 public import SwiftUI
 
+#if DEBUG
+  import PreviewSupport
+#endif
+
 public struct RouteDestination: View {
   private let route: Route
   private let dependencies: AppDependencies
@@ -26,6 +30,9 @@ public struct RouteDestination: View {
   @State private var feedModel: GroupFeedModel?
   @State private var balancesModel: BalancesModel?
   @State private var activityModel: ActivityModel?
+  @State private var quickEntryModel: QuickEntryModel?
+  @State private var expenseFormModel: ExpenseFormModel?
+  @State private var settleModel: SettleModel?
 
   public init(
     route: Route,
@@ -114,6 +121,12 @@ public struct RouteDestination: View {
         )
       )
     case .groupFeed(let groupId):
+      #if DEBUG
+        let deletedId =
+          args.contains("--delete-t4") ? TripScenario.t4Transaction.id : nil
+      #else
+        let deletedId: LedgerTransaction.ID? = nil
+      #endif
       self._feedModel = State(
         initialValue: GroupFeedModel(
           groupId: groupId,
@@ -122,7 +135,8 @@ public struct RouteDestination: View {
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           eventsRepository: dependencies.groupEvents,
-          initialHasNewItemsPill: args.contains("--new-items-pill")
+          initialHasNewItemsPill: args.contains("--new-items-pill"),
+          initialDeletedTransactionId: deletedId
         )
       )
     case .groupBalances(let groupId):
@@ -151,6 +165,62 @@ public struct RouteDestination: View {
             onPopToRoot(nil)
             Task { await sessionModel.signOut() }
           }
+        )
+      )
+    case .quickEntry(let groupId, let initialSentence):
+      self._quickEntryModel = State(
+        initialValue: QuickEntryModel(
+          groupId: groupId,
+          initialSentence: initialSentence,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          quickEntryRepository: dependencies.quickEntry,
+          transactionsRepository: dependencies.transactions,
+          onSaved: onPop,
+          onOpenManualForm: { reading in
+            onReplaceTop(.newTransactionForm(groupId: groupId, initialReading: reading))
+          }
+        )
+      )
+    case .newTransactionForm(let groupId, let initialReading):
+      self._expenseFormModel = State(
+        initialValue: ExpenseFormModel(
+          groupId: groupId,
+          editingTransactionId: nil,
+          initialReading: initialReading,
+          initialSplitEditorOpen: args.contains("--open-split-editor"),
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          transactionsRepository: dependencies.transactions,
+          onSaved: onPop
+        )
+      )
+    case .editTransaction(let groupId, let transactionId):
+      self._expenseFormModel = State(
+        initialValue: ExpenseFormModel(
+          groupId: groupId,
+          editingTransactionId: transactionId,
+          initialReading: nil,
+          initialSplitEditorOpen: args.contains("--open-split-editor"),
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          transactionsRepository: dependencies.transactions,
+          onSaved: onPop,
+          onDeleted: { _ in onPop() }
+        )
+      )
+    case .settle(let groupId, let fromMemberId, let toMemberId, let initialAmount):
+      self._settleModel = State(
+        initialValue: SettleModel(
+          groupId: groupId,
+          fromMemberId: fromMemberId,
+          toMemberId: toMemberId,
+          initialAmount: initialAmount,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
+          transactionsRepository: dependencies.transactions,
+          onSaved: onPop
         )
       )
     default:
@@ -221,7 +291,7 @@ public struct RouteDestination: View {
             onNavigate(.quickEntry(groupId: id, initialSentence: sentence))
           },
           onOpenNewTransactionForm: { id in
-            onNavigate(.newTransactionForm(groupId: id))
+            onNavigate(.newTransactionForm(groupId: id, initialReading: nil))
           },
           onOpenEditTransaction: { id, txId in
             onNavigate(.editTransaction(groupId: id, transactionId: txId))
@@ -258,17 +328,33 @@ public struct RouteDestination: View {
           onBack: onPop
         )
       }
+    case .quickEntry:
+      if let quickEntryModel {
+        QuickEntryView(
+          model: quickEntryModel,
+          isEmailVerified: currentUser?.emailVerified ?? true,
+          onCancel: onPop
+        )
+      }
+    case .newTransactionForm, .editTransaction:
+      if let expenseFormModel {
+        ExpenseFormView(
+          model: expenseFormModel,
+          isEmailVerified: currentUser?.emailVerified ?? true,
+          onCancel: onPop
+        )
+      }
+    case .settle:
+      if let settleModel {
+        SettleView(
+          model: settleModel,
+          isEmailVerified: currentUser?.emailVerified ?? true,
+          onCancel: onPop,
+          onBackToGroups: { onPopToRoot(nil) }
+        )
+      }
     case .debugGallery:
       DebugGalleryView()
-    default:
-      SPCard {
-        VStack(alignment: .leading, spacing: 12) {
-          Text(L10n.tr("common.appName"))
-            .font(Typography.sectionTitle)
-          SPButton(L10n.tr("common.back"), variant: .surface, action: onPop)
-        }
-      }
-      .padding(20)
     }
   }
 }

@@ -81,6 +81,38 @@ public struct GroupFeedView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .overlay(alignment: .bottom) {
+      if model.lastDeletedTransactionId != nil {
+        HStack(spacing: 12) {
+          Text(L10n.tr("expenseForm.deleted"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.surface)
+          Button(L10n.tr("expenseForm.undo")) {
+            Task {
+              await model.undoDelete(
+                restoredMessage: L10n.tr("expenseForm.restored"),
+                errorMessage: L10n.tr("common.saveError")
+              )
+            }
+          }
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.accent)
+          .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+        .background(Tokens.ink, in: Capsule())
+        .padding(.bottom, 84)
+      } else if let toast = model.toastMessage {
+        Text(toast)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.surface)
+          .padding(.horizontal, 20)
+          .padding(.vertical, 14)
+          .background(Tokens.ink, in: Capsule())
+          .padding(.bottom, 84)
+      }
+    }
     .navigationBarBackButtonHidden(true)
     .task {
       await model.load()

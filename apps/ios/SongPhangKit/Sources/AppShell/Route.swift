@@ -12,7 +12,7 @@ public enum Route: Hashable, Sendable {
   case groupMembers(groupId: ExpenseGroup.ID)
   case groupSettings(groupId: ExpenseGroup.ID)
   case quickEntry(groupId: ExpenseGroup.ID, initialSentence: String?)
-  case newTransactionForm(groupId: ExpenseGroup.ID)
+  case newTransactionForm(groupId: ExpenseGroup.ID, initialReading: QuickEntryReading? = nil)
   case editTransaction(groupId: ExpenseGroup.ID, transactionId: LedgerTransaction.ID)
   case settle(
     groupId: ExpenseGroup.ID,

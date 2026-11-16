@@ -342,13 +342,19 @@
       case .transfer(let payload):
         return [MemberAmount(memberId: payload.toMemberId, amount: payload.amount)]
       case .split(let payload):
-        // Check T1..T4
         if matchesT1(payload) { return TripScenario.t1Shares }
         if matchesT2(payload) { return TripScenario.t2Shares }
         if matchesT3(payload) { return TripScenario.t3Shares }
         if matchesT4(payload) { return TripScenario.t4Shares }
 
-        // Check quick-entry ok readings (30, 32, 34, 36, 38, 40)
+        if !payload.isIncome,
+          payload.amount == Money(180_000),
+          case .equal(let ids) = payload.split,
+          ids.count == 3
+        {
+          return ids.map { MemberAmount(memberId: $0, amount: Money(60_000)) }
+        }
+
         for reading in QuickEntryFixtures.readingsByText.values {
           if let readingAmount = reading.draft.amount,
             let readingSplit = reading.draft.split,
@@ -405,52 +411,43 @@
             activity: TripScenario.activityItems[0]
           )
         }
-        for reading in QuickEntryFixtures.readingsByText.values {
-          if let readingAmount = reading.draft.amount,
-            let readingSplit = reading.draft.split,
-            let shares = reading.shares,
-            !payload.isIncome,
-            payload.amount == readingAmount,
-            payload.payers == reading.draft.payers,
-            payload.split == readingSplit
-          {
-            let tx = LedgerTransaction(
-              id: LedgerTransaction.ID("qe-\(UUID().uuidString)"),
-              type: .expense,
-              description: payload.description,
-              amount: payload.amount,
-              currency: "VND",
-              occurredAt: payload.occurredAt,
-              category: payload.category,
-              payers: payload.payers,
-              split: payload.split,
-              shares: shares,
-              version: 1,
-              updatedBy: TripScenario.actorMinh,
-              createdBy: TripScenario.actorMinh
-            )
-            let act = ActivityItem(
-              id: ActivityItem.ID("act-\(UUID().uuidString)"),
-              actor: TripScenario.activityActorMinh,
-              action: "create",
-              entityType: .transaction,
-              entityId: tx.id.rawValue,
-              summary: tx.description,
-              after: ActivityItem.SnapshotValues(
-                transactionType: .expense,
-                amount: tx.amount,
-                description: tx.description,
-                occurredAt: tx.occurredAt,
-                category: tx.category,
-                payers: tx.payers,
-                shares: tx.shares,
-                split: tx.split
-              ),
-              createdAt: "2026-11-16T15:00:00.000Z",
-              canRestore: false
-            )
-            return ScriptedMatch(transaction: tx, balances: nil, activity: act)
-          }
+        if let shares = scriptedShares(for: draft) {
+          let tx = LedgerTransaction(
+            id: LedgerTransaction.ID("qe-\(UUID().uuidString)"),
+            type: payload.isIncome ? .income : .expense,
+            description: payload.description,
+            amount: payload.amount,
+            currency: "VND",
+            occurredAt: payload.occurredAt,
+            category: payload.category,
+            payers: payload.payers,
+            split: payload.split,
+            shares: shares,
+            version: 1,
+            updatedBy: TripScenario.actorMinh,
+            createdBy: TripScenario.actorMinh
+          )
+          let act = ActivityItem(
+            id: ActivityItem.ID("act-\(UUID().uuidString)"),
+            actor: TripScenario.activityActorMinh,
+            action: "create",
+            entityType: .transaction,
+            entityId: tx.id.rawValue,
+            summary: tx.description,
+            after: ActivityItem.SnapshotValues(
+              transactionType: tx.type,
+              amount: tx.amount,
+              description: tx.description,
+              occurredAt: tx.occurredAt,
+              category: tx.category,
+              payers: tx.payers,
+              shares: tx.shares,
+              split: tx.split
+            ),
+            createdAt: "2026-11-16T15:00:00.000Z",
+            canRestore: false
+          )
+          return ScriptedMatch(transaction: tx, balances: nil, activity: act)
         }
         return nil
 

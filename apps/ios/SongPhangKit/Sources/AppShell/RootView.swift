@@ -157,6 +157,42 @@ public struct RootView: View {
           path = [.groupBalances(groupId: targetGroupId)]
         } else if args.contains("--route-activity") {
           path = [.groupActivity(groupId: targetGroupId)]
+        } else if args.contains("--route-quick-entry") {
+          let sentence: String? = {
+            if args.contains("--sentence-1") { return "cà phê 180k chia 4" }
+            if args.contains("--sentence-2") { return "taxi 250k lan trả" }
+            if args.contains("--sentence-3") { return "nước 100k chia lan, hùng, thu" }
+            if args.contains("--sentence-4") {
+              return "lẩu 300k, mình trả. mình 80 lan 60 hùng 40, còn lại chia đều"
+            }
+            if args.contains("--sentence-5") { return "kẹo 1001" }
+            if args.contains("--sentence-6") { return "chợ 500k thu trả, lan 200 thu 300" }
+            if args.contains("--sentence-7") { return "cà phê 180k chia 3" }
+            if args.contains("--sentence-8") { return "180k" }
+            if args.contains("--sentence-9") { return "cà phê" }
+            if args.contains("--sentence-10") { return "cà phê 180k chia 9" }
+            return nil
+          }()
+          path = [.quickEntry(groupId: targetGroupId, initialSentence: sentence)]
+        } else if args.contains("--route-new-tx") {
+          path = [.newTransactionForm(groupId: targetGroupId, initialReading: nil)]
+        } else if args.contains("--route-edit-t1") {
+          path = [
+            .editTransaction(groupId: targetGroupId, transactionId: TripScenario.t1Transaction.id)
+          ]
+        } else if args.contains("--route-edit-t4") {
+          path = [
+            .editTransaction(groupId: targetGroupId, transactionId: TripScenario.t4Transaction.id)
+          ]
+        } else if args.contains("--route-settle") {
+          path = [
+            .settle(
+              groupId: targetGroupId,
+              fromMemberId: TripScenario.thuId,
+              toMemberId: TripScenario.minhId,
+              initialAmount: Money(210_000)
+            )
+          ]
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
@@ -207,6 +243,40 @@ public struct RootView: View {
         }
         if args.contains("--empty-activity") {
           await dependencies.world.clearActivity(groupId: TripScenario.groupId)
+        }
+        let stepCount: Int = {
+          if args.contains("--enter-step1") { return 1 }
+          if args.contains("--enter-step2") { return 2 }
+          if args.contains("--enter-step3") { return 3 }
+          if args.contains("--enter-step4") { return 4 }
+          return 0
+        }()
+        if stepCount > 0 {
+          let allTxs = [
+            TripScenario.t1Transaction,
+            TripScenario.t2Transaction,
+            TripScenario.t3Transaction,
+            TripScenario.t4Transaction,
+          ]
+          for idx in 0..<stepCount {
+            let tx = allTxs[idx]
+            let draft = TransactionDraft.split(
+              TransactionDraft.SplitPayload(
+                isIncome: tx.type == .income,
+                description: tx.description,
+                amount: tx.amount,
+                occurredAt: tx.occurredAt,
+                category: tx.category,
+                payers: tx.payers,
+                split: tx.split
+              )
+            )
+            _ = try? await dependencies.world.createTransaction(
+              groupId: TripScenario.groupId,
+              draft: draft,
+              key: IdempotencyKey()
+            )
+          }
         }
         if args.contains("--emit-changed") {
           try? await Task.sleep(for: .milliseconds(400))
@@ -317,5 +387,6 @@ public struct RootView: View {
         Task { await groupListModel.load() }
       }
     )
+    .id(route)
   }
 }
