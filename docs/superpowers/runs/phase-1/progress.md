@@ -69,7 +69,7 @@ Not verified:
 
 ## Stage 1D — Quick entry
 
-- [ ] 1D.1 `core`: the sentence reader
+- [x] 1D.1 `core`: the sentence reader
 - [ ] 1D.2 API: parse endpoint
 - [ ] 1D.3 Web: typing box and confirmation card
 - [ ] 1D.4 Web: questions and sentences that are not understood
@@ -1892,3 +1892,107 @@ A01 spans: description 0–6, amount 7–11, equal 12–18. A36 spans: descripti
 `foldVietnamese("Hùng ĐỨC mình")`: `hung duc minh`, length 13/13. 300 `a` characters: unparsed. Empty string: MEMBER_AMBIGUOUS, DESCRIPTION_MISSING, AMOUNT_MISSING.
 Security review: relevant items 1, 2, 8 inspected against the whole diff; pure deterministic functions, no secrets/I/O/dependencies. No issues found. Full diff reviewed. Rule functions exceed 40 lines where one grammar pass owns its consumed tokens; files remain below 200 lines.
 Decisions: phrase and personal-part helpers split into adjacent files to keep responsibilities small. Deviations: none. Not verified: live UI is introduced in later tasks; online dependency audit prohibited by the no-external-service rule. Out of scope: none.
+
+Commit 1D.1: `abbfccb`.
+
+## Task 1D.2 — Approach
+- Add contract schemas for parse input/output and a service using the pure reader.
+- Mount the editor-only endpoint through shared authorization, verified-email and origin checks.
+- Use its separate 120/minute limiter; parsing never writes or consumes write quota.
+- Compare all sample results over local HTTP, save five drafts, then exercise length, permissions and rate limits.
+
+### Task 1D.2 — Result
+`pnpm check`: passed (202 files, all workspace typechecks Done).
+Initial exercise fixture put Lan first in B; corrected the fixture to the documented positions and linked writer Lan. Initial comparison also incorrectly expected an API payer with unknown amount; corrected to the specified empty payers. No application change was needed.
+```text
+A01 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A02 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A03 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A04 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A05 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A06 200 ok match [{'memberId': 'Minh', 'amount': 75000}, {'memberId': 'Lan', 'amount': 75000}, {'memberId': 'Hùng', 'amount': 75000}, {'memberId': 'Thu', 'amount': 75000}]
+A07 200 ok match [{'memberId': 'Minh', 'amount': 250000}, {'memberId': 'Lan', 'amount': 250000}, {'memberId': 'Hùng', 'amount': 250000}, {'memberId': 'Thu', 'amount': 250000}]
+A08 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A09 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A10 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A11 200 ok match [{'memberId': 'Minh', 'amount': 375000}, {'memberId': 'Lan', 'amount': 375000}, {'memberId': 'Hùng', 'amount': 375000}, {'memberId': 'Thu', 'amount': 375000}]
+A12 200 ok match [{'memberId': 'Minh', 'amount': 375000}, {'memberId': 'Lan', 'amount': 375000}, {'memberId': 'Hùng', 'amount': 375000}, {'memberId': 'Thu', 'amount': 375000}]
+A13 200 ok match [{'memberId': 'Minh', 'amount': 500000}, {'memberId': 'Lan', 'amount': 500000}, {'memberId': 'Hùng', 'amount': 500000}, {'memberId': 'Thu', 'amount': 500000}]
+A14 200 ok match [{'memberId': 'Minh', 'amount': 300000}, {'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 300000}]
+A15 200 ok match [{'memberId': 'Minh', 'amount': 24750}, {'memberId': 'Lan', 'amount': 24750}, {'memberId': 'Hùng', 'amount': 24750}, {'memberId': 'Thu', 'amount': 24750}]
+A16 200 ok match [{'memberId': 'Minh', 'amount': 2500}, {'memberId': 'Lan', 'amount': 2500}, {'memberId': 'Hùng', 'amount': 2500}, {'memberId': 'Thu', 'amount': 2500}]
+A17 200 ok match [{'memberId': 'Minh', 'amount': 250}, {'memberId': 'Lan', 'amount': 250}, {'memberId': 'Hùng', 'amount': 250}, {'memberId': 'Thu', 'amount': 250}]
+A18 200 ok match [{'memberId': 'Minh', 'amount': 251}, {'memberId': 'Lan', 'amount': 250}, {'memberId': 'Hùng', 'amount': 250}, {'memberId': 'Thu', 'amount': 250}]
+A19 200 ok match [{'memberId': 'Minh', 'amount': 400000}, {'memberId': 'Lan', 'amount': 400000}, {'memberId': 'Hùng', 'amount': 400000}, {'memberId': 'Thu', 'amount': 400000}]
+A20 200 ok match [{'memberId': 'Minh', 'amount': 25000}, {'memberId': 'Lan', 'amount': 25000}, {'memberId': 'Hùng', 'amount': 25000}, {'memberId': 'Thu', 'amount': 25000}]
+A21 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A22 200 ok match [{'memberId': 'Minh', 'amount': 200000}, {'memberId': 'Lan', 'amount': 200000}, {'memberId': 'Hùng', 'amount': 200000}, {'memberId': 'Thu', 'amount': 200000}]
+A23 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A24 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A25 200 ok match [{'memberId': 'Minh', 'amount': 62500}, {'memberId': 'Lan', 'amount': 62500}, {'memberId': 'Hùng', 'amount': 62500}, {'memberId': 'Thu', 'amount': 62500}]
+A26 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A27 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A28 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}, {'memberId': 'Hùng', 'amount': 50000}, {'memberId': 'Thu', 'amount': 50000}]
+A29 200 ok match [{'memberId': 'Minh', 'amount': 100000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 100000}, {'memberId': 'Thu', 'amount': 100000}]
+A30 200 ok match [{'memberId': 'Minh', 'amount': 45000}, {'memberId': 'Lan', 'amount': 45000}, {'memberId': 'Hùng', 'amount': 45000}, {'memberId': 'Thu', 'amount': 45000}]
+A31 200 ok match [{'memberId': 'Lan', 'amount': 33334}, {'memberId': 'Hùng', 'amount': 33333}, {'memberId': 'Thu', 'amount': 33333}]
+A32 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 120000}]
+A33 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 120000}]
+A34 200 ok match [{'memberId': 'Lan', 'amount': 22500}, {'memberId': 'Hùng', 'amount': 22500}]
+A35 200 ok match [{'memberId': 'Thu', 'amount': 50000}]
+A36 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A37 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A38 200 ok match [{'memberId': 'Minh', 'amount': 120000}, {'memberId': 'Lan', 'amount': 100000}, {'memberId': 'Hùng', 'amount': 80000}]
+A39 200 ok match [{'memberId': 'Minh', 'amount': 150000}, {'memberId': 'Lan', 'amount': 150000}]
+A40 200 ok match [{'memberId': 'Lan', 'amount': 300000}, {'memberId': 'Hùng', 'amount': 300000}, {'memberId': 'Thu', 'amount': 400000}]
+A41 200 ok match [{'memberId': 'Minh', 'amount': 250000}, {'memberId': 'Lan', 'amount': 250000}, {'memberId': 'Hùng', 'amount': 250000}, {'memberId': 'Thu', 'amount': 250000}]
+A42 200 ok match [{'memberId': 'Minh', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+A43 200 ok match [{'memberId': 'Lan', 'amount': 33334}, {'memberId': 'Hùng', 'amount': 33333}, {'memberId': 'Thu', 'amount': 33333}]
+A44 200 ok match [{'memberId': 'Lan', 'amount': 200000}, {'memberId': 'Thu', 'amount': 300000}]
+A45 200 ok match [{'memberId': 'Lan', 'amount': 1500}, {'memberId': 'Hùng', 'amount': 248500}]
+A46 200 needs_input match None
+A47 200 needs_input match None
+A48 200 needs_input match None
+A49 200 needs_input match None
+A50 200 unparsed match None
+A51 200 unparsed match None
+A52 200 unparsed match None
+A53 200 unparsed match None
+A54 200 unparsed match None
+A55 200 unparsed match None
+A56 200 unparsed match None
+A57 200 unparsed match None
+A58 200 unparsed match None
+A59 200 unparsed match None
+A60 200 unparsed match None
+A61 200 unparsed match None
+A62 200 unparsed match None
+A63 200 unparsed match None
+A parse count 0 0
+save A01 201 True
+save A23 201 True
+save A31 201 True
+save A36 201 True
+save A43 201 True
+B01 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B02 200 needs_input match None
+B03 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B04 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B05 200 ok match [{'memberId': 'Minh Anh', 'amount': 50000}, {'memberId': 'Minh Đức', 'amount': 50000}, {'memberId': 'Lan', 'amount': 50000}]
+B06 200 needs_input match None
+B07 200 ok match [{'memberId': 'Minh Đức', 'amount': 100000}, {'memberId': 'Lan', 'amount': 50000}]
+B08 200 ok match [{'memberId': 'Minh Đức', 'amount': 100000}, {'memberId': 'Lan', 'amount': 50000}]
+B parse count 0 0
+C01 200 ok match [{'memberId': 'Minh', 'amount': 60000}, {'memberId': 'Lan', 'amount': 60000}, {'memberId': 'Hùng', 'amount': 60000}]
+C02 200 ok match [{'memberId': 'Minh', 'amount': 60000}, {'memberId': 'Lan', 'amount': 60000}, {'memberId': 'Hùng', 'amount': 60000}]
+C03 200 unparsed match None
+C04 200 unparsed match None
+C parse count 0 0
+301 400
+empty 400
+outsider 404
+viewer 403
+rate sweep {200: 43, 429: 78} total successes before429 includes previous samples
+```
+75/75 API statuses, draft fields, spans, issues match core sample results. Five stored share arrays equal their parse responses. Count stayed zero throughout parsing in each group. Rate limiter counts boundary-invalid requests too: 75 sample requests + 2 invalid lengths + 43 successes = 120; the next request returned 429.
+Security review: items 1–6, 8 inspected; shared group authorization, bounded Zod body, separate per-user rate limit, parameterized group-member lookup, no write/log/secret exposure. Full diff reviewed. Not verified: online audit prohibited; real browser integration follows. Out of scope: none.

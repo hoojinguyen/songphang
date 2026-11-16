@@ -2,6 +2,8 @@ import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import {
 	CreateTransactionRequest,
 	IdempotencyKeyHeader,
+	ParseRequest,
+	ParseResponse,
 	PreviewTransactionResponse,
 	SplitTransactionRequest,
 	TransactionResponse,
@@ -16,12 +18,30 @@ import {
 	requireWriteLimit,
 } from "../auth/verified-email.js";
 import { hashRequest, runIdempotent } from "../idempotency.js";
+import { parseSentence } from "../services/quick-entry.js";
 import {
 	createTransaction,
 	listTransactions,
 	previewTransaction,
 } from "../services/transactions.js";
 
+const parseRoute = createRoute({
+	method: "post",
+	path: "/api/v1/groups/{groupId}/transactions/parse",
+	request: {
+		params: z.object({ groupId: z.uuid() }),
+		body: {
+			required: true,
+			content: { "application/json": { schema: ParseRequest } },
+		},
+	},
+	responses: {
+		200: {
+			description: "Sentence interpretation",
+			content: { "application/json": { schema: ParseResponse } },
+		},
+	},
+});
 const params = z.object({ groupId: z.uuid() });
 const body = {
 	required: true,
@@ -74,6 +94,32 @@ export function registerTransactionRoutes(
 	app: OpenAPIHono<AppEnv>,
 	deps: AppDeps,
 ): void {
+	app.openapi(
+		{
+			...parseRoute,
+			middleware: [
+				requireUser(deps),
+				requireGroupRole(deps, "editor"),
+				requireVerifiedEmail(deps),
+				requireSameOrigin(deps.config),
+				deps.rateLimiter.limit({
+					name: "parse",
+					max: 120,
+					windowMs: 60000,
+					key: (context) => context.var.user.id,
+				}),
+			],
+		},
+		async (context) =>
+			context.json(
+				await parseSentence(deps, {
+					groupId: context.var.groupAccess.groupId,
+					memberId: context.var.groupAccess.memberId,
+					request: context.req.valid("json"),
+				}),
+				200,
+			),
+	);
 	const read = [requireUser(deps), requireGroupRole(deps, "viewer")];
 	const write = [
 		requireUser(deps),

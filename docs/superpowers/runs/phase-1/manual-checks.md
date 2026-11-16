@@ -168,3 +168,7 @@ Written by the implementation agent from the "Manual checks for the project owne
 
 ### 1D.1 — Sentence reader
 1. Run ten rows from docs/08-quick-entry-samples.md through readSentence, including three refused rows; compare status, draft and computed shares with the document.
+
+### 1D.2 — Parse endpoint
+1. Send the 75 documented samples to the parse endpoint as editor; compare draft and shares, then save a draft and compare stored shares.
+2. Send empty/301-character text: 400. Viewer: 403; outsider: 404. Parsing must never add a transaction.

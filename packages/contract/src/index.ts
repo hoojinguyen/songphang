@@ -6,4 +6,5 @@ export * from "./group-user.ts";
 export { HealthResponse } from "./health.ts";
 export * from "./invite.ts";
 export * from "./member.ts";
+export * from "./quick-entry.ts";
 export * from "./transaction.ts";
