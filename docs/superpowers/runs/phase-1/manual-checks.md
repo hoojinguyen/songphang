@@ -165,3 +165,6 @@ Written by the implementation agent from the "Manual checks for the project owne
 
 ## Stage 1C
 1. Record a real restaurant bill you remember, with personal items and shared dishes, entirely through the screens; compare every person's amount with your arithmetic.
+
+### 1D.1 — Sentence reader
+1. Run ten rows from docs/08-quick-entry-samples.md through readSentence, including three refused rows; compare status, draft and computed shares with the document.

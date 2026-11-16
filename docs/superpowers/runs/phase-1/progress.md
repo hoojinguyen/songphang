@@ -57,7 +57,7 @@ Not verified:
 - [x] 1C.3 Web: transaction type, several payers, transfer and income forms
 - [x] 1C.4 Web: split editor
 - [x] 1C.5 Web: settling, and transfers and income in the stream
-- [ ] 1C.6 Stage gate 1C
+- [x] 1C.6 Stage gate 1C
 
 ### Gate 1C
 
@@ -1796,3 +1796,99 @@ Every existing group endpoint was called as owner/editor/viewer/outsider/signed-
 Security review: relevant items 1, 4, 6, 8 checked against this documentation-only gate diff and observed responses; no secrets in output, no changed implementation or dependency.
 Decisions: none. Deviations: acceptance requests are orchestrated by an uncommitted temporary curl-output printer; it contains no assertions and is not a repository test.
 Not verified: device/visual/manual checks listed under C's UI tasks and real Google remain outstanding. Gate not passed: none.
+
+Commit 1C.6: `154cbbc`.
+
+## Task 1D.1 — Approach
+- Tokenize folded NFC text while preserving original UTF-16 offsets and original description letters.
+- Parse integer amount tokens, longest whole names, payer/equal phrases and personal parts with explicit consumed-token tracking.
+- Assemble only recognized fields and derive status from issues; never guess ambiguous names, counts or unmatched words.
+- Keep phrase/part helpers beside the five planned files to keep responsibilities and file sizes bounded.
+- Print all 75 sample comparisons, computed shares and the required span/invalid-input exercises using an uncommitted local loop.
+
+### Task 1D.1 — Result
+`pnpm check`: passed (200 files; all five package typechecks Done).
+All 75 sentences exercised through the actual reader and core split calculator. The additional checks cover required counts, sum totals, candidate order and issue fragments; no differences.
+
+| Sample | Expected | Actual | Description / amount / payer / split / required issue / shares |
+|---|---|---|---|
+| A01 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A02 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A03 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A04 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A05 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A06 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A07 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A08 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A09 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A10 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A11 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A12 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A13 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A14 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A15 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A16 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A17 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A18 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A19 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A20 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A21 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A22 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A23 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A24 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A25 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A26 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A27 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A28 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A29 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A30 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A31 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A32 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A33 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A34 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A35 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A36 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A37 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A38 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A39 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A40 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A41 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A42 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A43 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A44 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A45 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| A46 | needs_input | needs_input | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: match, shares: — |
+| A47 | needs_input | needs_input | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: match, shares: — |
+| A48 | needs_input | needs_input | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: match, shares: — |
+| A49 | needs_input | needs_input | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: match, shares: — |
+| A50 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A51 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A52 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A53 | unparsed | unparsed | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: match, shares: — |
+| A54 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A55 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A56 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A57 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A58 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A59 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A60 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A61 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A62 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| A63 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| B01 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| B02 | needs_input | needs_input | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| B03 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| B04 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| B05 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| B06 | needs_input | needs_input | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| B07 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| B08 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| C01 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| C02 | ok | ok | issueDetails: match, description: match, amount: match, payer: match, split: match, issue: —, shares: match |
+| C03 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+| C04 | unparsed | unparsed | issueDetails: match, description: —, amount: —, payer: —, split: —, issue: match, shares: — |
+
+A01 spans: description 0–6, amount 7–11, equal 12–18. A36 spans: description 0–3, amount 4–8, payer 10–18, exact 20–42, remainder 44–60. Both match the document.
+`foldVietnamese("Hùng ĐỨC mình")`: `hung duc minh`, length 13/13. 300 `a` characters: unparsed. Empty string: MEMBER_AMBIGUOUS, DESCRIPTION_MISSING, AMOUNT_MISSING.
+Security review: relevant items 1, 2, 8 inspected against the whole diff; pure deterministic functions, no secrets/I/O/dependencies. No issues found. Full diff reviewed. Rule functions exceed 40 lines where one grammar pass owns its consumed tokens; files remain below 200 lines.
+Decisions: phrase and personal-part helpers split into adjacent files to keep responsibilities small. Deviations: none. Not verified: live UI is introduced in later tasks; online dependency audit prohibited by the no-external-service rule. Out of scope: none.
