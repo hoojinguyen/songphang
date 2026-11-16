@@ -1,235 +1,227 @@
+import AuthFeature
 import DesignSystem
 import Domain
 public import SwiftUI
+import UIKit
 
 #if DEBUG
   import PreviewSupport
 #endif
 
-public struct DebugGalleryView: View {
-  public enum SectionTab: String, CaseIterable {
-    case tokens = "Tokens"
-    case shapes = "Shapes"
-    case components = "Components"
-  }
+extension UIDevice {
+  static let deviceDidShakeNotification = Notification.Name("SPDeviceDidShakeNotification")
+}
 
-  @State private var selectedTab: SectionTab
-
-  public init() {
-    let args = ProcessInfo.processInfo.arguments
-    if args.contains("--gallery-shapes") {
-      _selectedTab = State(initialValue: .shapes)
-    } else if args.contains("--gallery-components") {
-      _selectedTab = State(initialValue: .components)
-    } else {
-      _selectedTab = State(initialValue: .tokens)
-    }
-  }
-
-  public var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        Text("Sòng Phẳng — Design System")
-          .font(Typography.sectionTitle)
-          .foregroundStyle(Tokens.ink)
-          .fixedSize(horizontal: false, vertical: true)
-
-        Picker("Section", selection: $selectedTab) {
-          ForEach(SectionTab.allCases, id: \.self) { tab in
-            Text(tab.rawValue).tag(tab)
-          }
-        }
-        .pickerStyle(.segmented)
-
-        switch selectedTab {
-        case .tokens:
-          moneySection
-          tokensSection
-        case .shapes:
-          shapesSection
-        case .components:
-          buttonsSection
-          statesSection
-        }
-      }
-      .padding(20)
-      .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Tokens.bg.ignoresSafeArea())
-  }
-
-  private var tokensSection: some View {
-    SPCard {
-      VStack(alignment: .leading, spacing: 12) {
-        Text("Tokens")
-          .font(Typography.sectionTitle)
-          .foregroundStyle(Tokens.ink)
-
-        ForEach(Tokens.allNamedColors, id: \.name) { entry in
-          ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) {
-              swatchView(entry.color)
-              Text(entry.name)
-                .font(Typography.subheadlineBold)
-                .foregroundStyle(Tokens.ink)
-              Spacer(minLength: 8)
-              Text(entry.hex)
-                .font(Typography.caption.monospaced())
-                .foregroundStyle(Tokens.muted)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-              HStack(spacing: 12) {
-                swatchView(entry.color)
-                Text(entry.name)
-                  .font(Typography.subheadlineBold)
-                  .foregroundStyle(Tokens.ink)
-              }
-              Text(entry.hex)
-                .font(Typography.caption.monospaced())
-                .foregroundStyle(Tokens.muted)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  private func swatchView(_ color: Color) -> some View {
-    RoundedRectangle(cornerRadius: 12, style: .continuous)
-      .fill(color)
-      .frame(width: 44, height: 32)
-      .overlay(
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-          .stroke(Tokens.ink.opacity(0.15), lineWidth: 1)
-      )
-  }
-
-  private var shapesSection: some View {
-    SPCard {
-      VStack(alignment: .leading, spacing: 16) {
-        Text("Member Shapes (24, 44, 96 pt)")
-          .font(Typography.sectionTitle)
-          .foregroundStyle(Tokens.ink)
-
-        ForEach(Array(MemberShape.allCases.enumerated()), id: \.offset) { _, shape in
-          VStack(alignment: .leading, spacing: 12) {
-            Text(shape.code)
-              .font(Typography.subheadlineBold)
-              .foregroundStyle(Tokens.muted)
-
-            ForEach([CGFloat(24), CGFloat(44), CGFloat(96)], id: \.self) { size in
-              VStack(alignment: .leading, spacing: 6) {
-                Text("\(Int(size)) pt")
-                  .font(Typography.caption)
-                  .foregroundStyle(Tokens.muted)
-                ScrollView(.horizontal, showsIndicators: false) {
-                  HStack(spacing: 12) {
-                    ForEach(Array(MemberColor.allCases.enumerated()), id: \.offset) { _, color in
-                      MemberShapeView(
-                        shape: shape,
-                        color: color,
-                        initial: "Minh",
-                        size: size
-                      )
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  private var moneySection: some View {
-    SPCard {
-      VStack(alignment: .leading, spacing: 12) {
-        Text("Money Formatting")
-          .font(Typography.sectionTitle)
-          .foregroundStyle(Tokens.ink)
-
-        #if DEBUG
-          let values = PreviewSamples.sampleMoneyValues
-        #else
-          let values: [Money] = [
-            Money(0), Money(1000), Money(150_000), Money(999_999_999_999),
-          ]
-        #endif
-
-        ForEach(values, id: \.self) { value in
-          ViewThatFits(in: .horizontal) {
-            HStack {
-              MoneyText(value, style: .full, font: Typography.bodyBold)
-              Spacer(minLength: 8)
-              Text("compact: \(MoneyFormat.compact(value))")
-                .font(Typography.caption)
-                .foregroundStyle(Tokens.muted)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-              MoneyText(value, style: .full, font: Typography.bodyBold)
-              Text("compact: \(MoneyFormat.compact(value))")
-                .font(Typography.caption)
-                .foregroundStyle(Tokens.muted)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  private var buttonsSection: some View {
-    SPCard(tone: .sunken) {
-      VStack(alignment: .leading, spacing: 12) {
-        Text("Buttons")
-          .font(Typography.sectionTitle)
-          .foregroundStyle(Tokens.ink)
-
-        SPButton("Chính (Primary)", variant: .primary, isFullWidth: true) {}
-        SPButton("Nhấn (Accent)", variant: .accent, isFullWidth: true) {}
-        SPButton("Nền (Surface)", variant: .surface, isFullWidth: true) {}
-        SPButton("Cỡ lớn (Large)", variant: .accent, size: .lg, isFullWidth: true) {}
-        SPButton("Đang mất mạng", variant: .primary, isFullWidth: true, isOfflineBlocked: true) {}
-      }
-    }
-  }
-
-  private var statesSection: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text("States")
-        .font(Typography.sectionTitle)
-        .foregroundStyle(Tokens.ink)
-
-      OfflineBanner(sinceTimeText: "21:30")
-
-      SPCard {
-        LoadingSkeleton(rowCount: 2, rowHeight: 56)
-      }
-
-      SPCard {
-        LoadError(onRetry: {})
-      }
-
-      SPCard {
-        EmptyState(title: "Bạn chưa có nhóm nào") {
-          MemberShapeView(shape: .circle, color: .mint, initial: "Minh", size: 56)
-        } action: {
-          SPButton("Tạo nhóm", variant: .accent) {}
-        }
-      }
+extension UIWindow {
+  open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+    super.motionEnded(motion, with: event)
+    if motion == .motionShake {
+      NotificationCenter.default.post(name: UIDevice.deviceDidShakeNotification, object: nil)
     }
   }
 }
 
 public struct RootView: View {
-  public init() {}
+  private let dependencies: AppDependencies
+  @State private var sessionModel: SessionModel
+  @State private var path: [Route] = []
+  @State private var isShowingDebugPanel = false
+
+  @State private var signInModel: SignInModel
+
+  public init(dependencies: AppDependencies? = nil) {
+    #if DEBUG
+      let resolved: AppDependencies
+      if let dependencies {
+        resolved = dependencies
+      } else {
+        let args = ProcessInfo.processInfo.arguments
+        let signedIn = !args.contains("--signed-out")
+        let world = FakeWorld(preset: .tripStep4, behavior: FakeBehavior(), signedIn: signedIn)
+        resolved = .scripted(world: world)
+      }
+      self.dependencies = resolved
+      let session = SessionModel(authRepository: resolved.auth)
+      self._sessionModel = State(initialValue: session)
+      let args = ProcessInfo.processInfo.arguments
+      let initialError: AppError?
+      if args.contains("--fail-rate-limited") {
+        initialError = .rateLimited
+      } else if args.contains("--fail-invalid-credentials") {
+        initialError = .api(code: "INVALID_CREDENTIALS", status: 401)
+      } else {
+        initialError = nil
+      }
+      self._signInModel = State(
+        initialValue: SignInModel(
+          repository: resolved.auth,
+          initialEmail: initialError != nil ? "minh@dev.songphang.local" : "",
+          initialPassword: initialError != nil ? "wrong" : "",
+          initialSubmitError: initialError,
+          onSignedIn: { user in
+            session.didSignIn(user)
+          }
+        )
+      )
+    #else
+      fatalError("Live repositories arrive in the integration stage")
+    #endif
+  }
 
   public var body: some View {
-    DebugGalleryView()
+    Group {
+      let args = ProcessInfo.processInfo.arguments
+      if args.contains("--gallery-tokens") || args.contains("--gallery-shapes")
+        || args.contains("--gallery-components")
+      {
+        DebugGalleryView()
+      } else {
+        mainContent
+      }
+    }
+    #if DEBUG
+      .onReceive(NotificationCenter.default.publisher(for: UIDevice.deviceDidShakeNotification)) {
+        _ in
+        isShowingDebugPanel = true
+      }
+      .onAppear {
+        if ProcessInfo.processInfo.arguments.contains("--open-debug") {
+          isShowingDebugPanel = true
+        }
+      }
+      .sheet(isPresented: $isShowingDebugPanel) {
+        DebugPanel(
+          world: dependencies.world,
+          sessionModel: sessionModel,
+          onOpenJoinToken: { token in
+            path.append(.joinGroup(token: token))
+          },
+          onOpenGallery: {
+            path.append(.debugGallery)
+          },
+          onDismiss: {
+            isShowingDebugPanel = false
+          }
+        )
+      }
+    #endif
+    .task {
+      let args = ProcessInfo.processInfo.arguments
+      if args.contains("--unverified-user") {
+        #if DEBUG
+          await dependencies.world.setCurrentUser(PreviewSamples.unverifiedUser)
+          sessionModel.didSignIn(PreviewSamples.unverifiedUser)
+        #endif
+      } else if args.contains("--signed-out") {
+        sessionModel = SessionModel(authRepository: dependencies.auth, initialState: .signedOut)
+        if args.contains("--route-register") {
+          path = [.register]
+        } else if args.contains("--route-forgot") {
+          path = [.forgotPassword]
+        }
+      } else {
+        await sessionModel.loadSession()
+      }
+    }
   }
-}
 
-#Preview("Debug Gallery") {
-  RootView()
+  @ViewBuilder
+  private var mainContent: some View {
+    switch sessionModel.state {
+    case .loading:
+      VStack {
+        LoadingSkeleton(rowCount: 3, rowHeight: 72)
+          .padding(20)
+        Spacer()
+      }
+      .background(Tokens.bg.ignoresSafeArea())
+
+    case .signedOut:
+      NavigationStack(path: $path) {
+        SignInView(
+          model: signInModel,
+          onOpenRegister: { path.append(.register) },
+          onOpenForgotPassword: { path.append(.forgotPassword) }
+        )
+        .toolbar {
+          #if DEBUG
+            ToolbarItem(placement: .topBarTrailing) {
+              Button("Debug") {
+                isShowingDebugPanel = true
+              }
+            }
+          #endif
+        }
+        .navigationDestination(for: Route.self) { route in
+          RouteDestination(
+            route: route,
+            dependencies: dependencies,
+            sessionModel: sessionModel,
+            onNavigate: { path.append($0) },
+            onPop: {
+              if !path.isEmpty { path.removeLast() }
+            },
+            onPopToRoot: { path.removeAll() }
+          )
+        }
+      }
+
+    case .signedIn(let user):
+      NavigationStack(path: $path) {
+        signedInHomePlaceholder(user: user)
+          .toolbar {
+            #if DEBUG
+              ToolbarItem(placement: .topBarTrailing) {
+                Button("Debug") {
+                  isShowingDebugPanel = true
+                }
+              }
+            #endif
+          }
+          .navigationDestination(for: Route.self) { route in
+            RouteDestination(
+              route: route,
+              dependencies: dependencies,
+              sessionModel: sessionModel,
+              onNavigate: { path.append($0) },
+              onPop: {
+                if !path.isEmpty { path.removeLast() }
+              },
+              onPopToRoot: { path.removeAll() }
+            )
+          }
+      }
+    }
+  }
+
+  private func signedInHomePlaceholder(user: User) -> some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 20) {
+        if !user.emailVerified {
+          VerifyEmailBannerView(
+            model: VerifyEmailBannerModel(repository: dependencies.auth)
+          )
+        }
+
+        HStack {
+          VStack(alignment: .leading, spacing: 4) {
+            Text(L10n.t("groups.greeting", ["name": user.name]))
+              .font(Typography.subheadlineBold)
+              .foregroundStyle(Tokens.muted)
+            Text(L10n.tr("groups.title"))
+              .font(Typography.pageTitle)
+              .foregroundStyle(Tokens.ink)
+          }
+          Spacer()
+          MemberShapeView(shape: .circle, color: .mint, name: user.name, size: 48)
+        }
+
+        SPButton(L10n.tr("common.logout"), variant: .surface) {
+          Task { await sessionModel.signOut() }
+        }
+      }
+      .padding(20)
+    }
+    .background(Tokens.bg.ignoresSafeArea())
+  }
 }

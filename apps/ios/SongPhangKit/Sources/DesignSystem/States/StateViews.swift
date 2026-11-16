@@ -70,8 +70,8 @@ public struct EmptyState<Leading: View, Action: View>: View {
   public init(
     title: String,
     subtitle: String? = nil,
-    @ViewBuilder leading: () -> Leading = { EmptyView() },
-    @ViewBuilder action: () -> Action = { EmptyView() }
+    @ViewBuilder leading: () -> Leading,
+    @ViewBuilder action: () -> Action
   ) {
     self.title = title
     self.subtitle = subtitle
@@ -96,6 +96,32 @@ public struct EmptyState<Leading: View, Action: View>: View {
     }
     .frame(maxWidth: .infinity)
     .padding(24)
+  }
+}
+
+extension EmptyState where Leading == EmptyView, Action == EmptyView {
+  public init(title: String, subtitle: String? = nil) {
+    self.init(
+      title: title,
+      subtitle: subtitle,
+      leading: { EmptyView() },
+      action: { EmptyView() }
+    )
+  }
+}
+
+extension EmptyState where Leading == EmptyView {
+  public init(
+    title: String,
+    subtitle: String? = nil,
+    @ViewBuilder action: () -> Action
+  ) {
+    self.init(
+      title: title,
+      subtitle: subtitle,
+      leading: { EmptyView() },
+      action: action
+    )
   }
 }
 

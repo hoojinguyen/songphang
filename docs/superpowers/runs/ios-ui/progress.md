@@ -8,7 +8,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] U.1 Project, package, domain basics, design system
 - [x] U.2 Strings
 - [x] U.3 Domain, repository protocols, scripted fakes
-- [ ] U.4 Shell, debug panel, sign-in
+- [x] U.4 Shell, debug panel, sign-in
 - [ ] U.5 Groups, members, invites, account
 - [ ] U.6 The group screen
 - [ ] U.7 Entering and editing
@@ -146,6 +146,31 @@ For each task, under its heading: the approach note, the commit hash, the real o
     - T4 Minh share: fixture `49999` == `Money(49_999)`
     - Step 4 Minh balance: fixture `500001` == `Money(500_001)`
     - Step 4 Hùng → Minh transfer: fixture `170001` == `Money(170_001)`
+- **Commit:** `a38c27d8b435c33372af0686da05500c70af75be`
+
+### U.4 Shell, debug panel, sign-in
+
+**Approach:** Add `AuthFeature` target (`SignIn`, `Register`, `ForgotPassword`, `VerifyEmailBanner`) and `AppShell` navigation infrastructure (`AppDependencies` with `#if DEBUG` `scripted(world:)` and `#else` `#error("Live repositories arrive in the integration stage")`, `SessionModel`, `Route`, `RouteDestination`, `DebugPanel`, `RootView`). Port S1 (`/login`), `/register`, `/forgot-password`, and `VerifyEmailBanner` from `apps/web/src/app/login/page.tsx`, `register/page.tsx`, `forgot-password/page.tsx`, and `components/ui/VerifyEmailBanner.tsx`.
+
+**Gate output:**
+- `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build` → `** BUILD SUCCEEDED **`
+- `xcrun swift-format lint --strict --recursive apps/ios` → no output (exit code 0)
+
+**Exercise results:**
+- Exercised S1 Sign-In (`Đăng nhập với Apple` above `Tiếp tục với Google`, email & password, links to register & forgot password):
+  - Loaded state: `docs/superpowers/runs/ios-ui/screens/s1-signin-loaded.png`
+  - Wrong password (`.api(code: "INVALID_CREDENTIALS", status: 401)` → `"Email hoặc mật khẩu không đúng."`): `docs/superpowers/runs/ios-ui/screens/s1-signin-wrong-password.png`
+  - Rate limited (`.rateLimited` → `"Bạn thử quá nhiều lần. Đợi một lúc rồi thử lại."`): `docs/superpowers/runs/ios-ui/screens/s1-signin-rate-limited.png`
+- Exercised Register flow:
+  - Form state: `docs/superpowers/runs/ios-ui/screens/register-form.png`
+  - Submitted end state (`"Kiểm tra hộp thư của bạn"`): `docs/superpowers/runs/ios-ui/screens/register-submitted.png`
+- Exercised Forgot Password flow:
+  - Form state: `docs/superpowers/runs/ios-ui/screens/forgot-password-form.png`
+  - Submitted end state (`"Nếu email này có tài khoản, link đặt lại đã được gửi. Link có hiệu lực trong 1 giờ."`): `docs/superpowers/runs/ios-ui/screens/forgot-password-submitted.png`
+- Exercised Verify Email Banner (`"Hãy xác minh email để tạo nhóm và ghi khoản chi."` + `"Gửi lại thư"`):
+  - `docs/superpowers/runs/ios-ui/screens/verify-email-banner.png`
+- Exercised Debug Panel (scenario, latency, snapshot, failure, role, realtime events, sign out):
+  - `docs/superpowers/runs/ios-ui/screens/debug-panel.png`
 
 ## Gate not passed
 
