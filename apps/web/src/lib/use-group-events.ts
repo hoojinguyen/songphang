@@ -59,6 +59,7 @@ export function useGroupEvents(groupId: string) {
 		});
 		source.addEventListener("removed", () => {
 			source.close();
+			if (client.getQueryData(["deleting", groupId]) === true) return;
 			void client.cancelQueries({ queryKey: ["group", groupId] }).then(() => {
 				client.removeQueries({ queryKey: ["group", groupId] });
 				client.setQueryData(["notice", "removed"], true);

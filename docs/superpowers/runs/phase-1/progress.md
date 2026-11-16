@@ -87,7 +87,7 @@ Not verified:
 
 - [x] 1E.1 API: read, edit, delete and restore a transaction
 - [x] 1E.2 API: activity feed and group deletion
-- [ ] 1E.3 Web: edit, delete with undo, conflict
+- [x] 1E.3 Web: edit, delete with undo, conflict
 - [ ] 1E.4 Web: history and deleting a group
 - [ ] 1E.5 Web: offline state, new-item pill, motion
 - [ ] 1E.6 Non-functional checks and final gate
@@ -2445,3 +2445,49 @@ Security review: items 1,2,7,8 checked against all new UI/hook code; same-origin
 Decisions: last-editor attribution D26. The 247-line form renderer and 212-line controller were reconsidered: retaining one state owner and one renderer avoids splitting tightly coupled fields; adjacent mutation hooks, conflict and snackbar components contain independent behavior. Original inactive participants remain available when editing an old transaction. Original timestamp seconds are preserved unless the time field changes.
 Deviations: browser observer plus HTTP actor exercises realtime; two independent browser profiles remain manual. A root dev command was accidentally invoked during startup, reran idempotent migrations/seeding and failed its duplicate API bind; stopped it and used web-only dev. No repository/config changes resulted.
 Not verified: every original split mode, two-payer/income/transfer prefill, blank exact input, snackbar expiry, viewer address and physical screen-reader checks remain for E6/manual checks. No claim that these UI cases ran. Out of scope: none.
+
+Commit 1E.3: `a8ca461`.
+
+## Task 1E.4 — Approach
+- Map validated activity data to the exact Vietnamese sentence table and changed-field chips in one formatter.
+- Add a newest-first infinite history screen with day separators, restore controls for editors and live invalidation.
+- Add the exact-name deletion dialog to owner settings; clear group queries and show the deletion notice on the group list.
+- Exercise history values, restoring after undo expiry and deletion confirmation; retain actor/member names as text nodes.
+
+### Task 1E.4 — Result
+`pnpm check`: passed (229 files, all workspace typechecks Done).
+Created 29 real activity entries spanning the sentence table; rendered the actual formatter and read the history page.
+```text
+role_change group_user Minh đổi quyền của Lan thành Chỉ xem []
+transfer_ownership group_user Lan chuyển quyền chủ nhóm cho Minh []
+transfer_ownership group_user Minh chuyển quyền chủ nhóm cho Lan []
+remove group_user Minh gỡ Hùng khỏi nhóm []
+join group_user Hùng vào nhóm, nhận hình của Hùng []
+leave group_user Hùng rời nhóm []
+role_change group_user Minh đổi quyền của Hùng thành Chỉ xem []
+update group Minh tạo link mời mới []
+update group Minh bật link mời []
+update group Minh tắt link mời []
+update group Minh đổi quyền mặc định thành Chỉ xem []
+update group Minh bật gộp nợ []
+update group Minh tắt gộp nợ []
+update group Minh đổi tên nhóm [{"field":"Mô tả","before":"Đà Lạt 12/2026","after":"History Exercise"}]
+delete member Minh xoá Tên mới []
+update member Minh đổi phần mặc định của Tên mới [{"field":"Phần","before":"1.00","after":"2.00"}]
+update member Minh cho Tên mới hoạt động lại []
+update member Minh cho Tên mới ngừng hoạt động []
+update member Minh đổi tên thành viên [{"field":"Mô tả","before":"Test member","after":"Tên mới"}]
+create member Minh thêm Test member []
+create transaction Hùng ghi nhận Hùng đã chuyển 100.000 đ cho Minh []
+create transaction Lan thêm khoản thu Hoàn cọc · 200.000 đ []
+delete transaction Minh xoá Vé mới · 800.000 đ []
+update transaction Minh sửa Vé mới [{"field":"Số tiền","before":"600.000","after":"800.000"},{"field":"Người trả","before":"Minh 600.000","after":"Minh 800.000"},{"field":"Cách chia","before":"Minh 150.000 · Lan 150.000 · Hùng 150.000 · Thu 150.000","after":"Minh 200.000 · Lan 200.000 · Hùng 200.000 · Thu 200.000"},{"field":"Mô tả","before":"Vé","after":"Vé mới"}]
+create transaction Minh thêm Vé · 600.000 đ []
+update group_user Minh nhận hình của Minh []
+join group_user Hùng vào nhóm, nhận hình của Hùng []
+join group_user Lan vào nhóm, nhận hình của Lan []
+create group Minh tạo nhóm với 4 người []
+```
+Browser: history shows all 29 entries, including actors and labelled multi-field chips. DOM del elements include 600.000, old payer/share values and old description; after amount 800.000. Khôi phục after the original undo period added newest “Minh khôi phục Vé mới · 800.000 đ”, removed restore controls and showed “Đã khôi phục.”. Settings dialog: empty/case-changed name leaves delete disabled; exact History Exercise enables; Thôi closes and restores focus to opener.
+Security review: items 1,2,7,8 inspected: activity unknown fields are validated before formatting, React text nodes only, restore/create/delete use existing authorized APIs, no persistent draft/secret state or new dependencies. Full diff reviewed. Decisions: D29. The 219-line history formatter keeps its finite sentence mapping together; field rendering and changed-field extraction are separate functions. Deviations: none.
+Not verified: final deletion through the UI button was not clicked; API deletion/cascade/removed passed in E2. Viewer history and second independent browser window remain owner checks; current code gates restore on role and verification. Physical screen-reader/visual judgment remains manual. Out of scope: none.

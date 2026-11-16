@@ -173,14 +173,22 @@ export default function MembersPage() {
 			)}
 
 			{group.data.role !== "viewer" && <InviteCard groupId={groupId} />}
-			{group.data.role === "owner" && (
+			<div className="flex gap-3">
 				<Link
-					href={`/g/${groupId}/settings`}
-					className="flex h-[60px] items-center justify-center rounded-[30px] bg-surface font-bold"
+					href={`/g/${groupId}/activity`}
+					className="flex h-[60px] flex-1 items-center justify-center rounded-[30px] bg-surface font-bold"
 				>
-					{vi.members.settingsLink}
+					{vi.activity.title}
 				</Link>
-			)}
+				{group.data.role === "owner" && (
+					<Link
+						href={`/g/${groupId}/settings`}
+						className="flex h-[60px] flex-1 items-center justify-center rounded-[30px] bg-surface font-bold"
+					>
+						{vi.members.settingsLink}
+					</Link>
+				)}
+			</div>
 		</main>
 	);
 }

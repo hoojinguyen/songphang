@@ -204,3 +204,8 @@ Written by the implementation agent from the "Manual checks for the project owne
 2. Two windows edit one record: save first, second retains local text with conflict notice; Xem bản mới loads it, then a new edit saves.
 3. Delete and tap Hoàn tác within six seconds: restored at original time; let snackbar expire: restore remains available in history.
 4. Viewer has no row links; direct edit URL shows forbidden. Missing/outside transaction shows not found. Run balance checker after edits.
+
+### 1E.4 — History (S6) and deletion (S11)
+1. Compare history with GE10; read every sentence type. Verify 600.000 struck through and 800.000 new, labelled chips for multi-field edits.
+2. Restore after undo expires: row returns, history updates, restore button disappears. Viewer sees history without restore controls; second window receives changes live.
+3. Delete a disposable group: empty/wrong/case-changed name disables confirm; exact name deletes, owner sees Đã xoá nhóm., watching member returns to groups with removed message.

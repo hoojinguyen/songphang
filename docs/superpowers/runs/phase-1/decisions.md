@@ -184,3 +184,9 @@ Problem: deleting a group containing transactions returned 500; a rolled-back di
 Options: weaken the restricted member foreign key; delete the group's transactions first inside the same locked transaction.
 Choice: explicitly delete group-scoped transactions before the group. Their payer/share rows cascade, then the group's remaining rows cascade.
 Reason: preserves every integrity constraint and atomic deletion. Repeated API exercise returned 204, emitted removed and left no dependent rows.
+
+## D29 — Default-weight history wording
+Problem: the history sentence table omits the existing member defaultWeight update, although every member change must be recorded and shown.
+Options: show an inaccurate rename sentence; describe that field explicitly.
+Choice: add `activity.memberWeight` = `“{actor} đổi phần mặc định của {member}”`, with the existing Phần label on the value chip.
+Reason: accurately describes the already-supported action without adding a feature. All other history templates match the approved table.
