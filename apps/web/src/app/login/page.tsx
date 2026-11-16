@@ -1,4 +1,5 @@
 "use client";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -15,13 +16,16 @@ function LoginScreen() {
 	const next = safeNext(params.get("next"));
 	const router = useRouter();
 	const me = useMe();
+	const client = useQueryClient();
 	const providers = useProviders();
 	const login = useLogin();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	useEffect(() => {
-		if (me.data) router.replace(next);
-	}, [me.data, next, router]);
+		if (me.data && me.error?.status === 401) {
+			void client.cancelQueries().then(() => client.clear());
+		} else if (me.isSuccess && !me.isFetching) router.replace(next);
+	}, [client, me.data, me.error, me.isSuccess, me.isFetching, next, router]);
 	const queryError = params.get("error");
 	const error =
 		authErrorMessage(login.error) ??

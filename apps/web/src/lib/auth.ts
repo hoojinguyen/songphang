@@ -25,7 +25,10 @@ export function useLogin() {
 	return useMutation<void, ApiError, LoginRequest>({
 		mutationFn: (request) =>
 			apiSend("/auth/login", jsonRequest("POST", request)),
-		onSuccess: () => client.invalidateQueries({ queryKey: ["me"] }),
+		onSuccess: async () => {
+			await client.cancelQueries();
+			client.clear();
+		},
 	});
 }
 export function useRegister() {

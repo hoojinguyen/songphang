@@ -3041,3 +3041,13 @@ Result: pnpm check passed. Concurrent replay: 80/80 balance reads returned 200; 
 Security review: items 2,4–6 checked; the shared authorization middleware is unchanged, all queries remain group-scoped and parameterized, snapshots are read-only and repeatable-read. Entire diff reviewed: PASS, including in-write hydration on the original locked executor. Not verified: large-group latency is replayed in the final gate; physical UI. Out of scope: none.
 Manual checks: 1. Edit an amount repeatedly while another client reads pairwise balances → every response's transfers net to its balances. 2. Read transaction details/list concurrently → payer/share totals always equal that response's amount. 3. Outsider → 404; malformed cursor → 400.
 Commit reference: `fix(api): read ledger responses from consistent snapshots`.
+
+### R5 — expired-session cache and login redirects
+Approach:
+- Clear/cancel identity-scoped query state before redirecting a protected screen after 401.
+- Require a successful, settled /me result before login redirects an already signed-in visitor; clear retained failed /me data.
+- Clear the old identity's cache on password-login success, matching the existing dev-login/logout behavior. Keep safeNext unchanged.
+Result: pnpm check passed. Browser: dev-login Mới, revoke its session in the local database, click Account → stable `/login?next=%2Faccount` with email/password/submit controls, no nested next or redirect loop. Follow dev sign-in and choose Thu → `/account` shows Thu and thu@dev.songphang.local, with no previous Mới data. Invalid credentials/unknown account both 401 in R2; expired session 401 is the reproduced browser trigger. safeNext remains unchanged and rejects non-internal paths.
+Security review: items 1,3,6,7 checked against the whole diff; cancelled queries cannot refill the old identity cache, no credentials/storage/redirect rules added. Self-review: PASS for expired-session recovery and identity switch. Not verified: password-form sign-in itself (API password success/refusal exercised in R2); physical device. Out of scope: none.
+Manual checks: 1. Revoke an open session, then navigate → login form stays usable. 2. Sign into another account → only that account's groups/profile appear. 3. Wrong credentials stay on login; unchecked external next must resolve to `/`.
+Commit reference: `fix(web): clear stale identity state after session loss`.
