@@ -21,9 +21,10 @@ import {
 	updateGroupInvite,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
+import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { getGroup } from "./groups.js";
-import { createMember } from "./members.js";
+import { addGroupMember } from "./members.js";
 
 async function validInvite(executor: DbExecutor, token: string) {
 	const group = await findInvite(executor, token);
@@ -95,7 +96,7 @@ export async function joinInvite(
 					memberId: input.request.memberId,
 				})
 			: (
-					await createMember(executor, {
+					await addGroupMember(executor, {
 						groupId: group.id,
 						userId: input.userId,
 						myMemberId: null,
@@ -140,6 +141,7 @@ export async function changeInvite(
 ) {
 	await deps.db.transaction(async (tx) => {
 		await lockGroup(tx, input.groupId);
+		await getGroupAccess(tx, { ...input, minimumRole: "owner" });
 		await updateGroupInvite(tx, {
 			groupId: input.groupId,
 			...(input.active === undefined ? {} : { active: input.active }),

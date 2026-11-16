@@ -7,7 +7,6 @@ import {
 import {
 	clearTransactionSides,
 	type DbExecutor,
-	findGroupAccess,
 	findTransactionRow,
 	insertActivity,
 	insertTransactionPayers,
@@ -17,6 +16,7 @@ import {
 	updateTransactionRow,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
+import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { mapTransactions } from "./transactions.js";
@@ -35,10 +35,7 @@ export async function getTransaction(
 type Operation = { groupId: string; id: string; userId: string };
 async function lockedTransaction(executor: DbExecutor, input: Operation) {
 	await lockGroup(executor, input.groupId);
-	const access = await findGroupAccess(executor, input.groupId, input.userId);
-	if (!access) throw new AppError(404, "NOT_FOUND", "Resource not found");
-	if (access.role === "viewer")
-		throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
 	if (
 		!z.uuid().safeParse(input.id).success ||
 		!(await lockTransaction(executor, input.groupId, input.id))

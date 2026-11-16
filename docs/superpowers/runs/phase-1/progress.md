@@ -2996,3 +2996,19 @@ Extra HTTP boundary checks on the final API: 220-character description plus amou
 Security review: relevant items 1,2,7,8 checked against every final changed source file and staged/run output; no secrets, raw HTML, unchecked redirect, storage, external service or new dependency. D32 choices are candidate-checked in core and still use server-authorized preview/create; no API authorization or integrity rule changed. Final diff and whitespace reviewed. No new assertion/test scripts or build artifacts are staged. Offline dependency audit remains Not verified under the no-external-service rule.
 Manual-check list consolidated without obsolete stage-only instructions; README now includes the three-line Phase 1 feature list, dev mail console, optional Google variables/callback and balance command. Decisions: D31–D33. Deviations and Not verified: final summary above. Out of scope: none newly found. Unresolved: none.
 Final task commit reference: `docs(run): complete phase 1 run records`; resolve its hash with the D33 command. The owner-facing completion message records the actual hash.
+
+
+## Review fixes — R1–R11
+
+Owner authorization: fix all eleven findings continuously on phase-1, one commit per finding after pnpm check; no push or merge. Each entry identifies its atomic commit by unique subject (D33); final verification records the resolved hashes.
+
+### R1 — post-lock authorization
+Approach:
+- Share the existing role lookup/check between middleware and locked service writes.
+- Recheck transaction/member/invite writes after acquiring the group lock.
+- Keep invite-created members on an internal creation path reached only after invite validation and locking.
+- Reuse the same guard in transaction changes; do not change endpoints or permission rules.
+Result: pnpm check passed. Real queued HTTP operations after owner demotion: create transaction 403, create member 403, edit member 403, delete member 403; owner demotion 200 in every case. Owner create 201, outsider 404, unsigned 401; stored transaction count 1. Invite/ownership race and removal are included in the final focused replay.
+Security review: items 2–6 checked against the entire diff; the shared guard preserves 404/403 and rechecks after locking. Invite member insertion remains reachable only through validated/locked joining or the guarded editor service. No security rule weakened. Self-review: PASS for the four reproduced demotion paths; final matrix pending. Not verified: device UI, no UI changed. Out of scope: none.
+Manual checks: 1. Queue a write while the owner demotes the writer → 403, nothing stored. 2. Remove the writer instead → 404. 3. As owner create normally → 201; outsider → 404.
+Commit reference: `fix(api): recheck group permissions inside locked writes`.

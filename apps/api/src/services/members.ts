@@ -20,6 +20,7 @@ import {
 	updateMember,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
+import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 
 type MemberOperation = {
@@ -53,6 +54,13 @@ export async function createMember(
 	input: MemberOperation & { request: CreateMemberRequest; now: Date },
 ) {
 	await lockGroup(executor, input.groupId);
+	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+	return addGroupMember(executor, input);
+}
+export async function addGroupMember(
+	executor: DbExecutor,
+	input: MemberOperation & { request: CreateMemberRequest; now: Date },
+) {
 	const members = await listGroupMembers(executor, input.groupId);
 	if (members.length >= 100)
 		throw new AppError(
@@ -94,6 +102,7 @@ export async function editMember(
 ) {
 	const result = await deps.db.transaction(async (transaction) => {
 		await lockGroup(transaction, input.groupId);
+		await getGroupAccess(transaction, { ...input, minimumRole: "editor" });
 		const before = await getMember(transaction, input.groupId, input.memberId);
 		const { name, active, defaultWeight } = input.request;
 		await updateMember(transaction, {
@@ -140,6 +149,7 @@ export async function removeMember(
 ) {
 	await deps.db.transaction(async (transaction) => {
 		await lockGroup(transaction, input.groupId);
+		await getGroupAccess(transaction, { ...input, minimumRole: "editor" });
 		const member = await getMember(transaction, input.groupId, input.memberId);
 		if (await hasMemberTransactions(transaction, input.groupId, member.id))
 			throw new AppError(

@@ -22,6 +22,7 @@ import {
 	type TransactionCursor,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
+import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 
@@ -79,6 +80,7 @@ export async function createTransaction(
 	},
 ) {
 	await lockGroup(executor, input.groupId);
+	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
 	const shares = await calculateShares(executor, input.groupId, input.request);
 	const request = normalizeTransaction(input.request);
 	const group = await findGroup(executor, input.groupId);
