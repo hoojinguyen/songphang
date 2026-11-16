@@ -1,0 +1,147 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "transactions": [
+      {
+        "type": "expense",
+        "description": "Khách sạn",
+        "amount": 1200000,
+        "occurredAt": "2026-11-10T12:00:00.000Z",
+        "category": "lodging",
+        "payers": [
+          {
+            "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "amount": 800000
+          },
+          {
+            "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "amount": 400000
+          }
+        ],
+        "split": {
+          "method": "shares",
+          "entries": [
+            {
+              "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+              "weight": "2"
+            },
+            {
+              "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+              "weight": "1"
+            },
+            {
+              "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+              "weight": "1"
+            },
+            {
+              "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+              "weight": "1"
+            }
+          ]
+        },
+        "id": "01a1e4bd-cd5d-7fb3-9437-3b97e2f381fe",
+        "currency": "VND",
+        "shares": [
+          {
+            "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "amount": 480000
+          },
+          {
+            "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "amount": 240000
+          },
+          {
+            "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+            "amount": 240000
+          },
+          {
+            "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+            "amount": 240000
+          }
+        ],
+        "version": 1,
+        "updatedBy": {
+          "id": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh"
+        },
+        "createdBy": {
+          "id": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh"
+        },
+        "createdAt": "2026-11-16T14:23:26.554Z",
+        "updatedAt": "2026-11-16T14:23:26.554Z",
+        "deletedAt": null
+      },
+      {
+        "type": "expense",
+        "description": "Lẩu",
+        "amount": 300000,
+        "occurredAt": "2026-11-10T12:00:00.000Z",
+        "category": "food",
+        "payers": [
+          {
+            "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "amount": 300000
+          }
+        ],
+        "split": {
+          "method": "exact",
+          "members": [
+            "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+          ],
+          "entries": [
+            {
+              "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+              "amount": 80000
+            },
+            {
+              "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+              "amount": 60000
+            },
+            {
+              "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+              "amount": 40000
+            }
+          ],
+          "remainder": "equal_among_all"
+        },
+        "id": "01a1e4bd-cd05-71db-abbb-1bda1779a259",
+        "currency": "VND",
+        "shares": [
+          {
+            "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "amount": 120000
+          },
+          {
+            "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "amount": 100000
+          },
+          {
+            "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+            "amount": 80000
+          }
+        ],
+        "version": 1,
+        "updatedBy": {
+          "id": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh"
+        },
+        "createdBy": {
+          "id": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh"
+        },
+        "createdAt": "2026-11-16T14:23:26.466Z",
+        "updatedAt": "2026-11-16T14:23:26.466Z",
+        "deletedAt": null
+      }
+    ],
+    "nextCursor": null
+  }
+}

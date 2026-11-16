@@ -1,0 +1,20 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "group": {
+      "id": "01a1e4bd-cc25-70c6-860e-275da20487f1",
+      "name": "Đà Lạt 3N2Đ",
+      "currency": "VND",
+      "minimizeDebts": true,
+      "defaultRole": "editor",
+      "role": "owner",
+      "myMemberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+      "createdAt": "2026-11-16T14:23:26.244Z"
+    }
+  }
+}

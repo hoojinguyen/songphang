@@ -1,0 +1,44 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions/parse",
+    "body": {
+      "text": "cà phê"
+    }
+  },
+  "status": 200,
+  "response": {
+    "status": "unparsed",
+    "text": "cà phê",
+    "draft": {
+      "type": "expense",
+      "description": "cà phê",
+      "amount": null,
+      "payers": [],
+      "split": {
+        "method": "equal",
+        "members": [
+          "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+          "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+          "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+        ]
+      }
+    },
+    "spans": [
+      {
+        "start": 0,
+        "end": 6,
+        "kind": "description"
+      }
+    ],
+    "issues": [
+      {
+        "code": "AMOUNT_MISSING",
+        "start": 0,
+        "end": 6,
+        "candidates": []
+      }
+    ]
+  }
+}

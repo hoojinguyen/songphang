@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/invite",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "invite": {
+      "token": "cr4mVLzhGoDywLbfhf5-OLpgPc4mNq8NL4y5xNUyeXI",
+      "active": true,
+      "url": "http://localhost:3000/join/cr4mVLzhGoDywLbfhf5-OLpgPc4mNq8NL4y5xNUyeXI"
+    }
+  }
+}

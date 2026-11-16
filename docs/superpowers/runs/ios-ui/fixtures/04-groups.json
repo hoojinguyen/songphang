@@ -1,0 +1,237 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "groups": [
+      {
+        "id": "01a1e4bd-cc25-70c6-860e-275da20487f1",
+        "name": "Đà Lạt 3N2Đ",
+        "currency": "VND",
+        "memberCount": 4,
+        "previewMembers": [
+          {
+            "id": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "name": "Minh",
+            "shape": "circle",
+            "color": "mint"
+          },
+          {
+            "id": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "name": "Lan",
+            "shape": "diamond",
+            "color": "sky"
+          },
+          {
+            "id": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+            "name": "Hùng",
+            "shape": "squircle",
+            "color": "coral"
+          },
+          {
+            "id": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+            "name": "Thu",
+            "shape": "leaf",
+            "color": "lilac"
+          }
+        ],
+        "myBalance": 0
+      },
+      {
+        "id": "01a1e495-84c5-7848-b8ab-9c6cb4631e03",
+        "name": "Reader C",
+        "currency": "VND",
+        "memberCount": 4,
+        "previewMembers": [
+          {
+            "id": "01a1e495-84c6-7dc2-b584-d842a741ca85",
+            "name": "Minh",
+            "shape": "circle",
+            "color": "mint"
+          },
+          {
+            "id": "01a1e495-84c7-7885-90ae-c67854cd2971",
+            "name": "Lan",
+            "shape": "diamond",
+            "color": "sky"
+          },
+          {
+            "id": "01a1e495-84c7-7885-90ae-c67989a25e4c",
+            "name": "Hùng",
+            "shape": "squircle",
+            "color": "coral"
+          },
+          {
+            "id": "01a1e495-84c8-779b-9806-7cd9701cefee",
+            "name": "Thu",
+            "shape": "leaf",
+            "color": "lilac"
+          }
+        ],
+        "myBalance": 0
+      },
+      {
+        "id": "01a1e495-8422-72ac-a0a9-28d368e571e8",
+        "name": "Reader B",
+        "currency": "VND",
+        "memberCount": 3,
+        "previewMembers": [
+          {
+            "id": "01a1e495-8422-72ac-a0a9-28d4ac78c5d3",
+            "name": "Minh Anh",
+            "shape": "circle",
+            "color": "mint"
+          },
+          {
+            "id": "01a1e495-8423-7aad-9703-56e526d9b7dc",
+            "name": "Minh Đức",
+            "shape": "diamond",
+            "color": "sky"
+          },
+          {
+            "id": "01a1e495-8424-7f90-b5f9-84daff6fcf64",
+            "name": "Lan",
+            "shape": "squircle",
+            "color": "coral"
+          }
+        ],
+        "myBalance": 0
+      },
+      {
+        "id": "01a1e495-8139-7270-bb5b-c8a3295b5885",
+        "name": "Reader A",
+        "currency": "VND",
+        "memberCount": 4,
+        "previewMembers": [
+          {
+            "id": "01a1e495-813b-7c58-b387-c4d11513fdbd",
+            "name": "Minh",
+            "shape": "circle",
+            "color": "mint"
+          },
+          {
+            "id": "01a1e495-813d-7d10-a4ba-4224eb7d7d80",
+            "name": "Lan",
+            "shape": "diamond",
+            "color": "sky"
+          },
+          {
+            "id": "01a1e495-813f-7632-aa64-36838ae20da8",
+            "name": "Hùng",
+            "shape": "squircle",
+            "color": "coral"
+          },
+          {
+            "id": "01a1e495-8141-7611-86be-6f3bf907ac19",
+            "name": "Thu",
+            "shape": "leaf",
+            "color": "lilac"
+          }
+        ],
+        "myBalance": 515000
+      },
+      {
+        "id": "01a1e494-8d77-70dc-9a2e-ae260aac1747",
+        "name": "Đà Lạt 12/2026",
+        "currency": "VND",
+        "memberCount": 4,
+        "previewMembers": [
+          {
+            "id": "01a1e494-8d77-70dc-9a2e-ae27c5e1a8ce",
+            "name": "Minh",
+            "shape": "circle",
+            "color": "mint"
+          },
+          {
+            "id": "01a1e494-8d78-7c1b-bb35-13fabaf260bf",
+            "name": "Lan",
+            "shape": "diamond",
+            "color": "sky"
+          },
+          {
+            "id": "01a1e494-8d78-7c1b-bb35-13fb24bb8b2f",
+            "name": "Hùng",
+            "shape": "squircle",
+            "color": "coral"
+          },
+          {
+            "id": "01a1e494-8d79-7213-b761-475eddb8b7d9",
+            "name": "Thu",
+            "shape": "leaf",
+            "color": "lilac"
+          }
+        ],
+        "myBalance": 626666
+      },
+      {
+        "id": "01a1e494-8953-707a-a3f9-0375c6e131d6",
+        "name": "Đà Lạt 12/2026",
+        "currency": "VND",
+        "memberCount": 12,
+        "previewMembers": [
+          {
+            "id": "01a1e494-8953-707a-a3f9-037668238cb1",
+            "name": "Minh",
+            "shape": "circle",
+            "color": "mint"
+          },
+          {
+            "id": "01a1e494-8954-7867-8c59-91826be6f222",
+            "name": "Lan",
+            "shape": "diamond",
+            "color": "sky"
+          },
+          {
+            "id": "01a1e494-8955-75a5-ad24-bb2bccab74bd",
+            "name": "Hùng",
+            "shape": "squircle",
+            "color": "coral"
+          },
+          {
+            "id": "01a1e494-8955-75a5-ad24-bb2c99e331a1",
+            "name": "Thu",
+            "shape": "leaf",
+            "color": "lilac"
+          }
+        ],
+        "myBalance": 566666
+      },
+      {
+        "id": "01a1e494-87d0-7311-be3a-8d9d19164ddf",
+        "name": "Đà Lạt 12/2026",
+        "currency": "VND",
+        "memberCount": 4,
+        "previewMembers": [
+          {
+            "id": "01a1e494-87d1-7f46-91dc-dbf7e7c11b0c",
+            "name": "Minh",
+            "shape": "circle",
+            "color": "mint"
+          },
+          {
+            "id": "01a1e494-87d3-78a1-9a20-65b96c16705f",
+            "name": "Lan",
+            "shape": "diamond",
+            "color": "sky"
+          },
+          {
+            "id": "01a1e494-87d4-78e3-8830-d897cda22a89",
+            "name": "Hùng",
+            "shape": "squircle",
+            "color": "coral"
+          },
+          {
+            "id": "01a1e494-87d6-7c78-92cf-a8d38028627e",
+            "name": "Thu",
+            "shape": "leaf",
+            "color": "lilac"
+          }
+        ],
+        "myBalance": 290001
+      }
+    ]
+  }
+}

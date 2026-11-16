@@ -1,0 +1,47 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/balances",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "currency": "VND",
+    "minimized": true,
+    "balances": [
+      {
+        "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+        "balance": 550000
+      },
+      {
+        "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+        "balance": -90000
+      },
+      {
+        "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+        "balance": -270000
+      },
+      {
+        "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+        "balance": -190000
+      }
+    ],
+    "transfers": [
+      {
+        "fromMemberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+        "toMemberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+        "amount": 270000
+      },
+      {
+        "fromMemberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+        "toMemberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+        "amount": 190000
+      },
+      {
+        "fromMemberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+        "toMemberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+        "amount": 90000
+      }
+    ]
+  }
+}

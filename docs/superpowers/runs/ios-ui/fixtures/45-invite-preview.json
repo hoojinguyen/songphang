@@ -1,0 +1,52 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/invites/cr4mVLzhGoDywLbfhf5-OLpgPc4mNq8NL4y5xNUyeXI",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "group": {
+      "id": "01a1e4bd-cc25-70c6-860e-275da20487f1",
+      "name": "Đà Lạt 3N2Đ"
+    },
+    "ownerName": "Minh",
+    "memberCount": 4,
+    "transactionCount": 4,
+    "members": [
+      {
+        "id": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+        "name": "Minh",
+        "shape": "circle",
+        "color": "mint",
+        "claimed": true,
+        "balance": null
+      },
+      {
+        "id": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+        "name": "Lan",
+        "shape": "diamond",
+        "color": "sky",
+        "claimed": false,
+        "balance": -120000
+      },
+      {
+        "id": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+        "name": "Hùng",
+        "shape": "squircle",
+        "color": "coral",
+        "claimed": false,
+        "balance": -170001
+      },
+      {
+        "id": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+        "name": "Thu",
+        "shape": "leaf",
+        "color": "lilac",
+        "claimed": false,
+        "balance": -210000
+      }
+    ],
+    "alreadyJoined": true
+  }
+}

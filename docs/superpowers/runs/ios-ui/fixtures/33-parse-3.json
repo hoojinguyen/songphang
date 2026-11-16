@@ -1,0 +1,65 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions/parse",
+    "body": {
+      "text": "nước 100k chia lan, hùng, thu"
+    }
+  },
+  "status": 200,
+  "response": {
+    "status": "ok",
+    "text": "nước 100k chia lan, hùng, thu",
+    "draft": {
+      "type": "expense",
+      "description": "nước",
+      "amount": 100000,
+      "payers": [
+        {
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "amount": 100000
+        }
+      ],
+      "split": {
+        "method": "equal",
+        "members": [
+          "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+          "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+          "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+        ]
+      }
+    },
+    "shares": [
+      {
+        "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+        "amount": 33334
+      },
+      {
+        "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+        "amount": 33333
+      },
+      {
+        "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+        "amount": 33333
+      }
+    ],
+    "spans": [
+      {
+        "start": 0,
+        "end": 4,
+        "kind": "description"
+      },
+      {
+        "start": 5,
+        "end": 9,
+        "kind": "amount"
+      },
+      {
+        "start": 10,
+        "end": 29,
+        "kind": "equal"
+      }
+    ],
+    "issues": []
+  }
+}

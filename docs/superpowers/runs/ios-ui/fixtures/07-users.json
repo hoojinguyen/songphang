@@ -1,0 +1,19 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/users",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "users": [
+      {
+        "userId": "01a1e491-7216-7bb1-8048-06f98325653f",
+        "name": "Minh",
+        "role": "owner",
+        "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+        "isMe": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,281 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/activity",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "activity": [
+      {
+        "id": "01a1e4bd-ce0e-7df7-9d87-d9922e05553b",
+        "actor": {
+          "userId": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh",
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+        },
+        "action": "create",
+        "entityType": "transaction",
+        "entityId": "01a1e4bd-ce0b-72e9-8a78-0e0ee8f04bdc",
+        "summary": "Vé",
+        "before": null,
+        "after": {
+          "type": "expense",
+          "split": {
+            "method": "percent",
+            "entries": [
+              {
+                "percent": "50",
+                "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+              },
+              {
+                "percent": "30",
+                "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+              },
+              {
+                "percent": "20",
+                "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+              }
+            ]
+          },
+          "amount": 99999,
+          "payers": [
+            {
+              "amount": 99999,
+              "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+            }
+          ],
+          "shares": [
+            {
+              "amount": 49999,
+              "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+            },
+            {
+              "amount": 30000,
+              "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+            },
+            {
+              "amount": 20000,
+              "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+            }
+          ],
+          "category": "transport",
+          "occurredAt": "2026-11-10T12:00:00.000Z",
+          "description": "Vé"
+        },
+        "createdAt": "2026-11-16T14:23:26.728Z",
+        "canRestore": false
+      },
+      {
+        "id": "01a1e4bd-cdb7-7bf4-b418-cf2ef12c6b77",
+        "actor": {
+          "userId": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh",
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+        },
+        "action": "create",
+        "entityType": "transaction",
+        "entityId": "01a1e4bd-cdb4-799a-899c-fdb2c366b5a2",
+        "summary": "Hoàn cọc",
+        "before": null,
+        "after": {
+          "type": "income",
+          "split": {
+            "method": "equal",
+            "members": [
+              "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+              "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+              "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+              "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+            ]
+          },
+          "amount": 200000,
+          "payers": [
+            {
+              "amount": 200000,
+              "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+            }
+          ],
+          "shares": [
+            {
+              "amount": 50000,
+              "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+            },
+            {
+              "amount": 50000,
+              "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+            },
+            {
+              "amount": 50000,
+              "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+            },
+            {
+              "amount": 50000,
+              "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+            }
+          ],
+          "category": null,
+          "occurredAt": "2026-11-10T12:00:00.000Z",
+          "description": "Hoàn cọc"
+        },
+        "createdAt": "2026-11-16T14:23:26.641Z",
+        "canRestore": false
+      },
+      {
+        "id": "01a1e4bd-cd60-7464-9c22-d5e4cf140696",
+        "actor": {
+          "userId": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh",
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+        },
+        "action": "create",
+        "entityType": "transaction",
+        "entityId": "01a1e4bd-cd5d-7fb3-9437-3b97e2f381fe",
+        "summary": "Khách sạn",
+        "before": null,
+        "after": {
+          "type": "expense",
+          "split": {
+            "method": "shares",
+            "entries": [
+              {
+                "weight": "2",
+                "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+              },
+              {
+                "weight": "1",
+                "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+              },
+              {
+                "weight": "1",
+                "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+              },
+              {
+                "weight": "1",
+                "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+              }
+            ]
+          },
+          "amount": 1200000,
+          "payers": [
+            {
+              "amount": 800000,
+              "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+            },
+            {
+              "amount": 400000,
+              "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+            }
+          ],
+          "shares": [
+            {
+              "amount": 480000,
+              "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+            },
+            {
+              "amount": 240000,
+              "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+            },
+            {
+              "amount": 240000,
+              "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+            },
+            {
+              "amount": 240000,
+              "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+            }
+          ],
+          "category": "lodging",
+          "occurredAt": "2026-11-10T12:00:00.000Z",
+          "description": "Khách sạn"
+        },
+        "createdAt": "2026-11-16T14:23:26.554Z",
+        "canRestore": false
+      },
+      {
+        "id": "01a1e4bd-cd08-725b-8e17-936d8062ac61",
+        "actor": {
+          "userId": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh",
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+        },
+        "action": "create",
+        "entityType": "transaction",
+        "entityId": "01a1e4bd-cd05-71db-abbb-1bda1779a259",
+        "summary": "Lẩu",
+        "before": null,
+        "after": {
+          "type": "expense",
+          "split": {
+            "method": "exact",
+            "entries": [
+              {
+                "amount": 80000,
+                "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+              },
+              {
+                "amount": 60000,
+                "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+              },
+              {
+                "amount": 40000,
+                "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+              }
+            ],
+            "members": [
+              "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+              "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+              "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+            ],
+            "remainder": "equal_among_all"
+          },
+          "amount": 300000,
+          "payers": [
+            {
+              "amount": 300000,
+              "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+            }
+          ],
+          "shares": [
+            {
+              "amount": 120000,
+              "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+            },
+            {
+              "amount": 100000,
+              "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5"
+            },
+            {
+              "amount": 80000,
+              "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+            }
+          ],
+          "category": "food",
+          "occurredAt": "2026-11-10T12:00:00.000Z",
+          "description": "Lẩu"
+        },
+        "createdAt": "2026-11-16T14:23:26.466Z",
+        "canRestore": false
+      },
+      {
+        "id": "01a1e4bd-cc35-7f3e-925e-b3aed3a3384d",
+        "actor": {
+          "userId": "01a1e491-7216-7bb1-8048-06f98325653f",
+          "name": "Minh",
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff"
+        },
+        "action": "create",
+        "entityType": "group",
+        "entityId": "01a1e4bd-cc25-70c6-860e-275da20487f1",
+        "summary": "Đà Lạt 3N2Đ",
+        "before": null,
+        "after": {
+          "memberCount": 4
+        },
+        "createdAt": "2026-11-16T14:23:26.244Z",
+        "canRestore": false
+      }
+    ],
+    "nextCursor": null
+  }
+}

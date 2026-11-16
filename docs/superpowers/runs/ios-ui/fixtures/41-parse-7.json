@@ -1,0 +1,57 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions/parse",
+    "body": {
+      "text": "cà phê 180k chia 3"
+    }
+  },
+  "status": 200,
+  "response": {
+    "status": "needs_input",
+    "text": "cà phê 180k chia 3",
+    "draft": {
+      "type": "expense",
+      "description": "cà phê",
+      "amount": 180000,
+      "payers": [
+        {
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "amount": 180000
+        }
+      ],
+      "split": null
+    },
+    "spans": [
+      {
+        "start": 0,
+        "end": 6,
+        "kind": "description"
+      },
+      {
+        "start": 7,
+        "end": 11,
+        "kind": "amount"
+      },
+      {
+        "start": 12,
+        "end": 18,
+        "kind": "equal"
+      }
+    ],
+    "issues": [
+      {
+        "code": "COUNT_MISMATCH",
+        "start": 12,
+        "end": 18,
+        "candidates": [
+          "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+          "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+          "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+        ],
+        "count": 3
+      }
+    ]
+  }
+}
