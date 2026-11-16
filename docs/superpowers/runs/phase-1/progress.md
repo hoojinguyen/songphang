@@ -3061,3 +3061,12 @@ Result: pnpm check passed. Claimed-member deletion 204; fresh group myMemberId n
 Security review: items 2,4–7 checked; no new payload fields or write permissions. Self-review: PASS. Not verified: multi-profile prompt timing; final browser checks follow. Out of scope: R7's empty-group balance case handled separately.
 Manual checks: 1. Delete a linked member with no ledger history while their group is open → choose-shape prompt appears without reload. 2. Members/users view shows no stale claim. 3. Outsider/unsigned deletion → 404/401.
 Commit reference: `fix(web): refresh identity links after member deletion`.
+
+### R7 — empty group balances
+Approach:
+- Short-circuit the read service when its balance snapshot has no members.
+- Return the normal validated balance response with empty balances/transfers and the stored mode/currency.
+- Preserve core's intentional rejection of empty input lists and every member-deletion rule.
+Result: pnpm check passed. Delete last member 204; minimized and pairwise modes both returned 200 with balances []/transfers [], correct currency/mode. Outsider 404; unsigned 401. Add member 201; nonempty zero balance returned normally. Whole diff reviewed: PASS. Security review: items 4–6 checked, no authorization/query/core constraint change. Not verified: physical UI. Out of scope: none.
+Manual checks: 1. Delete all members without transactions → balances loads empty in both modes. 2. Add a member again → their zero balance appears. 3. Outsider and unsigned reads → 404/401.
+Commit reference: `fix(api): return empty balances for groups without members`.

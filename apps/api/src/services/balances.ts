@@ -15,6 +15,13 @@ export async function getBalances(deps: AppDeps, groupId: string) {
 			if (group === null)
 				throw new AppError(404, "NOT_FOUND", "Resource not found");
 			const balances = await listMemberBalances(executor, groupId);
+			if (balances.length === 0)
+				return BalancesResponse.parse({
+					currency: group.currency,
+					minimized: group.minimizeDebts,
+					balances: [],
+					transfers: [],
+				});
 			const sides = group.minimizeDebts
 				? null
 				: await listLedgerSides(executor, groupId);
