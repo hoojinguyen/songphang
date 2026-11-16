@@ -1,0 +1,134 @@
+public import SwiftUI
+
+public struct LoadingSkeleton: View {
+  private let rowCount: Int
+  private let rowHeight: CGFloat
+
+  public init(rowCount: Int = 3, rowHeight: CGFloat = 72) {
+    self.rowCount = rowCount
+    self.rowHeight = rowHeight
+  }
+
+  public var body: some View {
+    VStack(spacing: 12) {
+      ForEach(0..<rowCount, id: \.self) { _ in
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+          .fill(Tokens.sunken)
+          .frame(maxWidth: .infinity)
+          .frame(height: rowHeight)
+      }
+    }
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Đang tải...")
+  }
+}
+
+public struct LoadError: View {
+  private let message: String
+  private let retryTitle: String
+  private let isRetrying: Bool
+  private let onRetry: () -> Void
+
+  public init(
+    message: String = "Không tải được. Kiểm tra mạng rồi thử lại.",
+    retryTitle: String = "Thử lại",
+    isRetrying: Bool = false,
+    onRetry: @escaping () -> Void
+  ) {
+    self.message = message
+    self.retryTitle = retryTitle
+    self.isRetrying = isRetrying
+    self.onRetry = onRetry
+  }
+
+  public var body: some View {
+    VStack(spacing: 12) {
+      Text(message)
+        .font(Typography.body)
+        .foregroundStyle(Tokens.ink)
+        .multilineTextAlignment(.center)
+
+      SPButton(
+        retryTitle,
+        variant: .primary,
+        isDisabled: isRetrying,
+        isPending: isRetrying,
+        action: onRetry
+      )
+    }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 16)
+  }
+}
+
+public struct EmptyState<Leading: View, Action: View>: View {
+  private let title: String
+  private let subtitle: String?
+  private let leading: Leading
+  private let action: Action
+
+  public init(
+    title: String,
+    subtitle: String? = nil,
+    @ViewBuilder leading: () -> Leading = { EmptyView() },
+    @ViewBuilder action: () -> Action = { EmptyView() }
+  ) {
+    self.title = title
+    self.subtitle = subtitle
+    self.leading = leading()
+    self.action = action()
+  }
+
+  public var body: some View {
+    VStack(spacing: 16) {
+      leading
+      Text(title)
+        .font(Typography.sectionTitle)
+        .foregroundStyle(Tokens.ink)
+        .multilineTextAlignment(.center)
+      if let subtitle {
+        Text(subtitle)
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.muted)
+          .multilineTextAlignment(.center)
+      }
+      action
+    }
+    .frame(maxWidth: .infinity)
+    .padding(24)
+  }
+}
+
+public struct OfflineBanner: View {
+  private let sinceTimeText: String?
+
+  public init(sinceTimeText: String? = nil) {
+    self.sinceTimeText = sinceTimeText
+  }
+
+  public var body: some View {
+    HStack(spacing: 12) {
+      Image(systemName: "wifi.slash")
+        .font(.system(size: 18, weight: .bold))
+        .foregroundStyle(Tokens.surface)
+        .accessibilityHidden(true)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text("Mất mạng. Bạn vẫn xem được sổ.")
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.surface)
+        if let sinceTimeText {
+          Text("lúc \(sinceTimeText)")
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.onInkMuted)
+        }
+      }
+      Spacer(minLength: 0)
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.ink)
+    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+  }
+}

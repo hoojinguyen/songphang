@@ -12,6 +12,18 @@ Choice: …
 Reason: …
 ```
 
+## D1 — Be Vietnam Pro font files in web repository (task U.1)
+Problem: Task U.1 specifies copying Be Vietnam Pro font files from `apps/web` into `DesignSystem/Resources/Fonts/` if they are TrueType or OpenType, or using the system font if they are only in a web format iOS cannot register.
+Options: (1) Copy `.woff2` files from `apps/web/public/fonts/be-vietnam-pro/` and attempt registration; (2) Use the iOS system font with Dynamic Type weights and record under "Not verified" as instructed by the plan.
+Choice: Option 2 — use the iOS system font (`Font.system`) and record under "Not verified".
+Reason: Inspection of `apps/web/public/fonts/be-vietnam-pro/` confirmed only `.woff2` files exist (`latin-*.woff2`, `latin-ext-*.woff2`, `vietnamese-*.woff2`), which CoreText/iOS does not register as app bundle fonts, and downloading font files is forbidden by the phase run rules.
+
+## D2 — SwiftPM tools version in `SongPhangKit/Package.swift` (task U.1)
+Problem: The installed toolchain is Swift 6.4.2 (`Xcode 27.2`), and `Package.swift` needs `.iOS(.v26)`, `.swiftLanguageMode(.v6)`, `.treatAllWarnings(as: .error)`, and `.defaultIsolation(MainActor.self)`.
+Options: (1) `swift-tools-version: 6.2`; (2) `swift-tools-version: 6.0`.
+Choice: Option 1 (`swift-tools-version: 6.2`).
+Reason: In the installed `PackageDescription.swiftinterface`, `.iOS(.v26)`, `.treatAllWarnings(as: .error)`, and `.defaultIsolation(MainActor.self)` are annotated `@available(_PackageDescription 6.2)`.
+
 ## Web baseline
 
 `bb1e0432fef6f1ceb4cf2ee960948129210626b2`
