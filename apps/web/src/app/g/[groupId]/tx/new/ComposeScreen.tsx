@@ -1,8 +1,14 @@
 "use client";
-import { CreateTransactionRequest, type MemberDto } from "@songphang/contract";
+import {
+	CreateTransactionRequest,
+	type MemberDto,
+	type ParseResponse,
+} from "@songphang/contract";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConfirmationCard } from "../../../../../components/quick-entry/ConfirmationCard";
+import { QuestionCard } from "../../../../../components/quick-entry/QuestionCard";
 import { SentenceInput } from "../../../../../components/quick-entry/SentenceInput";
 import { Icon } from "../../../../../components/ui/Icon";
 import { ScreenHeader } from "../../../../../components/ui/ScreenHeader";
@@ -28,19 +34,36 @@ export function ComposeScreen({
 	const saving = useRef(false);
 	const [collapsing, setCollapsing] = useState(false);
 	const result = sentence.trim() ? query.data : undefined;
-	const edit = () => {
-		if (result?.text !== sentence) return;
-		if (result)
+	useEffect(() => {
+		if (
+			query.current &&
+			result?.status === "unparsed" &&
+			memory.draft?.sentence !== sentence
+		) {
 			memory.setDraft({
 				sentence,
 				draft: result.draft,
 				issues: result.issues,
 				spans: result.spans,
 			});
+			router.replace(`/g/${groupId}/tx/new?form`);
+		}
+	}, [query.current, result, memory, sentence, router, groupId]);
+	const edit = (chosen?: ParseResponse) => {
+		if (result?.text !== sentence) return;
+		if (result)
+			memory.setDraft({
+				sentence,
+				draft: chosen?.draft ?? result.draft,
+				issues: result.issues,
+				spans: result.spans,
+			});
 		router.push(`/g/${groupId}/tx/new?form`);
 	};
-	const save = () => {
-		if (result?.status !== "ok" || !query.current || saving.current) return;
+	const save = (chosen?: ParseResponse) => {
+		const savingResult = chosen ?? result;
+		if (savingResult?.status !== "ok" || !query.current || saving.current)
+			return;
 		let identity = keys.current.get(sentence);
 		if (!identity) {
 			identity = {
@@ -50,7 +73,7 @@ export function ComposeScreen({
 			keys.current.set(sentence, identity);
 		}
 		const parsed = CreateTransactionRequest.safeParse({
-			...result.draft,
+			...savingResult.draft,
 			occurredAt: identity.occurredAt,
 			category: null,
 		});
@@ -90,20 +113,44 @@ export function ComposeScreen({
 			<div
 				className={`compose-card my-auto ${collapsing ? "compose-collapsing" : ""}`}
 			>
-				{result && (
+				{result?.status === "needs_input" ? (
+					<QuestionCard
+						key={result.text}
+						result={result}
+						members={members}
+						groupId={groupId}
+						onEdit={edit}
+						onSave={save}
+						disabled={!query.current || mutation.isPending}
+					/>
+				) : result?.status === "ok" ? (
 					<ConfirmationCard
 						result={result}
 						members={members}
-						onEdit={edit}
-						onSave={save}
-						disabled={
-							result.status !== "ok" || !query.current || mutation.isPending
-						}
+						onEdit={() => edit()}
+						onSave={() => save()}
+						disabled={!query.current || mutation.isPending}
 					/>
-				)}
+				) : null}
 			</div>
 			{query.isError && <p role="alert">{vi.common.loadError}</p>}
 			{mutation.isError && <p role="alert">{vi.common.saveError}</p>}
+			<Link
+				href={`/g/${groupId}/tx/new?form`}
+				onClick={() => {
+					if (result?.text === sentence)
+						memory.setDraft({
+							sentence,
+							draft: result.draft,
+							issues: result.issues,
+							spans: result.spans,
+						});
+					else memory.setDraft(null);
+				}}
+				className="min-h-11 text-center font-bold"
+			>
+				{vi.feed.manualEntry}
+			</Link>
 			<div className="mt-auto flex items-end gap-3 rounded-[30px] border-[3px] border-ink bg-surface p-3">
 				<SentenceInput
 					text={sentence}

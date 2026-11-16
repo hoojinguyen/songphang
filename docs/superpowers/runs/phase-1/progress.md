@@ -70,8 +70,8 @@ Not verified:
 ## Stage 1D — Quick entry
 
 - [x] 1D.1 `core`: the sentence reader
-- [ ] 1D.2 API: parse endpoint
-- [ ] 1D.3 Web: typing box and confirmation card
+- [x] 1D.2 API: parse endpoint
+- [x] 1D.3 Web: typing box and confirmation card
 - [ ] 1D.4 Web: questions and sentences that are not understood
 - [ ] 1D.5 Stage gate 1D
 
@@ -2011,3 +2011,18 @@ Browser: dev-login Minh → compose A36. Card: 300.000, Minh trả, Riêng: Minh
 Security review: relevant items 1, 2, 7, 8 inspected; only React text nodes; response schemas validated, same-origin requests, memory-only drafts, no new dependency. Diff reviewed. The form controller is over 200 lines after initialization; it retains one state owner for the existing form and will be factored with edit support.
 Decisions: accessible phrase labels use `role="img"` on marks because the implicit mark role does not support aria-label. Description remains ordinary text. Deviations: none.
 Not verified: A01/A23/A43 browser saves, slow typing/double spaces/paste and empty sample/viewer checks remain for the combined D UI verification; API coverage for all four samples passed in 1D.2. Real screen-reader announcement and motion judgment require owner check. Out of scope: none.
+
+Commit 1D.3: `61bd7e1`.
+
+## Task 1D.4 — Approach
+- Add a question card that retains explicit user choices and requests server previews before enabling save.
+- Resolve ambiguous names by reparsing user-selected full names through the API, retaining the original sentence and span offsets in memory.
+- Automatically hand unparsed sentences to the form once, show issue-specific copy and preserve exact inputs/back navigation.
+- Keep count/description choices local; no transaction is created until the explicit save action.
+
+### Task 1D.4 — Result
+`pnpm check`: passed (213 files; all package typechecks Done).
+Browser A46: 0/3 → 2/3 leaves “Chọn thêm 1 người” disabled; at 3/3 the fourth member is disabled, preview shows 60.000 each and Lưu enabled. No save pressed. A53 auto-opens exact editor with banner: “Các phần riêng cộng lại 180.000 đ, còn 120.000 đ chưa biết của ai. Mình không tự chia hộ.” Inputs 80000/60000/40000; status “Còn dư 120.000 đ · chưa lưu được”; lilac choice changes status to “Khớp 300.000 đ · không còn dư”. Returning to compose retained the original sentence. A48: empty description disables save; entering cà phê previews 45000 each; save returns to stream. B02: “minh nào?” lists Minh Anh, Minh Đức, Lan; choosing Minh Đức previews 50000 each; saving shows “Minh Đức trả” in stream. HTTP counts afterwards A=7, B=1, C=0, matching the five prior API saves and the explicit UI saves only; A46 and A53 created nothing.
+Security review: relevant items 1, 2, 7, 8 inspected; user choices resolve only via validated parse/preview/create responses, no save of unresolved data, no HTML injection/storage/new dependency. Full diff reviewed. A separate current-preview flag prevents a previous preview being saved during debounce.
+Decisions: original sentence and original highlight spans remain untouched while chosen full names are reparsed internally. No new grammar. Deviations: none.
+Not verified: API-stop save recovery, individual A50/A55/A57/A59 browser lines, multiple simultaneous ambiguous words, and remaining D.3 visual exercises require the combined/manual checks. Their API rows passed. Out of scope: none.

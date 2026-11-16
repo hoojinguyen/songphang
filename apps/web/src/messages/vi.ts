@@ -1,5 +1,25 @@
 export const vi = {
+	unparsed: {
+		title: "Mình chưa hiểu hết câu này",
+		amountMissing: "Mình chưa thấy số tiền trong câu.",
+		sumShort:
+			"Các phần riêng cộng lại {actual}, còn {rest} chưa biết của ai. Mình không tự chia hộ.",
+		sumOver: "Các phần riêng cộng lại {actual}, nhiều hơn tổng {total}.",
+		memberUnknown: "Nhóm không có ai đang hoạt động tên “{word}”.",
+		countTooLarge: "Nhóm chỉ có {total} người đang hoạt động.",
+		notUnderstood: "Mình chưa hiểu đoạn “{fragment}”.",
+	},
 	compose: {
+		whichPeople: "{count} người nào?",
+		chosen: "đã chọn {selected} / {count}",
+		countReason:
+			"Nhóm có {total} người nên mình không tự chọn. Chưa có gì được lưu.",
+		chooseMore: "Chọn thêm {count} người",
+		whichMember: "{word} nào?",
+		whoPaid: "Ai trả khoản này?",
+		memberReason:
+			"Có hơn một người khớp với “{word}” nên mình không tự chọn. Chưa có gì được lưu.",
+		descriptionPrompt: "Khoản này chi cho việc gì?",
 		title: "Khoản chi mới",
 		inputLabel: "Gõ một khoản chi",
 		send: "Gửi",

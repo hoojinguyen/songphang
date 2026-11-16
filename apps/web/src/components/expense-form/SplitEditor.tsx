@@ -1,4 +1,5 @@
 import type { MemberDto } from "@songphang/contract";
+import type { ReactNode } from "react";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { ShareShapes } from "../quick-entry/ShareShapes";
@@ -9,6 +10,7 @@ import { SplitModeTabs } from "./SplitModeTabs";
 import { SplitStatus } from "./SplitStatus";
 import type { useSplitState } from "./use-split-state";
 export function SplitEditor({
+	banner,
 	state,
 	members,
 	amount,
@@ -17,6 +19,7 @@ export function SplitEditor({
 	shares,
 	onDone,
 }: {
+	banner?: ReactNode;
 	state: ReturnType<typeof useSplitState>;
 	members: MemberDto[];
 	amount: number;
@@ -30,6 +33,7 @@ export function SplitEditor({
 			aria-label={vi.split.changeLabel}
 			className="fixed inset-y-0 left-1/2 z-20 flex w-full max-w-[430px] -translate-x-1/2 flex-col gap-4 overflow-y-auto bg-bg px-5 py-6"
 		>
+			{banner}
 			<header className="flex items-center gap-3">
 				<button
 					type="button"

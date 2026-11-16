@@ -2,6 +2,7 @@
 import type { MemberDto } from "@songphang/contract";
 import { useState } from "react";
 import { z } from "zod";
+import { useDraft } from "../../lib/draft-context";
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
@@ -12,6 +13,7 @@ import { SplitEditor } from "./SplitEditor";
 import { SplitStatus } from "./SplitStatus";
 import { TransferFields } from "./TransferFields";
 import { TypeSwitch } from "./TypeSwitch";
+import { UnparsedBanner } from "./UnparsedBanner";
 import { useExpenseForm } from "./use-expense-form";
 export function ExpenseForm({
 	groupId,
@@ -22,7 +24,10 @@ export function ExpenseForm({
 	members: MemberDto[];
 	myMemberId: string | null;
 }) {
-	const [splitOpen, setSplitOpen] = useState(false);
+	const memory = useDraft();
+	const [splitOpen, setSplitOpen] = useState(
+		memory.draft?.issues.some((i) => i.code === "SUM_MISMATCH") ?? false,
+	);
 	const form = useExpenseForm(groupId, members, myMemberId);
 	const {
 		active,
@@ -76,6 +81,7 @@ export function ExpenseForm({
 	if (splitOpen)
 		return (
 			<SplitEditor
+				banner={<UnparsedBanner activeCount={active.length} />}
 				state={splitState}
 				members={active}
 				amount={amount}
@@ -93,9 +99,10 @@ export function ExpenseForm({
 
 	return (
 		<div className="flex flex-1 flex-col gap-3">
+			<UnparsedBanner activeCount={active.length} />
 			<ScreenHeader
 				title={title}
-				backHref={`/g/${groupId}`}
+				backHref={memory.draft ? `/g/${groupId}/tx/new` : `/g/${groupId}`}
 				backLabel={vi.common.cancel}
 				backIcon="close"
 				trailing={<TypeSwitch value={type} onChange={setType} />}

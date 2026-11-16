@@ -179,3 +179,10 @@ Written by the implementation agent from the "Manual checks for the project owne
 3. Type A36; marks cover amount, payer, exact parts, remainder; shares 120.000/100.000/80.000. Chỉnh tay preserves 80.000/60.000/40.000 and the remainder choice.
 4. Type slowly with double spaces and paste a sentence containing a line break; accents and marks stay aligned. A viewer sees no entry box.
 5. With a screen reader, confirm marked phrases announce their kind. Judge reduced-motion and card collapse behavior.
+
+### 1D.4 — Clarification and hand-off
+1. A46: choose two then three; save only at three with 60.000 each. B02: choose Minh Đức; he is the saved payer. A48: add description before save.
+2. A53: compare GE16, banner, 80.000/60.000/40.000, shortage and lilac choice. A50/A55/A57/A59 show their exact issue sentences.
+3. Return to compose from the manual form: original sentence remains. Stop API during save: choices and sentence remain; retry after restart.
+4. Check database before Lưu: no transaction. Try five personal sentences and record read/asked/refused judgments for the advisor.
+5. Nhập tay is available in one tap, including after returning from an unparsed sentence.

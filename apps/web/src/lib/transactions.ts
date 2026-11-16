@@ -100,7 +100,7 @@ export function usePreviewShares(
 		);
 		return () => clearTimeout(timer);
 	}, [serialized]);
-	return useQuery<z.infer<typeof PreviewTransactionResponse>, ApiError>({
+	const query = useQuery<z.infer<typeof PreviewTransactionResponse>, ApiError>({
 		queryKey: ["group", groupId, "preview", debounced],
 		enabled: request !== null && debounced !== null,
 		queryFn: () =>
@@ -111,4 +111,11 @@ export function usePreviewShares(
 			),
 		placeholderData: keepPreviousData,
 	});
+	return {
+		...query,
+		current:
+			serialized === JSON.stringify(debounced) &&
+			!query.isFetching &&
+			!query.isPlaceholderData,
+	};
 }
