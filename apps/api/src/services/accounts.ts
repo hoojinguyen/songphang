@@ -5,8 +5,10 @@ import type {
 } from "@songphang/contract";
 import {
 	findAccountByEmail,
+	findAccountById,
 	insertAccount,
 	insertIdentity,
+	lockAccount,
 	verifyAccountEmail,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
@@ -82,10 +84,20 @@ export async function loginAccount(
 			"INVALID_CREDENTIALS",
 			"Email or password is incorrect",
 		);
-	return createSession(deps.db, {
-		userId: account.id,
-		now: deps.now(),
-		...(input.userAgent === undefined ? {} : { userAgent: input.userAgent }),
+	return deps.db.transaction(async (transaction) => {
+		await lockAccount(transaction, account.id);
+		const current = await findAccountById(transaction, account.id);
+		if (!current || current.passwordHash !== account.passwordHash)
+			throw new AppError(
+				401,
+				"INVALID_CREDENTIALS",
+				"Email or password is incorrect",
+			);
+		return createSession(transaction, {
+			userId: current.id,
+			now: deps.now(),
+			...(input.userAgent === undefined ? {} : { userAgent: input.userAgent }),
+		});
 	});
 }
 export async function verifyEmail(deps: AppDeps, token: string): Promise<void> {

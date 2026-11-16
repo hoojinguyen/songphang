@@ -3012,3 +3012,12 @@ Result: pnpm check passed. Real queued HTTP operations after owner demotion: cre
 Security review: items 2–6 checked against the entire diff; the shared guard preserves 404/403 and rechecks after locking. Invite member insertion remains reachable only through validated/locked joining or the guarded editor service. No security rule weakened. Self-review: PASS for the four reproduced demotion paths; final matrix pending. Not verified: device UI, no UI changed. Out of scope: none.
 Manual checks: 1. Queue a write while the owner demotes the writer → 403, nothing stored. 2. Remove the writer instead → 404. 3. As owner create normally → 201; outsider → 404.
 Commit reference: `fix(api): recheck group permissions inside locked writes`.
+
+### R2 — password/session race
+Approach:
+- Keep the existing real-or-dummy Argon2 verification outside the account lock.
+- Lock and re-read the account in the session-insertion transaction; reject a changed password hash.
+- Allow existing session insertion/user lookup helpers to accept the open DbExecutor, preserving the account-first reset/change lock order.
+Result: pnpm check passed. Reproduced reset/account-lock race now: reset 204; overlapping old-password login 401; resulting old session /me 401. New password login 204 and /me 200; unknown account 401; wrong password 401. No credential/token was printed. Security review: items 1–6 checked; Argon2 dummy comparison retained, hash never logged, session insert shares the account lock and transaction. Entire diff reviewed: PASS. Not verified: physical multi-device UI. Out of scope: none.
+Manual checks: 1. Reset while an old-password login is pending → that login cannot create a surviving session. 2. Sign in with the new password → succeeds. 3. Wrong password/unknown email → identical invalid-credentials response.
+Commit reference: `fix(auth): serialize session issuance with password changes`.

@@ -1,5 +1,5 @@
 import { asc, eq, sql } from "drizzle-orm";
-import type { Db } from "./client.js";
+import type { Db, DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { userIdentities } from "./schema-accounts.js";
 
@@ -19,7 +19,7 @@ export function listUsers(db: Db) {
 		.orderBy(asc(users.createdAt), asc(users.id));
 }
 
-export async function findUserById(db: Db, userId: string) {
+export async function findUserById(db: DbExecutor, userId: string) {
 	const [user] = await db
 		.select(USER_COLUMNS)
 		.from(users)

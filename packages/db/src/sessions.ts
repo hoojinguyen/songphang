@@ -4,7 +4,7 @@ import { sessions, users } from "./schema.js";
 import { USER_COLUMNS } from "./users.js";
 
 export async function insertSession(
-	db: Db,
+	db: DbExecutor,
 	input: {
 		userId: string;
 		tokenHash: string;

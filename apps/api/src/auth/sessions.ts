@@ -3,6 +3,7 @@ import { z } from "@hono/zod-openapi";
 import { UserDto } from "@songphang/contract";
 import {
 	type Db,
+	type DbExecutor,
 	deleteSessionByHash,
 	findUserById,
 	findUserBySessionHash,
@@ -24,7 +25,7 @@ export function hashSessionToken(token: string): string {
 }
 
 export async function createSession(
-	db: Db,
+	db: DbExecutor,
 	input: {
 		userId: string;
 		now: Date;
