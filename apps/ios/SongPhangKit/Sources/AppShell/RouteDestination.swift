@@ -3,6 +3,7 @@ import AuthFeature
 import DesignSystem
 public import Domain
 import GroupsFeature
+import LedgerFeature
 public import SwiftUI
 
 public struct RouteDestination: View {
@@ -22,6 +23,9 @@ public struct RouteDestination: View {
   @State private var joinModel: JoinModel?
   @State private var membersModel: MembersModel?
   @State private var settingsModel: GroupSettingsModel?
+  @State private var feedModel: GroupFeedModel?
+  @State private var balancesModel: BalancesModel?
+  @State private var activityModel: ActivityModel?
 
   public init(
     route: Route,
@@ -109,6 +113,46 @@ public struct RouteDestination: View {
           membersRepository: dependencies.members
         )
       )
+    case .groupFeed(let groupId):
+      self._feedModel = State(
+        initialValue: GroupFeedModel(
+          groupId: groupId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
+          transactionsRepository: dependencies.transactions,
+          eventsRepository: dependencies.groupEvents,
+          initialHasNewItemsPill: args.contains("--new-items-pill")
+        )
+      )
+    case .groupBalances(let groupId):
+      self._balancesModel = State(
+        initialValue: BalancesModel(
+          groupId: groupId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
+          transactionsRepository: dependencies.transactions,
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
+        )
+      )
+    case .groupActivity(let groupId):
+      self._activityModel = State(
+        initialValue: ActivityModel(
+          groupId: groupId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          activityRepository: dependencies.activity,
+          transactionsRepository: dependencies.transactions,
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
+        )
+      )
     default:
       break
     }
@@ -163,6 +207,55 @@ public struct RouteDestination: View {
           onBack: onPop,
           onBackToGroups: { onPopToRoot(nil) },
           onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) }
+        )
+      }
+    case .groupFeed:
+      if let feedModel {
+        GroupFeedView(
+          model: feedModel,
+          isEmailVerified: currentUser?.emailVerified ?? true,
+          onBack: onPop,
+          onOpenMembers: { id in onNavigate(.groupMembers(groupId: id)) },
+          onOpenBalances: { id in onNavigate(.groupBalances(groupId: id)) },
+          onOpenQuickEntry: { id, sentence in
+            onNavigate(.quickEntry(groupId: id, initialSentence: sentence))
+          },
+          onOpenNewTransactionForm: { id in
+            onNavigate(.newTransactionForm(groupId: id))
+          },
+          onOpenEditTransaction: { id, txId in
+            onNavigate(.editTransaction(groupId: id, transactionId: txId))
+          },
+          onRemovedFromGroup: {
+            onPopToRoot(L10n.tr("common.removed"))
+          }
+        )
+      }
+    case .groupBalances(let groupId):
+      if let balancesModel {
+        BalancesView(
+          model: balancesModel,
+          isEmailVerified: currentUser?.emailVerified ?? true,
+          onBack: onPop,
+          onBackToGroups: { onPopToRoot(nil) },
+          onOpenSettle: { transfer in
+            onNavigate(
+              .settle(
+                groupId: groupId,
+                fromMemberId: transfer.fromMemberId,
+                toMemberId: transfer.toMemberId,
+                initialAmount: transfer.amount
+              )
+            )
+          }
+        )
+      }
+    case .groupActivity:
+      if let activityModel {
+        ActivityView(
+          model: activityModel,
+          isEmailVerified: currentUser?.emailVerified ?? true,
+          onBack: onPop
         )
       }
     case .debugGallery:

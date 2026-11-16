@@ -130,6 +130,11 @@ public struct RootView: View {
         if args.contains("--open-debug") {
           isShowingDebugPanel = true
         }
+        if args.contains("--removed-notice") {
+          statusNotice = L10n.tr("common.removed")
+        }
+        let targetGroupId =
+          args.contains("--scenario-large") ? LargeScenario.groupId : TripScenario.groupId
         if args.contains("--route-register") {
           path = [.register]
         } else if args.contains("--route-forgot") {
@@ -139,13 +144,19 @@ public struct RootView: View {
         } else if args.contains("--route-account") {
           path = [.account]
         } else if args.contains("--route-members") {
-          path = [.groupMembers(groupId: TripScenario.groupId)]
+          path = [.groupMembers(groupId: targetGroupId)]
         } else if args.contains("--route-settings") {
-          path = [.groupSettings(groupId: TripScenario.groupId)]
+          path = [.groupSettings(groupId: targetGroupId)]
         } else if args.contains("--route-join") {
           path = [.joinGroup(token: TripScenario.invite.token)]
         } else if args.contains("--route-join-invalid") {
           path = [.joinGroup(token: "invalid-token")]
+        } else if args.contains("--route-feed") {
+          path = [.groupFeed(groupId: targetGroupId)]
+        } else if args.contains("--route-balances") {
+          path = [.groupBalances(groupId: targetGroupId)]
+        } else if args.contains("--route-activity") {
+          path = [.groupActivity(groupId: targetGroupId)]
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
@@ -167,12 +178,47 @@ public struct RootView: View {
     #endif
     .task {
       let args = ProcessInfo.processInfo.arguments
-      if args.contains("--unverified-user") {
-        #if DEBUG
+      #if DEBUG
+        if args.contains("--unverified-user") {
           await dependencies.world.setCurrentUser(PreviewSamples.unverifiedUser)
           sessionModel.didSignIn(PreviewSamples.unverifiedUser)
-        #endif
-      }
+        }
+        if args.contains("--all-settled") {
+          for transfer in TripScenario.step4Balances.transfers {
+            _ = try? await dependencies.world.createTransaction(
+              groupId: TripScenario.groupId,
+              draft: .transfer(
+                TransactionDraft.TransferPayload(
+                  amount: transfer.amount,
+                  occurredAt: "2026-11-16T15:05:00.000Z",
+                  fromMemberId: transfer.fromMemberId,
+                  toMemberId: transfer.toMemberId
+                )
+              ),
+              key: IdempotencyKey()
+            )
+          }
+        }
+        if args.contains("--delete-t4") {
+          try? await dependencies.world.deleteTransaction(
+            groupId: TripScenario.groupId,
+            id: TripScenario.t4Transaction.id
+          )
+        }
+        if args.contains("--empty-activity") {
+          await dependencies.world.clearActivity(groupId: TripScenario.groupId)
+        }
+        if args.contains("--emit-changed") {
+          try? await Task.sleep(for: .milliseconds(400))
+          await dependencies.world.emitEvent(
+            .changed(["group", "members", "balances", "transactions"])
+          )
+        }
+        if args.contains("--emit-removed") {
+          try? await Task.sleep(for: .milliseconds(400))
+          await dependencies.world.emitEvent(.removed)
+        }
+      #endif
     }
   }
 

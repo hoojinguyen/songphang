@@ -205,7 +205,16 @@
       eventContinuations.removeValue(forKey: id)
     }
 
+    public func clearActivity(groupId: ExpenseGroup.ID) {
+      activityByGroup[groupId] = []
+    }
+
     public func emitEvent(_ event: GroupEvent) {
+      if case .removed = event {
+        let groupId = TripScenario.groupId
+        groupsById.removeValue(forKey: groupId)
+        groupOrder.removeAll { $0 == groupId }
+      }
       if case .changed = event {
         // When the debug panel emits a changed event on trip, append a scripted transaction if not present so "new item" can be observed.
         let groupId = TripScenario.groupId

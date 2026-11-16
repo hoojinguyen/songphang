@@ -26,6 +26,7 @@ let package = Package(
     .library(name: "PreviewSupport", targets: ["PreviewSupport"]),
     .library(name: "AuthFeature", targets: ["AuthFeature"]),
     .library(name: "GroupsFeature", targets: ["GroupsFeature"]),
+    .library(name: "LedgerFeature", targets: ["LedgerFeature"]),
     .library(name: "AccountFeature", targets: ["AccountFeature"]),
     .library(name: "AppShell", targets: ["AppShell"]),
   ],
@@ -58,6 +59,11 @@ let package = Package(
       swiftSettings: mainActorSwiftSettings
     ),
     .target(
+      name: "LedgerFeature",
+      dependencies: ["Domain", "DesignSystem", "PreviewSupport"],
+      swiftSettings: mainActorSwiftSettings
+    ),
+    .target(
       name: "AccountFeature",
       dependencies: ["Domain", "DesignSystem", "PreviewSupport"],
       swiftSettings: mainActorSwiftSettings
@@ -70,6 +76,7 @@ let package = Package(
         "PreviewSupport",
         "AuthFeature",
         "GroupsFeature",
+        "LedgerFeature",
         "AccountFeature",
       ],
       swiftSettings: mainActorSwiftSettings

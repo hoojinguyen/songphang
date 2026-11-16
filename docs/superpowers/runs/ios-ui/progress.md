@@ -10,7 +10,7 @@ For each task, under its heading: the approach note, the commit hash, the real o
 - [x] U.3 Domain, repository protocols, scripted fakes
 - [x] U.4 Shell, debug panel, sign-in
 - [x] U.5 Groups, members, invites, account
-- [ ] U.6 The group screen
+- [x] U.6 The group screen
 - [ ] U.7 Entering and editing
 - [ ] U.8 Stage gate and hand-over
 
@@ -210,12 +210,98 @@ For each task, under its heading: the approach note, the commit hash, the real o
 | S13 Account — loaded | `docs/superpowers/runs/ios-ui/screens/s13-account-loaded.png` | `apps/web/src/app/account/page.tsx`, `components/account/*` | Uses native `Toggle` for `Đăng xuất khỏi các thiết bị khác` |
 | S13 Account — failed | `docs/superpowers/runs/ios-ui/screens/s13-account-failed.png` | `apps/web/src/app/account/page.tsx` | None |
 | S13 Account — stale | `docs/superpowers/runs/ios-ui/screens/s13-account-stale.png` | `apps/web/src/app/account/page.tsx` | Snapshot remains visible with `OfflineBanner` |
+- **Commit:** `0d6e8bc96cfb1da9d15560cac35e06c4613b74f5`
+
+### U.6 The group screen
+
+**Approach:** Add `LedgerFeature` target (`GroupFeed`, `Balances`, `Activity`, and `Shared/LedgerDateLabels.swift`) and wire `.groupFeed`, `.groupBalances`, and `.groupActivity` in `AppShell/RouteDestination.swift` and `RootView.swift`. `GroupFeedView` uses `LazyVStack` inside `ScrollViewReader` with value-driven row views (`FeedTransactionRowView`), concurrent loading of group, members, balances, and first transaction page after snapshot hydration, pagination on top scroll, and an async event loop (`changed`, `removed`, `reconnected`). `BalancesView` renders `OwnSettlementCardView`, `SettlementCardView`, `OtherSettlementsSection`, `AllSettledSection`, and `BalanceBarsSection` directly from repository amounts without any arithmetic on `Money`. `ActivityView` formats sentences and change chips identically to `apps/web/src/lib/activity-sentences.ts` and supports `Khôi phục`.
+
+**Gate output:**
+- `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build` → `** BUILD SUCCEEDED **`
+- `xcrun swift-format lint --strict --recursive apps/ios` → no output (exit code 0)
+
+**Exercise results & screenshots:**
+- **S5 at step 4 of `trip` vs `26-step4-balances.json`:**
+  - `docs/superpowers/runs/ios-ui/fixtures/26-step4-balances.json`:
+    ```json
+    {
+      "currency": "VND",
+      "minimized": true,
+      "balances": [
+        { "memberId": "1736b1cb-64ef-4c36-bd62-343f5990685b", "balance": 500001 },
+        { "memberId": "3991e7a2-f583-4773-bd28-8e5cc53e8d71", "balance": -120000 },
+        { "memberId": "63513328-c91d-4d91-b498-2f17d136b705", "balance": -170001 },
+        { "memberId": "7508305b-c801-4cc6-bc00-fa1f1cd4eb41", "balance": -210000 }
+      ],
+      "transfers": [
+        {
+          "fromMemberId": "7508305b-c801-4cc6-bc00-fa1f1cd4eb41",
+          "toMemberId": "1736b1cb-64ef-4c36-bd62-343f5990685b",
+          "amount": 210000
+        },
+        {
+          "fromMemberId": "63513328-c91d-4d91-b498-2f17d136b705",
+          "toMemberId": "1736b1cb-64ef-4c36-bd62-343f5990685b",
+          "amount": 170001
+        },
+        {
+          "fromMemberId": "3991e7a2-f583-4773-bd28-8e5cc53e8d71",
+          "toMemberId": "1736b1cb-64ef-4c36-bd62-343f5990685b",
+          "amount": 120000
+        }
+      ]
+    }
+    ```
+  - Rendered on S5 (`s5-balances-loaded.png` & `s5-balances-bars.png`):
+    - Suggested transfers:
+      1. `Thu trả bạn`: `210.000` (`210000`)
+      2. `Hùng trả bạn`: `170.001` (`170001`)
+      3. `Lan trả bạn`: `120.000` (`120000`)
+    - Balance bars (`Cán cân của nhóm`):
+      1. `Minh`: `+500.001` (`500001`)
+      2. `Lan`: `−120.000` (`-120000`)
+      3. `Hùng`: `−170.001` (`-170001`)
+      4. `Thu`: `−210.000` (`-210000`)
+- **Screenshots:**
+  | Screen & State | Screenshot | Web source ported from | Differences & reason |
+  |---|---|---|---|
+  | S4 Group Feed — loading | `docs/superpowers/runs/ios-ui/screens/s4-feed-loading.png` | `apps/web/src/app/g/[groupId]/page.tsx` | None |
+  | S4 Group Feed — loaded | `docs/superpowers/runs/ios-ui/screens/s4-feed-loaded.png` | `apps/web/src/app/g/[groupId]/page.tsx`, `components/feed/*` | Native `LazyVStack` inside `ScrollViewReader` |
+  | S4 Group Feed — empty (`trip` step 0) | `docs/superpowers/runs/ios-ui/screens/s4-feed-empty.png` | `apps/web/src/components/feed/EmptyStream.tsx` | None |
+  | S4 Group Feed — failed (no snapshot) | `docs/superpowers/runs/ios-ui/screens/s4-feed-failed.png` | `apps/web/src/app/g/[groupId]/page.tsx` | None |
+  | S4 Group Feed — stale / offline | `docs/superpowers/runs/ios-ui/screens/s4-feed-stale.png` | `apps/web/src/app/g/[groupId]/page.tsx`, `components/feed/EntryBar.tsx` | Shows `OfflineBanner` at top and disabled entry bar `"Có mạng lại là gõ tiếp được"` |
+  | S4 Group Feed — viewer | `docs/superpowers/runs/ios-ui/screens/s4-feed-viewer.png` | `apps/web/src/components/feed/EntryBar.tsx` | Shows read-only bar `"Chỉ xem"` and hides `"Mời bạn vào nhóm"` |
+  | S4 Group Feed — `changed` event pill | `docs/superpowers/runs/ios-ui/screens/s4-feed-new-items-pill.png` | `apps/web/src/app/g/[groupId]/page.tsx`, `lib/use-group-events.ts` | Shows floating `"Có khoản mới"` pill when scrolled up |
+  | S4 Group Feed — `removed` event to S2 | `docs/superpowers/runs/ios-ui/screens/s2-groups-removed-notice.png` | `apps/web/src/lib/use-group-events.ts`, `app/page.tsx` | Pops to group list and shows `"Bạn không còn ở trong nhóm này."` |
+  | S4 Group Feed — `large` (500 rows) | `docs/superpowers/runs/ios-ui/screens/s4-feed-large.png` | `apps/web/src/app/g/[groupId]/page.tsx` | Paginates 500 rows in 50-item pages |
+  | S5 Balances — loading | `docs/superpowers/runs/ios-ui/screens/s5-balances-loading.png` | `apps/web/src/app/g/[groupId]/balances/page.tsx` | None |
+  | S5 Balances — loaded | `docs/superpowers/runs/ios-ui/screens/s5-balances-loaded.png` | `apps/web/src/app/g/[groupId]/balances/page.tsx`, `components/balances/*` | None |
+  | S5 Balances — balance bars | `docs/superpowers/runs/ios-ui/screens/s5-balances-bars.png` | `apps/web/src/components/balances/BalanceBars.tsx` | Center-zero proportional bars rendered with custom `ProgressViewStyle` |
+  | S5 Balances — empty | `docs/superpowers/runs/ios-ui/screens/s5-balances-empty.png` | `apps/web/src/app/g/[groupId]/balances/page.tsx` | None |
+  | S5 Balances — all settled | `docs/superpowers/runs/ios-ui/screens/s5-balances-all-settled.png` | `apps/web/src/components/balances/AllSettled.tsx` | None |
+  | S5 Balances — failed | `docs/superpowers/runs/ios-ui/screens/s5-balances-failed.png` | `apps/web/src/app/g/[groupId]/balances/page.tsx` | None |
+  | S5 Balances — stale | `docs/superpowers/runs/ios-ui/screens/s5-balances-stale.png` | `apps/web/src/app/g/[groupId]/balances/page.tsx` | Snapshot remains visible with `OfflineBanner` |
+  | S6 Activity — loading | `docs/superpowers/runs/ios-ui/screens/s6-activity-loading.png` | `apps/web/src/app/g/[groupId]/activity/page.tsx` | None |
+  | S6 Activity — loaded | `docs/superpowers/runs/ios-ui/screens/s6-activity-loaded.png` | `apps/web/src/app/g/[groupId]/activity/page.tsx`, `components/activity/*` | None |
+  | S6 Activity — restore button | `docs/superpowers/runs/ios-ui/screens/s6-activity-restore.png` | `apps/web/src/components/activity/ActivityRow.tsx` | Shows `"Khôi phục"` button on deleted transaction activity row |
+  | S6 Activity — empty | `docs/superpowers/runs/ios-ui/screens/s6-activity-empty.png` | `apps/web/src/app/g/[groupId]/activity/page.tsx` | None |
+  | S6 Activity — failed | `docs/superpowers/runs/ios-ui/screens/s6-activity-failed.png` | `apps/web/src/app/g/[groupId]/activity/page.tsx` | None |
+  | S6 Activity — stale | `docs/superpowers/runs/ios-ui/screens/s6-activity-stale.png` | `apps/web/src/app/g/[groupId]/activity/page.tsx` | Snapshot remains visible with `OfflineBanner` |
+
+**AD 8.3 measurements on `large` (500 transactions) in Simulator (`iPhone 17 Pro`, iOS 26.5):**
+| Measure | Budget | Tool | Real output |
+|---|---|---|---|
+| Launch to first content, with a snapshot | under 400 ms | `xcrun xctrace record --template 'App Launch'` | `dyld-activity-interval` `Launch Executable`: **361.17 ms** (`361171916 ns` < `400 ms`). (`life-cycle-period` table is empty on Simulator; see Not verified) |
+| Scrolling the 500-transaction feed top to bottom | no hitch reported | `xcrun xctrace` `SwiftUI` and `Animation Hitches` | Not verified via `Hitches` instrument on Simulator: `xcrun xctrace` exited with `* [Error] Hitches is not supported on this platform.` and standalone `SwiftUI` instrument reported `* [Warning] Trace file had no SwiftUI data`. Recorded under Not verified per AD 8.3 & AD 11. |
+| Main-actor hangs during 500-row scroll | none over 100 ms | `xcrun xctrace record --instrument 'Hangs'` | `potential-hangs` (`hangs-threshold="100"`): **0 hangs** (`0 rows`). `hang-risks`: **0 rows**. |
+| Group screen, tap to content, with a snapshot | same frame as push transition | Observed | **0 frames of skeleton** when `hasSnapshot == true`; `GroupFeedModel.load()` hydrates `state = .loaded(...)` from `lastKnown*` before the first suspension point. |
 
 ## Gate not passed
 
 ## Not verified
 
 - Be Vietnam Pro bundled font registration on iOS: `apps/web/public/fonts/be-vietnam-pro/` contains only `.woff2` files, which iOS cannot register directly, and downloading `.ttf`/`.otf` files is forbidden in this run (see decision D1). The app uses the system font with Dynamic Type scaling.
+- `xctrace` `Hitches` and `SwiftUI` instruments on iOS Simulator: running `xcrun xctrace record --template 'Animation Hitches'` and `xcrun xctrace record --template 'SwiftUI'` against `iPhone 17 Pro (iOS 26.5 Simulator)` fails with `* [Error] Hitches is not supported on this platform.`, and `xcrun xctrace record --instrument 'SwiftUI'` completes with `* [Warning] Trace file had no SwiftUI data`. Similarly, the `life-cycle-period` table in `--template 'App Launch'` emits `* [Warning] This configuration of instruments creates 1 table without a known input source` on Simulator (while `dyld-activity-interval` records `361.17 ms`). Real-device hitch and `life-cycle-period` measurements require a physical iPhone.
 
 ## Out of scope
 
