@@ -10,8 +10,9 @@ import { jsonRequest } from "./request";
 export function transactionRequestOf(
 	t: TransactionDto,
 ): CreateTransactionRequest {
+	const attachmentIds = t.attachments.map((attachment) => attachment.id);
 	return t.type === "transfer"
-		? transferRequest(t)
+		? { ...transferRequest(t), attachmentIds }
 		: {
 				type: t.type,
 				description: t.description,
@@ -21,6 +22,7 @@ export function transactionRequestOf(
 				categoryId: t.categoryId,
 				payers: t.payers,
 				split: t.split,
+				attachmentIds,
 			};
 }
 function transferRequest(t: TransactionDto): CreateTransactionRequest {

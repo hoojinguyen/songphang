@@ -10,7 +10,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3A.1 — worker process, queue, event bridge, features endpoint
 - [x] 3A.2 — file storage and attachments API
 - [x] 3A.3 — attachments on transactions; cleanup job
-- [ ] 3A.4 — web photos on the form and the stream; stage gate 3A
+- [x] 3A.4 — web photos on the form and the stream; stage gate 3A
 - [ ] 3B.1 — receipt reading schema and arithmetic check
 - [ ] 3B.2 — receipt reader adapters, cost ledger, quotas
 - [ ] 3B.3 — receipt scans endpoint, job, stage gate 3B
@@ -98,6 +98,23 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - `runCleanupAttachments`: 25h unattached row+file deleted, 1h unattached row+file preserved, fresh untracked/temp files preserved, >24h untracked and `.tmp-*` files deleted.
   - Deleted group with attachments -> worker executed `delete-files` and removed all remaining files from disk.
 - Security review: checked items 1, 2, 4, 5, 6, 8; no issues found.
+
+## Task 3A.4 — approach
+
+- Files to create/modify: create `apps/web/src/lib/{prepare-image,attachments}.ts`, `apps/web/src/components/ui/PhotoViewer.tsx`, `apps/web/src/components/expense-form/PhotoRow.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/components/ui/Icon.tsx`, `apps/web/src/lib/transaction-changes.ts`, `apps/web/src/components/expense-form/{use-expense-form,ExpenseForm}.tsx`, `apps/web/src/components/feed/{ExpenseRow,ExpenseStream}.tsx`, `apps/web/src/app/g/[groupId]/tx/[transactionId]/page.tsx`.
+- Approach: add `prepareImage` (`createImageBitmap` with `imageOrientation: "from-image"`, longest side ≤ 2000 px, JPEG 0.85) and `uploadAttachment` preserving server error codes/details. Build `PhotoViewer` as a native modal `<dialog>` (`showModal()`, Escape, backdrop click, close button, focus restoration) and `PhotoRow` (64×64 thumbnails, add/remove controls, 3-photo limit `Tối đa 3 ảnh.`, uploading and error states). Wire `attachmentIds` into `useExpenseForm` and `transactionRequestOf` so edits detect photo-only changes and delete removed photos on save. Show a small photo icon on `ExpenseRow` when `attachmentCount > 0`, and allow viewers to open transactions with photos in read-only detail to view images without any add/remove/edit controls.
+- Why simplest: reuses native `<dialog>`, existing `ApiError` error-parsing pattern, and existing `ExpenseForm` dirty/mutation lifecycle without extra client stores.
+- Rejected alternative: uploading/deleting immediately on remove click before Save, which would destroy existing transaction photos if the user cancels editing.
+
+### Task 3A.4 results
+
+- `pnpm check`: passed (`Checked 353 files`, 2 `noImgElement` warnings for `<img>` content URLs as specified, all 7 workspace typechecks Done). `pnpm build`: passed.
+- Browser exercise on production Next.js 3010 + API 4010 + worker (`Ảnh 3A.4` group):
+  - Selecting `fake.jpg` (`"not an image"`) showed `Chỉ nhận ảnh JPG, PNG hoặc WebP.` without uploading.
+  - Selecting a 4000×3000 (12MP) JPEG resized it via `prepareImage` to `2000×1500` (`f1RawSize: 106370` bytes) and rendered 64×64 thumbnails (`rounded-[16px]`).
+  - Saved expense with 2 photos -> stream showed `Có ảnh hoá đơn` + `2`. Reopened -> added 3rd photo -> showed `Tối đa 3 ảnh.`; removed 2 -> saved -> stream showed 1 photo (`Có ảnh hoá đơn`, `đã sửa`).
+  - In isolated viewer session (Hùng), live SSE updated stream; clicking the expense opened read-only detail with `Ảnh hoá đơn` and `Xem ảnh hoá đơn` buttons (no `Thêm ảnh`, remove, save, or delete controls); clicking opened `PhotoViewer` modal `<dialog>`; `Escape` closed it and restored focus.
+- Security review: checked items 1, 2, 4, 6, 7, 8; no issues found.
 
 ## Not verified
 

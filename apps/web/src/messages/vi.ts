@@ -586,6 +586,22 @@ export const vi = {
 		overBanner: "Đã vượt hạn mức {over}.",
 		overWarning: "Khoản này làm nhóm vượt hạn mức.",
 	},
+	attachments: {
+		label: "Ảnh hoá đơn",
+		add: "Thêm ảnh",
+		maxLimit: "Tối đa 3 ảnh.",
+		viewPhoto: "Xem ảnh hoá đơn",
+		removePhoto: "Xoá ảnh hoá đơn",
+		closePhoto: "Đóng ảnh",
+		hasPhotos: "Có ảnh hoá đơn",
+		quotaExceeded: "Nhóm đã dùng hết dung lượng ảnh.",
+		rateLimited: "Bạn tải ảnh quá nhanh. Hãy thử lại sau.",
+	},
+	receipts: {
+		uploading: "Đang tải ảnh lên…",
+		fileTooLarge: "Ảnh lớn quá. Hãy chọn ảnh dưới 5 MB.",
+		notAnImage: "Chỉ nhận ảnh JPG, PNG hoặc WebP.",
+	},
 	showcase: { members: { minh: "Minh", lan: "Lan", hung: "Hùng", thu: "Thu" } },
 } as const;
 

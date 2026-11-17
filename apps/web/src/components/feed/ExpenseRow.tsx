@@ -10,6 +10,7 @@ import {
 } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { CATEGORY_COLORS } from "../settings/CategoryRow";
+import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
 export function ExpenseRow({
 	transaction,
@@ -83,7 +84,9 @@ export function ExpenseRow({
 						{formatAmount(transaction.amount)}
 					</p>
 				</div>
-				{(categoryLabel || transaction.version > 1) && (
+				{(categoryLabel ||
+					transaction.version > 1 ||
+					transaction.attachmentCount > 0) && (
 					<div
 						className={`mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
 					>
@@ -96,6 +99,15 @@ export function ExpenseRow({
 									/>
 								)}
 								<span>{categoryLabel}</span>
+							</span>
+						)}
+						{transaction.attachmentCount > 0 && (
+							<span className="inline-flex items-center gap-1">
+								<Icon name="image" size={14} />
+								<span className="sr-only">{vi.attachments.hasPhotos}</span>
+								{transaction.attachmentCount > 1 && (
+									<span>{transaction.attachmentCount}</span>
+								)}
 							</span>
 						)}
 						{transaction.version > 1 && <span>{vi.feed.edited}</span>}

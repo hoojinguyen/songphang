@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { ExpenseForm } from "../../../../../components/expense-form/ExpenseForm";
+import { PhotoRow } from "../../../../../components/expense-form/PhotoRow";
 import { LoadError } from "../../../../../components/ui/LoadError";
+import { ScreenHeader } from "../../../../../components/ui/ScreenHeader";
 import { VerifyEmailBanner } from "../../../../../components/ui/VerifyEmailBanner";
 import { useGroup } from "../../../../../lib/groups";
 import { useMembers } from "../../../../../lib/members";
+import { formatMoney } from "../../../../../lib/money";
 import { useMe } from "../../../../../lib/session";
 import { useTransaction } from "../../../../../lib/transaction-changes";
 import { useSessionGuard } from "../../../../../lib/use-session-guard";
@@ -41,9 +44,7 @@ export default function EditPage() {
 	);
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-4 p-5">
-			{group.data?.role === "viewer" ? (
-				<p role="alert">{vi.common.forbidden}</p>
-			) : error?.status === 404 ? (
+			{error?.status === 404 ? (
 				<p>{vi.common.groupNotFound}</p>
 			) : error?.status === 401 ? (
 				<div aria-busy="true" className="h-96 rounded-card bg-sunken" />
@@ -55,6 +56,24 @@ export default function EditPage() {
 				!group.data ||
 				!me.data ? (
 				<div aria-busy="true" className="h-96 rounded-card bg-sunken" />
+			) : group.data.role === "viewer" ? (
+				query.data.attachments.length > 0 && !query.data.deletedAt ? (
+					<div className="grid gap-4">
+						<ScreenHeader
+							title={query.data.description}
+							subtitle={formatMoney(query.data.amount)}
+							backHref={`/g/${groupId}`}
+							backLabel={vi.common.back}
+						/>
+						<PhotoRow
+							groupId={groupId}
+							attachments={query.data.attachments}
+							readOnly
+						/>
+					</div>
+				) : (
+					<p role="alert">{vi.common.forbidden}</p>
+				)
 			) : !me.data.emailVerified ? (
 				<VerifyEmailBanner />
 			) : (

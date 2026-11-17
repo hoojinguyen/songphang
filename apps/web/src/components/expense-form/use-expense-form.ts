@@ -1,5 +1,6 @@
 "use client";
 import {
+	type AttachmentDto,
 	CreateTransactionRequest,
 	type MemberDto,
 	type SplitTransactionRequest,
@@ -91,6 +92,9 @@ export function useExpenseForm(
 	const [occurredAt, setOccurredAt] = useState(() =>
 		localDateTime(transaction?.occurredAt),
 	);
+	const [attachments, setAttachments] = useState<AttachmentDto[]>(
+		transaction?.attachments ?? [],
+	);
 	const [key] = useState(() => crypto.randomUUID());
 	const submitting = useRef(false);
 	const create = useCreateTransaction(groupId);
@@ -130,6 +134,7 @@ export function useExpenseForm(
 				: parseAmountInput(payerAmounts[memberId] ?? ""),
 	}));
 	const paid = payers.reduce((sum, payer) => sum + (payer.amount ?? 0), 0);
+	const attachmentIds = attachments.map((attachment) => attachment.id);
 	const parsed = CreateTransactionRequest.safeParse(
 		type === "transfer"
 			? {
@@ -139,6 +144,7 @@ export function useExpenseForm(
 					fromMemberId: transferFrom,
 					toMemberId: transferTo,
 					...(description.trim() ? { description: description.trim() } : {}),
+					attachmentIds,
 				}
 			: {
 					type,
@@ -149,6 +155,7 @@ export function useExpenseForm(
 					categoryId,
 					payers,
 					split: splitState.split,
+					attachmentIds,
 				},
 	);
 	const request =
@@ -240,6 +247,15 @@ export function useExpenseForm(
 		setTransferTo,
 		occurredAt,
 		setOccurredAt,
+		attachments,
+		addAttachment: (attachment: AttachmentDto) =>
+			setAttachments((current) =>
+				current.some((item) => item.id === attachment.id) || current.length >= 3
+					? current
+					: [...current, attachment],
+			),
+		removeAttachment: (id: string) =>
+			setAttachments((current) => current.filter((item) => item.id !== id)),
 		preview,
 		mutation,
 		request,
