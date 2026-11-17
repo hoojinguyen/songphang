@@ -39,7 +39,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2C.2 — fund endpoints and balances
 - [x] 2C.3 — fund sentence reader
 - [x] 2C.4 — fund UI
-- [ ] 2C.5 — gate 2C
+- [x] 2C.5 — gate 2C
 - [ ] 2D.1 — budget core and API
 - [ ] 2D.2 — budget UI
 - [ ] 2D.3 — README, final gate and final records
@@ -342,3 +342,12 @@ Security review: relevant items 1/2/6/8 checked against full diff; pure token pa
 Commit reference: `feat(web): add the shared fund`. pnpm check passed (305 files, five workspace typechecks Done) and production web built with `API_ORIGIN=http://localhost:4001`. Exercised in Chrome on `http://localhost:3001` (`Quỹ 2C.4` group): S10 kept subtitle `3 người` before and after `Lập quỹ chung` (holder `Lan`), rendered `Quỹ chung` pill row linking to S17 (`/fund`), `Góp vào quỹ` (`Lan → Quỹ chung 500.000 đ`) updated S17 to `Quỹ còn 500.000 đ`, quick-entry `ăn tối 300k quỹ trả` displayed `Quỹ chung trả` with three people shares (`100.000` each), saved and updated S5 (`Quỹ còn 200.000 đ`, `Quỹ hoàn Lan 200.000 đ` with `Ghi nhận` linking to `/settle`, people-only bars `+400.000 / -100.000 / -100.000`), `Đóng quỹ` on non-empty fund showed `Quỹ còn tiền. Hãy hoàn hết cho mọi người trước.`, `Thuê xe` `300.000` with `Quỹ chung trả` showed preview warning `Quỹ không đủ. Sau khoản này quỹ âm 100.000 đ.` and saved (`Quỹ đang âm 100.000 đ`, `Hùng góp thêm vào quỹ 100.000 đ`), and typing `ăn 300k chia quỹ` showed `Quỹ không thể là người chia.`.
 
 Security review: relevant items 1/2/4/6/7/8 checked against full diff; modal `<dialog>` uses native `showModal()`/`closedby="any"`/`overscroll-behavior: contain`, transfer prefill params validated against loaded group members, overdraft computed from integer `fund.cash` subtraction for display only, no `dangerouslySetInnerHTML`/`eval`/new libraries. Not verified: browser reload of renamed fund label in `ParticipantFields` (fund service rename already verified in 2C.2 API tests).
+
+
+## Stage gate 2C — passed
+
+- `pnpm check` (305 files, 5 typechecks) and `API_ORIGIN=http://localhost:4001 pnpm build` passed.
+- Backed up DB (`/tmp/songphang-p2-pre-gate2c.dump`), reset `public`/`drizzle`, ran `pnpm db:migrate` and `pnpm db:seed`.
+- Replayed all four Phase 1 suites (`songphang-final-trip.py`, `songphang-replay-acceptance.py`, `songphang-gate1d-reader.py`, `songphang-final-permissions.py`), Stage Gate 2A (`songphang-p2-gate2a.py`, including `GET /api/v1/features` all-false and disabled 404 probes), Stage Gate 2B (`songphang-p2-gate2b.py`), and Stage Gate 2C (`/tmp/songphang-p2-gate2c.py` + `psql` 2C.1 row 2 deferred trigger at `COMMIT`): all passed (`All groups balanced` both after reset acceptance and after restoring `/tmp/songphang-p2-pre-gate2c.dump`).
+- Stage 2C permission matrix: `POST`/`PATCH`/`DELETE /fund` → owner/editor `201/200/204`, viewer `403`, outsider `404`, signed-out `401`.
+- Not verified: browser reload of renamed fund label in `ParticipantFields` (fund rename already verified via API).
