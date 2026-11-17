@@ -7,6 +7,7 @@ import {
 	type TransactionsQuery,
 	TransactionsResponse,
 } from "@songphang/contract";
+import { foldVietnamese, localDateRangeToUtc } from "@songphang/core";
 import {
 	type DbExecutor,
 	findGroup,
@@ -20,6 +21,7 @@ import {
 	listTransactionShares,
 	lockGroup,
 	type TransactionCursor,
+	type TransactionFilters,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
@@ -106,6 +108,7 @@ export async function createTransactionIn(
 		groupId: input.groupId,
 		type: request.type,
 		description: request.description,
+		descriptionSearch: foldVietnamese(request.description),
 		amount: request.amount,
 		currency: group.currency,
 		occurredAt: new Date(request.occurredAt),
@@ -143,17 +146,37 @@ export async function createTransactionIn(
 	]);
 	return TransactionResponse.parse({ transaction });
 }
+function buildFilters(query: TransactionsQuery): TransactionFilters {
+	const range = localDateRangeToUtc(query.from, query.to);
+	const searchPattern =
+		query.q === undefined
+			? undefined
+			: `%${foldVietnamese(query.q).replace(/[\\%_]/g, "\\$&")}%`;
+	return {
+		...(searchPattern === undefined ? {} : { searchPattern }),
+		...(query.memberId === undefined ? {} : { memberId: query.memberId }),
+		...(query.category === undefined ? {} : { category: query.category }),
+		...(query.categoryId === undefined ? {} : { categoryId: query.categoryId }),
+		...(query.type === undefined ? {} : { type: query.type }),
+		...(range.start === undefined ? {} : { start: range.start }),
+		...(range.endExclusive === undefined
+			? {}
+			: { endExclusive: range.endExclusive }),
+	};
+}
 export async function listTransactions(
 	deps: AppDeps,
 	groupId: string,
 	query: TransactionsQuery,
 ) {
+	const filters = buildFilters(query);
 	return deps.db.transaction(
 		async (executor) => {
 			const rows = await listTransactionRows(executor, {
 				groupId,
 				cursor: decodeCursor(query.cursor),
 				limit: query.limit + 1,
+				filters,
 			});
 			const page = rows.slice(0, query.limit);
 			const last = page.at(-1);

@@ -4,6 +4,7 @@ import {
 	TransactionResponse,
 	type UpdateTransactionRequest,
 } from "@songphang/contract";
+import { foldVietnamese } from "@songphang/core";
 import {
 	clearTransactionSides,
 	type DbExecutor,
@@ -115,6 +116,7 @@ export async function editTransaction(
 			id: input.id,
 			changes: {
 				description: normalized.description,
+				descriptionSearch: foldVietnamese(normalized.description),
 				amount: normalized.amount,
 				occurredAt: new Date(normalized.occurredAt),
 				category: normalized.category,

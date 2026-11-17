@@ -12,6 +12,7 @@
 		"check-balances": "tsx --env-file=../../.env src/check-balances.ts"
 	},
 	"dependencies": {
+		"@songphang/core": "workspace:*",
 		"drizzle-orm": "0.45.4",
 		"postgres": "4.1.1",
 		"uuidv7": "1.2.1",

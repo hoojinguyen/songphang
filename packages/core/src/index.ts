@@ -1,5 +1,11 @@
 export { allocateByWeights } from "./allocate.ts";
 export { BANKS } from "./banks.ts";
+export {
+	APP_TIME_ZONE,
+	isValidCalendarDate,
+	isWithinFiveYears,
+	localDateRangeToUtc,
+} from "./dates.ts";
 export { parseHundredths } from "./decimal.ts";
 export { type LedgerEntry, pairDebtsOf } from "./pair-debts.ts";
 export { foldVietnamese } from "./quick-entry/normalize.ts";

@@ -129,3 +129,7 @@ Choice: replace editor-only settlement links on `OwnSettlementCard`, `Settlement
 ## D12 — Category name-key normalization and edit preservation (2B.1)
 
 Choice: compute `name_key` in `apps/api/src/services/categories.ts` via `foldVietnamese(name.trim()).replace(/\s+/g, " ")` and pass it into `packages/db`, preserving `db`'s zero dependency on `core`. On `PATCH /transactions/{id}`, validate `categoryId` against live group categories only when `categoryId !== null && categoryId !== before.categoryId` so unrelated edits to transactions holding an archived category succeed without changing their category. Reason: follows SAD layer rules and 2B Decision 2 without SQL `unaccent` extensions.
+
+## D13 — Description search backfill and core link in db (2B.2)
+
+Choice: link existing `@songphang/core` (`workspace:*`) into `packages/db` offline (0 external dependencies) so `packages/db/src/backfill-description-search.ts` uses the exact `foldVietnamese` normalizer, and run `backfillDescriptionSearch` idempotently inside `runMigrations` after Drizzle SQL migrations (`0007_gifted_white_tiger.sql` adds `description_search text DEFAULT '' NOT NULL` and backfills `lower(description)` first). Reason: avoids duplicating Vietnamese folding logic across packages while allowing non-empty tables to migrate cleanly.

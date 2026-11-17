@@ -1,5 +1,10 @@
 import { z } from "@hono/zod-openapi";
+import { isValidCalendarDate, isWithinFiveYears } from "@songphang/core";
 export const MoneyAmount = z.int().min(1).max(999_999_999_999);
+export const CalendarDate = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}$/)
+	.refine(isValidCalendarDate);
 export const TransactionCategory = z.enum([
 	"food",
 	"transport",
@@ -145,10 +150,24 @@ export const TransactionResponse = z
 export const PreviewTransactionResponse = z
 	.object({ shares: z.array(ShareDto) })
 	.openapi("PreviewTransactionResponse");
-export const TransactionsQuery = z.object({
-	cursor: z.string().max(512).optional(),
-	limit: z.coerce.number().int().min(1).max(200).default(50),
-});
+export const TransactionsQuery = z
+	.object({
+		cursor: z.string().max(512).optional(),
+		limit: z.coerce.number().int().min(1).max(200).default(50),
+		q: z.string().trim().min(1).max(100).optional(),
+		memberId: z.uuid().optional(),
+		category: TransactionCategory.optional(),
+		categoryId: z.uuid().optional(),
+		type: z.enum(["expense", "transfer", "income"]).optional(),
+		from: CalendarDate.optional(),
+		to: CalendarDate.optional(),
+	})
+	.refine(
+		(query) =>
+			query.from === undefined ||
+			query.to === undefined ||
+			isWithinFiveYears(query.from, query.to),
+	);
 export type TransactionsQuery = z.infer<typeof TransactionsQuery>;
 export const TransactionsResponse = z
 	.object({

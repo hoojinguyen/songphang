@@ -30,7 +30,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2A.5 — payment methods editor
 - [x] 2A.6 — paying screen, confirmation and gate 2A
 - [x] 2B.1 — custom categories
-- [ ] 2B.2 — search and filters
+- [x] 2B.2 — search and filters
 - [ ] 2B.3 — statistics
 - [ ] 2B.4 — statistics screen and filters
 - [ ] 2B.5 — CSV export
@@ -189,3 +189,16 @@ Security review: relevant items 1/2/4/6/7/8 checked against full diff; query par
 Commit reference: `feat(api): add custom categories per group`. pnpm check passed (270 files, five workspace typechecks Done); generated and applied migration `0006_blue_oracle.sql`. Exercised all 2B.1 cases on API 4001: Lan created `Cà phê` (201); `ca phe` duplicate returned 409 `CATEGORY_EXISTS`; Hùng viewer create returned 403; Minh expense with `categoryId` returned 201 and echoed `categoryId`; `category`+`categoryId` both non-null returned 400; cross-group `categoryId` returned 400; DELETE archived (204), `GET /categories` showed `archived: true`, existing expense kept `categoryId` and still allowed editing amount/payers (200); new expense with archived `categoryId` returned 400; recreating `Cà phê` succeeded (201); 31st live category returned 422 `LIMIT_REACHED`; outsider returned 404; signed-out returned 401.
 
 Security review: relevant items 1/2/4/5/6/8 checked against full diff; parameterized Drizzle queries, group-locked editor mutations, partial unique live index and exclusive category CHECK in migration `0006_blue_oracle.sql`, cross-group `categoryId` rejected, no secrets/new dependencies. All new files under 170 lines (D12). Not verified: none for this API task.
+
+## Task 2B.2 — approach
+
+- Files to create/modify: create `packages/core/src/dates.ts`, `packages/db/src/backfill-description-search.ts`, and a migration; modify `packages/core/src/index.ts`, `packages/db/package.json`, `packages/db/src/migrate.ts`, `packages/db/src/schema-transactions.ts`, `packages/db/src/transactions.ts`, `packages/db/src/index.ts`, `packages/contract/src/transaction.ts`, `apps/api/src/services/transactions.ts`, and `apps/api/src/services/transaction-changes.ts`.
+- Approach: add `APP_TIME_ZONE` and `localDateRangeToUtc` (constant UTC+7 offset) in `core/dates.ts` with strict Gregorian calendar and 5-year range validation. Add `transactions.description_search` with an empty default for migration safety, populate it via SQL `lower(description)` and idempotent `backfillDescriptionSearch` using `foldVietnamese` inside `runMigrations`, write it on create/edit, and apply optional AND-combined filters (`q`, `memberId`, `category`, `categoryId`, `type`, `from`, `to`) to `listTransactionRows` with escaped `LIKE ... ESCAPE '\'`.
+- Why simplest: reuses `foldVietnamese` and existing keyset cursor pagination without adding full-text search extensions or separate endpoints.
+- Rejected alternative: computing Vietnam date boundaries in SQL for every row scan, which prevents index range filtering on `occurred_at`.
+
+### Task 2B.2 results
+
+Commit reference: `feat(api): add search and filters to the transaction list`. pnpm check passed (273 files, five workspace typechecks Done); migration `0007_gifted_white_tiger.sql` generated and applied cleanly, and `backfill-description-search.ts` ran idempotently (0 remaining rows after `runMigrations` backfill). Exercised all 2B.2 December-ledger cases on API 4001: `q=pho` → `[S6]`, `q=PHỞ` → `[S6]`, `q=%25` → `[]`, `q==sum` → `[S7]`, `memberId=Thu` → `[S7, S4, S3, S1]`, `type=transfer` → `[S5]`, `category=food` → `[S6, S1]`, `from=2026-12-31&to=2026-12-31` → `[S6]`, `from=2027-01-01` → `[S7]`, `to=2026-12-05` → `[S1]`, inverted range / 101-char `q` / invalid date `2026-13-01` → 400 `VALIDATION_FAILED` each, and `limit=2&memberId=Thu` keyset pagination → `[S7, S4]` then `[S3, S1]` then `nextCursor: null`.
+
+Security review: relevant items 1/2/4/5/6/8 checked against full diff; query params validated with Zod (lengths, Gregorian dates, 5-year range), `LIKE` wildcards escaped and parameterized, `description_search` excluded from DTOs, viewer group-scoped query preserved, internal `@songphang/core` workspace link only (D13). Not verified: none.

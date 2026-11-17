@@ -25,6 +25,7 @@ export const transactions = pgTable(
 			.references(() => groups.id, { onDelete: "cascade" }),
 		type: text("type").notNull(),
 		description: text("description").notNull(),
+		descriptionSearch: text("description_search").notNull().default(""),
 		amount: bigint("amount", { mode: "number" }).notNull(),
 		currency: text("currency").notNull(),
 		occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
