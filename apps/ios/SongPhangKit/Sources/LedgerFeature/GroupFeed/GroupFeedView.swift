@@ -81,6 +81,11 @@ public struct GroupFeedView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .task(id: model.lastDeletedTransactionId) {
+      guard model.lastDeletedTransactionId != nil else { return }
+      try? await Task.sleep(for: .seconds(6))
+      if !Task.isCancelled { model.lastDeletedTransactionId = nil }
+    }
     .overlay(alignment: .bottom) {
       if model.lastDeletedTransactionId != nil {
         HStack(spacing: 12) {

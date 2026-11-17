@@ -276,7 +276,9 @@ public struct ExpenseFormView: View {
                   guard model.splitState.ids.contains(member.id) else {
                     return member.name
                   }
-                  if let share = model.previewShares.first(where: { $0.memberId == member.id }) {
+                  if model.previewError == nil,
+                    let share = model.previewShares.first(where: { $0.memberId == member.id })
+                  {
                     return MoneyFormat.amount(share.amount)
                   }
                   return L10n.tr("common.pendingValue")
@@ -325,7 +327,7 @@ public struct ExpenseFormView: View {
               .foregroundStyle(Tokens.coral)
           }
 
-          if model.transactionType != .transfer {
+          if model.transactionType != .transfer, model.amount.isPositive {
             SplitStatusBannerView(
               status: model.splitState.status(from: active, totalAmount: model.amount)
             )

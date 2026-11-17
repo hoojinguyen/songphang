@@ -85,6 +85,16 @@ struct FeedTransactionRowView: View {
     }
   }
 
+  private var payerNames: String {
+    transaction.payers
+      .map { entry in
+        entry.memberId == myMemberId
+          ? L10n.tr("common.you")
+          : members.first(where: { $0.id == entry.memberId })?.name ?? ""
+      }
+      .joined(separator: ", ")
+  }
+
   private var expenseBubble: some View {
     let payer = members.first(where: { $0.id == transaction.payers.first?.memberId })
     let isMine = payer?.id == myMemberId && myMemberId != nil
@@ -104,9 +114,11 @@ struct FeedTransactionRowView: View {
 
       VStack(alignment: .leading, spacing: 4) {
         Text(
-          isMine
-            ? L10n.tr("feed.youPaid")
-            : L10n.t("feed.memberPaid", ["name": payer?.name ?? ""])
+          transaction.payers.count > 1
+            ? L10n.t("feed.memberPaid", ["name": payerNames])
+            : isMine
+              ? L10n.tr("feed.youPaid")
+              : L10n.t("feed.memberPaid", ["name": payer?.name ?? ""])
         )
         .font(Typography.captionBold)
         .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)

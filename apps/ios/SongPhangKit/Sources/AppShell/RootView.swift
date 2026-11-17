@@ -30,6 +30,7 @@ public struct RootView: View {
   @State private var signInModel: SignInModel
   @State private var path: [Route] = []
   @State private var statusNotice: String?
+  @State private var deletedTransactionId: LedgerTransaction.ID?
   @State private var isShowingDebugPanel = false
 
   public init(dependencies: AppDependencies? = nil) {
@@ -402,7 +403,8 @@ public struct RootView: View {
         }
         path.removeAll()
         Task { await groupListModel.load() }
-      }
+      },
+      deletedTransactionId: $deletedTransactionId
     )
     .toolbar { keyboardDoneToolbar }
     .overlay { StatusBarCover() }

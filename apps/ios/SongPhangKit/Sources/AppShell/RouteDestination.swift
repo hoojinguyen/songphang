@@ -19,6 +19,7 @@ public struct RouteDestination: View {
   private let onReplaceTop: (Route) -> Void
   private let onPop: () -> Void
   private let onPopToRoot: (String?) -> Void
+  @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
   @State private var registerModel: RegisterModel?
   @State private var forgotPasswordModel: ForgotPasswordModel?
@@ -42,8 +43,10 @@ public struct RouteDestination: View {
     onNavigate: @escaping (Route) -> Void,
     onReplaceTop: @escaping (Route) -> Void,
     onPop: @escaping () -> Void,
-    onPopToRoot: @escaping (String?) -> Void
+    onPopToRoot: @escaping (String?) -> Void,
+    deletedTransactionId: Binding<LedgerTransaction.ID?>
   ) {
+    self._deletedTransactionId = deletedTransactionId
     self.route = route
     self.dependencies = dependencies
     self.sessionModel = sessionModel
@@ -206,7 +209,10 @@ public struct RouteDestination: View {
           membersRepository: dependencies.members,
           transactionsRepository: dependencies.transactions,
           onSaved: onPop,
-          onDeleted: { _ in onPop() }
+          onDeleted: { id in
+            deletedTransactionId.wrappedValue = id
+            onPop()
+          }
         )
       )
     case .settle(let groupId, let fromMemberId, let toMemberId, let initialAmount):
@@ -229,6 +235,16 @@ public struct RouteDestination: View {
   }
 
   public var body: some View {
+    content
+      .onChange(of: deletedTransactionId) { _, id in
+        guard let id, let feedModel else { return }
+        feedModel.lastDeletedTransactionId = id
+        deletedTransactionId = nil
+      }
+  }
+
+  @ViewBuilder
+  private var content: some View {
     switch route {
     case .register:
       if let registerModel {
