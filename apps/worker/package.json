@@ -8,6 +8,7 @@
 		"start": "tsx --env-file=../../.env src/main.ts"
 	},
 	"dependencies": {
+		"@songphang/ai": "workspace:*",
 		"@songphang/contract": "workspace:*",
 		"@songphang/core": "workspace:*",
 		"@songphang/db": "workspace:*",

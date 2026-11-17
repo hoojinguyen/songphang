@@ -10,6 +10,7 @@
 	"dependencies": {
 		"@hono/node-server": "2.1.7",
 		"@hono/zod-openapi": "1.6.3",
+		"@songphang/ai": "workspace:*",
 		"@songphang/contract": "workspace:*",
 		"@songphang/core": "workspace:*",
 		"@songphang/db": "workspace:*",

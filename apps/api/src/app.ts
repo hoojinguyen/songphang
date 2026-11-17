@@ -4,6 +4,7 @@ import type { Db } from "@songphang/db";
 import type { FileStore } from "@songphang/storage";
 import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
+import type { SentenceAi } from "./ai/sentence-ai.js";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
 import type { createEventHub } from "./events/hub.js";
@@ -51,6 +52,7 @@ export type AppDeps = {
 	rateLimiter: ReturnType<typeof createRateLimiter>;
 	enqueue: EnqueueFn;
 	fileStore: FileStore;
+	sentenceAi?: SentenceAi | null;
 };
 
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {

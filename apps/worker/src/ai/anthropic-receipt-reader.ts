@@ -1,6 +1,6 @@
+import { type AnthropicDeps, anthropicMessages } from "@songphang/ai";
 import { ReceiptReading } from "@songphang/contract";
 import { z } from "zod";
-import { type AnthropicDeps, anthropicMessages } from "./anthropic-client.js";
 import {
 	RECEIPT_SYSTEM_PROMPT,
 	RECEIPT_TOOL_NAME,

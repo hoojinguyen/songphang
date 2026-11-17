@@ -21,7 +21,7 @@ export function registerFeatureRoute(
 			context.json(
 				FeaturesResponse.parse({
 					receiptReading: Boolean(deps.config.aiProvider),
-					sentenceAi: false,
+					sentenceAi: Boolean(deps.config.aiProvider),
 					telegram: false,
 					push: false,
 					appleSignIn: false,

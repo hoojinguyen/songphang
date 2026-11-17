@@ -18,7 +18,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3C.2 — API items split method and items preview
 - [x] 3C.3 — web camera in entry bar and receipt review screen
 - [x] 3C.4 — stage gate 3C
-- [ ] 3D.1 — sentence AI and parse fallback
+- [x] 3D.1 — sentence AI and parse fallback
 - [ ] 3D.2 — core category suggestion
 - [ ] 3D.3 — web AI readings on the confirmation card
 - [ ] 3D.4 — README, non-functional checks, final gate 3D
@@ -227,6 +227,24 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
 - Cumulative gate replay (`baseline_gate.mjs`, `verify_87_samples.ts`, `exercise_3a2.mts`, `exercise_3a3.mts`, `exercise_3b1.mts`, `exercise_3b2.mts`, `exercise_3b3_spec15.mts`, `exercise_3b3_live.mts`, `exercise_3c1.mts`, `exercise_3c2.mts`): all passed.
 - Timed fake-provider browser run from image selection in `CameraButton` -> `ReceiptReview` -> `Chia đều các món còn lại` -> double-tap `Lưu` -> saved expense visible in stream: `37,155 ms` (within 60s target on localhost fake provider).
 - `check-balances.ts`: `All groups balanced`.
+
+## Task 3D.1 — approach
+
+- Files to create/modify: create `packages/ai/{package.json,tsconfig.json,src/{index,anthropic-client}.ts}` (moved `anthropic-client.ts` from worker), `packages/contract/src/sentence-ai.ts`, `apps/api/src/ai/{sentence-ai,anthropic-sentence-ai,fake-sentence-ai,prompts/sentence}.ts`; move `apps/worker/fixtures/sentences.json` -> `apps/api/fixtures/sentences.json`; modify `packages/contract/src/{quick-entry,index}.ts`, `apps/worker/{package.json,src/ai/anthropic-receipt-reader.ts,src/jobs/read-receipt.ts}`, `apps/api/{package.json,src/{app,routes/{features,transactions},services/quick-entry}.ts}`.
+- Approach: add `SentenceAiAnswer` (using `RequestMemberRef` and `AiSplitInput` with zero UUIDs or `items`), add `category`/`categoryId`, `ParsedDraftResult`, `reader`, and `moreDrafts` to quick-entry contracts. Only when the rule reader returns `unparsed` and `sentenceAi` is configured does `parseSentence` open a short tx to reserve and claim `purpose: "sentence"`, generate fresh nonce-scoped active-person references (`<nonce>:pN`), call `SentenceAi` (8s timeout, no retry), map valid references back to UUIDs in API memory, discard unknown references while forcing non-`ok` status without shares, run `computeShares`, and return AI `draft` + `moreDrafts` (`spans: []`) or silently fall back to the rule answer on empty drafts, quota limit, timeout, or invalid shape.
+- Why simplest: isolates provider transport in `@songphang/ai`, keeps DB quota transactions completely outside provider HTTP I/O, and reuses `computeShares` and ordinary draft validation.
+- Rejected alternative: reusing UUID `SplitInput` at the provider boundary or holding a transaction across provider HTTP calls.
+
+### Task 3D.1 results
+
+- `pnpm check`: passed (`Checked 388 files`, all 8 workspace typechecks Done).
+- `exercise_3d1.mts`:
+  - Rule `ok` (`cà phê 180k chia 4`) and rule `needs_input` (`cà phê 180k chia 2`) returned `reader="rules"` with `0` `ai_calls` rows.
+  - All 15 advisor fixtures verified (`AI01: ai/ok`, `AI02: ai/ok more=1`, `AI03: ai/needs_input`, `AI04: ai/needs_input`, `AI05–AI07: rules/unparsed`, `AI08: ai/needs_input`, `AI09–AI13: rules/unparsed`, `AI14: ai/needs_input` with `Nam` dropped & no shares, `AI15: ai/needs_input` with `confident:false` & no shares).
+  - Unknown unparsed sentence preserved `reader="rules"`; `AI_SENTENCES_PER_USER_PER_DAY=1` silently fell back on the 2nd sentence; viewer returned `403`; `features.sentenceAi` reflected `AI_PROVIDER`.
+  - Stubbed `SentenceAi` verified zero leaked UUIDs/emails, distinct nonce refs on repeat calls, `shares`/`percent` mapping through `computeShares`, invalid shape fallback (`ai_calls.ok=false`), and `8012ms` abort timeout with `1` fetch attempt.
+- `verify_87_samples.ts`: all 87 original rule-reader samples (75 Phase 1 + 12 Phase 2) passed.
+- Security review: checked items 1, 2, 3, 4, 8; no real IDs sent to provider, Zod validation at AI boundary, atomic reservation/claim before HTTP; no issues found.
 
 ## Not verified
 

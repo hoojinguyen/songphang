@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { AnthropicTransportError } from "@songphang/ai";
 import { JOB_NAMES, ReadReceiptPayload } from "@songphang/contract";
 import { checkReceipt, quotaWindowStarts } from "@songphang/core";
 import {
@@ -17,7 +18,6 @@ import {
 } from "@songphang/db";
 import type { PgBoss } from "pg-boss";
 import { z } from "zod";
-import { AnthropicTransportError } from "../ai/anthropic-client.js";
 import {
 	type ReceiptReader,
 	type ReceiptReaderOutput,

@@ -23,6 +23,9 @@ importers:
       '@hono/zod-openapi':
         specifier: 1.6.3
         version: 1.6.3(hono@4.13.18)(zod@4.6.7)
+      '@songphang/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@songphang/contract':
         specifier: workspace:*
         version: link:../../packages/contract
@@ -100,6 +103,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@songphang/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@songphang/contract':
         specifier: workspace:*
         version: link:../../packages/contract
@@ -125,6 +131,16 @@ importers:
       tsx:
         specifier: 4.23.15
         version: 4.23.15
+
+  packages/ai:
+    dependencies:
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
 
   packages/contract:
     dependencies:

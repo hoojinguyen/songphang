@@ -135,6 +135,7 @@ export function registerTransactionRoutes(
 			context.json(
 				await parseSentence(deps, {
 					groupId: context.var.groupAccess.groupId,
+					userId: context.var.user.id,
 					memberId: context.var.groupAccess.memberId,
 					request: context.req.valid("json"),
 				}),
