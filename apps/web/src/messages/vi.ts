@@ -1,4 +1,16 @@
 export const vi = {
+	payment: {
+		title: "Thông tin nhận tiền",
+		bank: "Ngân hàng",
+		accountNumber: "Số tài khoản",
+		accountName: "Tên tài khoản",
+		momo: "Số MoMo",
+		zalopay: "Số ZaloPay",
+		hint: "Cả nhóm thấy thông tin này để chuyển tiền cho {name}.",
+		invalidAccount: "Số tài khoản chỉ gồm chữ và số.",
+		invalidPhone: "Số điện thoại chưa đúng.",
+		saved: "Đã lưu.",
+	},
 	offline: {
 		banner: "Mất mạng. Bạn vẫn xem được sổ.",
 		entry: "Có mạng lại là gõ tiếp được",

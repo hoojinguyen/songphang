@@ -57,3 +57,10 @@ Pending 2B.4 and 2D.2.
 2. Confirm as Minh → one transfer and Hùng balance zero. Confirm again → 409 REQUEST_NOT_PENDING and still one transfer.
 3. As Hùng try to report Lan's payment or confirm your own payment to linked Minh → 403. An outsider must receive 404.
 4. Create another report; cancel as its creator, or reject as receiver → no ledger/balance change. Concurrent double confirmation must create one transfer.
+
+### Payment editor UI — 2A.5
+
+1. S10 → expand a member → Thông tin nhận tiền → choose bank, fill account/name and wallet → Lưu → Đã lưu.; reload retains data.
+2. Search vietc in the bank picker → Vietcombank appears; Escape closes and returns focus to the picker.
+3. Enter a dashed account or short phone → exact validation text; saved values must remain unchanged.
+4. Clear a wallet phone and save → the method disappears. As a viewer, other members' details are read-only; your linked member is editable, with no generic member-edit controls.

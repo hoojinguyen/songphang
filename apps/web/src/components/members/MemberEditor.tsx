@@ -6,6 +6,7 @@ import { formatSignedAmount } from "../../lib/money";
 import { useSessionGuard } from "../../lib/use-session-guard";
 import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
+import { PaymentMethodsFields } from "./PaymentMethodsFields";
 export function MemberEditor({
 	groupId,
 	member,
@@ -100,6 +101,7 @@ export function MemberEditor({
 					</Button>
 				</>
 			}
+			<PaymentMethodsFields groupId={groupId} member={member} canWrite />
 			{error && <p role="alert">{error}</p>}
 		</div>
 	);

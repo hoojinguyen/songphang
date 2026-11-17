@@ -7,6 +7,7 @@ import { InviteCard } from "../../../../components/members/InviteCard";
 import { LeaveGroupButton } from "../../../../components/members/LeaveGroupButton";
 import { MemberEditor } from "../../../../components/members/MemberEditor";
 import { MemberRow } from "../../../../components/members/MemberRow";
+import { PaymentMethodsFields } from "../../../../components/members/PaymentMethodsFields";
 import { UserControls } from "../../../../components/members/UserControls";
 import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
@@ -96,7 +97,7 @@ export default function MembersPage() {
 					<MemberRow
 						member={member}
 						role={users.data.find((user) => user.memberId === member.id)?.role}
-						canEdit={me.data.emailVerified && group.data.role !== "viewer"}
+						canEdit={true}
 						isExpanded={expanded === member.id}
 						onEdit={() =>
 							setExpanded(expanded === member.id ? null : member.id)
@@ -113,6 +114,14 @@ export default function MembersPage() {
 										(balance) => balance.memberId === member.id,
 									)?.balance ?? 0
 								}
+							/>
+						)}
+					{expanded === member.id &&
+						(group.data.role === "viewer" || !me.data.emailVerified) && (
+							<PaymentMethodsFields
+								groupId={groupId}
+								member={member}
+								canWrite={me.data.emailVerified && member.isMe}
 							/>
 						)}
 					{me.data.emailVerified && member.active && !member.claimed && (

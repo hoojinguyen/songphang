@@ -1,5 +1,5 @@
 export function jsonRequest(
-	method: "POST" | "PATCH" | "DELETE",
+	method: "POST" | "PATCH" | "DELETE" | "PUT",
 	body?: unknown,
 	idempotencyKey?: string,
 ): RequestInit {

@@ -27,7 +27,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2A.2 — member payment methods
 - [x] 2A.3 — settlement requests
 - [x] 2A.4 — payment data and pending requests on balances
-- [ ] 2A.5 — payment methods editor
+- [x] 2A.5 — payment methods editor
 - [ ] 2A.6 — paying screen, confirmation and gate 2A
 - [ ] 2B.1 — custom categories
 - [ ] 2B.2 — search and filters
@@ -138,3 +138,13 @@ Extend the existing balance contract in place with payTo/purpose/pendingRequest.
 ### Task 2A.4 results
 
 Commit reference: `feat(api): add payment data and pending requests to suggested transfers`. pnpm check passed (253 files, five typechecks Done). Fresh four-person 600000 expense plus Hùng pending report: GET balances as Hùng/Lan 200; Hùng → Minh QR equals the first fixed reference byte for byte; account in QR equals payTo account; requested amount 150000; createdByMe true for Hùng and false for Lan. Lan → Minh pendingRequest null; removing receiver methods yields payTo []. pnpm db:check-balances: All groups balanced. Security review: relevant items 1/2/3/4/5/6/8 checked against full diff; existing shared read authorization, same repeatable-read snapshot for names/methods/pending/debts, batched group-scoped reads, validated additive DTO, no sensitive log/activity/invite changes and no new dependency. getBalances remains one snapshot operation above function guideline; no money arithmetic was changed. Not verified: real banking apps.
+
+## Task 2A.5 — approach
+
+Add BankPicker as a searchable native dialog and PaymentMethodsFields beside the existing member editor; reuse TextField/Button and current spacing. Keep editable payment state in a sibling hook, validate the complete list with the shared contract and save through the existing API client. Show the section read-only for other members viewed by a viewer, editable for their own member. Enable member-row expansion for details without granting generic name/deactivate/delete controls. Add exact spec strings once in vi.ts and reuse them everywhere.
+
+### Task 2A.5 results
+
+Commit reference: `feat(web): add payment details to the member editor`. pnpm check passed (256 files, five typechecks Done). Current-source production web build passed and was exercised at localhost:3001 against the isolated current-source API at 4001 (temporary runtime WEB_ORIGIN=localhost:3001; no committed env change). Browser: saved bank+momo, saw Đã lưu.; reloaded and read canonical account name NGUYEN VAN MINH and normalized momo; removed momo and later viewer read showed only bank details. Picker search vietc included Vietcombank. Dashed account showed Số tài khoản chỉ gồm chữ và số.; short phone showed Số điện thoại chưa đúng. As Hùng viewer, Minh's receiving details appeared as a definition list with no inputs; Hùng's own section had editable fields and no name/deactivate/delete controls. Initial check identified missing PUT in the existing request builder; extending only its accepted method union fixed the cause. Final save label reuses existing Lưu instead of the name-only label seen in the first browser pass.
+
+Security review: relevant items 1/2/4/6/7/8 checked against full diff; contract validation and API authority retained, write guards and synchronous submit ref, no persisted sensitive browser storage, unsafe HTML or external link/API. No dependency. Each new component below 150 lines; hook below 100; preexisting oversized page retained as D10 explains. Physical banking/device checks remain unverified. No out-of-scope change.
