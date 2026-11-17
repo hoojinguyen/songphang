@@ -116,6 +116,17 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - In isolated viewer session (Hùng), live SSE updated stream; clicking the expense opened read-only detail with `Ảnh hoá đơn` and `Xem ảnh hoá đơn` buttons (no `Thêm ảnh`, remove, save, or delete controls); clicking opened `PhotoViewer` modal `<dialog>`; `Escape` closed it and restored focus.
 - Security review: checked items 1, 2, 4, 6, 7, 8; no issues found.
 
+## Stage gate 3A — passed
+
+- `pnpm check` (353 files, 7 workspace typechecks) and `API_ORIGIN=http://localhost:4010 pnpm build` passed.
+- Isolated DB `songphang_phase3_gate` reset, migrated, and seeded cleanly.
+- `baseline_gate.mjs`: Phase 1 + Phase 2 acceptance + `GET /api/v1/features` all-false + disabled 404 probes + permission checks passed.
+- `verify_87_samples.ts`: all 87 quick-entry samples (75 Phase 1 + 12 Phase 2) passed.
+- `exercise_3a2.mts`: attachment upload/read/delete, magic-byte sniffing, chunked 7 MB 413, parallel 200 MiB quota serialization, access removal 404, 30/hr rate limit, cross-group 404 passed.
+- `exercise_3a3.mts`: transaction `attachmentIds`, `TransactionListItemDto.attachmentCount`, attachment edit deletion, soft-delete/restore preservation, 24h cleanup grace period, group delete `delete-files`, shared `STORAGE_DIR` resolution passed.
+- `test_pgboss_tx.mts`: `pg-boss@12.38.2` `fromDrizzle(tx, sql)` transactional enqueue & rollback proof passed (ready for Stage 3B).
+- `check-balances.ts`: `All groups balanced`.
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy).
