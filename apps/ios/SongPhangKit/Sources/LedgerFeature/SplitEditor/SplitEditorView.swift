@@ -247,6 +247,8 @@ private struct SplitMemberRowView: View {
           .keyboardType(method == .exact ? .numberPad : .decimalPad)
           .multilineTextAlignment(.trailing)
           .font(Typography.sectionTitle)
+          .lineLimit(1)
+          .minimumScaleFactor(0.6)
           .foregroundStyle(Tokens.ink)
           .accessibilityLabel(L10n.t("split.memberField", ["name": member.name]))
 

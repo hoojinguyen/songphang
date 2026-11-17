@@ -405,6 +405,7 @@ public struct RootView: View {
       }
     )
     .toolbar { keyboardDoneToolbar }
+    .overlay { StatusBarCover() }
     .background(PopGestureEnabler())
     .id(route)
   }

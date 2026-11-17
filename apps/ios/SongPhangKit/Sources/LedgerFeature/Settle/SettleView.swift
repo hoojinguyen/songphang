@@ -12,7 +12,6 @@ public struct SettleView: View {
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
   private let onBackToGroups: () -> Void
-  @FocusState private var isAmountFocused: Bool
 
   public init(
     model: SettleModel,
@@ -71,6 +70,11 @@ public struct SettleView: View {
       )
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      if isEmailVerified, case .loaded(let data) = model.state, data.group.role != .viewer {
+        submitButton
+      }
+    }
     .navigationBarBackButtonHidden(true)
     .task {
       if model.state.value == nil {
@@ -79,9 +83,28 @@ public struct SettleView: View {
     }
   }
 
+  private var submitButton: some View {
+    let currentAmount = model.amount ?? .zero
+    return SPButton(
+      L10n.t("settle.submit", ["amount": MoneyFormat.full(currentAmount)]),
+      variant: .accent,
+      size: .lg,
+      isFullWidth: true,
+      isDisabled: !currentAmount.isPositive,
+      isPending: model.isSubmitting
+    ) {
+      Task { await model.submit(reduceMotion: reduceMotion) }
+    }
+    .padding(.horizontal, 20)
+    .padding(.vertical, 12)
+    .background(Tokens.bg)
+  }
+
   @ViewBuilder
   private func loadedContent(data: SettleModel.ScreenData) -> some View {
     let myMemberId = data.group.myMemberId
+    // Read here so the field re-renders when the model reformats the typed digits.
+    let amountText = model.amountText
     let title: String = {
       if data.toMember.id == myMemberId {
         return L10n.tr("settle.titleReceived")
@@ -136,31 +159,11 @@ public struct SettleView: View {
         .font(Typography.subheadlineBold)
         .foregroundStyle(Tokens.ink)
 
-      TextField(
-        "0",
-        text: Binding(
-          get: { model.amountText },
-          set: { model.updateAmountText($0) }
-        )
+      SettleAmountField(
+        value: amountText,
+        label: L10n.t("settle.amountLabel", ["name": data.fromMember.name]),
+        onChange: { model.updateAmountText($0) }
       )
-      .keyboardType(.numberPad)
-      .focused($isAmountFocused)
-      .multilineTextAlignment(.center)
-      .font(.system(size: 44, weight: .black))
-      .foregroundStyle(Tokens.ink)
-      .padding(.horizontal, 16)
-      .frame(maxWidth: .infinity, minHeight: 92)
-      .background(
-        RoundedRectangle(cornerRadius: 32, style: .continuous)
-          .fill(Tokens.surface)
-          .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-              .strokeBorder(Tokens.ink, lineWidth: 3)
-          )
-      )
-      .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-      .onTapGesture { isAmountFocused = true }
-      .accessibilityLabel(L10n.t("settle.amountLabel", ["name": data.fromMember.name]))
     }
 
     Text(L10n.t("settle.partialHint", ["name": data.fromMember.name]))
@@ -208,19 +211,7 @@ public struct SettleView: View {
       .foregroundStyle(Tokens.coral)
     }
 
-    if isEmailVerified {
-      let currentAmount = model.amount ?? .zero
-      SPButton(
-        L10n.t("settle.submit", ["amount": MoneyFormat.full(currentAmount)]),
-        variant: .accent,
-        size: .lg,
-        isFullWidth: true,
-        isDisabled: !currentAmount.isPositive,
-        isPending: model.isSubmitting
-      ) {
-        Task { await model.submit(reduceMotion: reduceMotion) }
-      }
-    } else {
+    if !isEmailVerified {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))
           .font(Typography.subheadlineBold)
@@ -245,6 +236,51 @@ public struct SettleView: View {
         )
     }
     .buttonStyle(.plain)
+  }
+}
+
+private struct SettleAmountField: View {
+  let value: String
+  let label: String
+  let onChange: (String) -> Void
+  @State private var text: String
+  @FocusState private var isFocused: Bool
+
+  init(value: String, label: String, onChange: @escaping (String) -> Void) {
+    self.value = value
+    self.label = label
+    self.onChange = onChange
+    self._text = State(initialValue: value)
+  }
+
+  // The field keeps its own text so the model's reformatted value is written back
+  // after each keystroke; a direct binding left the raw typed text on screen.
+  var body: some View {
+    TextField("0", text: $text)
+      .keyboardType(.numberPad)
+      .focused($isFocused)
+      .multilineTextAlignment(.center)
+      .font(.system(size: 44, weight: .black))
+      .foregroundStyle(Tokens.ink)
+      .padding(.horizontal, 16)
+      .frame(maxWidth: .infinity, minHeight: 92)
+      .background(
+        RoundedRectangle(cornerRadius: 32, style: .continuous)
+          .fill(Tokens.surface)
+          .overlay(
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+              .strokeBorder(Tokens.ink, lineWidth: 3)
+          )
+      )
+      .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+      .onTapGesture { isFocused = true }
+      .onChange(of: text) { _, newText in
+        if newText != value { onChange(newText) }
+      }
+      .onChange(of: value) { _, newValue in
+        if text != newValue { text = newValue }
+      }
+      .accessibilityLabel(label)
   }
 }
 

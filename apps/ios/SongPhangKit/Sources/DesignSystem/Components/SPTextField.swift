@@ -14,6 +14,7 @@ public struct SPTextField: View {
   private let error: String?
   private let hint: String?
   private let maxLength: Int?
+  private let onSubmit: (() -> Void)?
   @FocusState private var isFocused: Bool
 
   public init(
@@ -23,7 +24,8 @@ public struct SPTextField: View {
     placeholder: String = "",
     error: String? = nil,
     hint: String? = nil,
-    maxLength: Int? = nil
+    maxLength: Int? = nil,
+    onSubmit: (() -> Void)? = nil
   ) {
     self.label = label
     self._text = text
@@ -32,6 +34,7 @@ public struct SPTextField: View {
     self.error = error
     self.hint = hint
     self.maxLength = maxLength
+    self.onSubmit = onSubmit
   }
 
   public var body: some View {
@@ -58,6 +61,8 @@ public struct SPTextField: View {
         }
       }
       .focused($isFocused)
+      .submitLabel(onSubmit == nil ? .done : .go)
+      .onSubmit { onSubmit?() }
       .font(Typography.bodyBold)
       .foregroundStyle(Tokens.ink)
       .padding(.horizontal, 16)

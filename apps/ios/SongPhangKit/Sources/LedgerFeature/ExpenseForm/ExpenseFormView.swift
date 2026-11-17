@@ -125,6 +125,42 @@ public struct ExpenseFormView: View {
     let myMemberId = data.group.myMemberId
     let isEditing = (data.editingTransaction != nil)
 
+    VStack(spacing: 0) {
+      Group {
+        if isEditing {
+          SPScreenHeader(
+            title: model.headerTitle,
+            backLabel: L10n.tr("common.cancel"),
+            onBack: onCancel
+          )
+        } else {
+          SPScreenHeader(
+            title: model.headerTitle,
+            backLabel: L10n.tr("common.cancel"),
+            onBack: onCancel
+          ) {
+            TypeSwitchView(
+              value: model.transactionType,
+              onChange: { model.setType($0) }
+            )
+          }
+        }
+      }
+      .padding(.horizontal, 20)
+      .padding(.top, 8)
+      .padding(.bottom, 6)
+
+      scrollingForm(data: data, active: active, myMemberId: myMemberId, isEditing: isEditing)
+    }
+  }
+
+  @ViewBuilder
+  private func scrollingForm(
+    data: ExpenseFormModel.ScreenData,
+    active: [Member],
+    myMemberId: Member.ID?,
+    isEditing: Bool
+  ) -> some View {
     ScrollViewReader { proxy in
       ScrollView {
         VStack(alignment: .leading, spacing: 14) {
@@ -134,25 +170,6 @@ public struct ExpenseFormView: View {
               activeCount: active.count,
               onDismiss: { model.isUnparsedBannerDismissed = true }
             )
-          }
-
-          if isEditing {
-            SPScreenHeader(
-              title: model.headerTitle,
-              backLabel: L10n.tr("common.cancel"),
-              onBack: onCancel
-            )
-          } else {
-            SPScreenHeader(
-              title: model.headerTitle,
-              backLabel: L10n.tr("common.cancel"),
-              onBack: onCancel
-            ) {
-              TypeSwitchView(
-                value: model.transactionType,
-                onChange: { model.setType($0) }
-              )
-            }
           }
 
           AmountFieldView(
@@ -328,17 +345,6 @@ public struct ExpenseFormView: View {
               .foregroundStyle(Tokens.coral)
           }
 
-          SPButton(
-            model.saveButtonTitle,
-            variant: .accent,
-            size: .lg,
-            isFullWidth: true,
-            isDisabled: !model.canSubmit,
-            isPending: model.isSubmitting
-          ) {
-            Task { await model.submit() }
-          }
-
           if isEditing {
             Button {
               Task { await model.deleteTransaction() }
@@ -353,7 +359,11 @@ public struct ExpenseFormView: View {
             .disabled(model.isDeleting)
           }
         }
-        .padding(20)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+      }
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        saveButton
       }
       .onChange(of: model.conflictTransaction) { _, newValue in
         if newValue != nil {
@@ -361,6 +371,24 @@ public struct ExpenseFormView: View {
         }
       }
     }
+  }
+}
+
+extension ExpenseFormView {
+  private var saveButton: some View {
+    SPButton(
+      model.saveButtonTitle,
+      variant: .accent,
+      size: .lg,
+      isFullWidth: true,
+      isDisabled: !model.canSubmit,
+      isPending: model.isSubmitting
+    ) {
+      Task { await model.submit() }
+    }
+    .padding(.horizontal, 20)
+    .padding(.vertical, 12)
+    .background(Tokens.bg)
   }
 }
 

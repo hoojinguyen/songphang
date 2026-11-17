@@ -100,7 +100,8 @@ public struct SignInView: View {
         label: L10n.tr("auth.password"),
         text: $model.password,
         kind: .password,
-        maxLength: 1024
+        maxLength: 1024,
+        onSubmit: { Task { await model.submitEmailPassword() } }
       )
 
       if let errorMessage = AuthErrorMessages.message(for: model.submitError) {
