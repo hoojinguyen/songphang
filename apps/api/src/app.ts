@@ -14,6 +14,7 @@ import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerCategoryRoutes } from "./routes/categories.js";
 import { registerDevRoutes } from "./routes/dev.js";
 import { registerEventRoutes } from "./routes/events.js";
+import { registerExportRoutes } from "./routes/export.js";
 import { registerFeatureRoute } from "./routes/features.js";
 import { registerGoogleRoutes } from "./routes/google.js";
 import { registerGroupUserRoutes } from "./routes/group-users.js";
@@ -84,6 +85,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerTransactionRoutes(app, deps);
 	registerBalanceRoutes(app, deps);
 	registerStatsRoutes(app, deps);
+	registerExportRoutes(app, deps);
 	registerActivityRoutes(app, deps);
 	registerAuthRoutes(app, deps);
 	registerGoogleRoutes(app, deps);

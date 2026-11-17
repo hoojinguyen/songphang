@@ -1,4 +1,15 @@
 export const vi = {
+	csv: {
+		date: "Ngày",
+		type: "Loại",
+		description: "Mô tả",
+		category: "Danh mục",
+		totalAmount: "Tổng tiền",
+		payers: "Người trả",
+		typeExpense: "Chi tiêu",
+		typeTransfer: "Chuyển khoản",
+		typeIncome: "Thu nhập",
+	},
 	stats: {
 		title: "Tiền đi đâu",
 		all: "Tất cả",

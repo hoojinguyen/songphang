@@ -41,6 +41,11 @@ export function toVietnamDate(date: Date): string {
 	return shifted.toISOString().slice(0, 10);
 }
 
+export function formatVietnamDateTime(date: Date): string {
+	const shifted = new Date(date.getTime() + VIETNAM_UTC_OFFSET_MS);
+	return shifted.toISOString().slice(0, 16).replace("T", " ");
+}
+
 function monthRange(
 	year: number,
 	month: number,

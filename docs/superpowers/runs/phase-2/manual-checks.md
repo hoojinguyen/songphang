@@ -35,8 +35,7 @@ Pending 2B.6 and 2D.2.
 1. Record three expenses and one refund in a new group, then open S16 (`Tổng chuyến đi`) → total equals expenses minus the refund.
 2. Switch between `Tất cả`, `Tháng này`, `Tháng trước`, and `Tuỳ chọn` → totals change and bars resize; an empty period shows `Chưa có khoản chi nào trong khoảng này`.
 3. Tap a category or member row on S16 → opens S4 filtered to that category/member (and active period) with filter chips above the stream.
-
-Pending 2B.5 for CSV export.
+4. Tap `Xuất CSV` on S16 → downloads `song-phang-YYYYMMDD.csv`; open in Excel or Google Sheets → Vietnamese reads correctly, one row per transaction, one column per member, and cells starting with `=`/`+`/`-`/`@` are plain text (not evaluated as formulas).
 
 ## S17 — shared fund
 

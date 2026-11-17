@@ -4,6 +4,7 @@ export {
 	APP_TIME_ZONE,
 	bucketFor,
 	currentMonthRange,
+	formatVietnamDateTime,
 	isValidCalendarDate,
 	isWithinFiveYears,
 	localDateRangeToUtc,

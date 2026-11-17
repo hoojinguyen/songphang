@@ -134,6 +134,13 @@ export default function StatsPage() {
 				categories={categories.data}
 				periodRange={range}
 			/>
+			<a
+				href={`/api/v1/groups/${encodeURIComponent(groupId)}/export.csv`}
+				download
+				className="flex min-h-12 items-center justify-center rounded-pill bg-surface px-5 text-sm font-bold text-ink"
+			>
+				{vi.stats.exportCsv}
+			</a>
 		</main>
 	);
 }

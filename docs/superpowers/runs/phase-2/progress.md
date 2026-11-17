@@ -33,7 +33,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2B.2 — search and filters
 - [x] 2B.3 — statistics
 - [x] 2B.4 — statistics screen and filters
-- [ ] 2B.5 — CSV export
+- [x] 2B.5 — CSV export
 - [ ] 2B.6 — categories UI and gate 2B
 - [ ] 2C.1 — fund member integrity
 - [ ] 2C.2 — fund endpoints and balances
@@ -228,3 +228,16 @@ Security review: relevant items 1/2/4/5/6/8 checked against full diff; parameter
 Commit reference: `feat(web): add statistics screen, search and filters`. pnpm check passed (287 files, five workspace typechecks Done) and production web built with API_ORIGIN=http://localhost:4001. Exercised in Chrome on localhost:3001 with the December ledger group: S4 shows `Tổng chuyến đi` shortcut opening S16 (`Tiền đi đâu`), `Tất cả` showed `2.009.999 đ`, `Tháng này` showed `0 đ` (`Chưa có khoản chi nào trong khoảng này`), `Tuỳ chọn` (`2026-12-01`..`2026-12-31`) showed `1.999.999 đ` with exact `Theo danh mục` (`Chỗ ở 1.100.000 đ`, `Ăn uống 699.999 đ`, `Đi lại 200.000 đ`), `Theo người` (`Minh · đã trả 1.700.000 đ · phần mình 558.333 đ`, etc.), and `Theo thời gian` bars. Tapping `Ăn uống` navigated to S4 `?category=food&from=2026-12-01&to=2026-12-31` showing `Lẩu` and `Phở` with removable filter chips, `BalanceBlock` hidden, and `EntryBar` retained. Reloading S4 preserved filters; typing `pho` filtered to `Phở`; typing `khongco` showed `Không có khoản nào khớp`; opening `Lọc` rendered a native modal `<dialog>` with `Người`/`Danh mục`/`Loại`/date inputs, and `Xoá lọc` restored the full stream and `BalanceBlock`.
 
 Security review: relevant items 1/2/4/6/7/8 checked against full diff; URL filter params validated with Zod (`uuid`, `TransactionCategory`, `CalendarDate`, 5-year check) before API requests, no `dangerouslySetInnerHTML`/`eval`/secret browser storage, internal-only navigation links, no new dependencies. `FilterSheet.tsx` refactored with `PillSection` under 190 lines; preexisting `app/g/[groupId]/page.tsx` kept cohesive. Not verified: automated fast-4G timing (scheduled in 2D.3).
+
+## Task 2B.5 — approach
+
+- Files to create/modify: create `apps/api/src/csv.ts`, `apps/api/src/csv-labels.ts`, `apps/api/src/services/export.ts`, and `apps/api/src/routes/export.ts`; modify `packages/core/src/dates.ts`, `packages/core/src/index.ts`, `packages/db/src/transactions.ts`, `apps/api/src/app.ts`, `apps/web/src/messages/vi.ts`, and `apps/web/src/app/g/[groupId]/stats/page.tsx`.
+- Approach: add `formatVietnamDateTime` in `core/dates.ts`, add `csvCell` (formula-prefixing `=`, `+`, `-`, `@`, tab, CR before RFC 4180 quoting) in `csv.ts`, and map CSV headers/types/categories directly from `vi.ts` in `csv-labels.ts` per D3 without duplicating Vietnamese literals. Load members, categories, live transactions (oldest first), payers, and shares inside one repeatable-read read-only transaction, serialize UTF-8 with BOM (`\uFEFF`) and CRLF lines, guard with `requireUser`, `requireGroupRole("viewer")`, and a 6/min rate limit, and add the `Xuất CSV` `<a download>` link on S16.
+- Why simplest: builds CSV in memory for ≤10,000 live transactions using existing `vi.ts` labels, `core` Vietnam timezone offset, and `rateLimiter`.
+- Rejected alternative: duplicating Vietnamese column/category strings in `apps/api` (violates D3) or streaming chunks with complex backpressure before any 10k-row memory issue exists.
+
+### Task 2B.5 results
+
+Commit reference: `feat(api): add CSV export of a group`. pnpm check passed (291 files, five workspace typechecks Done). Exercised all 2B.5 December-ledger and edge cases on API 4001: BOM `EF BB BF`, CRLF endings, header `Ngày,Loại,Mô tả,Danh mục,Tổng tiền,Người trả,Minh,Lan,Hùng,Thu`, S1 `2026-12-05 12:30,Chi tiêu,Lẩu,Ăn uống,600000,Minh 600000,150000,150000,150000,150000`, S5 `Chuyển khoản` (`50000` under Minh, empty elsewhere), S6 `2026-12-31 23:30` (`33333` under Minh/Lan/Hùng, empty under Thu), S7 `2027-01-01 00:10` with `'=SUM(A1)` formula prefix, `Cơm, "gà"` → `"Cơm, ""gà"""`, member `@home` → `'@home`, 7th export within 1 minute returned `429`, outsider `404`, signed-out `401`. S16 page renders `<a download>` for `Xuất CSV`.
+
+Security review: relevant items 1/2/4/5/6/7/8 checked against full diff; formula-prefix neutralization and RFC 4180 quoting in `csvCell`, viewer auth + 6/min per-user rate limit, `Cache-Control: no-store`, repeatable-read snapshot, D3 `vi.ts` label reuse, no new dependencies. Not verified: opening the downloaded `.csv` in Excel/Google Sheets (owner manual check).
