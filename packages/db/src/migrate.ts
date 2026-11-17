@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { backfillDescriptionSearch } from "./backfill-description-search.js";
 import { createDb } from "./client.js";
 
 export async function runMigrations(url: string): Promise<void> {
@@ -8,6 +9,7 @@ export async function runMigrations(url: string): Promise<void> {
 		await migrate(db, {
 			migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
 		});
+		await backfillDescriptionSearch(db);
 	} finally {
 		await close();
 	}

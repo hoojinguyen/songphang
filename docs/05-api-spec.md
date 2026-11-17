@@ -313,3 +313,30 @@ Approved with the phase 1 spec. English, following the language policy.
 - An issue of the parse response may also carry `count`, `expected`, and `actual`; the response also returns `text`, the normalized sentence its spans index.
 - `PATCH` of a transaction takes the full create body plus `version`; the type cannot change.
 - Rate limits for accounts are in the spec, section 6.8.
+
+
+## Phase 2 amendment — approved 2026-11-17
+
+API root remains `/api/v1`. Every group route retains shared authorization, same-origin writes, verified-email/write limiting and post-lock access revalidation. Create operations require Idempotency-Key. Outsiders receive indistinguishable 404; group members with insufficient permission receive 403.
+
+| Method | Route (relative to API root) | Minimum access / result |
+|---|---|---|
+| GET | /features | Public; optional capability booleans; all false in Phase 2 |
+| PUT | /groups/{groupId}/members/{memberId}/payment-methods | Viewer plus own-member rule; replace complete 0–3 unique-kind list |
+| GET, POST | /groups/{groupId}/settlement-requests | Viewer; paginated status filter; create requires payer identity or editor |
+| POST | /groups/{groupId}/settlement-requests/{id}/confirm | Receiver, owner, editor for unlinked receiver; atomic request plus transaction |
+| POST | /groups/{groupId}/settlement-requests/{id}/reject | Same resolver rule; no ledger change |
+| POST | /groups/{groupId}/settlement-requests/{id}/cancel | Creator or linked payer |
+| GET, POST | /groups/{groupId}/categories | Viewer read, editor create |
+| PATCH, DELETE | /groups/{groupId}/categories/{id} | Editor; delete archives |
+| GET | /groups/{groupId}/stats | Viewer; inclusive Vietnam calendar from/to; expense minus income, excluding transfers/deletions |
+| GET | /groups/{groupId}/export.csv | Viewer; 6/minute/user; UTF-8 BOM, CRLF, RFC 4180, formula-safe cells |
+| POST, PATCH, DELETE | /groups/{groupId}/fund | Editor; one special member; no closure with nonzero cash |
+| GET | /groups/{groupId}/budget | Viewer; budget null or period/amount/spent/state/periodStart/periodEnd |
+| PUT, DELETE | /groups/{groupId}/budget | Owner |
+
+Transaction requests/DTOs gain categoryId. Lists gain q/memberId/category/categoryId/type/from/to with AND semantics, escaped LIKE, same keyset cursor and at most five-year ranges. All sums use SQL bigint. Preview/create/edit always return warnings (FUND_OVERDRAWN, BUDGET_NEAR, BUDGET_OVER). Only threshold transitions warn for budgets; edits exclude the old transaction. Money division remains in core.
+
+Member DTOs gain paymentMethods and kind. Balances transfers gain payTo, purpose and nullable pendingRequest {id, amount, createdByMe}. Bank payTo includes bankShortName and server-built qrPayload. From 2C balances lists people only, while fund contains memberId/name/active/cash/holderMemberId/contributions. This intended pre-freeze contract amendment preserves existing fields. SSE adds settlementRequests/categories/budget invalidations without sensitive payloads.
+
+Errors: REQUEST_ALREADY_PENDING (409), REQUEST_NOT_PENDING (409), CATEGORY_EXISTS (409), FUND_EXISTS (409), FUND_CANNOT_SHARE (422), FUND_NOT_EMPTY (422). Other constraints retain existing VALIDATION_FAILED/LIMIT_REACHED/MEMBER_HAS_TRANSACTIONS behavior. Exact request/response fields are defined in Phase 2 spec and task interface blocks.

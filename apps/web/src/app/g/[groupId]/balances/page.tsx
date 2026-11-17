@@ -6,13 +6,16 @@ import { AllSettled } from "../../../../components/balances/AllSettled";
 import { BalanceBars } from "../../../../components/balances/BalanceBars";
 import { OtherSettlements } from "../../../../components/balances/OtherSettlements";
 import { OwnSettlementCard } from "../../../../components/balances/OwnSettlementCard";
+import { PendingRequestRow } from "../../../../components/balances/PendingRequestRow";
 import { SettlementCard } from "../../../../components/balances/SettlementCard";
+import { FundBlock } from "../../../../components/fund/FundBlock";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { useBalances } from "../../../../lib/balances";
 import { useGroup } from "../../../../lib/groups";
 import { useMembers } from "../../../../lib/members";
 import { useMe } from "../../../../lib/session";
+import { usePendingSettlementRequests } from "../../../../lib/settlement-requests";
 import { useTransactions } from "../../../../lib/transactions";
 import { useSessionGuard } from "../../../../lib/use-session-guard";
 import { t, vi } from "../../../../messages/vi";
@@ -23,6 +26,7 @@ export default function BalancesPage() {
 	const members = useMembers(groupId);
 	const balances = useBalances(groupId);
 	const transactions = useTransactions(groupId);
+	const pendingRequests = usePendingSettlementRequests(groupId);
 	const error =
 		group.error ??
 		members.error ??
@@ -114,7 +118,14 @@ export default function BalancesPage() {
 	const own = transfers.filter(
 		(transfer) => transfer.fromMemberId === group.data.myMemberId,
 	);
-	const canEdit = me.data.emailVerified && group.data.role !== "viewer";
+	const matchedIds = new Set(
+		transfers.flatMap((transfer) =>
+			transfer.pendingRequest ? [transfer.pendingRequest.id] : [],
+		),
+	);
+	const unmatchedPending = (pendingRequests.data ?? []).filter(
+		(request) => request.status === "pending" && !matchedIds.has(request.id),
+	);
 
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 py-6">
@@ -123,6 +134,13 @@ export default function BalancesPage() {
 				backHref={`/g/${groupId}`}
 				backLabel={vi.common.back}
 			/>
+			{balances.data.fund && (
+				<FundBlock
+					groupId={groupId}
+					fund={balances.data.fund}
+					members={members.data}
+				/>
+			)}
 			{!hasTransactions ? (
 				<div className="my-auto py-12">
 					<h2 className="text-[34px] font-black">{vi.balances.emptyTitle}</h2>
@@ -166,7 +184,9 @@ export default function BalancesPage() {
 									groupId={groupId}
 									transfer={transfer}
 									members={members.data}
-									canEdit={canEdit}
+									myMemberId={group.data.myMemberId}
+									role={group.data.role}
+									verified={me.data.emailVerified}
 								/>
 							))}
 							<OtherSettlements
@@ -175,7 +195,9 @@ export default function BalancesPage() {
 									(transfer) => transfer.fromMemberId !== group.data.myMemberId,
 								)}
 								members={members.data}
-								canEdit={canEdit}
+								myMemberId={group.data.myMemberId}
+								role={group.data.role}
+								verified={me.data.emailVerified}
 							/>
 						</>
 					) : (
@@ -186,7 +208,8 @@ export default function BalancesPage() {
 								transfer={transfer}
 								members={members.data}
 								myMemberId={group.data.myMemberId}
-								canEdit={canEdit}
+								role={group.data.role}
+								verified={me.data.emailVerified}
 							/>
 						))
 					)}
@@ -196,6 +219,42 @@ export default function BalancesPage() {
 						members={members.data}
 					/>
 				</>
+			)}
+			{unmatchedPending.length > 0 && (
+				<section className="grid gap-3 rounded-[30px] bg-surface p-5">
+					{unmatchedPending.map((request) => {
+						const from = members.data.find(
+							(member) => member.id === request.fromMemberId,
+						);
+						const to = members.data.find(
+							(member) => member.id === request.toMemberId,
+						);
+						if (!from || !to) return null;
+						const canResolve =
+							group.data.role === "owner" ||
+							group.data.myMemberId === to.id ||
+							(group.data.role === "editor" && !to.claimed);
+						const canCancel =
+							request.createdBy?.id === me.data.id ||
+							group.data.myMemberId === from.id;
+						return (
+							<PendingRequestRow
+								key={request.id}
+								groupId={groupId}
+								request={{
+									id: request.id,
+									amount: request.amount,
+									createdByMe: request.createdBy?.id === me.data.id,
+								}}
+								fromName={from.name}
+								toName={to.name}
+								canResolve={canResolve}
+								canCancel={canCancel}
+								verified={me.data.emailVerified}
+							/>
+						);
+					})}
+				</section>
 			)}
 		</main>
 	);

@@ -8,6 +8,10 @@ export default defineConfig({
 		"./src/schema-transactions.ts",
 		"./src/schema-records.ts",
 		"./src/schema-accounts.ts",
+		"./src/schema-payments.ts",
+		"./src/schema-settlements.ts",
+		"./src/schema-categories.ts",
+		"./src/schema-budgets.ts",
 	],
 	out: "./drizzle",
 });

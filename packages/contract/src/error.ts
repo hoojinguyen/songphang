@@ -3,6 +3,8 @@ import { z } from "@hono/zod-openapi";
 export const ErrorCode = z
 	.enum([
 		"VALIDATION_FAILED",
+		"REQUEST_NOT_PENDING",
+		"REQUEST_ALREADY_PENDING",
 		"VERSION_CONFLICT",
 		"UNAUTHENTICATED",
 		"NOT_FOUND",
@@ -21,6 +23,11 @@ export const ErrorCode = z
 		"MEMBER_HAS_TRANSACTIONS",
 		"PAYER_TOTAL_MISMATCH",
 		"SPLIT_TOTAL_MISMATCH",
+		"CATEGORY_EXISTS",
+		"LIMIT_REACHED",
+		"FUND_CANNOT_SHARE",
+		"FUND_NOT_EMPTY",
+		"FUND_EXISTS",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

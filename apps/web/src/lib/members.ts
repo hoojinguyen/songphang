@@ -4,6 +4,7 @@ import {
 	type MemberDto,
 	MemberResponse,
 	MembersResponse,
+	type PaymentMethodInput,
 	type UpdateMemberRequest,
 } from "@songphang/contract";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -78,6 +79,25 @@ export function useDeleteMember(groupId: string) {
 				`/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`,
 				jsonRequest("DELETE"),
 			),
+		onSuccess: () => invalidateMembers(client, groupId),
+	});
+}
+
+export function usePaymentMethods(groupId: string) {
+	const client = useQueryClient();
+	return useMutation<
+		MemberDto,
+		ApiError,
+		{ memberId: string; methods: PaymentMethodInput[] }
+	>({
+		mutationFn: async ({ memberId, methods }) =>
+			(
+				await apiFetch(
+					`/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}/payment-methods`,
+					MemberResponse,
+					jsonRequest("PUT", { methods }),
+				)
+			).member,
 		onSuccess: () => invalidateMembers(client, groupId),
 	});
 }

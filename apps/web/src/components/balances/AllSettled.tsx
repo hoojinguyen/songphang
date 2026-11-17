@@ -25,18 +25,20 @@ export function AllSettled({
 				</p>
 			</div>
 			<div className="grid grid-cols-2 gap-5 rounded-card bg-surface p-5">
-				{members.map((member) => (
-					<div
-						key={member.id}
-						className="flex flex-col items-center gap-2 text-center"
-					>
-						<MemberShape {...member} size={72} />
-						<p className="break-words font-bold">
-							{member.id === myMemberId ? vi.common.you : member.name}
-						</p>
-						<p>{formatMoney(0)}</p>
-					</div>
-				))}
+				{members
+					.filter((member) => member.kind === "person")
+					.map((member) => (
+						<div
+							key={member.id}
+							className="flex flex-col items-center gap-2 text-center"
+						>
+							<MemberShape {...member} size={72} />
+							<p className="break-words font-bold">
+								{member.id === myMemberId ? vi.common.you : member.name}
+							</p>
+							<p>{formatMoney(0)}</p>
+						</div>
+					))}
 			</div>
 			{recorded.length > 0 && (
 				<section className="grid gap-3 rounded-[30px] bg-surface p-5">

@@ -1,4 +1,4 @@
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { idempotencyKeys } from "./schema-records.js";
 export async function findIdempotencyKey(
@@ -33,4 +33,14 @@ export function deleteExpiredIdempotencyKeys(
 	return executor
 		.delete(idempotencyKeys)
 		.where(lt(idempotencyKeys.createdAt, cutoff));
+}
+
+export function lockIdempotencyKey(
+	executor: DbExecutor,
+	userId: string,
+	key: string,
+) {
+	return executor.execute(
+		sql`select pg_advisory_xact_lock(hashtextextended(${`${userId}:${key}`}, 0))`,
+	);
 }

@@ -257,3 +257,20 @@ Phiên bản cụ thể của từng công nghệ sẽ được chốt khi khở
 
 **Consequences.** `biome.json` and `.gitignore` gain entries for `apps/ios`. Parallel agents must each work in their own worktree. The domain types of the interface stage are written against today's contract; a later change to the contract is paid for once, in the integration stage, and is confined to `Domain`, the mappings and the screens that use the changed field. The interface stage proves nothing about networking, sign-in or real launch time. Whether Android follows the same arrangement is decided with phase 6.
 
+
+
+## ADR-019 — Optional external services and capabilities
+
+Status: approved 2026-11-17 for later phase runs. Optional service capabilities sit behind deps interfaces and explicit real/local providers. Production refuses fake or console providers. Public GET /api/v1/features reports availability; disabled endpoints return 404. Phase 2 introduces the endpoint with later optional capabilities disabled, without any external adapter or new environment variable.
+
+## ADR-021 — Fund as a special ledger member
+
+Status: approved 2026-11-17. A single member of kind fund uses the existing ledger and settlement arithmetic. Its cash is negative its balance; it can pay, hold income and participate in transfers but never bear expense/income shares or be claimed. Services and database triggers enforce this. A separate ledger was rejected because it duplicates integrity and money rules. See Phase 2 spec section 6.
+
+## ADR-022 — Settlement requires authorized receiver confirmation
+
+Status: approved 2026-11-17. A payment report creates only a pending request. The authorized receiver/owner, or editor for an unlinked receiver, atomically creates one transfer while resolving it. Duplicate confirmation returns 409. Pending requests do not reserve debt; the existing direct editor transfer remains available. No bank API is called and payment is never automatically verified.
+
+## Phase 2 implementation provenance amendment — 2026-11-17
+
+The owner approved VietQR.io by Casso's public bank list as the data source instead of NAPAS's inaccessible complete mapping. Snapshot source https://api.vietqr.io/v2/banks, retrieved 2026-11-17; 76 entries. It is not represented as NAPAS-certified. Reuse installed qrcode 1.5.4 and its React SVG matrix rendering instead of planned uqr; no new library. All feature implementation and exercises after preparation remain local.

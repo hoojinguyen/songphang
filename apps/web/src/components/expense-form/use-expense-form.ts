@@ -23,28 +23,54 @@ export function localDateTime(value?: string) {
 	const now = value ? new Date(value) : new Date();
 	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
+export type FormPrefill = {
+	type?: FormTransactionType;
+	from?: string | null;
+	to?: string | null;
+};
+
 export function useExpenseForm(
 	groupId: string,
 	members: MemberDto[],
 	myMemberId: string | null,
 	transaction?: TransactionDto,
+	prefill?: FormPrefill,
 ) {
 	const memory = useDraft();
 	const draft = transaction ?? memory.draft?.draft;
-	const active = members.filter((member) => transaction || member.active);
+	const active = members.filter(
+		(member) => member.kind === "person" && (transaction || member.active),
+	);
+	const fund = members.find((member) => member.kind === "fund") ?? null;
+	const payerOptions =
+		fund && (transaction || fund.active) ? [...active, fund] : active;
+	const transferMembers = members.filter(
+		(member) => transaction || member.active,
+	);
 	const initial = active.some((member) => member.id === myMemberId)
 		? myMemberId
 		: null;
 	const [type, setTransactionType] = useState<FormTransactionType>(
-		transaction?.type ?? "expense",
+		transaction?.type ?? prefill?.type ?? "expense",
 	);
 	const [amountText, setAmountText] = useState(
 		draft?.amount ? String(draft.amount) : "",
 	);
 	const [description, setDescription] = useState(draft?.description ?? "");
-	const [category, setCategory] = useState<SplitTransactionRequest["category"]>(
-		transaction?.category ?? null,
+	const [category, setBuiltInCategory] = useState<
+		SplitTransactionRequest["category"]
+	>(transaction?.category ?? null);
+	const [categoryId, setCustomCategoryId] = useState<string | null>(
+		transaction?.categoryId ?? null,
 	);
+	const setCategory = (next: SplitTransactionRequest["category"]) => {
+		setBuiltInCategory(next);
+		if (next !== null) setCustomCategoryId(null);
+	};
+	const setCategoryId = (nextId: string | null) => {
+		setCustomCategoryId(nextId);
+		if (nextId !== null) setBuiltInCategory(null);
+	};
 	const [payerIds, setPayerIds] = useState<string[]>(
 		draft ? draft.payers.map((p) => p.memberId) : initial ? [initial] : [],
 	);
@@ -55,10 +81,12 @@ export function useExpenseForm(
 	);
 
 	const [transferFrom, setTransferFrom] = useState(
-		transaction?.payers[0]?.memberId ?? initial,
+		transaction?.payers[0]?.memberId ??
+			prefill?.from ??
+			(initial && initial !== prefill?.to ? initial : null),
 	);
 	const [transferTo, setTransferTo] = useState<string | null>(
-		transaction?.shares[0]?.memberId ?? null,
+		transaction?.shares[0]?.memberId ?? prefill?.to ?? null,
 	);
 	const [occurredAt, setOccurredAt] = useState(() =>
 		localDateTime(transaction?.occurredAt),
@@ -118,6 +146,7 @@ export function useExpenseForm(
 					amount,
 					occurredAt: timestamp,
 					category,
+					categoryId,
 					payers,
 					split: splitState.split,
 				},
@@ -129,6 +158,7 @@ export function useExpenseForm(
 	const preview = usePreviewShares(
 		groupId,
 		request?.type === "transfer" ? null : request,
+		transaction?.id,
 	);
 	useSessionGuard(preview.error);
 	const setType = (next: FormTransactionType) => {
@@ -173,6 +203,10 @@ export function useExpenseForm(
 					CreateTransactionRequest.parse(transactionRequestOf(transaction)),
 				),
 		active,
+		fund,
+		payerOptions,
+		transferMembers,
+		groupId,
 		type,
 		setType,
 		title,
@@ -183,6 +217,8 @@ export function useExpenseForm(
 		setDescription,
 		category,
 		setCategory,
+		categoryId,
+		setCategoryId,
 		payerIds,
 		togglePayer,
 		payerAmounts,

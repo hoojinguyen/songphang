@@ -10,7 +10,13 @@ export async function parseSentence(
 	const members = await listGroupMembers(deps.db, input.groupId);
 	const result = readSentence({
 		text,
-		members,
+		members: members.map((member) => ({
+			id: member.id,
+			name: member.name,
+			kind: member.kind === "fund" ? "fund" : "person",
+			active: member.active,
+			position: member.position,
+		})),
 		writerMemberId: input.memberId,
 	});
 	const { payerMemberId, ...draft } = result.draft;

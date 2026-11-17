@@ -1,19 +1,22 @@
 import type { BalancesResponse, MemberDto } from "@songphang/contract";
-import { settlementHref } from "../../lib/balances";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
-import { OnlineLink } from "../ui/OnlineLink";
+import { fundTransferCaption, TransferAction } from "./TransferAction";
 export function OtherSettlements({
 	groupId,
 	transfers,
 	members,
-	canEdit,
+	myMemberId,
+	role,
+	verified,
 }: {
 	groupId: string;
 	transfers: BalancesResponse["transfers"];
 	members: MemberDto[];
-	canEdit: boolean;
+	myMemberId: string | null;
+	role: "owner" | "editor" | "viewer";
+	verified: boolean;
 }) {
 	if (transfers.length === 0) return null;
 	return (
@@ -23,6 +26,7 @@ export function OtherSettlements({
 				const from = members.find((m) => m.id === transfer.fromMemberId);
 				const to = members.find((m) => m.id === transfer.toMemberId);
 				if (!from || !to) return null;
+				const fundCaption = fundTransferCaption(from, to, transfer.amount);
 				return (
 					<div
 						key={`${from.id}-${to.id}`}
@@ -30,22 +34,27 @@ export function OtherSettlements({
 					>
 						<MemberShape {...from} size={28} />
 						<p className="min-w-0 flex-1 text-xs">
-							{t(vi.balances.memberPaysMember, {
-								from: from.name,
-								to: to.name,
-							})}
+							{fundCaption ??
+								t(vi.balances.memberPaysMember, {
+									from: from.name,
+									to: to.name,
+								})}
 						</p>
-						<span className="text-sm font-extrabold">
-							{formatMoney(transfer.amount)}
-						</span>
-						{canEdit && (
-							<OnlineLink
-								href={settlementHref(groupId, transfer)}
-								className="flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold"
-							>
-								{vi.balances.record}
-							</OnlineLink>
+						{!fundCaption && (
+							<span className="text-sm font-extrabold">
+								{formatMoney(transfer.amount)}
+							</span>
 						)}
+						<TransferAction
+							groupId={groupId}
+							transfer={transfer}
+							from={from}
+							to={to}
+							myMemberId={myMemberId}
+							role={role}
+							verified={verified}
+							compact
+						/>
 					</div>
 				);
 			})}

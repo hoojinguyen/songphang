@@ -1,6 +1,12 @@
 import type { SplitInput } from "../split.ts";
 import { readAmount } from "./amounts.ts";
-import { consume, nameIssue, type ReaderContext, readName } from "./names.ts";
+import {
+	consume,
+	fundShareIssue,
+	nameIssue,
+	type ReaderContext,
+	readName,
+} from "./names.ts";
 export function readParts(
 	context: ReaderContext,
 	input: {
@@ -28,18 +34,22 @@ export function readParts(
 		if (amount === null) continue;
 		found = true;
 		total += amount;
-		nameIssue(context, index, name);
-		if (name.memberId) {
-			if (entries.some((entry) => entry.memberId === name.memberId)) {
-				const token = context.tokens[index];
-				if (token)
-					context.issues.push({
-						code: "TEXT_NOT_UNDERSTOOD",
-						start: token.start,
-						end: number.end,
-						candidates: [],
-					});
-			} else entries.push({ memberId: name.memberId, amount });
+		if (name.memberId && name.memberId === context.fund?.id) {
+			fundShareIssue(context, index, name.length);
+		} else {
+			nameIssue(context, index, name);
+			if (name.memberId) {
+				if (entries.some((entry) => entry.memberId === name.memberId)) {
+					const token = context.tokens[index];
+					if (token)
+						context.issues.push({
+							code: "TEXT_NOT_UNDERSTOOD",
+							start: token.start,
+							end: number.end,
+							candidates: [],
+						});
+				} else entries.push({ memberId: name.memberId, amount });
+			}
 		}
 		consume(context, index, index + name.length + 1, "exact");
 		index += name.length;

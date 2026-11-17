@@ -26,6 +26,11 @@ export async function checkBalances(db: Db): Promise<boolean> {
   select g.id, count(t.id) filter (where
    (select coalesce(sum(p.amount), 0) from transaction_payers p where p.transaction_id = t.id) <> t.amount
    or (select coalesce(sum(s.amount), 0) from transaction_shares s where s.transaction_id = t.id) <> t.amount
+   or exists (
+    select 1 from transaction_shares s
+    join members m on m.id = s.member_id
+    where s.transaction_id = t.id and m.kind = 'fund' and t.type in ('expense', 'income')
+   )
   )::text as mismatches
   from groups g left join transactions t on t.group_id = g.id and t.deleted_at is null group by g.id
  `);

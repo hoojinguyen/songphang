@@ -4,8 +4,8 @@ import {
 	IdempotencyKeyHeader,
 	ParseRequest,
 	ParseResponse,
+	PreviewTransactionRequest,
 	PreviewTransactionResponse,
-	SplitTransactionRequest,
 	TransactionResponse,
 	TransactionsQuery,
 	TransactionsResponse,
@@ -66,7 +66,7 @@ const previewRoute = createRoute({
 		params,
 		body: {
 			required: true,
-			content: { "application/json": { schema: SplitTransactionRequest } },
+			content: { "application/json": { schema: PreviewTransactionRequest } },
 		},
 	},
 	responses: {
@@ -164,6 +164,7 @@ export function registerTransactionRoutes(
 							"transactions",
 							"balances",
 							"activity",
+							"budget",
 						]),
 					requestHash: hashRequest("POST", context.req.path, request),
 				},

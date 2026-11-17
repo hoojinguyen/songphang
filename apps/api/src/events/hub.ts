@@ -4,7 +4,10 @@ export type GroupResource =
 	| "users"
 	| "transactions"
 	| "balances"
-	| "activity";
+	| "activity"
+	| "settlementRequests"
+	| "categories"
+	| "budget";
 export type GroupEvent =
 	| { type: "changed"; resources: GroupResource[] }
 	| { type: "removed" }

@@ -21,6 +21,7 @@ export type QuickEntryIssueCode =
 	| "MEMBER_UNKNOWN"
 	| "COUNT_MISMATCH"
 	| "SUM_MISMATCH"
+	| "FUND_CANNOT_SHARE"
 	| "TEXT_NOT_UNDERSTOOD";
 export type Issue = {
 	code: QuickEntryIssueCode;

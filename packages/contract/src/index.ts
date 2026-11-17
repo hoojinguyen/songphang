@@ -1,11 +1,18 @@
 export * from "./activity.ts";
 export * from "./auth.ts";
 export * from "./balance.ts";
+export * from "./budget.ts";
+export * from "./category.ts";
 export { ErrorCode, ErrorResponse } from "./error.ts";
+export * from "./features.ts";
+export * from "./fund.ts";
 export * from "./group.ts";
 export * from "./group-user.ts";
 export { HealthResponse } from "./health.ts";
 export * from "./invite.ts";
 export * from "./member.ts";
+export * from "./payment.ts";
 export * from "./quick-entry.ts";
+export * from "./settlement-request.ts";
+export * from "./stats.ts";
 export * from "./transaction.ts";

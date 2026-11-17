@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { users } from "./schema.js";
+import { groupCategories } from "./schema-categories.js";
 import { groups, members } from "./schema-groups.js";
 
 export const transactions = pgTable(
@@ -24,10 +25,14 @@ export const transactions = pgTable(
 			.references(() => groups.id, { onDelete: "cascade" }),
 		type: text("type").notNull(),
 		description: text("description").notNull(),
+		descriptionSearch: text("description_search").notNull().default(""),
 		amount: bigint("amount", { mode: "number" }).notNull(),
 		currency: text("currency").notNull(),
 		occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
 		category: text("category"),
+		categoryId: uuid("category_id").references(() => groupCategories.id, {
+			onDelete: "set null",
+		}),
 		splitMethod: text("split_method").notNull(),
 		splitInput: jsonb("split_input").$type<unknown>().notNull(),
 		version: integer("version").notNull().default(1),
@@ -61,6 +66,10 @@ export const transactions = pgTable(
 		check(
 			"transactions_category_check",
 			sql`${table.category} is null or ${table.category} in ('food', 'transport', 'lodging', 'shopping', 'entertainment', 'bills', 'other')`,
+		),
+		check(
+			"transactions_category_exclusive_check",
+			sql`${table.category} is null or ${table.categoryId} is null`,
 		),
 		check(
 			"transactions_split_method_check",

@@ -2,11 +2,12 @@ import type { BalancesResponse, MemberDto } from "@songphang/contract";
 import { formatSignedAmount } from "../../lib/money";
 import { vi } from "../../messages/vi";
 
-const COLORS = {
+const COLORS: Record<MemberDto["color"], string> = {
 	mint: "bg-mint",
 	sky: "bg-sky",
 	coral: "bg-coral",
 	lilac: "bg-lilac",
+	sun: "bg-accent",
 };
 export function BalanceBars({
 	balances,

@@ -1,12 +1,14 @@
 import { z } from "@hono/zod-openapi";
 import {
 	type CreateTransactionRequest,
+	type PreviewTransactionRequest,
 	PreviewTransactionResponse,
 	TransactionDto,
 	TransactionResponse,
 	type TransactionsQuery,
 	TransactionsResponse,
 } from "@songphang/contract";
+import { foldVietnamese, localDateRangeToUtc } from "@songphang/core";
 import {
 	type DbExecutor,
 	findGroup,
@@ -20,11 +22,14 @@ import {
 	listTransactionShares,
 	lockGroup,
 	type TransactionCursor,
+	type TransactionFilters,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertLiveCategory } from "./categories.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
+import { type ReplacedTransaction, transactionWarnings } from "./warnings.js";
 
 const CURSOR_SCHEMA = z.object({ occurredAt: z.iso.datetime(), id: z.uuid() });
 function decodeCursor(cursor: string | undefined): TransactionCursor | null {
@@ -42,11 +47,58 @@ function decodeCursor(cursor: string | undefined): TransactionCursor | null {
 export async function previewTransaction(
 	deps: AppDeps,
 	groupId: string,
-	request: CreateTransactionRequest,
+	request: PreviewTransactionRequest,
 ) {
-	return PreviewTransactionResponse.parse({
-		shares: await calculateShares(deps.db, groupId, request),
-	});
+	return deps.db.transaction(
+		async (executor) => {
+			let existingCategoryId: string | null = null;
+			let replacing: ReplacedTransaction | undefined;
+			if (request.transactionId !== undefined) {
+				const existing = await findTransactionRow(
+					executor,
+					groupId,
+					request.transactionId,
+				);
+				if (existing === null || existing.deletedAt !== null)
+					throw new AppError(404, "NOT_FOUND", "Resource not found");
+				if (
+					existing.type === "expense" ||
+					existing.type === "income" ||
+					existing.type === "transfer"
+				) {
+					const existingPayers = await listTransactionPayers(
+						executor,
+						groupId,
+						[existing.id],
+					);
+					replacing = {
+						type: existing.type,
+						amount: existing.amount,
+						occurredAt: existing.occurredAt,
+						payers: existingPayers,
+					};
+				}
+				existingCategoryId = existing.categoryId;
+			}
+			if (
+				request.categoryId !== null &&
+				request.categoryId !== existingCategoryId
+			)
+				await assertLiveCategory(executor, groupId, request.categoryId);
+			const [shares, warnings] = await Promise.all([
+				calculateShares(executor, groupId, request),
+				transactionWarnings(executor, {
+					groupId,
+					request,
+					applied: false,
+					now: deps.now(),
+					...(replacing ? { replacing } : {}),
+				}),
+			]);
+			return PreviewTransactionResponse.parse({ shares, warnings });
+		},
+		{ isolationLevel: "repeatable read", accessMode: "read only" },
+	);
 }
 export async function mapTransactions(
 	executor: DbExecutor,
@@ -81,8 +133,21 @@ export async function createTransaction(
 ) {
 	await lockGroup(executor, input.groupId);
 	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+	return createTransactionIn(executor, input);
+}
+// Settlement confirmation supplies its own post-lock authorization; ordinary writes use createTransaction.
+export async function createTransactionIn(
+	executor: DbExecutor,
+	input: {
+		groupId: string;
+		userId: string;
+		request: CreateTransactionRequest;
+		now: Date;
+	},
+) {
 	const shares = await calculateShares(executor, input.groupId, input.request);
 	const request = normalizeTransaction(input.request);
+	await assertLiveCategory(executor, input.groupId, request.categoryId);
 	const group = await findGroup(executor, input.groupId);
 	if (group === null)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
@@ -90,10 +155,12 @@ export async function createTransaction(
 		groupId: input.groupId,
 		type: request.type,
 		description: request.description,
+		descriptionSearch: foldVietnamese(request.description),
 		amount: request.amount,
 		currency: group.currency,
 		occurredAt: new Date(request.occurredAt),
 		category: request.category,
+		categoryId: request.categoryId,
 		splitMethod: request.split.method,
 		splitInput: request.split,
 		createdBy: input.userId,
@@ -124,19 +191,46 @@ export async function createTransaction(
 	const [transaction] = await mapTransactions(executor, input.groupId, [
 		stored,
 	]);
-	return TransactionResponse.parse({ transaction });
+	const warnings = await transactionWarnings(executor, {
+		groupId: input.groupId,
+		request: input.request,
+		applied: true,
+		now: input.now,
+	});
+	return TransactionResponse.parse({ transaction, warnings });
+}
+function buildFilters(query: TransactionsQuery): TransactionFilters {
+	const range = localDateRangeToUtc(query.from, query.to);
+	const searchPattern =
+		query.q === undefined
+			? undefined
+			: `%${foldVietnamese(query.q).replace(/[\\%_]/g, "\\$&")}%`;
+	return {
+		...(searchPattern === undefined ? {} : { searchPattern }),
+		...(query.memberId === undefined ? {} : { memberId: query.memberId }),
+		...(query.category === undefined ? {} : { category: query.category }),
+		...(query.categoryId === undefined ? {} : { categoryId: query.categoryId }),
+		...(query.uncategorized === "true" ? { uncategorized: true } : {}),
+		...(query.type === undefined ? {} : { type: query.type }),
+		...(range.start === undefined ? {} : { start: range.start }),
+		...(range.endExclusive === undefined
+			? {}
+			: { endExclusive: range.endExclusive }),
+	};
 }
 export async function listTransactions(
 	deps: AppDeps,
 	groupId: string,
 	query: TransactionsQuery,
 ) {
+	const filters = buildFilters(query);
 	return deps.db.transaction(
 		async (executor) => {
 			const rows = await listTransactionRows(executor, {
 				groupId,
 				cursor: decodeCursor(query.cursor),
 				limit: query.limit + 1,
+				filters,
 			});
 			const page = rows.slice(0, query.limit);
 			const last = page.at(-1);

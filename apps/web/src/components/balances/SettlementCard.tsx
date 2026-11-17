@@ -1,32 +1,34 @@
 import type { BalancesResponse, MemberDto } from "@songphang/contract";
-import { settlementHref } from "../../lib/balances";
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
-import { OnlineLink } from "../ui/OnlineLink";
+import { fundTransferCaption, TransferAction } from "./TransferAction";
 export function SettlementCard({
 	groupId,
-	canEdit,
 	transfer,
 	members,
 	myMemberId,
+	role,
+	verified,
 }: {
 	groupId: string;
-	canEdit: boolean;
 	transfer: BalancesResponse["transfers"][number];
 	members: MemberDto[];
 	myMemberId: string | null;
+	role: "owner" | "editor" | "viewer";
+	verified: boolean;
 }) {
 	const from = members.find((member) => member.id === transfer.fromMemberId);
 	const to = members.find((member) => member.id === transfer.toMemberId);
 	if (!from || !to) return null;
 	const other = transfer.fromMemberId === myMemberId ? to : from;
 	const caption =
-		transfer.fromMemberId === myMemberId
+		fundTransferCaption(from, to, transfer.amount) ??
+		(transfer.fromMemberId === myMemberId
 			? t(vi.balances.youPayMember, { name: to.name })
 			: transfer.toMemberId === myMemberId
 				? t(vi.balances.memberPaysYou, { name: from.name })
-				: t(vi.balances.memberPaysMember, { from: from.name, to: to.name });
+				: t(vi.balances.memberPaysMember, { from: from.name, to: to.name }));
 	return (
 		<div className="settlement-card grid gap-4 rounded-[36px] bg-surface p-5">
 			<div className="flex items-center gap-4">
@@ -40,16 +42,15 @@ export function SettlementCard({
 					</p>
 				</div>
 			</div>
-			{canEdit && (
-				<OnlineLink
-					href={settlementHref(groupId, transfer)}
-					className="flex min-h-[60px] items-center justify-center rounded-[30px] bg-accent font-extrabold"
-				>
-					{transfer.toMemberId === myMemberId
-						? vi.balances.received
-						: vi.balances.record}
-				</OnlineLink>
-			)}
+			<TransferAction
+				groupId={groupId}
+				transfer={transfer}
+				from={from}
+				to={to}
+				myMemberId={myMemberId}
+				role={role}
+				verified={verified}
+			/>
 		</div>
 	);
 }

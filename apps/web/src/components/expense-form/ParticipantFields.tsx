@@ -1,3 +1,4 @@
+import { useCategories } from "../../lib/categories";
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { OnlineButton } from "../ui/OnlineButton";
@@ -16,10 +17,14 @@ export function ParticipantFields({
 	onEdit: () => void;
 }) {
 	const {
+		groupId,
 		type,
 		category,
 		setCategory,
+		categoryId,
+		setCategoryId,
 		active,
+		payerOptions,
 		payerIds,
 		togglePayer,
 		payerAmounts,
@@ -30,9 +35,17 @@ export function ParticipantFields({
 		setSharers,
 		preview,
 	} = form;
+	const categories = useCategories(groupId);
 	return (
 		<>
-			<CategoryPicker value={category} onChange={setCategory} />
+			<CategoryPicker
+				groupId={groupId}
+				categories={categories.data ?? []}
+				value={category}
+				categoryId={categoryId}
+				onChange={setCategory}
+				onChangeCustom={setCategoryId}
+			/>
 			<section className="rounded-[30px] bg-surface p-3">
 				<h2 className="mb-2 text-sm font-extrabold">
 					{type === "income"
@@ -40,11 +53,15 @@ export function ParticipantFields({
 						: vi.expenseForm.payerTitle}
 				</h2>
 				<MemberToggleGrid
-					members={active}
+					members={payerOptions}
 					selectedIds={payerIds}
 					onToggle={togglePayer}
 					captionFor={(member) =>
-						member.id === myMemberId ? vi.common.you : member.name
+						member.kind === "fund"
+							? t(vi.fund.payerOption, { name: member.name })
+							: member.id === myMemberId
+								? vi.common.you
+								: member.name
 					}
 					label={
 						type === "income"
@@ -55,7 +72,9 @@ export function ParticipantFields({
 			</section>
 			{payerIds.length > 1 && (
 				<PayerAmounts
-					members={active.filter((member) => payerIds.includes(member.id))}
+					members={payerOptions.filter((member) =>
+						payerIds.includes(member.id),
+					)}
 					values={payerAmounts}
 					amount={amount}
 					onChange={setPayerAmount}

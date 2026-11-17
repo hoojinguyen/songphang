@@ -10,6 +10,7 @@
 	},
 	"dependencies": {
 		"@hono/zod-openapi": "1.6.3",
+		"@songphang/core": "workspace:*",
 		"zod": "4.6.7"
 	}
 }

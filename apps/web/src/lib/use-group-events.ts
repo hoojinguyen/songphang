@@ -17,9 +17,12 @@ const Resources = z.object({
 				"transactions",
 				"balances",
 				"activity",
+				"settlementRequests",
+				"categories",
+				"budget",
 			]),
 		)
-		.max(6),
+		.max(9),
 });
 export function useGroupEvents(groupId: string) {
 	const online = useOnline();
@@ -47,7 +50,7 @@ export function useGroupEvents(groupId: string) {
 			try {
 				const payload = Resources.safeParse(JSON.parse(event.data));
 				if (!payload.success) return;
-				for (const resource of payload.data.resources)
+				for (const resource of payload.data.resources) {
 					void client.invalidateQueries({
 						queryKey:
 							resource === "group"
@@ -55,6 +58,15 @@ export function useGroupEvents(groupId: string) {
 								: ["group", groupId, resource],
 						exact: resource === "group",
 					});
+					if (resource === "settlementRequests")
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "balances"],
+						});
+					if (resource === "transactions")
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "stats"],
+						});
+				}
 				void client.invalidateQueries({
 					queryKey: ["group", groupId, "invite"],
 				});

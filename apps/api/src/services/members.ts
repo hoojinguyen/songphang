@@ -12,16 +12,20 @@ import {
 	type DbExecutor,
 	deleteMember,
 	findMember,
+	hasMemberSettlementRequests,
 	hasMemberTransactions,
 	insertActivity,
 	insertMember,
 	listGroupMembers,
+	listPaymentMethodsByGroup,
 	lockGroup,
 	updateMember,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+
+import { paymentMethodDto } from "./payment-methods.js";
 
 type MemberOperation = {
 	groupId: string;
@@ -30,10 +34,12 @@ type MemberOperation = {
 };
 export async function listMembers(deps: AppDeps, input: MemberOperation) {
 	const members = await listGroupMembers(deps.db, input.groupId);
+	const payments = await listPaymentMethodsByGroup(deps.db, input.groupId);
 	return MembersResponse.parse({
 		members: members.map((member) => ({
 			...member,
 			isMe: member.id === input.myMemberId,
+			paymentMethods: payments.get(member.id)?.map(paymentMethodDto) ?? [],
 		})),
 	});
 }
@@ -45,7 +51,7 @@ async function getMember(
 	if (!z.uuid().safeParse(memberId).success)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	const member = await findMember(executor, groupId, memberId);
-	if (member === null)
+	if (member === null || member.kind !== "person")
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	return member;
 }
@@ -71,10 +77,12 @@ export async function addGroupMember(
 		);
 	const position = (members.at(-1)?.position ?? -1) + 1;
 	const appearance = nextMemberAppearance(
-		members.map((member) => ({
-			shape: MemberShapeCode.parse(member.shape),
-			color: MemberColorCode.parse(member.color),
-		})),
+		members
+			.filter((member) => member.kind === "person")
+			.map((member) => ({
+				shape: MemberShapeCode.parse(member.shape),
+				color: MemberColorCode.parse(member.color),
+			})),
 		position,
 	);
 	const member = await insertMember(executor, {
@@ -133,7 +141,14 @@ export async function editMember(
 			createdAt: deps.now(),
 		});
 		return MemberResponse.parse({
-			member: { ...member, isMe: member.id === input.myMemberId },
+			member: {
+				...member,
+				isMe: member.id === input.myMemberId,
+				paymentMethods:
+					(await listPaymentMethodsByGroup(transaction, input.groupId))
+						.get(member.id)
+						?.map(paymentMethodDto) ?? [],
+			},
 		});
 	});
 	deps.events.publishChanged(input.groupId, [
@@ -151,7 +166,10 @@ export async function removeMember(
 		await lockGroup(transaction, input.groupId);
 		await getGroupAccess(transaction, { ...input, minimumRole: "editor" });
 		const member = await getMember(transaction, input.groupId, input.memberId);
-		if (await hasMemberTransactions(transaction, input.groupId, member.id))
+		if (
+			(await hasMemberTransactions(transaction, input.groupId, member.id)) ||
+			(await hasMemberSettlementRequests(transaction, input.groupId, member.id))
+		)
 			throw new AppError(
 				422,
 				"MEMBER_HAS_TRANSACTIONS",

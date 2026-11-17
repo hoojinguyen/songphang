@@ -1,5 +1,5 @@
 "use client";
-import type { MemberDto } from "@songphang/contract";
+import type { CategoryDto, MemberDto } from "@songphang/contract";
 import Link from "next/link";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { dayLabel, type useTransactions } from "../../lib/transactions";
@@ -13,13 +13,17 @@ export function ExpenseStream({
 	canEdit = false,
 	query,
 	members,
+	categories = [],
 	myMemberId,
+	onAtTopChange,
 }: {
 	groupId: string;
 	canEdit?: boolean;
 	query: ReturnType<typeof useTransactions>;
 	members: MemberDto[];
+	categories?: CategoryDto[];
 	myMemberId: string | null;
+	onAtTopChange?: (atTop: boolean) => void;
 }) {
 	const scroll = useRef<HTMLDivElement>(null);
 	const sentinel = useRef<HTMLDivElement>(null);
@@ -32,7 +36,11 @@ export function ExpenseStream({
 	const previousNewest = useRef<string | undefined>(undefined);
 	const [newItems, setNewItems] = useState(false);
 	useLayoutEffect(() => {
-		if (!scroll.current || count === 0) return;
+		if (!scroll.current) return;
+		if (count === 0) {
+			onAtTopChange?.(true);
+			return;
+		}
 		if (anchor.current) {
 			scroll.current.scrollTop =
 				anchor.current.top +
@@ -52,7 +60,8 @@ export function ExpenseStream({
 			else scroll.current.scrollTop = scroll.current.scrollHeight;
 		}
 		previousNewest.current = newest;
-	}, [count, newest]);
+		onAtTopChange?.(scroll.current.scrollTop <= 24);
+	}, [count, newest, onAtTopChange]);
 	useEffect(() => {
 		const container = scroll.current;
 		const target = sentinel.current;
@@ -81,6 +90,9 @@ export function ExpenseStream({
 		<>
 			<div
 				ref={scroll}
+				onScroll={(event) =>
+					onAtTopChange?.(event.currentTarget.scrollTop <= 24)
+				}
 				className="min-h-0 flex-1 overflow-y-auto [overflow-anchor:none]"
 			>
 				<div ref={sentinel} className="h-px" />
@@ -122,6 +134,7 @@ export function ExpenseStream({
 										<ExpenseRow
 											transaction={transaction}
 											members={members}
+											categories={categories}
 											myMemberId={myMemberId}
 										/>
 									) : (

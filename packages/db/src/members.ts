@@ -6,6 +6,8 @@ export const MEMBER_COLUMNS = {
 	id: members.id,
 	claimed: sql<boolean>`exists(select 1 from ${groupUsers} where ${groupUsers.groupId} = ${members.groupId} and ${groupUsers.memberId} = ${members.id})`,
 	groupId: members.groupId,
+	kind: members.kind,
+	fundHolderMemberId: members.fundHolderMemberId,
 	name: members.name,
 	active: members.active,
 	defaultWeight: members.defaultWeight,
@@ -19,6 +21,21 @@ export function listGroupMembers(executor: DbExecutor, groupId: string) {
 		.from(members)
 		.where(eq(members.groupId, groupId))
 		.orderBy(asc(members.position));
+}
+export function listPeople(executor: DbExecutor, groupId: string) {
+	return executor
+		.select(MEMBER_COLUMNS)
+		.from(members)
+		.where(and(eq(members.groupId, groupId), eq(members.kind, "person")))
+		.orderBy(asc(members.position));
+}
+export async function findFund(executor: DbExecutor, groupId: string) {
+	const [fund] = await executor
+		.select(MEMBER_COLUMNS)
+		.from(members)
+		.where(and(eq(members.groupId, groupId), eq(members.kind, "fund")))
+		.limit(1);
+	return fund ?? null;
 }
 export function listMembersForGroups(executor: DbExecutor, groupIds: string[]) {
 	if (groupIds.length === 0) return Promise.resolve([]);
@@ -61,6 +78,7 @@ export function updateMember(
 			name?: string;
 			defaultWeight?: string;
 			active?: boolean;
+			fundHolderMemberId?: string | null;
 			updatedAt: Date;
 		};
 	},

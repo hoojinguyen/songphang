@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+	type AnyPgColumn,
 	boolean,
 	check,
 	integer,
@@ -55,6 +56,11 @@ export const members = pgTable(
 			.notNull()
 			.references(() => groups.id, { onDelete: "cascade" }),
 		name: text("name").notNull(),
+		kind: text("kind").notNull().default("person"),
+		fundHolderMemberId: uuid("fund_holder_member_id").references(
+			(): AnyPgColumn => members.id,
+			{ onDelete: "set null" },
+		),
 		active: boolean("active").notNull().default(true),
 		defaultWeight: numeric("default_weight", { precision: 6, scale: 2 })
 			.notNull()
@@ -71,6 +77,14 @@ export const members = pgTable(
 	},
 	(table) => [
 		unique("members_group_position_unique").on(table.groupId, table.position),
+		uniqueIndex("members_group_fund_unique")
+			.on(table.groupId)
+			.where(sql`${table.kind} = 'fund'`),
+		check("members_kind_check", sql`${table.kind} in ('person', 'fund')`),
+		check(
+			"members_fund_holder_kind_check",
+			sql`${table.kind} = 'fund' or ${table.fundHolderMemberId} is null`,
+		),
 		check(
 			"members_name_length_check",
 			sql`char_length(${table.name}) between 1 and 50`,
@@ -78,11 +92,11 @@ export const members = pgTable(
 		check("members_default_weight_check", sql`${table.defaultWeight} >= 0`),
 		check(
 			"members_shape_check",
-			sql`${table.shape} in ('circle', 'diamond', 'squircle', 'leaf')`,
+			sql`${table.shape} in ('circle', 'diamond', 'squircle', 'leaf', 'fund')`,
 		),
 		check(
 			"members_color_check",
-			sql`${table.color} in ('mint', 'sky', 'coral', 'lilac')`,
+			sql`${table.color} in ('mint', 'sky', 'coral', 'lilac', 'sun')`,
 		),
 	],
 );

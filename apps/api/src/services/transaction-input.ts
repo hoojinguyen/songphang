@@ -18,6 +18,7 @@ export function normalizeTransaction(request: CreateTransactionRequest) {
 		amount: request.amount,
 		occurredAt: request.occurredAt,
 		category: null,
+		categoryId: null,
 		payers: [{ memberId: request.fromMemberId, amount: request.amount }],
 		split,
 	};
@@ -39,6 +40,15 @@ export async function calculateShares(
 			400,
 			"MEMBER_NOT_IN_GROUP",
 			"Member does not belong to group",
+		);
+	if (
+		input.type !== "transfer" &&
+		splitIds.some((id) => members.find((m) => m.id === id)?.kind === "fund")
+	)
+		throw new AppError(
+			422,
+			"FUND_CANNOT_SHARE",
+			"Fund member cannot bear a share",
 		);
 	const paid = request.payers.reduce((sum, payer) => sum + payer.amount, 0);
 	if (paid !== request.amount)

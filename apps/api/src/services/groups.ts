@@ -105,10 +105,14 @@ export async function listGroups(deps: AppDeps, userId: string) {
 					id: group.id,
 					name: group.name,
 					currency: group.currency,
-					memberCount: members.filter((member) => member.groupId === group.id)
-						.length,
+					memberCount: members.filter(
+						(member) => member.groupId === group.id && member.kind === "person",
+					).length,
 					previewMembers: members
-						.filter((member) => member.groupId === group.id)
+						.filter(
+							(member) =>
+								member.groupId === group.id && member.kind === "person",
+						)
 						.slice(0, 4),
 					myBalance:
 						balances.find((balance) => balance.memberId === group.memberId)

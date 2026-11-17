@@ -17,6 +17,7 @@
 	--color-sky: #9ccbff;
 	--color-coral: #ff8a73;
 	--color-lilac: #d3b8ff;
+	--color-sun: #ffd84d;
 	--radius-card: 32px;
 	--radius-pill: 9999px;
 	--spacing-control-md: 48px;
@@ -117,4 +118,13 @@ input[type="date"]:focus,
 input[type="datetime-local"]:focus {
 	outline: 2px solid var(--color-ink);
 	outline-offset: 2px;
+}
+
+dialog:modal {
+	overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+	overflow: hidden;
+	overscroll-behavior: contain;
 }

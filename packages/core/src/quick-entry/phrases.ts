@@ -1,5 +1,11 @@
 import type { SplitInput } from "../split.ts";
-import { consume, nameIssue, type ReaderContext, readName } from "./names.ts";
+import {
+	consume,
+	fundShareIssue,
+	nameIssue,
+	type ReaderContext,
+	readName,
+} from "./names.ts";
 export function readPayers(context: ReaderContext): {
 	payerMemberId: string | null;
 	explicit: boolean;
@@ -8,12 +14,38 @@ export function readPayers(context: ReaderContext): {
 	const defaultChoice = context.memberChoices[0];
 	let payerMemberId =
 		context.writerMemberId ??
-		(context.members.some((m) => m.id === defaultChoice)
+		(context.people.some((m) => m.id === defaultChoice)
 			? (defaultChoice ?? null)
 			: null);
 	for (let index = 0; index < context.tokens.length; index++) {
 		if (context.used.has(index) || context.tokens[index]?.kind !== "word")
 			continue;
+		const firstToken = context.tokens[index];
+		const secondToken = context.tokens[index + 1];
+		if (
+			firstToken?.value === "tu" &&
+			secondToken?.value === "quy" &&
+			!context.used.has(index + 1)
+		) {
+			const name = readName(context, index + 1);
+			const end = index + 1 + name.length;
+			const lastToken = context.tokens[end - 1] ?? secondToken;
+			if (explicit) {
+				context.issues.push({
+					code: "TEXT_NOT_UNDERSTOOD",
+					start: firstToken.start,
+					end: lastToken.end,
+					candidates: [],
+				});
+			} else {
+				nameIssue(context, index + 1, name);
+				payerMemberId = name.memberId;
+				explicit = true;
+			}
+			consume(context, index, end, "payer");
+			index = end - 1;
+			continue;
+		}
 		const name = readName(context, index);
 		const after = index + name.length;
 		if (context.tokens[after]?.value !== "tra") continue;
@@ -40,7 +72,7 @@ export function readPayers(context: ReaderContext): {
 			code: "MEMBER_AMBIGUOUS",
 			start: 0,
 			end: 0,
-			candidates: context.members.map((member) => member.id),
+			candidates: context.people.map((member) => member.id),
 		});
 	return { payerMemberId, explicit };
 }
@@ -77,7 +109,7 @@ export function readEqual(
 	context: ReaderContext,
 	totalIndex: number,
 ): { split: SplitInput | null; explicit: boolean } {
-	const all = context.members.map((member) => member.id);
+	const all = context.people.map((member) => member.id);
 	let explicit = false;
 	let split: SplitInput | null = { method: "equal", members: all };
 	for (let index = totalIndex + 1; index < context.tokens.length; index++) {
@@ -136,9 +168,13 @@ export function readEqual(
 			}
 			if (token.kind !== "word") break;
 			const name = readName(context, cursor);
-			nameIssue(context, cursor, name);
-			if (name.memberId && !selected.includes(name.memberId))
-				selected.push(name.memberId);
+			if (name.memberId && name.memberId === context.fund?.id)
+				fundShareIssue(context, cursor, name.length);
+			else {
+				nameIssue(context, cursor, name);
+				if (name.memberId && !selected.includes(name.memberId))
+					selected.push(name.memberId);
+			}
 			for (let offset = 0; offset < name.length; offset++)
 				context.used.add(cursor + offset);
 			cursor += name.length;
@@ -149,7 +185,7 @@ export function readEqual(
 			selected.length > 0
 				? {
 						method: "equal",
-						members: context.members
+						members: context.people
 							.filter((member) => selected.includes(member.id))
 							.map((member) => member.id),
 					}

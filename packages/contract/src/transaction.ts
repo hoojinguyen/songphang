@@ -1,5 +1,10 @@
 import { z } from "@hono/zod-openapi";
+import { isValidCalendarDate, isWithinFiveYears } from "@songphang/core";
 export const MoneyAmount = z.int().min(1).max(999_999_999_999);
+export const CalendarDate = z
+	.string()
+	.regex(/^\d{4}-\d{2}-\d{2}$/)
+	.refine(isValidCalendarDate);
 export const TransactionCategory = z.enum([
 	"food",
 	"transport",
@@ -93,11 +98,15 @@ const LedgerFields = {
 	amount: MoneyAmount,
 	occurredAt: z.iso.datetime(),
 	category: TransactionCategory.nullable(),
+	categoryId: z.uuid().nullable().default(null),
 	payers: Payers,
 	split: SplitInput,
 };
 export const SplitTransactionRequest = z
 	.object({ type: z.enum(["expense", "income"]), ...LedgerFields })
+	.refine(
+		(request) => !(request.category !== null && request.categoryId !== null),
+	)
 	.openapi("SplitTransactionRequest");
 export type SplitTransactionRequest = z.infer<typeof SplitTransactionRequest>;
 export const TransferRequest = z
@@ -135,16 +144,56 @@ export const TransactionDto = z
 	})
 	.openapi("TransactionDto");
 export type TransactionDto = z.infer<typeof TransactionDto>;
+export const TransactionWarning = z.enum([
+	"FUND_OVERDRAWN",
+	"BUDGET_NEAR",
+	"BUDGET_OVER",
+]);
+export type TransactionWarning = z.infer<typeof TransactionWarning>;
 export const TransactionResponse = z
-	.object({ transaction: TransactionDto })
+	.object({
+		transaction: TransactionDto,
+		warnings: z.array(TransactionWarning).default([]),
+	})
 	.openapi("TransactionResponse");
+export const PreviewTransactionRequest = z
+	.intersection(
+		SplitTransactionRequest,
+		z.object({ transactionId: z.uuid().optional() }),
+	)
+	.openapi("PreviewTransactionRequest");
+export type PreviewTransactionRequest = z.infer<
+	typeof PreviewTransactionRequest
+>;
 export const PreviewTransactionResponse = z
-	.object({ shares: z.array(ShareDto) })
+	.object({
+		shares: z.array(ShareDto),
+		warnings: z.array(TransactionWarning).default([]),
+	})
 	.openapi("PreviewTransactionResponse");
-export const TransactionsQuery = z.object({
-	cursor: z.string().max(512).optional(),
-	limit: z.coerce.number().int().min(1).max(200).default(50),
-});
+export const TransactionsQuery = z
+	.object({
+		cursor: z.string().max(512).optional(),
+		limit: z.coerce.number().int().min(1).max(200).default(50),
+		q: z.string().trim().min(1).max(100).optional(),
+		memberId: z.uuid().optional(),
+		category: TransactionCategory.optional(),
+		categoryId: z.uuid().optional(),
+		uncategorized: z.enum(["true", "false"]).optional(),
+		type: z.enum(["expense", "transfer", "income"]).optional(),
+		from: CalendarDate.optional(),
+		to: CalendarDate.optional(),
+	})
+	.refine(
+		(query) =>
+			!(
+				query.uncategorized === "true" &&
+				(query.category !== undefined || query.categoryId !== undefined)
+			) &&
+			(query.from === undefined ||
+				query.to === undefined ||
+				isWithinFiveYears(query.from, query.to)),
+	);
 export type TransactionsQuery = z.infer<typeof TransactionsQuery>;
 export const TransactionsResponse = z
 	.object({

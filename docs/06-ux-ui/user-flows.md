@@ -310,3 +310,112 @@ Approved with the phase 1 spec, `docs/superpowers/specs/2026-11-12-phase-1-singl
 - S1 gains email and password fields and links to four new screens: `/register`, `/verify-email`, `/forgot-password`, `/reset-password`. GE7's line "Không cần mật khẩu. Bạn bè không phải cài gì." is removed.
 - "Bơm hình" (flow D) and the "Thay đổi khác" lines of the stream (section 5) are not built in phase 1; the split editor's second mode is labelled "Số tiền". Transfers and income still appear as pills, and an edited transaction carries the tag "đã sửa".
 - The member palette stays at 4 shapes × 4 colors in phase 1.
+
+
+## Phase 2 amendment — approved 2026-11-17
+
+Phase 2 activates the statistics shortcut and settlement confirmation previously hidden in section 9. S14 `/g/{id}/pay`, S16 `/g/{id}/stats`, S17 `/g/{id}/fund` use existing tokens, 430px column, shared loading/error/empty states and 44px hit targets. QR drawing reuses installed qrcode 1.5.4 with React SVG, four-module quiet zone and minimum 240px square. Product wording below is final; implementation stores it once in vi.ts, including API CSV labels.
+
+## 9. Screens
+
+No mockups; built from existing components and tokens. Strings are final.
+
+### 9.1 Paying (S14, `/g/{id}/pay?from=&to=`)
+
+Opened from a suggested transfer on S5. Top to bottom: the two shapes with names and an arrow; the amount as the screen's large number; the QR code on a white card (minimum 240 × 240, quiet zone kept); bank, account number, account name and purpose, each with a copy button; wallet rows; the primary button.
+
+| Element | String |
+|---|---|
+| Title | `Trả {to}` |
+| Bank rows | `Ngân hàng` · `Số tài khoản` · `Tên tài khoản` · `Nội dung` |
+| QR hint | `Quét bằng app ngân hàng. Số tiền và nội dung đã điền sẵn.` |
+| Wallet row | `MoMo {phone}` · `ZaloPay {phone}` |
+| Copy buttons, after copy | `Sao chép` → `Đã sao chép` |
+| Copy amount | `Sao chép số tiền` |
+| Primary button | `Tôi đã chuyển` |
+| After pressing | `Đã báo cho {to}. Sổ sẽ ghi nhận khi {to} xác nhận.` |
+| No payment details | `{to} chưa có thông tin nhận tiền.` with button `Thêm thông tin` (shown to those who may write) |
+| Editor's direct path | `Ghi nhận luôn` (opens S9, as in phase 1) |
+
+### 9.2 Balances (S5 changes)
+
+| Place | String |
+|---|---|
+| Pending, seen by the receiver | `{from} báo đã chuyển {amount}` with buttons `Đã nhận` · `Chưa nhận` |
+| Pending, seen by others | `Đang chờ {to} xác nhận` |
+| Pending, seen by its creator | adds the action `Huỷ báo` |
+| After confirming | `Đã ghi nhận {amount} từ {from}.` |
+| After rejecting | `Đã báo lại là chưa nhận.` |
+| Request no longer pending | `Yêu cầu này đã được xử lý.` |
+| Fund block title | `Quỹ còn {amount}` or `Quỹ đang âm {amount}` |
+| Fund suggestion | `Quỹ hoàn {to} {amount}` · `{from} góp thêm vào quỹ {amount}` |
+
+### 9.3 Payment details (inside the member editor of S10)
+
+| Element | String |
+|---|---|
+| Section title | `Thông tin nhận tiền` |
+| Fields | `Ngân hàng` (searchable list) · `Số tài khoản` · `Tên tài khoản` · `Số MoMo` · `Số ZaloPay` |
+| Hint | `Cả nhóm thấy thông tin này để chuyển tiền cho {name}.` |
+| Invalid account number | `Số tài khoản chỉ gồm chữ và số.` |
+| Invalid phone | `Số điện thoại chưa đúng.` |
+| Saved | `Đã lưu.` |
+
+### 9.4 Fund (S17, `/g/{id}/fund`)
+
+Reached from the fund block on S5 and from S10.
+
+| Element | String |
+|---|---|
+| Create entry on S10 | `Lập quỹ chung` |
+| Create dialog | `Tên quỹ` (default `Quỹ chung`) · `Ai giữ tiền quỹ?` · `Lập quỹ` |
+| Large number | the cash, labelled `Quỹ còn` |
+| Contributions list title | `Đã góp` |
+| Buttons | `Góp vào quỹ` · `Rút khỏi quỹ` (both open the transfer form with one side fixed) |
+| Payer option in the expense form | `Quỹ chung trả` |
+| Overdrawn warning in preview | `Quỹ không đủ. Sau khoản này quỹ âm {amount}.` |
+| Close a non-empty fund | `Quỹ còn tiền. Hãy hoàn hết cho mọi người trước.` |
+| Fund named as a sharer | `Quỹ không thể là người chia.` |
+
+### 9.5 Statistics (S16, `/g/{id}/stats`)
+
+Reached from the shortcut `Tổng chuyến đi` on S4 (hidden in phase 1, user-flows section 9). The total is the large number; then a period selector; then three sections of horizontal bars, each row tappable into S4 with the matching filter.
+
+| Element | String |
+|---|---|
+| Title | `Tiền đi đâu` |
+| Period chips | `Tất cả` · `Tháng này` · `Tháng trước` · `Tuỳ chọn` |
+| Sections | `Theo danh mục` · `Theo người` · `Theo thời gian` |
+| Member row | `{name} · đã trả {paid} · phần mình {share}` |
+| Uncategorised | `Chưa phân loại` |
+| Empty | `Chưa có khoản chi nào trong khoảng này` |
+| Export | `Xuất CSV` |
+
+### 9.6 Filter (S4)
+
+A search field and a filter button appear when the stream is scrolled to its top. Active filters show as chips above the stream.
+
+| Element | String |
+|---|---|
+| Search placeholder | `Tìm khoản chi` |
+| Filter sheet | `Người` · `Danh mục` · `Loại` · `Từ ngày` · `Đến ngày` · `Áp dụng` · `Xoá lọc` |
+| No result | `Không có khoản nào khớp` |
+
+### 9.7 Settings (S11 additions)
+
+| Element | String |
+|---|---|
+| Categories | `Danh mục của nhóm` · `Thêm danh mục` · `Tên danh mục` · `Ẩn danh mục` |
+| Duplicate name | `Nhóm đã có danh mục này.` |
+| Limit reached | `Nhóm đã có 30 danh mục.` |
+| Budget | `Hạn mức` · `Theo tháng` · `Cả chuyến` · `Số tiền` · `Lưu hạn mức` · `Bỏ hạn mức` |
+
+### 9.8 Budget banner (S4)
+
+Above the stream, only in state `near` or `over`; tapping opens S16.
+
+| State | String |
+|---|---|
+| `near` | `Đã chi {spent} trên hạn mức {amount}.` |
+| `over` | `Đã vượt hạn mức {over}.` |
+| In the confirmation card | `Khoản này làm nhóm vượt hạn mức.` |
