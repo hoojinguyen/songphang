@@ -12,8 +12,8 @@ import {
 	insertActivity,
 	insertGroupUser,
 	inviteGroupDetails,
-	listGroupMembers,
 	listMemberBalances,
+	listPeople,
 	lockAccount,
 	lockGroup,
 	readGroupInvite,
@@ -39,7 +39,7 @@ export async function previewInvite(
 	return deps.db.transaction(async (tx) => {
 		const group = await validInvite(tx, input.token);
 		const [members, balances, details, access] = await Promise.all([
-			listGroupMembers(tx, group.id),
+			listPeople(tx, group.id),
 			listMemberBalances(tx, group.id),
 			inviteGroupDetails(tx, group.id),
 			findGroupAccess(tx, group.id, input.userId),
@@ -65,7 +65,7 @@ async function claimableMember(
 	input: { groupId: string; memberId: string },
 ) {
 	const member = await findMember(executor, input.groupId, input.memberId);
-	if (!member?.active)
+	if (!member?.active || member.kind !== "person")
 		throw new AppError(
 			400,
 			"MEMBER_NOT_IN_GROUP",
@@ -175,7 +175,7 @@ export async function chooseMember(
 		if (!access) throw new AppError(404, "NOT_FOUND", "Resource not found");
 		const member = await findMember(tx, input.groupId, input.memberId);
 		if (access.memberId !== input.memberId) await claimableMember(tx, input);
-		else if (!member?.active)
+		else if (!member?.active || member.kind !== "person")
 			throw new AppError(
 				400,
 				"MEMBER_NOT_IN_GROUP",

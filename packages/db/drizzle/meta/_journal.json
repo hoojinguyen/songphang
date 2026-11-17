@@ -57,6 +57,13 @@
 			"when": 1794895466503,
 			"tag": "0007_gifted_white_tiger",
 			"breakpoints": true
+		},
+		{
+			"idx": 8,
+			"version": "7",
+			"when": 1794897127476,
+			"tag": "0008_youthful_preak",
+			"breakpoints": true
 		}
 	]
 }

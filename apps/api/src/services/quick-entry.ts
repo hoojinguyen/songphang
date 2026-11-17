@@ -1,13 +1,13 @@
 import { type ParseRequest, ParseResponse } from "@songphang/contract";
 import { computeShares, readSentence } from "@songphang/core";
-import { listGroupMembers } from "@songphang/db";
+import { listPeople } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 export async function parseSentence(
 	deps: AppDeps,
 	input: { groupId: string; memberId: string | null; request: ParseRequest },
 ): Promise<ParseResponse> {
 	const text = input.request.text.normalize("NFC");
-	const members = await listGroupMembers(deps.db, input.groupId);
+	const members = await listPeople(deps.db, input.groupId);
 	const result = readSentence({
 		text,
 		members,

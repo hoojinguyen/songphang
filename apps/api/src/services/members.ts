@@ -77,10 +77,12 @@ export async function addGroupMember(
 		);
 	const position = (members.at(-1)?.position ?? -1) + 1;
 	const appearance = nextMemberAppearance(
-		members.map((member) => ({
-			shape: MemberShapeCode.parse(member.shape),
-			color: MemberColorCode.parse(member.color),
-		})),
+		members
+			.filter((member) => member.kind === "person")
+			.map((member) => ({
+				shape: MemberShapeCode.parse(member.shape),
+				color: MemberColorCode.parse(member.color),
+			})),
 		position,
 	);
 	const member = await insertMember(executor, {

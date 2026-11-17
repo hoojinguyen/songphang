@@ -35,7 +35,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2B.4 — statistics screen and filters
 - [x] 2B.5 — CSV export
 - [x] 2B.6 — categories UI and gate 2B
-- [ ] 2C.1 — fund member integrity
+- [x] 2C.1 — fund member integrity
 - [ ] 2C.2 — fund endpoints and balances
 - [ ] 2C.3 — fund sentence reader
 - [ ] 2C.4 — fund UI
@@ -267,3 +267,18 @@ Security review: relevant items 1/2/4/6/7/8 checked against full diff; `Category
 - Stage 2B permission matrix: read `/categories`, `/stats`, `/export.csv` (`200/200/200/404/401`); write `/categories` (`201/201/403/404/401`).
 - `pnpm db:check-balances`: `All groups balanced` after reset acceptance and after restoring `/tmp/songphang-p2-pre-gate2b.dump`.
 - Not verified: opening the exported `.csv` in Excel/Google Sheets (owner manual check).
+
+
+## Task 2C.1 — approach
+
+- Files to create/modify: create a Drizzle migration (`drizzle/0008_*.sql`); modify `packages/db/src/schema-groups.ts`, `packages/db/src/members.ts`, `packages/db/src/check-balances.ts`, and `apps/api/src/services/{invites,groups,members,quick-entry}.ts`.
+- Approach: add `kind` (`'person' | 'fund'`) and self-referencing `fund_holder_member_id` (`ON DELETE SET NULL`) to `members`, expand `shape`/`color` checks to permit `'fund'`/`'sun'`, add `CHECK (kind = 'fund' OR fund_holder_member_id IS NULL)` and partial unique index on `(group_id) WHERE kind = 'fund'`. In the new migration, replace `assert_transaction_integrity(uuid)` to forbid fund members in `transaction_shares` for `'expense'` and `'income'` transactions while still permitting `'transfer'`, and add a `BEFORE INSERT OR UPDATE` trigger on `group_users` forbidding linking to a fund. Add `listPeople` and `findFund` in `db/members.ts`, update `checkBalances` to detect any fund shares in expense/income rows, and switch user-facing people callers (`invites`, `groups` list counts/avatars, `quick-entry`) and `claimableMember` to require `person`. (`suggestMinimizedSettlements` / `netPairwiseDebts` in `packages/core/src/settlements.ts` already work unchanged with an extra zero-sum participant.)
+- Why simplest: leverages the existing deferred transaction integrity trigger and `MEMBER_COLUMNS` projection without rewriting settlement arithmetic or creating a separate fund table.
+- Rejected alternative: a separate `group_funds` table instead of a `members` row, which would require parallel payer/share foreign keys across transactions, balances, and integrity triggers.
+
+
+### Task 2C.1 results
+
+Commit reference: `feat(db): add fund members and their integrity rules`. pnpm check passed (294 files, five workspace typechecks Done) and migration `0008_youthful_preak.sql` applied cleanly. Exercised all five `psql` constraint/trigger rows on rolled-back/cleaned test transactions: second fund in group → `members_group_fund_unique` unique violation; `transaction_shares` on fund for an `expense` with matching totals → `assert_transaction_integrity` raised `fund member cannot appear in transaction shares` at `COMMIT`; `transfer` with share row on fund → `COMMIT` succeeded; `group_users.member_id` pointing to fund → `check_group_user_member_is_person` trigger raised `group user cannot link to a fund member`; `person` with `fund_holder_member_id` set → `members_fund_holder_kind_check` check violation. `pnpm db:check-balances` → `All groups balanced`.
+
+Security review: relevant items 1/2/3/4/5/8 checked against full diff; DB triggers/constraints enforce fund share and `group_users` invariants even outside app code, `invites.ts` `claimableMember` and `chooseMember` reject non-person members with 400, `listPeople` separates user-facing counts/previews from `fund`, no secrets/new dependencies. Not verified: runtime API `POST /fund` (pending 2C.2).
