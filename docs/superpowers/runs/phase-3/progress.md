@@ -21,7 +21,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3D.1 — sentence AI and parse fallback
 - [x] 3D.2 — core category suggestion
 - [x] 3D.3 — web AI readings on the confirmation card
-- [ ] 3D.4 — README, non-functional checks, final gate 3D
+- [x] 3D.4 — README, non-functional checks, final gate 3D
 
 ## Baseline failures
 
@@ -280,10 +280,33 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - `phở 60k chia 2` with a 1.3s delayed `/transactions/parse` response: displayed `Đang đọc…` (`role="status"`) after 1s, cleared it when `QuestionCard` resolved, opened `Ăn uống` chip into `CategoryPicker`, switched to `Đi lại`, selected Minh + Lan, saved `phở` (`60.000`, `Đi lại`) to feed. Zero console errors.
 - Security review: checked items 1, 2, 7, 8; boundary Zod parsing intact before preview/save, no `dangerouslySetInnerHTML`, no secrets; no issues found.
 
+## Task 3D.4 — approach
+
+- Files to modify: `README.md`, `docs/superpowers/runs/phase-3/{progress,decisions,manual-checks}.md` (verified `infra/compose.prod.yml` does not exist yet so skipped per plan).
+- Approach: document Phase 3 runtime services (`apps/worker`), `STORAGE_DIR`, AI environment variables, fake-provider switches, and fixture directories in `README.md`. Append Stage 3B–3D architectural decisions to `decisions.md`, owner manual checks plus `After the Anthropic key exists` and `The 30-receipt measurement` survey table to `manual-checks.md`, execute browser non-functional checks (keyboard-only `ReceiptReview`, accessible names, Fast 4G throttled large upload), and run the complete Final Cumulative Gate 3D on a freshly reset `songphang_phase3_gate` database.
+- Why simplest: updates only the existing root documentation and Phase 3 run logs without touching source code or untracked Compose config.
+
+### Task 3D.4 & Final Cumulative Gate 3D results
+
+- Browser non-functional checks on production Next.js `3010` + API `4010` + worker (`AI_PROVIDER=fake`, `AI_FAKE_RECEIPT_FIXTURE=clean`, group `Nhóm 3D3`):
+  - Throttled upload (`Fast 4G` + `4x` CPU throttling via Chrome DevTools `emulate`): dispatched a `4,252,665`-byte noisy JPEG (`2200×2200` canvas), confirmed `Đang tải ảnh lên…` status (`role="status"`), button disabled state while uploading, and completion into `ReceiptReview` (`22,713 ms` end-to-end across upload + worker scan + screen load).
+  - Accessible names: verified `button "Chụp hoá đơn"` and `0` empty `[role="img"]` member labels across both the feed and `ReceiptReview` item/payer rows (`Minh`, `Lan`, `Hùng`, `Thu`).
+  - Keyboard-only `ReceiptReview` walk (`Tab`, `Enter`, `Space` only): tabbed onto `Chia đều các món còn lại`, activated with `Enter`, tabbed to `Bia`, selected with `Space`, tabbed to `Lan`, toggled off with `Space`, tabbed to `Lưu`, submitted with `Enter` -> saved `Bếp mẫu` (`440.000`, `Có ảnh hoá đơn`, `Minh/Hùng/Thu 117.500`, `Lan 87.500`) to feed with zero console errors.
+- Final Cumulative Gate 3D on freshly dropped/recreated + migrated + seeded isolated DB `songphang_phase3_gate`:
+  - `pnpm check`: passed (`Checked 389 files`, all 8 workspace typechecks Done).
+  - `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`next build` compiled all 11 static pages + dynamic routes cleanly).
+  - Phase 1 + Phase 2 + permission matrix + disabled-provider features (`baseline_gate.mjs`), `exercise_3a2.mts`, and `exercise_3a3.mts`: passed.
+  - All 87 quick-entry rule samples (`verify_87_samples.ts`): passed.
+  - Stage 3B (`test_pgboss_tx.mts`, `exercise_3b1.mts`, `exercise_3b2.mts`, `exercise_3b3_spec15.mts`, `exercise_3b3_live.mts`): all 4 receipt fixtures, quota/month caps, atomic reservation rollback/recovery, live worker + SSE, and unset `AI_PROVIDER` (`features.receiptReading: false`, `POST /receipt-scans` `404`) passed.
+  - Stage 3C (`exercise_3c1.mts`, `exercise_3c2.mts`): all 9 item-split matrix rows, preview/create/edit/validation/balances, and `items/preview` passed.
+  - Stage 3D (`exercise_3d1.mts`, `exercise_3d2.mts`): all 15 sentence fixtures (`AI01`–`AI15`), privacy nonces, 8s timeout + 0 retries, daily cap silent fallback, `features.sentenceAi`, and category keyword/custom matching passed.
+  - `DATABASE_URL=.../songphang_phase3_gate pnpm db:check-balances`: all 11 groups summed to `0` with `0` mismatches -> `All groups balanced`.
+
 ## Not verified
 
-- Real Anthropic API calls (forbidden by policy).
-- Real phone camera chooser and real receipt accuracy/latency/cost (owner manual checks after implementation).
+- Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).
+- Real mobile phone camera picker and physical receipt accuracy, latency, and `cost_vnd` across 30 real receipts (owner manual checks in `manual-checks.md`).
+- Production server deployment / `infra/compose.prod.yml` (does not exist on `main`/`phase-3`).
 
 ## Gate not passed
 

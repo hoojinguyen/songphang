@@ -64,6 +64,32 @@ pnpm dev
 - `packages/core/src/banks.ts` contains the 76-bank BIN mapping sourced from `https://api.vietqr.io/v2/banks` (VietQR.io by Casso, retrieved `2026-11-17`). It is not a NAPAS-certified dataset; automated NAPAS bank-account verification is disabled.
 - Before real-money use, verify the QR payload bytes match the VietQR specification and scan a 1.000 đ test transfer from `/g/{id}/pay` with a Vietnamese banking app to confirm bank, account number, account name, amount, and transfer note fill in accurately.
 
+## Phase 3 features
+
+- **Background worker & private attachments:** `apps/worker` runs `pg-boss` jobs (`heartbeat`, `cleanup-attachments`, `delete-files`, `read-receipt`) and notifies the API over PostgreSQL `LISTEN`/`NOTIFY` (`songphang_events`) so connected clients refresh `receiptScans` live. Uploaded receipt photos are stored privately under `STORAGE_DIR` (resolved relative to the repository root; default `./.data/uploads`) with a 5 MB image cap, 200 MB per-group storage quota, magic-byte validation (`image/jpeg`, `image/png`, `image/webp`), authorized streaming (`Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff`), and 24-hour orphan cleanup.
+- **Receipt scanning & item-by-item splitting (`Theo món`):** Editors and owners can upload a receipt from `Chụp hoá đơn` in the feed entry bar, inspect extracted items, taxes/fees, and total discrepancies, assign items per member (including `Chia đều các món còn lại`), and save or edit expenses using the `items` split method (`packages/core/src/split-items.ts`, `POST /api/v1/groups/{groupId}/transactions/items/preview`).
+- **AI sentence fallback & category suggestions:** When rule parsing cannot parse an expense sentence, the API optionally calls the sentence reader (`AI_PROVIDER`), displays `Đọc bằng AI. Hãy xem lại.`, supports multi-expense drafts (`Khoản {index}/{count}`, `Lưu và sang khoản sau`, `Bỏ khoản này`), and suggests categories via `suggestCategory` (`packages/core/src/category-keywords.ts` + live group custom categories).
+
+### AI configuration and local fake fixtures
+
+Leave `AI_PROVIDER` unset to keep optional AI endpoints and UI entry points disabled (`receiptReading: false`, `sentenceAi: false`). Production startups refuse `AI_PROVIDER=fake`, and require `ANTHROPIC_API_KEY` and `AI_MODEL` when `AI_PROVIDER=anthropic`.
+
+| Variable                        | Purpose                                                                                | Default in `.env.example` |
+| ------------------------------- | -------------------------------------------------------------------------------------- | ------------------------- |
+| `STORAGE_DIR`                   | Private upload directory resolved from repo root                                       | `./.data/uploads`         |
+| `AI_PROVIDER`                   | Leave empty to disable, `fake` for local fixtures, or `anthropic`                      | _(unset)_                 |
+| `ANTHROPIC_API_KEY`             | Anthropic API key when `AI_PROVIDER=anthropic`                                         | _(unset)_                 |
+| `AI_MODEL`                      | Claude model ID for receipt and sentence calls                                         | `claude-haiku-4-5`        |
+| `AI_RECEIPTS_PER_USER_PER_DAY`  | Daily receipt scan cap per user                                                        | `20`                      |
+| `AI_SENTENCES_PER_USER_PER_DAY` | Daily AI sentence cap per user                                                         | `100`                     |
+| `AI_CALLS_PER_MONTH`            | Monthly total AI calls cap across all users                                            | `1000`                    |
+| `AI_FAKE_RECEIPT_FIXTURE`       | Optional forced fake receipt key (`clean`, `tax-service`, `mismatch`, `not-a-receipt`) | _(unset)_                 |
+
+Offline fake fixtures used when `AI_PROVIDER=fake`:
+
+- Receipt JPEGs and SHA-256 readings: `apps/worker/fixtures/receipts/` (`manifest.json`, `clean.jpg`, `tax-service.jpg`, `mismatch.jpg`, `not-a-receipt.jpg`)
+- Sentence fixtures (`AI01`–`AI15`): `apps/api/fixtures/sentences.json`
+
 ## Development mail and optional Google sign-in
 
 Mail is printed by the API process to its development console. Read the verification/reset link there and open it locally; no mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration without a real mailer is refused.

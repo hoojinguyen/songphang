@@ -29,6 +29,31 @@
 - Forced tool use: `tools: [{ name, description, input_schema }]` with `tool_choice: { type: "tool", name }`; response parsed from `content` `tool_use` block `input` and `usage.input_tokens` / `usage.output_tokens`.
 - `features.receiptReading` is wired from `Boolean(config.aiProvider)` in 3B.2; `features.sentenceAi` remains `false` until Task 3D.1 implements the sentence AI parse fallback.
 
+## D4 — Atomic `receipt_scans` + quota reservation + transactional `pg-boss` enqueue (Task 3B.3)
+
+- `createReceiptScan` locks the group, verifies attachment ownership, enforces idempotent active-scan uniqueness (`partial unique index` on `(group_id, attachment_id)` for `queued`/`reading`/`ready`), reserves `ai_calls` quota inside the same Drizzle DB transaction, and enqueues `read-receipt` using `pgBoss.send(..., { db: fromDrizzle(tx, sql) })`.
+- `claimScan` updates `receipt_scans` from `queued` -> `reading` with an optimistic status check and claims `ai_calls` (`pending` -> `claimed`) before any provider HTTP call; retries allocate a fresh `ai_calls` reservation. `recoverStaleScans` expires orphaned stale scans without silently making duplicate unreserved provider calls.
+
+## D5 — Authoritative item-split calculation on API/core (`Theo món`, Tasks 3C.1–3C.3)
+
+- `splitByItems` in `packages/core/src/split-items.ts` computes exact integer item totals, extras (`amount` or exact integer `rate`), and `ITEM_UNASSIGNED` / `INVALID_TOTAL` issues with proportional tie-break allocation.
+- `apps/web` (`ReceiptReview` and `ExpenseForm`'s `ItemsAssignmentPanel`) never sums item money or splits in JS; it sends the edited items/extras to `POST /api/v1/groups/{groupId}/transactions/items/preview` (300ms debounced) and displays `computedAmount`, `shares`, and `issues` returned by the API.
+
+## D6 — Shared `@songphang/ai` transport & `sentences.json` ownership in `apps/api` (Task 3D.1)
+
+- Moved the Anthropic HTTP client helper into workspace package `@songphang/ai` (`packages/ai`) rather than duplicating HTTP/retry/timeout code across `apps/api` and `apps/worker`.
+- Moved `apps/worker/fixtures/sentences.json` -> `apps/api/fixtures/sentences.json` because sentence parsing executes synchronously inside `apps/api` (`POST /transactions/parse`), while `apps/worker/fixtures/receipts/` stays with `apps/worker`.
+- Provider requests contain only fresh request-local `<nonce>:pN` active-person member refs (no DB UUIDs, user IDs, emails, or history). Sentence AI uses a strict 8-second overall timeout and 0 retries, silently falling back to the rule response on timeout, quota exhaustion, invalid schema, or empty drafts.
+
+## D7 — Category keyword matching precedence & live custom categories (Task 3D.2)
+
+- `suggestCategory(description, custom)` in `packages/core/src/suggest-category.ts` uses `foldVietnamese` word-boundary matching: live non-archived custom group categories (`archivedAt === null`) take priority over the 120-entry built-in `CATEGORY_KEYWORDS` table (longest keyword match wins, ties broken by earlier entry). Explicit non-null AI categories are preserved; `unparsed` drafts stay uncategorized.
+
+## D8 — Composer AI queue & category disclosure UX (Task 3D.3) & missing `infra/` scope (Task 3D.4)
+
+- `ComposeScreen` renders an inline expandable `CategoryPicker` from the suggested category chip (`aria-expanded`) instead of nesting a second `<dialog>`, preventing focus/top-layer collisions with `CategoryPicker`'s `+ Thêm danh mục` modal dialog. Non-`ok` AI items forward prefilled drafts (`category`/`categoryId` included, `spans: []`) into `/tx/new?form`.
+- Verified `infra/` does not exist in this repository yet (server step unmerged), so `Task 3D.4` skipped `infra/compose.prod.yml` updates per the plan ("if it exists").
+
 ## Re-baseline
 
 | Plan reference | Real name and location | Status / adaptation |
