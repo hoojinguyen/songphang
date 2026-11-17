@@ -99,11 +99,15 @@ export function readSentence(input: {
 	const members = input.members
 		.filter((member) => member.active)
 		.toSorted((a, b) => a.position - b.position);
+	const people = members.filter((member) => member.kind !== "fund");
+	const fund = members.find((member) => member.kind === "fund") ?? null;
 	const context: ReaderContext = {
 		text: input.text,
 		tokens: tokenize(input.text),
 		members,
-		writerMemberId: members.some((member) => member.id === input.writerMemberId)
+		people,
+		fund,
+		writerMemberId: people.some((member) => member.id === input.writerMemberId)
 			? input.writerMemberId
 			: null,
 		memberChoices: input.memberChoices ?? {},
@@ -120,7 +124,7 @@ export function readSentence(input: {
 	const description = descriptionOf(context, total?.start ?? input.text.length);
 	let split: SplitInput | null = {
 		method: "equal",
-		members: members.map((member) => member.id),
+		members: people.map((member) => member.id),
 	};
 	if (total && amount !== null) {
 		context.used.add(totalIndex);
@@ -143,7 +147,7 @@ export function readSentence(input: {
 			candidates: [],
 		});
 	if (
-		members.length === 0 &&
+		people.length === 0 &&
 		!context.issues.some((issue) => issue.code === "COUNT_MISMATCH")
 	)
 		context.issues.push({
@@ -154,17 +158,17 @@ export function readSentence(input: {
 			end: 0,
 		});
 	const unparsed =
-		members.length === 0 ||
+		people.length === 0 ||
 		context.issues.some(
 			(issue) =>
 				[
 					"AMOUNT_MISSING",
 					"MEMBER_UNKNOWN",
 					"SUM_MISMATCH",
+					"FUND_CANNOT_SHARE",
 					"TEXT_NOT_UNDERSTOOD",
 				].includes(issue.code) ||
-				(issue.code === "COUNT_MISMATCH" &&
-					(issue.count ?? 0) > members.length),
+				(issue.code === "COUNT_MISMATCH" && (issue.count ?? 0) > people.length),
 		);
 	return {
 		status: unparsed
@@ -176,7 +180,7 @@ export function readSentence(input: {
 			description,
 			amount,
 			payerMemberId: payer.payerMemberId,
-			split: members.length === 0 ? null : split,
+			split: people.length === 0 ? null : split,
 		},
 		spans: mergeSpans(input.text, context.spans),
 		issues: context.issues.toSorted((a, b) => a.start - b.start),

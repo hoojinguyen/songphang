@@ -3,6 +3,7 @@ import type { Issue, Token } from "./tokens.ts";
 export type QuickEntryMember = {
 	id: string;
 	name: string;
+	kind?: "person" | "fund";
 	active: boolean;
 	position: number;
 };
@@ -15,6 +16,8 @@ export type ReaderContext = {
 	text: string;
 	tokens: Token[];
 	members: QuickEntryMember[];
+	people: QuickEntryMember[];
+	fund: QuickEntryMember | null;
 	writerMemberId: string | null;
 	memberChoices: Readonly<Record<number, string>>;
 	used: Set<number>;
@@ -32,15 +35,13 @@ export function readName(context: ReaderContext, start: number): NameResult {
 	const pronounChoice = context.memberChoices[first.start];
 	const pronounWriter =
 		writer ??
-		(context.members.some((m) => m.id === pronounChoice)
-			? pronounChoice
-			: null);
+		(context.people.some((m) => m.id === pronounChoice) ? pronounChoice : null);
 	if (pronoun)
 		return pronounWriter
 			? { memberId: pronounWriter, candidates: [pronounWriter], length: 1 }
 			: {
 					memberId: null,
-					candidates: context.members.map((m) => m.id),
+					candidates: context.people.map((m) => m.id),
 					length: 1,
 				};
 	let longest = 0;
@@ -66,6 +67,15 @@ export function readName(context: ReaderContext, start: number): NameResult {
 		matches = context.members.filter((member) =>
 			foldVietnamese(member.name).split(/\s+/).includes(first.value),
 		);
+	}
+	if (
+		first.value === "quy" &&
+		context.fund &&
+		longest <= 1 &&
+		!matches.some((member) => member.id === context.fund?.id)
+	) {
+		longest = 1;
+		matches.push(context.fund);
 	}
 	const ids = new Set(matches.map((member) => member.id));
 	if (first.value === "minh" && longest === 1 && writer) ids.add(writer);
@@ -95,6 +105,21 @@ export function nameIssue(
 		start: first.start,
 		end: last.end,
 		candidates: result.candidates,
+	});
+}
+export function fundShareIssue(
+	context: ReaderContext,
+	start: number,
+	length: number,
+) {
+	const first = context.tokens[start];
+	const last = context.tokens[start + length - 1];
+	if (!first || !last) return;
+	context.issues.push({
+		code: "FUND_CANNOT_SHARE",
+		start: first.start,
+		end: last.end,
+		candidates: [],
 	});
 }
 export function consume(

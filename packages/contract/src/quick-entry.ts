@@ -18,6 +18,7 @@ export const ParseIssue = z.object({
 		"MEMBER_UNKNOWN",
 		"COUNT_MISMATCH",
 		"SUM_MISMATCH",
+		"FUND_CANNOT_SHARE",
 		"TEXT_NOT_UNDERSTOOD",
 	]),
 	start: z.int().nonnegative(),

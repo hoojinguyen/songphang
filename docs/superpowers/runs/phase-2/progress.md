@@ -37,7 +37,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2B.6 — categories UI and gate 2B
 - [x] 2C.1 — fund member integrity
 - [x] 2C.2 — fund endpoints and balances
-- [ ] 2C.3 — fund sentence reader
+- [x] 2C.3 — fund sentence reader
 - [ ] 2C.4 — fund UI
 - [ ] 2C.5 — gate 2C
 - [ ] 2D.1 — budget core and API
@@ -297,3 +297,33 @@ Security review: relevant items 1/2/3/4/5/8 checked against full diff; DB trigge
 Commit reference: `feat(api): add the shared fund`. pnpm check passed (299 files, five workspace typechecks Done). Exercised the full fund ledger and rules against API 4001: unused `POST /fund` → 201 (`Quỹ chung`, `shape: fund`, `color: sun`) and `DELETE /fund` → 204; duplicate `POST /fund` → 409 `FUND_EXISTS`; viewer `POST /fund` → 403; outsider → 404; `PATCH`/`DELETE /members/{fundId}` and `PUT /members/{fundId}/payment-methods` → 404; invite preview/group list exclude fund from `memberCount`/`previewMembers` and `join` with fund id → 400. F0 (`cash: 0`), F1 (`Lan → fund 500000`, `cash: 500000`, `contributions: [Lan: 500000]`, `DELETE /fund` → 422 `MEMBER_HAS_TRANSACTIONS`), F2 (`Ăn tối 300000` paid by fund, `cash: 200000`, `balances` people-only summing to `+200000`, minimized transfers `fund → Lan 200000`, `Minh → Lan 100000`, `Hùng → Lan 100000`; `FUND_CANNOT_SHARE` 422 checked before totals on equal/exact/shares/percent/income; `income` received by fund raised cash to `260000` and reverted to `200000` on delete; `PATCH /fund active: false` → 422 `FUND_NOT_EMPTY`), F3 (`fund → Lan 200000`, `cash: 0`, `contributions: [Lan: 300000]`, preview & create 50000 paid by fund → `warnings: ["FUND_OVERDRAWN"]`, `PATCH active: false, name: "Quỹ lớp", holderMemberId: null` → 200). `pnpm db:check-balances` → `All groups balanced`.
 
 Security review: relevant items 1/2/3/4/5/8 checked against full diff; editor role + idempotency key enforced on `POST /fund`, `holderMemberId` validated against group people, person-only `members`/`payment-methods`/`settlement-requests` reject fund IDs, parameterized SQL `bigint` contribution query, no secrets or new dependencies. All new files under 190 lines. Not verified: browser UI for fund (2C.4).
+
+
+## Task 2C.3 — approach
+
+- Files to create/modify: modify `packages/core/src/quick-entry/{tokens,names,phrases,parts,read-sentence}.ts`, `packages/contract/src/quick-entry.ts`, and `apps/api/src/services/quick-entry.ts`.
+- Approach: add optional `kind` (`"person" | "fund"`) to `QuickEntryMember` and `"FUND_CANNOT_SHARE"` to `QuickEntryIssueCode`/`ParseIssue`, split active members into `people` and `fund` inside `readSentence`, and scope pronouns, default splits, `chia <N>`, and active count checks to `people`. Update `readName` to match the fund both by its normalized name and by the `"quy"` alias (yielding `MEMBER_AMBIGUOUS` if a person is also named `Quy`), update `readPayers` to recognize `tu quy` / `từ quỹ` before the amount alongside `<quỹ|fundName> trả`, emit `FUND_CANNOT_SHARE` (`unparsed`) if a fund appears in `readEqual` or `readParts`, and pass all group members from `services/quick-entry.ts` into `readSentence`.
+- Why simplest: keeps one unified name-matching and token-consumption pipeline (`readName` + `readPayers`) while cleanly separating person-only sharing rules from payer selection.
+- Rejected alternative: pre-rewriting `"quỹ"` text strings before tokenizing, which would break character span offsets and fail when a person named `Quy` creates ambiguity.
+
+
+### Task 2C.3 results
+
+Commit reference: `feat(core): read expenses paid from the fund`. pnpm check passed (299 files, five workspace typechecks Done). Exercised all 75 earlier samples via `packages/core` (`diffs=0`) plus all 12 new fund samples against both `packages/core` and `API 4001 /transactions/parse`:
+
+| # | Sentence | Expected | Actual | Match |
+|---|---|---|---|---|
+| F01 | `ăn tối 300k quỹ trả` | `ok`, payer fund, 100k each | `ok`, issues `[]` | match |
+| F02 | `an toi 300k quy tra` | `ok`, payer fund, 100k each | `ok`, issues `[]` | match |
+| F03 | `từ quỹ cà phê 100k` | `ok`, payer fund, 33334/33333/33333 | `ok`, issues `[]` | match |
+| F04 | `tu quy ca phe 100k` | `ok`, payer fund, 33334/33333/33333 | `ok`, issues `[]` | match |
+| F05 | `vé 1001 quỹ chung trả` | `ok`, payer fund, 334/334/333 | `ok`, issues `[]` | match |
+| F06 | `ăn 90k quỹ trả chia lan, hùng` | `ok`, payer fund, 45k/45k | `ok`, issues `[]` | match |
+| F07 | `ăn 300k quỹ trả chia 3` | `ok`, payer fund, 100k each | `ok`, issues `[]` | match |
+| F08 | `ăn 300k quỹ trả chia 4` | `unparsed` (`COUNT_MISMATCH`) | `unparsed` (`COUNT_MISMATCH`, count 4, 3 people) | match |
+| F09 | `ăn 300k quỹ trả` (no fund) | `unparsed` (`MEMBER_UNKNOWN`) | `unparsed` (`MEMBER_UNKNOWN`) | match |
+| F10 | `ăn 300k chia quỹ` | `unparsed` (`FUND_CANNOT_SHARE`) | `unparsed` (`FUND_CANNOT_SHARE`) | match |
+| F11 | `ăn 300k quỹ 100 lan 200` | `unparsed` (`FUND_CANNOT_SHARE`) | `unparsed` (`FUND_CANNOT_SHARE`) | match |
+| F12 | `ăn 300k quy tra` (fund + Quy) | `needs_input` (`MEMBER_AMBIGUOUS`) | `needs_input` (`MEMBER_AMBIGUOUS`, fund + Quy) | match |
+
+Security review: relevant items 1/2/6/8 checked against full diff; pure token parsing without dynamic regex or DB mutation, `FUND_CANNOT_SHARE` validated in contract `ParseIssue`, no new dependencies. Not verified: browser typing UI for `ăn tối 300k quỹ trả` (2C.4).
