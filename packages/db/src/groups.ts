@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { groups, groupUsers } from "./schema-groups.js";
 import { transactions } from "./schema-transactions.js";
+import { deleteGroupSettlementRequests } from "./settlement-requests.js";
 
 export async function findGroupAccess(
 	executor: DbExecutor,
@@ -90,6 +91,7 @@ export function lockGroup(executor: DbExecutor, groupId: string) {
 }
 
 export async function deleteGroupRow(executor: DbExecutor, groupId: string) {
+	await deleteGroupSettlementRequests(executor, groupId);
 	await executor.delete(transactions).where(eq(transactions.groupId, groupId));
 	return executor.delete(groups).where(eq(groups.id, groupId));
 }

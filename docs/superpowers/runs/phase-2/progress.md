@@ -25,7 +25,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] Task 0 — commit reference `docs(run): re-baseline phase 2`
 - [x] 2A.1 — VietQR payload and bank lookup
 - [x] 2A.2 — member payment methods
-- [ ] 2A.3 — settlement requests
+- [x] 2A.3 — settlement requests
 - [ ] 2A.4 — payment data and pending requests on balances
 - [ ] 2A.5 — payment methods editor
 - [ ] 2A.6 — paying screen, confirmation and gate 2A
@@ -120,3 +120,13 @@ Add the payment table/migration and typed group-scoped reads/replacement queries
 Commit reference: `feat(api): add payment details of members`. pnpm check passed (247 files, all five workspace typechecks Done); generated/applied migration 0004. Real HTTP: owner bank+momo 200; editor other member's zalopay 200; viewer own momo 200; viewer other member 403 FORBIDDEN; outsider 404 NOT_FOUND. Unknown BIN, duplicate momo, short phone and dashed account each 400 VALIDATION_FAILED. Readback normalized 0901234567 and 0912345678; clear list 200 []. Invite preview contained no paymentMethods. SQL observed the payment-update activity row with before/after both NULL. An initial temporary helper used id instead of actual userId; corrected the helper from the installed contract, no product change needed. Generated JSON initially failed formatting; formatting only fixed it, without disabling checks.
 
 Security review: relevant items 1–8 checked against schema, migration, query, service, route and entire diff. Same-origin/verified writes, shared group auth and post-lock recheck retained; no group data accessible to outsiders; payment values absent from activity snapshots/invite DTOs/logging; parameterized group-scoped queries and atomic replacement. Internal workspace dependency only; no network audit under local-only rule. setPaymentMethods exceeds 40 lines to retain one explicit authorized replacement transaction; files remain under 200 lines. D7 records schema/dependency adaptation. Out of scope: none.
+
+## Task 2A.3 — approach
+
+Add settlement schema/queries/contracts and thin viewer routes, with service predicates for payer/resolver/canceller identity. Serialize writes with the existing group lock before locking a request, recheck current membership under that lock, and create the confirmed transfer through one shared internal transaction writer. Keep ordinary transaction creation's post-lock editor guard intact. Add per-idempotency-key transaction locking before lookup so concurrent duplicate request creation can replay rather than fail the pending-pair rule. Emit resource-only events after commit and exercise every permission/status case.
+
+### Task 2A.3 results
+
+Commit reference: `feat(api): add settlement requests confirmed by the receiver`. pnpm check passed (253 files, five workspace typechecks Done); migration 0005 applied. Exercise rows 1–16: pending 201, duplicate new key 409, original key 201 same ID; unauthorized other payer 403; editor for linked receiver 403; payer self-confirm 403; receiver confirm 200 with transfer; repeat 409 REQUEST_NOT_PENDING. Balances before/request pending 450000/-150000/-150000/-150000; after confirmation 300000/-150000/0/-150000; stored transfer count 1. Creator cancellation 200 vs other viewer 403. Editor for unlinked receiver create/confirm 201/200, viewer confirm 403; owner rejection 200 with unchanged balances. Zero/equal members 400 VALIDATION_FAILED; foreign member 400 MEMBER_NOT_IN_GROUP; outsider list/create 404/404; signed-out list 401. Concurrent same-key create [201,201], one ID; concurrent confirm [200,409]. Pagination request 200. Disposable group with pending request deleted 204, later list 404. pnpm db:check-balances: All groups balanced.
+
+Security review: relevant items 1–8 checked against full schema/migration/query/contract/service/route/idempotency/cascade diff. Group role and linked identity re-read after group lock, request row locked, one atomic confirmation/ledger/log write, no sensitive snapshots/events/logging, safe integer schemas and parameterized SQL. Ordinary editor-only ledger guard, session serialization, repeatable reads and terminal SSE cancellation preserved. No external call/new library; online audit remains unverified. resolveSettlement and declarative route registration exceed function guideline to keep one cohesive transaction/endpoint group; each file under 200 lines. D8/D9 record required adaptations; no unresolved defect.

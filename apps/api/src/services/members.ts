@@ -12,6 +12,7 @@ import {
 	type DbExecutor,
 	deleteMember,
 	findMember,
+	hasMemberSettlementRequests,
 	hasMemberTransactions,
 	insertActivity,
 	insertMember,
@@ -163,7 +164,10 @@ export async function removeMember(
 		await lockGroup(transaction, input.groupId);
 		await getGroupAccess(transaction, { ...input, minimumRole: "editor" });
 		const member = await getMember(transaction, input.groupId, input.memberId);
-		if (await hasMemberTransactions(transaction, input.groupId, member.id))
+		if (
+			(await hasMemberTransactions(transaction, input.groupId, member.id)) ||
+			(await hasMemberSettlementRequests(transaction, input.groupId, member.id))
+		)
 			throw new AppError(
 				422,
 				"MEMBER_HAS_TRANSACTIONS",

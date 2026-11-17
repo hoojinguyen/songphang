@@ -109,3 +109,11 @@ D6 — Features endpoint: expose receiptReading, sentenceAi, telegram, push, app
 ## D7 — Payment schema registration and shared core export (2A.2)
 
 Problem: drizzle-kit enumerates schema files explicitly and contract did not yet depend on core. Options: duplicate the catalogue or import across source paths; register the new schema and the planned workspace dependency. Choice: add schema-payments.ts to drizzle.config.ts and link existing @songphang/core into contract with pnpm --offline (downloaded 0, added 0 external packages). Reason: generated migration and one bank catalogue shared by API/web, as task 2A.5 requires. No new library. Generated snapshot/journal formatting follows existing Biome rules; no lint configuration changed. Member DTO defaults paymentMethods to [] for newly created members while read/edit/PUT explicitly load persisted methods.
+
+## D8 — Authorized shared ledger writer and lock order (2A.3)
+
+Problem: ordinary createTransaction requires editor access, while a linked receiver may be a viewer. Options: weaken its guard; duplicate transfer writes; extract createTransactionIn for callers that already hold the group lock and have independently authorized the operation. Choice: shared internal writer; ordinary wrapper keeps its unchanged post-lock editor check. Settlement locks group then request, matching every existing group write and avoiding opposite request/group lock ordering. Transfer creation supplies the confirmation activity entry; no misleading duplicate group-settings activity is added.
+
+## D9 — Concurrent idempotent reports and restricted member references (2A.3)
+
+Problem: a second simultaneous same-key report could see the new pending pair before the idempotency insert conflict, returning 409 instead of replay. Choice: transaction-scoped advisory lock on hashed user/key before idempotency lookup; collisions only serialize unrelated keys, never relax validation. The key is parameterized and never logged. Request member FKs are RESTRICT, so group deletion explicitly removes requests before its existing transaction/member cascade; generic member deletion treats referenced requests as retained ledger history and returns existing MEMBER_HAS_TRANSACTIONS instead of database 500. Both preserve integrity without weakening an FK or adding product wording.

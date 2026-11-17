@@ -81,6 +81,18 @@ export async function createTransaction(
 ) {
 	await lockGroup(executor, input.groupId);
 	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+	return createTransactionIn(executor, input);
+}
+// Settlement confirmation supplies its own post-lock authorization; ordinary writes use createTransaction.
+export async function createTransactionIn(
+	executor: DbExecutor,
+	input: {
+		groupId: string;
+		userId: string;
+		request: CreateTransactionRequest;
+		now: Date;
+	},
+) {
 	const shares = await calculateShares(executor, input.groupId, input.request);
 	const request = normalizeTransaction(input.request);
 	const group = await findGroup(executor, input.groupId);

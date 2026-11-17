@@ -21,6 +21,7 @@ import { registerHealthRoute } from "./routes/health.js";
 import { registerInviteRoutes } from "./routes/invites.js";
 import { registerMeRoute } from "./routes/me.js";
 import { registerMemberRoutes } from "./routes/members.js";
+import { registerSettlementRoutes } from "./routes/settlement-requests.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
 
 export type AppEnv = {
@@ -76,6 +77,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerGroupUserRoutes(app, deps);
 	registerInviteRoutes(app, deps);
 	registerMemberRoutes(app, deps);
+	registerSettlementRoutes(app, deps);
 	registerTransactionRoutes(app, deps);
 	registerBalanceRoutes(app, deps);
 	registerActivityRoutes(app, deps);

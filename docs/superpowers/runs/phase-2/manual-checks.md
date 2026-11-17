@@ -50,3 +50,10 @@ Pending 2B.4 and 2D.2.
 2. PUT for another member → 403; sign in outside the group and retry → 404.
 3. Submit a dashed bank account, unsupported BIN, duplicate method kind or short wallet phone → 400; existing saved details remain intact.
 4. Save an empty methods list → 200 and no receiving details remain. Invite previews and activity details must never show bank accounts or phone numbers.
+
+### Settlement confirmation API — 2A.3
+
+1. In a fresh four-person group record a 600000 expense paid by Minh; as Hùng (viewer) report Hùng → Minh 150000 → pending and unchanged balances.
+2. Confirm as Minh → one transfer and Hùng balance zero. Confirm again → 409 REQUEST_NOT_PENDING and still one transfer.
+3. As Hùng try to report Lan's payment or confirm your own payment to linked Minh → 403. An outsider must receive 404.
+4. Create another report; cancel as its creator, or reject as receiver → no ledger/balance change. Concurrent double confirmation must create one transfer.

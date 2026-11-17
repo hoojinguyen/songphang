@@ -5,6 +5,7 @@ import {
 	deleteExpiredIdempotencyKeys,
 	findIdempotencyKey,
 	insertIdempotencyKey,
+	lockIdempotencyKey,
 } from "@songphang/db";
 import type { AppDeps } from "./app.js";
 import { AppError } from "./errors.js";
@@ -63,6 +64,7 @@ export async function runIdempotent(
 	const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 	try {
 		const result = await deps.db.transaction(async (transaction) => {
+			await lockIdempotencyKey(transaction, input.userId, input.key);
 			await deleteExpiredIdempotencyKeys(transaction, cutoff);
 			const stored = await findIdempotencyKey(
 				transaction,

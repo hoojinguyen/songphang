@@ -9,6 +9,7 @@ export default defineConfig({
 		"./src/schema-records.ts",
 		"./src/schema-accounts.ts",
 		"./src/schema-payments.ts",
+		"./src/schema-settlements.ts",
 	],
 	out: "./drizzle",
 });

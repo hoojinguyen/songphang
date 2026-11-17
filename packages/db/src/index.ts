@@ -20,6 +20,7 @@ export { authTokens, userIdentities } from "./schema-accounts.js";
 export { groups, groupUsers, members } from "./schema-groups.js";
 export * from "./schema-payments.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";
+export * from "./schema-settlements.js";
 export {
 	transactionPayers,
 	transactionShares,
@@ -32,6 +33,7 @@ export {
 	findUserBySessionHash,
 	insertSession,
 } from "./sessions.js";
+export * from "./settlement-requests.js";
 export * from "./transaction-changes.js";
 export * from "./transactions.js";
 export { findUserById, listUsers } from "./users.js";

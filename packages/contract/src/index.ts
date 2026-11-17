@@ -10,4 +10,5 @@ export * from "./invite.ts";
 export * from "./member.ts";
 export * from "./payment.ts";
 export * from "./quick-entry.ts";
+export * from "./settlement-request.ts";
 export * from "./transaction.ts";
