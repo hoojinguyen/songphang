@@ -3,9 +3,11 @@ export { BANKS } from "./banks.ts";
 export {
 	APP_TIME_ZONE,
 	bucketFor,
+	currentMonthRange,
 	isValidCalendarDate,
 	isWithinFiveYears,
 	localDateRangeToUtc,
+	previousMonthRange,
 	toVietnamDate,
 } from "./dates.ts";
 export { parseHundredths } from "./decimal.ts";

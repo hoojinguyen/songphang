@@ -33,8 +33,10 @@ Pending 2B.6 and 2D.2.
 ## S16 — statistics and CSV
 
 1. Record three expenses and one refund in a new group, then open S16 (`Tổng chuyến đi`) → total equals expenses minus the refund.
+2. Switch between `Tất cả`, `Tháng này`, `Tháng trước`, and `Tuỳ chọn` → totals change and bars resize; an empty period shows `Chưa có khoản chi nào trong khoảng này`.
+3. Tap a category or member row on S16 → opens S4 filtered to that category/member (and active period) with filter chips above the stream.
 
-Pending 2B.4 and 2B.5 for statistics UI and CSV export.
+Pending 2B.5 for CSV export.
 
 ## S17 — shared fund
 
@@ -42,7 +44,11 @@ Pending 2C.4.
 
 ## S4 — filters and budget banner
 
-Pending 2B.4 and 2D.2.
+1. On S4, scroll to the top of the stream → search field (`Tìm khoản chi`) and `Lọc` button appear.
+2. Type a partial or unaccented description (e.g. `pho`) → matching transactions filter after debounce; reload the page → URL keeps filters and results; type a non-matching term → `Không có khoản nào khớp`.
+3. Tap `Lọc` → filter modal opens with `Người`, `Danh mục`, `Loại`, `Từ ngày`, `Đến ngày`; apply filters → `BalanceBlock` hides while `EntryBar` remains; tap `Xoá lọc` → full stream and `BalanceBlock` return.
+
+Pending 2D.2 for budget banner.
 
 ## Task 0 — local capabilities
 

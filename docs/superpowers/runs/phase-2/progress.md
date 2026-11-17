@@ -32,7 +32,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2B.1 — custom categories
 - [x] 2B.2 — search and filters
 - [x] 2B.3 — statistics
-- [ ] 2B.4 — statistics screen and filters
+- [x] 2B.4 — statistics screen and filters
 - [ ] 2B.5 — CSV export
 - [ ] 2B.6 — categories UI and gate 2B
 - [ ] 2C.1 — fund member integrity
@@ -215,3 +215,16 @@ Security review: relevant items 1/2/4/5/6/8 checked against full diff; query par
 Commit reference: `feat(api): add spending statistics`. pnpm check passed (277 files, five workspace typechecks Done). Exercised all 2B.3 December-ledger cases on API 4001: `from=2026-12-01&to=2026-12-31` → `bucket: day`, `total: 1999999`, `byCategory` (`lodging: 1100000`, `food: 699999`, `transport: 200000`), `byMember` paid (`1700000/200000/99999/0`) and share (`558333/558333/458333/425000`), `byBucket` (`12-05: 600000`, `12-06: 100000`, `12-20: 1200000`, `12-31: 99999`), all four lists summing to `1999999`. Unbounded query → `total: 2009999`, 5th bucket `2027-01-01: 10000`, uncategorized `10000`; `2026-09-01..2026-12-31` → `week` (`11-30: 700000`, `12-14: 1200000`, `12-28: 99999`); `2026-01-01..2026-12-31` → `month` (`2026-12-01: 1999999`); delete S4 → `799999`, restore → `1999999`; viewer 200, outsider 404, signed-out 401, inverted dates 400.
 
 Security review: relevant items 1/2/4/5/6/8 checked against full diff; parameterized SQL `bigint` aggregates inside a single repeatable-read read-only snapshot, viewer role + `group_id` filters, Zod calendar/range checks, no new dependencies. Not verified: none for this API task.
+
+## Task 2B.4 — approach
+
+- Files to create/modify: create `apps/web/src/lib/stats.ts`, `apps/web/src/lib/categories.ts`, `apps/web/src/components/stats/BarRow.tsx`, `apps/web/src/components/stats/PeriodChips.tsx`, `apps/web/src/app/g/[groupId]/stats/page.tsx`, `apps/web/src/components/feed/FilterSheet.tsx`, `apps/web/src/components/feed/FilterChips.tsx`, and `apps/web/src/components/feed/StreamSearchBar.tsx`; modify `packages/core/src/dates.ts`, `packages/core/src/index.ts`, `apps/web/src/app/globals.css`, `apps/web/src/lib/transactions.ts`, `apps/web/src/lib/use-group-events.ts`, `apps/web/src/components/feed/ExpenseStream.tsx`, `apps/web/src/app/g/[groupId]/page.tsx`, and `apps/web/src/messages/vi.ts`.
+- Approach: add `currentMonthRange` and `previousMonthRange` in `core/dates.ts`. Build S16 (`/g/{id}/stats`) with `PeriodChips`, `BarRow` horizontal bars (`max(amount, 0) / max` CSS percentage), dual bars for `Theo người`, and tappable rows linking to S4 with URL query filters. Add URL-synced filter parsing (`?q=&member=&category=&categoryId=&type=&from=&to=`), debounced search + `<dialog>` `FilterSheet` (revealed at top of stream or while active) + `FilterChips`, hiding `BalanceBlock` when filters are active while keeping `EntryBar`.
+- Why simplest: keeps filter state in URL `searchParams` so reload/back work without extra client stores, and reuses `BalanceBars`'s plain CSS bar pattern and native `<dialog>` with `overscroll-behavior: contain`.
+- Rejected alternative: client-side filtering of loaded feed pages, which would miss older unpaginated rows and ignore backend search normalization.
+
+### Task 2B.4 results
+
+Commit reference: `feat(web): add statistics screen, search and filters`. pnpm check passed (287 files, five workspace typechecks Done) and production web built with API_ORIGIN=http://localhost:4001. Exercised in Chrome on localhost:3001 with the December ledger group: S4 shows `Tổng chuyến đi` shortcut opening S16 (`Tiền đi đâu`), `Tất cả` showed `2.009.999 đ`, `Tháng này` showed `0 đ` (`Chưa có khoản chi nào trong khoảng này`), `Tuỳ chọn` (`2026-12-01`..`2026-12-31`) showed `1.999.999 đ` with exact `Theo danh mục` (`Chỗ ở 1.100.000 đ`, `Ăn uống 699.999 đ`, `Đi lại 200.000 đ`), `Theo người` (`Minh · đã trả 1.700.000 đ · phần mình 558.333 đ`, etc.), and `Theo thời gian` bars. Tapping `Ăn uống` navigated to S4 `?category=food&from=2026-12-01&to=2026-12-31` showing `Lẩu` and `Phở` with removable filter chips, `BalanceBlock` hidden, and `EntryBar` retained. Reloading S4 preserved filters; typing `pho` filtered to `Phở`; typing `khongco` showed `Không có khoản nào khớp`; opening `Lọc` rendered a native modal `<dialog>` with `Người`/`Danh mục`/`Loại`/date inputs, and `Xoá lọc` restored the full stream and `BalanceBlock`.
+
+Security review: relevant items 1/2/4/6/7/8 checked against full diff; URL filter params validated with Zod (`uuid`, `TransactionCategory`, `CalendarDate`, 5-year check) before API requests, no `dangerouslySetInnerHTML`/`eval`/secret browser storage, internal-only navigation links, no new dependencies. `FilterSheet.tsx` refactored with `PillSection` under 190 lines; preexisting `app/g/[groupId]/page.tsx` kept cohesive. Not verified: automated fast-4G timing (scheduled in 2D.3).

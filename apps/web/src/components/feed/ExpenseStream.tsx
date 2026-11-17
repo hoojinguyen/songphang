@@ -14,12 +14,14 @@ export function ExpenseStream({
 	query,
 	members,
 	myMemberId,
+	onAtTopChange,
 }: {
 	groupId: string;
 	canEdit?: boolean;
 	query: ReturnType<typeof useTransactions>;
 	members: MemberDto[];
 	myMemberId: string | null;
+	onAtTopChange?: (atTop: boolean) => void;
 }) {
 	const scroll = useRef<HTMLDivElement>(null);
 	const sentinel = useRef<HTMLDivElement>(null);
@@ -32,7 +34,11 @@ export function ExpenseStream({
 	const previousNewest = useRef<string | undefined>(undefined);
 	const [newItems, setNewItems] = useState(false);
 	useLayoutEffect(() => {
-		if (!scroll.current || count === 0) return;
+		if (!scroll.current) return;
+		if (count === 0) {
+			onAtTopChange?.(true);
+			return;
+		}
 		if (anchor.current) {
 			scroll.current.scrollTop =
 				anchor.current.top +
@@ -52,7 +58,8 @@ export function ExpenseStream({
 			else scroll.current.scrollTop = scroll.current.scrollHeight;
 		}
 		previousNewest.current = newest;
-	}, [count, newest]);
+		onAtTopChange?.(scroll.current.scrollTop <= 24);
+	}, [count, newest, onAtTopChange]);
 	useEffect(() => {
 		const container = scroll.current;
 		const target = sentinel.current;
@@ -81,6 +88,9 @@ export function ExpenseStream({
 		<>
 			<div
 				ref={scroll}
+				onScroll={(event) =>
+					onAtTopChange?.(event.currentTarget.scrollTop <= 24)
+				}
 				className="min-h-0 flex-1 overflow-y-auto [overflow-anchor:none]"
 			>
 				<div ref={sentinel} className="h-px" />

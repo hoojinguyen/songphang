@@ -41,6 +41,32 @@ export function toVietnamDate(date: Date): string {
 	return shifted.toISOString().slice(0, 10);
 }
 
+function monthRange(
+	year: number,
+	month: number,
+): { start: string; end: string } {
+	const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+	const prefix = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+	return {
+		start: `${prefix}-01`,
+		end: `${prefix}-${String(lastDay).padStart(2, "0")}`,
+	};
+}
+
+export function currentMonthRange(now: Date): { start: string; end: string } {
+	const parts = parseCalendarParts(toVietnamDate(now));
+	if (!parts) throw new RangeError("Invalid Vietnam date");
+	return monthRange(parts.year, parts.month);
+}
+
+export function previousMonthRange(now: Date): { start: string; end: string } {
+	const parts = parseCalendarParts(toVietnamDate(now));
+	if (!parts) throw new RangeError("Invalid Vietnam date");
+	return parts.month === 1
+		? monthRange(parts.year - 1, 12)
+		: monthRange(parts.year, parts.month - 1);
+}
+
 export function bucketFor(from: string, to: string): "day" | "week" | "month" {
 	const start = parseCalendarParts(from);
 	const end = parseCalendarParts(to);

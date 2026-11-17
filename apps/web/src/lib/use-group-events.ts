@@ -18,9 +18,10 @@ const Resources = z.object({
 				"balances",
 				"activity",
 				"settlementRequests",
+				"categories",
 			]),
 		)
-		.max(7),
+		.max(8),
 });
 export function useGroupEvents(groupId: string) {
 	const online = useOnline();
@@ -59,6 +60,10 @@ export function useGroupEvents(groupId: string) {
 					if (resource === "settlementRequests")
 						void client.invalidateQueries({
 							queryKey: ["group", groupId, "balances"],
+						});
+					if (resource === "transactions")
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "stats"],
 						});
 				}
 				void client.invalidateQueries({

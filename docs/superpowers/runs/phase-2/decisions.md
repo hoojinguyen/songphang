@@ -133,3 +133,7 @@ Choice: compute `name_key` in `apps/api/src/services/categories.ts` via `foldVie
 ## D13 — Description search backfill and core link in db (2B.2)
 
 Choice: link existing `@songphang/core` (`workspace:*`) into `packages/db` offline (0 external dependencies) so `packages/db/src/backfill-description-search.ts` uses the exact `foldVietnamese` normalizer, and run `backfillDescriptionSearch` idempotently inside `runMigrations` after Drizzle SQL migrations (`0007_gifted_white_tiger.sql` adds `description_search text DEFAULT '' NOT NULL` and backfills `lower(description)` first). Reason: avoids duplicating Vietnamese folding logic across packages while allowing non-empty tables to migrate cleanly.
+
+## D14 — Filter button label and dialog containment (2B.4)
+
+Choice: label the S4 filter trigger button `Lọc` (`vi.filter.button`) alongside spec 9.6's `Xoá lọc`, and add `overscroll-behavior: contain` on `dialog:modal` and `dialog::backdrop` in `globals.css` with `closedby="any"` attribute on `FilterSheet`. Reason: `Lọc` matches the Vietnamese root of `Xoá lọc` cleanly on a 44px button without inventing a separate phrase, and modal scroll containment prevents background stream scrolling.
