@@ -7,14 +7,17 @@ import {
 	ParseResponse,
 	SentenceAiAnswer,
 	SplitInput,
+	TransactionCategory,
 } from "@songphang/contract";
 import {
 	computeShares,
 	quotaWindowStarts,
 	readSentence,
+	suggestCategory,
 } from "@songphang/core";
 import {
 	claimAiCall,
+	listGroupCategories,
 	listGroupMembers,
 	recordAiCall,
 	reserveAiCall,
@@ -105,12 +108,46 @@ function mapSplitReferences(
 	};
 }
 
+function applySuggestedCategory(
+	draft: ParseDraft,
+	customCategories: ReadonlyArray<{ id: string; nameKey: string }>,
+): ParseDraft {
+	if (
+		draft.category !== null ||
+		draft.categoryId !== null ||
+		!draft.description
+	) {
+		return draft;
+	}
+	const suggestion = suggestCategory(draft.description, customCategories);
+	if (!suggestion) {
+		return draft;
+	}
+	if ("categoryId" in suggestion) {
+		return ParseDraft.parse({
+			...draft,
+			category: null,
+			categoryId: suggestion.categoryId,
+		});
+	}
+	const builtIn = TransactionCategory.safeParse(suggestion.category);
+	if (!builtIn.success) {
+		return draft;
+	}
+	return ParseDraft.parse({
+		...draft,
+		category: builtIn.data,
+		categoryId: null,
+	});
+}
+
 function mapAiDraftToResult(
 	aiDraft: AiSentenceDraft,
 	refToId: ReadonlyMap<string, string>,
 	allMemberIds: readonly string[],
 	text: string,
 	fallbackDraft: ParseDraft,
+	customCategories: ReadonlyArray<{ id: string; nameKey: string }>,
 ): ParsedDraftResult {
 	let hasUnknownRef = false;
 	let payers: Array<{ memberId: string; amount: number }> = [];
@@ -153,6 +190,11 @@ function mapAiDraftToResult(
 		};
 	}
 
+	const enrichedDraft = applySuggestedCategory(
+		draftParsed.data,
+		customCategories,
+	);
+
 	const shareCheck =
 		!hasUnknownRef &&
 		aiDraft.confident &&
@@ -164,7 +206,7 @@ function mapAiDraftToResult(
 	if (shareCheck?.ok) {
 		return {
 			status: "ok",
-			draft: draftParsed.data,
+			draft: enrichedDraft,
 			issues: [],
 			shares: shareCheck.shares,
 		};
@@ -172,7 +214,7 @@ function mapAiDraftToResult(
 
 	return {
 		status: "needs_input",
-		draft: draftParsed.data,
+		draft: enrichedDraft,
 		issues: [
 			{
 				code: "TEXT_NOT_UNDERSTOOD",
@@ -194,7 +236,13 @@ export async function parseSentence(
 	},
 ): Promise<ParseResponse> {
 	const text = input.request.text.normalize("NFC");
-	const members = await listGroupMembers(deps.db, input.groupId);
+	const [members, categories] = await Promise.all([
+		listGroupMembers(deps.db, input.groupId),
+		listGroupCategories(deps.db, input.groupId),
+	]);
+	const customCategories = categories
+		.filter((item) => item.archivedAt === null)
+		.map((item) => ({ id: item.id, nameKey: item.nameKey }));
 	const result = readSentence({
 		text,
 		members: members.map((member) => ({
@@ -217,19 +265,24 @@ export async function parseSentence(
 			: null;
 	if (shares && !shares.ok) throw new Error("Reader returned an invalid split");
 
+	const ruleBaseDraft = ParseDraft.parse({
+		...draft,
+		type: "expense",
+		payers:
+			payerMemberId && draft.amount !== null
+				? [{ memberId: payerMemberId, amount: draft.amount }]
+				: [],
+		category: null,
+		categoryId: null,
+	});
+
 	const rulesResponse = ParseResponse.parse({
 		...result,
 		text,
-		draft: {
-			...draft,
-			type: "expense",
-			payers:
-				payerMemberId && draft.amount !== null
-					? [{ memberId: payerMemberId, amount: draft.amount }]
-					: [],
-			category: null,
-			categoryId: null,
-		},
+		draft:
+			result.status === "unparsed"
+				? ruleBaseDraft
+				: applySuggestedCategory(ruleBaseDraft, customCategories),
 		...(shares?.ok ? { shares: shares.shares } : {}),
 		reader: "rules",
 		moreDrafts: [],
@@ -350,6 +403,7 @@ export async function parseSentence(
 			allMemberIds,
 			text,
 			rulesResponse.draft,
+			customCategories,
 		),
 	);
 	const [first, ...rest] = results;

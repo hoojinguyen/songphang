@@ -56,6 +56,10 @@ export {
 	type ItemsSplitInput,
 } from "./split-items.ts";
 export {
+	type CategorySuggestion,
+	suggestCategory,
+} from "./suggest-category.ts";
+export {
 	buildVietQrPayload,
 	crc16CcittFalse,
 	findBank,

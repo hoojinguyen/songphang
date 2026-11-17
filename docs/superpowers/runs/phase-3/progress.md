@@ -19,7 +19,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3C.3 — web camera in entry bar and receipt review screen
 - [x] 3C.4 — stage gate 3C
 - [x] 3D.1 — sentence AI and parse fallback
-- [ ] 3D.2 — core category suggestion
+- [x] 3D.2 — core category suggestion
 - [ ] 3D.3 — web AI readings on the confirmation card
 - [ ] 3D.4 — README, non-functional checks, final gate 3D
 
@@ -245,6 +245,22 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - Stubbed `SentenceAi` verified zero leaked UUIDs/emails, distinct nonce refs on repeat calls, `shares`/`percent` mapping through `computeShares`, invalid shape fallback (`ai_calls.ok=false`), and `8012ms` abort timeout with `1` fetch attempt.
 - `verify_87_samples.ts`: all 87 original rule-reader samples (75 Phase 1 + 12 Phase 2) passed.
 - Security review: checked items 1, 2, 3, 4, 8; no real IDs sent to provider, Zod validation at AI boundary, atomic reservation/claim before HTTP; no issues found.
+
+## Task 3D.2 — approach
+
+- Files to create/modify: create `packages/core/src/suggest-category.ts`; modify `packages/core/src/index.ts`, `apps/api/src/services/quick-entry.ts`.
+- Approach: add `suggestCategory(description, custom)` in `@songphang/core` using `foldVietnamese` and word-boundary matching so single- and multi-word live custom category `nameKey`s take precedence, followed by the longest word-boundary match in `CATEGORY_KEYWORDS` (`packages/core/src/category-keywords.ts`, ties broken in table order). Wire `listGroupCategories` (filtering `archivedAt === null`) into `parseSentence` so rule `ok`/`needs_input` drafts and AI drafts with null category receive a suggested `category` or `categoryId` while preserving explicit AI categories and keeping `unparsed` drafts uncategorized.
+- Why simplest: keeps pure string/keyword matching in `@songphang/core` with zero database dependencies and applies it in one helper inside `parseSentence`.
+- Rejected alternative: duplicating Vietnamese folding or keyword lookup inside the API service.
+
+### Task 3D.2 results
+
+- `pnpm check`: passed (`Checked 389 files`, all 8 workspace typechecks Done).
+- `exercise_3d2.mts`:
+  - Unit table checks (9 cases + custom multi-word + substring trap): `Phở bò` -> `food`, `grab ra sân bay` -> `transport`, `Khách sạn Đà Lạt` -> `lodging`, `tiền điện tháng 12` -> `bills`, `xyz` -> `null`, `phong` -> `null`, `Cà phê` & `Cà phê sáng` with custom `ca phe` -> `{ categoryId }`, `capheine` -> `null`.
+  - Service/DB checks on `songphang_phase3_gate`: `"phở 60k chia 2"` -> `reader="rules"`, `draft.category="food"`, `draft.categoryId=null`; live custom category `"Cà phê"` -> `draft.categoryId`; archived custom category ignored and fell back to `food`; stub AI kept explicit `"entertainment"` on draft 1 and filled `"transport"` on null-category draft 2.
+- `verify_87_samples.ts` (all 87 samples) and `exercise_3d1.mts` (all 15 fixtures + timeout/quota/boundary checks): passed.
+- Security review: checked items 2, 4, 8; pure matching in core, live category filter enforced in API, no issues found.
 
 ## Not verified
 
