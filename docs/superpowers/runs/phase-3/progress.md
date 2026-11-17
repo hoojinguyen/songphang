@@ -17,7 +17,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3C.1 — core items split
 - [x] 3C.2 — API items split method and items preview
 - [x] 3C.3 — web camera in entry bar and receipt review screen
-- [ ] 3C.4 — stage gate 3C
+- [x] 3C.4 — stage gate 3C
 - [ ] 3D.1 — sentence AI and parse fallback
 - [ ] 3D.2 — core category suggestion
 - [ ] 3D.3 — web AI readings on the confirmation card
@@ -219,6 +219,14 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - `AI_FAKE_RECEIPT_FIXTURE=not-a-receipt`: showed `Không đọc được hoá đơn trong ảnh này.` with `Chụp lại` and `Nhập tay`; clicking `Nhập tay` carried `?attachmentId=...` into `ExpenseForm` (`Xem ảnh hoá đơn` visible) and opening `đổi cách chia` -> `Theo món` rendered `ItemsAssignmentPanel`.
   - `AI_PROVIDER` unset: verified `Chụp hoá đơn` absent from `EntryBar`. Zero console errors.
 - Security review: checked items 1, 2, 4, 7, 8; no issues found.
+
+## Stage gate 3C — passed
+
+- `pnpm check` (`380 files`, 7 workspace typechecks) and `API_ORIGIN=http://localhost:4010 pnpm build` passed cleanly.
+- Isolated DB `songphang_phase3_gate` reset, migrated, and seeded cleanly.
+- Cumulative gate replay (`baseline_gate.mjs`, `verify_87_samples.ts`, `exercise_3a2.mts`, `exercise_3a3.mts`, `exercise_3b1.mts`, `exercise_3b2.mts`, `exercise_3b3_spec15.mts`, `exercise_3b3_live.mts`, `exercise_3c1.mts`, `exercise_3c2.mts`): all passed.
+- Timed fake-provider browser run from image selection in `CameraButton` -> `ReceiptReview` -> `Chia đều các món còn lại` -> double-tap `Lưu` -> saved expense visible in stream: `37,155 ms` (within 60s target on localhost fake provider).
+- `check-balances.ts`: `All groups balanced`.
 
 ## Not verified
 
