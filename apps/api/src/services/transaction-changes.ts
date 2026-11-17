@@ -73,7 +73,12 @@ function snapshot(transaction: TransactionDto) {
 	);
 }
 function publish(deps: AppDeps, groupId: string) {
-	deps.events.publishChanged(groupId, ["transactions", "balances", "activity"]);
+	deps.events.publishChanged(groupId, [
+		"transactions",
+		"balances",
+		"activity",
+		"budget",
+	]);
 }
 export async function editTransaction(
 	deps: AppDeps,
@@ -143,6 +148,7 @@ export async function editTransaction(
 			groupId: input.groupId,
 			request: input.request,
 			applied: true,
+			now: deps.now(),
 		});
 		await insertActivity(executor, {
 			groupId: input.groupId,

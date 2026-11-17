@@ -64,6 +64,13 @@
 			"when": 1794897127476,
 			"tag": "0008_youthful_preak",
 			"breakpoints": true
+		},
+		{
+			"idx": 9,
+			"version": "7",
+			"when": 1794898451042,
+			"tag": "0009_curly_ender_wiggin",
+			"breakpoints": true
 		}
 	]
 }

@@ -1,6 +1,11 @@
 export { allocateByWeights } from "./allocate.ts";
 export { BANKS } from "./banks.ts";
 export {
+	BUDGET_NEAR_PERCENT,
+	type BudgetState,
+	budgetState,
+} from "./budget.ts";
+export {
 	APP_TIME_ZONE,
 	bucketFor,
 	currentMonthRange,

@@ -164,6 +164,7 @@ export function registerTransactionRoutes(
 							"transactions",
 							"balances",
 							"activity",
+							"budget",
 						]),
 					requestHash: hashRequest("POST", context.req.path, request),
 				},

@@ -52,7 +52,12 @@ export async function previewTransaction(
 		await assertLiveCategory(deps.db, groupId, request.categoryId);
 	const [shares, warnings] = await Promise.all([
 		calculateShares(deps.db, groupId, request),
-		transactionWarnings(deps.db, { groupId, request, applied: false }),
+		transactionWarnings(deps.db, {
+			groupId,
+			request,
+			applied: false,
+			now: deps.now(),
+		}),
 	]);
 	return PreviewTransactionResponse.parse({ shares, warnings });
 }
@@ -151,6 +156,7 @@ export async function createTransactionIn(
 		groupId: input.groupId,
 		request: input.request,
 		applied: true,
+		now: input.now,
 	});
 	return TransactionResponse.parse({ transaction, warnings });
 }

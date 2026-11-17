@@ -40,7 +40,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2C.3 — fund sentence reader
 - [x] 2C.4 — fund UI
 - [x] 2C.5 — gate 2C
-- [ ] 2D.1 — budget core and API
+- [x] 2D.1 — budget core and API
 - [ ] 2D.2 — budget UI
 - [ ] 2D.3 — README, final gate and final records
 
@@ -351,3 +351,19 @@ Security review: relevant items 1/2/4/6/7/8 checked against full diff; modal `<d
 - Replayed all four Phase 1 suites (`songphang-final-trip.py`, `songphang-replay-acceptance.py`, `songphang-gate1d-reader.py`, `songphang-final-permissions.py`), Stage Gate 2A (`songphang-p2-gate2a.py`, including `GET /api/v1/features` all-false and disabled 404 probes), Stage Gate 2B (`songphang-p2-gate2b.py`), and Stage Gate 2C (`/tmp/songphang-p2-gate2c.py` + `psql` 2C.1 row 2 deferred trigger at `COMMIT`): all passed (`All groups balanced` both after reset acceptance and after restoring `/tmp/songphang-p2-pre-gate2c.dump`).
 - Stage 2C permission matrix: `POST`/`PATCH`/`DELETE /fund` → owner/editor `201/200/204`, viewer `403`, outsider `404`, signed-out `401`.
 - Not verified: browser reload of renamed fund label in `ParticipantFields` (fund rename already verified via API).
+
+
+## Task 2D.1 — approach
+
+- Files to create/modify: create `packages/core/src/budget.ts`, `packages/db/src/schema-budgets.ts`, `packages/db/src/budgets.ts`, `packages/contract/src/budget.ts`, `apps/api/src/services/budget.ts`, `apps/api/src/routes/budget.ts`, and a Drizzle migration (`drizzle/0009_*.sql`); modify `packages/core/src/index.ts`, `packages/db/drizzle.config.ts`, `packages/db/src/index.ts`, `packages/contract/src/index.ts`, `apps/api/src/events/hub.ts`, `apps/api/src/services/warnings.ts`, `apps/api/src/routes/{transactions,transaction-changes}.ts`, and `apps/api/src/app.ts`.
+- Approach: add `BUDGET_NEAR_PERCENT = 80` and `BigInt`-exact `budgetState(spent, amount)` in `packages/core/src/budget.ts`. Add `budgets` table (`group_id` PK cascade, `period` in `('month', 'total')`, `amount > 0` bigint) and `sumSpent` SQL query (expenses minus income over an optional UTC range). Implement `GET`/`PUT`/`DELETE /groups/{groupId}/budget` (viewer read, owner write, activity log entity `"group"`, SSE `"budget"`), emit `"budget"` SSE on transaction mutations too, and extend `transactionWarnings` with `BUDGET_NEAR`/`BUDGET_OVER` transitions when dated in the active period (`beforeSpent` excluding the old transaction amount on edits).
+- Why simplest: shares `sumSpent` between `GET /budget` and `transactionWarnings`, and handles `create`, `preview`, and `edit` budget transitions uniformly using `beforeState -> afterState` with exact `BigInt` comparisons.
+- Rejected alternative: computing month spent in TypeScript from paginated transactions or caching `spent` in a trigger column, which would violate SQL `bigint` aggregation rules or add duplicate denormalized state.
+
+
+
+### Task 2D.1 results
+
+Commit reference: `feat(api): add group budget and spending warnings`. `pnpm check` passed (312 files, 5 workspace typechecks Done) and `pnpm db:check-balances` passed (`All groups balanced` across all groups). Exercised all 10 `budgetState(spent, amount)` rows in `packages/core` (`799999/1000000 -> ok`, `800000/1000000 -> near`, `1000000/1000000 -> near`, `1000001/1000000 -> over`, `0/1 -> ok`, `1/1 -> near`, `-5000/1000000 -> ok`, `799999999999/999999999999 -> ok`, `800000000000/999999999999 -> near`, `1/0 -> RangeError`). Exercised all 13 API rows against `http://127.0.0.1:4001/api/v1` using current real Vietnam month `2026-11` (`2026-11-10T05:00:00Z` for this month, `2026-10-15T05:00:00Z` for last month): editor/viewer PUT/DELETE `403`, viewer GET `200`, signed-out `401`, outsider GET `404`, threshold transitions `ok -> near` (`["BUDGET_NEAR"]`) -> `over` (`["BUDGET_OVER"]`), Decision 3 edit check (`PATCH` down to 200000 gives `[]` and up to 200001 gives `["BUDGET_OVER"]`), income subtraction (`spent 700001 -> ok`), transfer ignored, last-month expense ignored, switch to `total` (`periodStart: null`, `spent: 1200001`, `over`), invalid `0` (`400`), and `DELETE` (`204`, then `{ budget: null }`). File sizes: `packages/core/src/budget.ts` (17 lines), `packages/db/src/schema-budgets.ts` (35), `packages/db/src/budgets.ts` (81), `packages/contract/src/budget.ts` (33), `apps/api/src/services/budget.ts` (113), `apps/api/src/routes/budget.ts` (88), `apps/api/src/services/warnings.ts` (101).
+
+Security review: route params/bodies validated via `z.uuid()` and `PutBudgetRequest` (`1..999_999_999_999` safe integer, `month|total`); read uses `viewer`, write uses `owner` + verified email + write limit + same-origin; `sumSpent` uses Drizzle parameterized SQL `bigint::text` with exact `BigInt` boundary checks; errors reveal no SQL/paths/outsider existence. Not verified in isolation: client-side UI (`2D.2`) and `budgets` FK cascade on group deletion in SQL.

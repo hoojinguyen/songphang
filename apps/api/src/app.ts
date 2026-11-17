@@ -11,6 +11,7 @@ import type { createRateLimiter } from "./rate-limit.js";
 import { registerActivityRoutes } from "./routes/activity.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
+import { registerBudgetRoutes } from "./routes/budget.js";
 import { registerCategoryRoutes } from "./routes/categories.js";
 import { registerDevRoutes } from "./routes/dev.js";
 import { registerEventRoutes } from "./routes/events.js";
@@ -86,6 +87,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerSettlementRoutes(app, deps);
 	registerTransactionRoutes(app, deps);
 	registerBalanceRoutes(app, deps);
+	registerBudgetRoutes(app, deps);
 	registerStatsRoutes(app, deps);
 	registerExportRoutes(app, deps);
 	registerActivityRoutes(app, deps);
