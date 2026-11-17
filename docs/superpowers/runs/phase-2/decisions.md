@@ -55,3 +55,12 @@ Reason: current owner instructions outrank the plan; this follows the existing t
 | NAPAS bank data | Missing; blocking advisor prerequisite D1 |
 
 This is a partial mapping only. Task 0 must still map all other assumed existing interfaces and run its full gates after advisor preparation is complete.
+
+
+## D4 — Owner-approved VietQR source replaces D1 blocker
+
+Problem: NAPAS complete BIN mapping was inaccessible. Options: continue blocked; use public VietQR dataset. Choice: owner explicitly authorized the latter on 2026-11-17. Retrieved https://api.vietqr.io/v2/banks, documented at https://www.vietqr.io/api-bank, before implementation. Response code 00, 76 rows, 76 unique six-digit BINs, nonempty names; all rows retained without guessing or filtering institutions. Raw JSON SHA256: 7f905bc2da19a8848bd805646e74c64fee8531314f68ce2476fcccb977dd6596. Static snapshot only; no runtime network dependency. D1's blocker is resolved by this owner decision, not by obtaining a NAPAS-certified list.
+
+## D5 — Advisor sample fixtures and standing amendments
+
+Choice: append F01–F12 without modifying any prior byte of the 75 existing samples. Define separate F/N/Q groups for fund, absent fund and person-name ambiguity. Calculate shares before implementation using the approved largest-remainder position rule. Amend standing documents additively in English, superseding the explicitly identified older Phase 2 reservations. No library or product requirement beyond approved spec added.

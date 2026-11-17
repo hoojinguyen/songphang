@@ -299,3 +299,19 @@ Approved with the phase 1 spec.
 | created_at | timestamptz | NOT NULL | |
 
 Membership of payers and sharers in the transaction's group is enforced by the same deferred constraint trigger that checks the totals, not by a composite foreign key. `user_identities` stays as designed; section 8's note about moving `google_sub` is obsolete.
+
+
+## Phase 2 amendment — approved 2026-11-17
+
+This supersedes section 8's Phase 2 reservation. Exact table/column definitions follow Phase 2 spec sections 3.1, 5.1, 6.1, 7.1, 7.3 and 8, with plan refinements below. All money columns remain bigint; all writes retain Phase 1 locking and deferred ledger integrity.
+
+| Table | Phase 2 structure and integrity |
+|---|---|
+| member_payment_methods | UUID PK; member_id cascade FK; kind bank/momo/zalopay; bank_bin six digits for banks and null otherwise; account_number required; account_name required for banks; created_at/updated_at; unique member_id/kind |
+| settlement_requests | UUID PK; group_id cascade FK; distinct from_member_id/to_member_id restricted FKs; positive bigint amount; pending/confirmed/rejected/cancelled status; nullable transaction_id set-null FK; nullable created_by/resolved_by set-null user FKs; created_at/resolved_at; unique pending ordered pair per group |
+| group_categories | UUID PK; group_id cascade FK; name 1–30; normalized name_key; approved member color; archived_at and timestamps; unique live group_id/name_key; at most 30 live categories serialized under group lock |
+| budgets | group_id PK cascade FK; period month/total; positive bigint amount; updated_by user FK; timestamps |
+| members additions | kind person/fund default person; optional fund_holder_member_id set-null member FK; person cannot have holder; one fund per group partial unique index; fund counts toward 100-member integrity limit |
+| transactions additions | category_id set-null category FK; CHECK category IS NULL OR category_id IS NULL; description_search NOT NULL with normalizer backfill and writes on create/edit |
+
+A deferred constraint trigger rejects fund shares for expense/income but permits a transfer's fund receiver row. A group_users trigger forbids linking a fund. Services additionally enforce same-group holder/category/member references, no payment methods on funds and no closure with nonzero cash. Existing integer balance formula remains unchanged: cash is negative fund balance; contributions are live incoming minus outgoing transfers per person.

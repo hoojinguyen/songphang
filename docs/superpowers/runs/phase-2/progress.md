@@ -1,6 +1,6 @@
 # Phase 2 run — progress
 
-## Status — advisor preparation blocked
+## Status — advisor preparation resumed
 
 Date: 2026-11-17. Owner authorized preparation and continuous execution in the current session. This authorization supersedes the draft approval labels in the existing specs. No implementation has started.
 
@@ -21,7 +21,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 
 ## Task checklist
 
-- [ ] Advisor preparation — mandatory bank dataset unavailable
+- [x] Advisor preparation — commit reference `docs(phase-2): prepare approved real-money phase`
 - [ ] Task 0 — complete re-baseline and reset acceptance replay
 - [ ] 2A.1 — VietQR payload and bank lookup
 - [ ] 2A.2 — member payment methods
@@ -81,3 +81,12 @@ The local database was neither reset nor modified, so no backup/restore exercise
 ## Gate not passed
 
 No stage gate was attempted. The mandatory advisor-input prerequisite remains blocked; no task is marked complete.
+
+
+## Advisor preparation resumed — 2026-11-17
+
+Approach: create banks.ts from the authorized public VietQR snapshot; append twelve independently calculated fund samples; amend AGENTS/SRS/database/API/UX/ADR for the approved Phase 2 scope. Keep old run blocker evidence as history, superseded by D4. Reuse installed QR rendering and the existing pure message import exception for CSV labels. No implementation or database mutation before this preparation checkpoint.
+
+Observed source exercise: code 00, 76 entries, 76 unique six-digit BINs, all names nonempty. Original samples preserved as an exact byte prefix. The source snapshot is documented, not described as a NAPAS certification. No payment/account/transaction API was used; only the explicitly approved public bank catalogue.
+
+Preparation validation: pnpm check passed (238 files, all five workspace typechecks Done). Security review: relevant items 1, 2, 8 checked; static catalogue fields validated before generation, no credentials or dependency/runtime changes. Full standing-document amendments and dataset reviewed. banks.ts exceeds 200 lines because it is the complete static catalogue, not executable logic. Fund sample arithmetic and original 75-sample byte preservation checked. Previous blocker status above is historical and resolved by D4.

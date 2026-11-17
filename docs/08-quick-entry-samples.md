@@ -151,3 +151,27 @@ For A53 the draft still holds: lẩu, 300000, payer Minh, exact entries Minh 800
 ## 8. Outside the reader
 
 A sentence longer than 300 characters is refused by the API with 400 `VALIDATION_FAILED` before the reader runs. Transfers, income, dates, categories and several payers cannot be typed; they belong to the form.
+
+
+## 9. Phase 2 fund samples — approved 2026-11-17
+
+These rows are fixed advisor inputs, calculated independently before reader implementation. The preceding 75 samples are unchanged.
+
+Group F: active people Minh, Lan, Hùng in that position order; active fund named Quỹ chung in position 3; writer Minh. Group N: the same three people without a fund. Group Q: group F plus active person Quy in position 4; writer Minh. Shares always refer to people, never the fund. A fund alias in a payer position is `quỹ` or `quy`; the fund's full name is also accepted. Refused rows must contain the listed issue and must never be saved.
+
+| # | Group | Sentence | Status | Independently calculated expected result |
+|---|---|---|---|---|
+| F01 | F | `ăn tối 300k quỹ trả` | ok | description ăn tối; total 300000; payer fund; Minh 100000, Lan 100000, Hùng 100000 |
+| F02 | F | `an toi 300k quy tra` | ok | description an toi; total 300000; payer fund; Minh 100000, Lan 100000, Hùng 100000 |
+| F03 | F | `từ quỹ cà phê 100k` | ok | description cà phê; total 100000; payer fund; Minh 33334, Lan 33333, Hùng 33333 |
+| F04 | F | `tu quy ca phe 100k` | ok | description ca phe; total 100000; payer fund; Minh 33334, Lan 33333, Hùng 33333 |
+| F05 | F | `vé 1001 quỹ chung trả` | ok | description vé; total 1001; payer fund; Minh 334, Lan 334, Hùng 333 |
+| F06 | F | `ăn 90k quỹ trả chia lan, hùng` | ok | description ăn; total 90000; payer fund; Lan 45000, Hùng 45000 |
+| F07 | F | `ăn 300k quỹ trả chia 3` | ok | description ăn; total 300000; payer fund; Minh 100000, Lan 100000, Hùng 100000 |
+| F08 | F | `ăn 300k quỹ trả chia 4` | unparsed | COUNT_MISMATCH, count 4, three active people |
+| F09 | N | `ăn 300k quỹ trả` | unparsed | MEMBER_UNKNOWN on quỹ |
+| F10 | F | `ăn 300k chia quỹ` | unparsed | FUND_CANNOT_SHARE on quỹ |
+| F11 | F | `ăn 300k quỹ 100 lan 200` | unparsed | FUND_CANNOT_SHARE on quỹ |
+| F12 | Q | `ăn 300k quy tra` | needs_input | MEMBER_AMBIGUOUS on quy; candidates fund and person Quy; no payer chosen |
+
+Arithmetic: 300000 = 3 × 100000; 100000 = 33334 + 33333 + 33333; 1001 = 334 + 334 + 333; 90000 = 45000 + 45000. Ties receive extra đồng in person position order. Sample F11's entered parts sum to 300000 but are refused because a fund cannot bear a share.

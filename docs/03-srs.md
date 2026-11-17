@@ -225,3 +225,25 @@ Có hai cách thêm chi tiêu, ngang hàng nhau: **gõ một câu** như nhắn 
 ## 7. Ứng viên chưa xếp giai đoạn
 
 Đa tiền tệ có tỉ giá theo giao dịch, giao dịch định kỳ, lưu trữ nhóm, nhân bản nhóm, tìm kiếm và lọc giao dịch, nhóm lồng nhau, widget màn hình chính. Xem [07 — Product Roadmap](07-roadmap.md) về cách đưa chúng vào kế hoạch.
+
+
+## Phase 2 amendment — approved 2026-11-17
+
+The owner authorized the Phase 2 spec and plan in the current session. The detailed requirements and final product wording in `superpowers/specs/2026-11-15-phase-2-real-money-design.md` are binding.
+
+FR-2.3 is reduced to copying wallet phone numbers and amounts; no wallet deeplink is built. FR-2.10 adds fund payer phrases to quick entry, refuses fund shares and asks on ambiguous person/fund names. FR-2.11 adds accent-insensitive description search and member/category/type/date filters with unchanged cursor pagination. All active default participants are people, excluding the fund.
+
+Payment details are visible only inside the group, never in invite previews, activity snapshots or logs. Viewers can edit only their linked member's details. Settlement requests do not affect balances; confirmation is atomic and authorized by receiver identity, owner, or editor only for an unlinked receiver. Repeated confirmation returns 409 and creates no second transfer. Funds cannot be claimed or bear expense/income shares. Budget warnings never block writes.
+
+## 10. Permission matrix additions
+
+| Endpoint group | Owner | Editor | Viewer | Outsider |
+|---|---|---|---|---|
+| Read payment methods, settlement requests, categories, stats, budget, export | 200 | 200 | 200 | 404 |
+| Write payment methods of any member | 2xx | 2xx | 403 | 404 |
+| Write payment methods of one's own member | 2xx | 2xx | 2xx | 404 |
+| Create a settlement request for one's own member; confirm or reject as the receiver | 2xx | 2xx | 2xx | 404 |
+| Create a settlement request for another member | 2xx | 2xx | 403 | 404 |
+| Confirm a request to an unlinked member | 2xx | 2xx | 403 | 404 |
+| Create, edit, archive a category; create, edit, delete the fund | 2xx | 2xx | 403 | 404 |
+| Set or remove the budget | 2xx | 403 | 403 | 404 |

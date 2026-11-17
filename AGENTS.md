@@ -13,7 +13,7 @@ This file applies to every agent working in this repository (Claude, Codex, Anti
 
 Sòng Phẳng is a group expense-splitting application for Vietnamese users: web first, native iOS and Android later, with a shared API. It is initially for internal use and will be released publicly later, so accounts, security, and UI quality are built to public-product standards from the beginning.
 
-Current phase: **1 — Core expense splitting**, built in one phase run (section 12). Everything runs on the development machine; there is no server, domain, or external service.
+Current phase: **2 — Real money**, built in one phase run (section 12). Everything runs on the development machine; there is no server, domain, or external service.
 
 ## 2. Who decides what
 
@@ -133,7 +133,7 @@ Security comes before speed and convenience. The full checklist is in `security-
 
 ## 12. Phase run
 
-A phase run builds a whole roadmap phase in one continuous agent run. It applies only when the plan says so. The design and its reasons are in `docs/superpowers/specs/2026-11-12-phase-1-single-run-design.md` and ADR-018.
+A phase run builds the phase named by its approved plan in one continuous agent run. Task 0 re-baselines all assumed interfaces and replays earlier acceptance gates before feature implementation. It applies only when the plan says so. The design and its reasons are in `docs/superpowers/specs/2026-11-12-phase-1-single-run-design.md` and ADR-018.
 
 - **Roles.** The advisor writes the spec and the plan and reviews the finished branch. The implementation agent runs the plan from the first unticked task to the last without waiting for approval. The project owner approves the spec and the plan before the run, and checks by hand and merges after the review.
 - **Per task.** The six steps of section 4 stay. The report is written into the run's `progress.md`, and the agent then continues with the next task instead of stopping. One commit per task; `pnpm check` passes before each commit.
