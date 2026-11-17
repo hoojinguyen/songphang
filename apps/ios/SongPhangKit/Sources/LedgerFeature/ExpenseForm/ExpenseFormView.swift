@@ -10,6 +10,7 @@ public struct ExpenseFormView: View {
   @Bindable private var model: ExpenseFormModel
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
+  @FocusState private var isDescriptionFocused: Bool
 
   public init(
     model: ExpenseFormModel,
@@ -166,11 +167,14 @@ public struct ExpenseFormView: View {
               : L10n.tr("expenseForm.descriptionPlaceholder"),
             text: $model.descriptionText
           )
+          .focused($isDescriptionFocused)
           .font(Typography.bodyBold)
           .foregroundStyle(Tokens.ink)
           .padding(.horizontal, 16)
           .frame(height: 56)
           .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+          .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+          .onTapGesture { isDescriptionFocused = true }
           .accessibilityLabel(L10n.tr("expenseForm.descriptionLabel"))
 
           if model.transactionType == .transfer {

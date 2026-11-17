@@ -171,6 +171,7 @@ struct AmountFieldView: View {
   let value: String
   let onChange: (String) -> Void
   let onAddThousands: () -> Void
+  @FocusState private var isFocused: Bool
 
   var body: some View {
     HStack(spacing: 8) {
@@ -182,6 +183,7 @@ struct AmountFieldView: View {
         )
       )
       .keyboardType(.numberPad)
+      .focused($isFocused)
       .multilineTextAlignment(.center)
       .font(.system(size: 46, weight: .black))
       .foregroundStyle(Tokens.ink)
@@ -211,6 +213,8 @@ struct AmountFieldView: View {
             .strokeBorder(Tokens.ink, lineWidth: 3)
         )
     )
+    .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+    .onTapGesture { isFocused = true }
   }
 }
 

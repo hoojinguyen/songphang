@@ -179,6 +179,7 @@ public struct NewMemberInputRow: View {
   private let onAdd: (String) -> Void
 
   @State private var name = ""
+  @FocusState private var isFocused: Bool
 
   public init(
     appearance: (shape: MemberShape, color: MemberColor),
@@ -204,6 +205,8 @@ public struct NewMemberInputRow: View {
       )
 
       TextField(label, text: $name)
+        .focused($isFocused)
+        .submitLabel(.done)
         .font(Typography.screenHeaderTitle)
         .foregroundStyle(Tokens.ink)
         .disabled(isDisabled)
@@ -232,6 +235,8 @@ public struct NewMemberInputRow: View {
       RoundedRectangle(cornerRadius: 30, style: .continuous)
         .stroke(Tokens.ink, lineWidth: 3)
     )
+    .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+    .onTapGesture { isFocused = true }
   }
 
   private func submit() {
@@ -239,5 +244,6 @@ public struct NewMemberInputRow: View {
     guard !trimmed.isEmpty, !isDisabled else { return }
     onAdd(trimmed)
     name = ""
+    isFocused = true
   }
 }

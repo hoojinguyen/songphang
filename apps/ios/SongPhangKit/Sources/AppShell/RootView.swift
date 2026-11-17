@@ -118,6 +118,7 @@ public struct RootView: View {
         DebugGalleryView()
       } else {
         mainContent
+          .scrollDismissesKeyboard(.interactively)
       }
     }
     #if DEBUG
@@ -319,6 +320,7 @@ public struct RootView: View {
             }
           #endif
         }
+        .toolbar { keyboardDoneToolbar }
         .navigationDestination(for: Route.self) { route in
           destinationView(for: route, currentUser: nil)
         }
@@ -362,6 +364,21 @@ public struct RootView: View {
     }
   }
 
+  @ToolbarContentBuilder
+  private var keyboardDoneToolbar: some ToolbarContent {
+    ToolbarItemGroup(placement: .keyboard) {
+      Spacer()
+      Button(L10n.tr("split.done")) {
+        UIApplication.shared.sendAction(
+          #selector(UIResponder.resignFirstResponder),
+          to: nil,
+          from: nil,
+          for: nil
+        )
+      }
+    }
+  }
+
   private func destinationView(for route: Route, currentUser: User?) -> some View {
     RouteDestination(
       route: route,
@@ -387,6 +404,8 @@ public struct RootView: View {
         Task { await groupListModel.load() }
       }
     )
+    .toolbar { keyboardDoneToolbar }
+    .background(PopGestureEnabler())
     .id(route)
   }
 }

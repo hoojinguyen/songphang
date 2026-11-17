@@ -11,6 +11,7 @@ public struct QuickEntryView: View {
   @Bindable private var model: QuickEntryModel
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
+  @FocusState private var isSentenceFocused: Bool
 
   public init(
     model: QuickEntryModel,
@@ -82,6 +83,7 @@ public struct QuickEntryView: View {
       if model.state.value == nil {
         await model.load()
       }
+      isSentenceFocused = true
     }
   }
 
@@ -196,6 +198,7 @@ public struct QuickEntryView: View {
         .font(Typography.body)
         .foregroundStyle(Tokens.ink)
         .lineLimit(1...3)
+        .focused($isSentenceFocused)
         .onSubmit {
           model.sendImmediately()
         }
@@ -222,6 +225,8 @@ public struct QuickEntryView: View {
       .accessibilityLabel(L10n.tr("compose.send"))
     }
     .padding(12)
+    .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+    .onTapGesture { isSentenceFocused = true }
     .background(
       RoundedRectangle(cornerRadius: 30, style: .continuous)
         .fill(Tokens.surface)

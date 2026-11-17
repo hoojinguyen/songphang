@@ -14,6 +14,7 @@ public struct SPTextField: View {
   private let error: String?
   private let hint: String?
   private let maxLength: Int?
+  @FocusState private var isFocused: Bool
 
   public init(
     label: String,
@@ -56,12 +57,19 @@ public struct SPTextField: View {
           TextField(placeholder, text: $text)
         }
       }
+      .focused($isFocused)
       .font(Typography.bodyBold)
       .foregroundStyle(Tokens.ink)
       .padding(.horizontal, 16)
       .frame(minHeight: 56)
       .background(Tokens.surface)
       .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+      .overlay(
+        RoundedRectangle(cornerRadius: 26, style: .continuous)
+          .strokeBorder(Tokens.muted.opacity(0.35), lineWidth: 1.5)
+      )
+      .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+      .onTapGesture { isFocused = true }
       .onChange(of: text) { _, newValue in
         if let maxLength, newValue.count > maxLength {
           text = String(newValue.prefix(maxLength))

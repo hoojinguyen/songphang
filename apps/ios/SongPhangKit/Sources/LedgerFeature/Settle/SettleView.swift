@@ -12,6 +12,7 @@ public struct SettleView: View {
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
   private let onBackToGroups: () -> Void
+  @FocusState private var isAmountFocused: Bool
 
   public init(
     model: SettleModel,
@@ -143,6 +144,7 @@ public struct SettleView: View {
         )
       )
       .keyboardType(.numberPad)
+      .focused($isAmountFocused)
       .multilineTextAlignment(.center)
       .font(.system(size: 44, weight: .black))
       .foregroundStyle(Tokens.ink)
@@ -156,6 +158,8 @@ public struct SettleView: View {
               .strokeBorder(Tokens.ink, lineWidth: 3)
           )
       )
+      .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+      .onTapGesture { isAmountFocused = true }
       .accessibilityLabel(L10n.t("settle.amountLabel", ["name": data.fromMember.name]))
     }
 
