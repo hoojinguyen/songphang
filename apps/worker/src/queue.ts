@@ -2,6 +2,7 @@ import type { Db } from "@songphang/db";
 import type { FileStore } from "@songphang/storage";
 import { PgBoss } from "pg-boss";
 import type { ZodType } from "zod";
+import type { ReceiptReader } from "./ai/receipt-reader.js";
 import type { WorkerConfig } from "./config.js";
 
 export type WorkerDeps = {
@@ -9,6 +10,7 @@ export type WorkerDeps = {
 	db: Db;
 	fileStore: FileStore;
 	now: () => Date;
+	receiptReader?: ReceiptReader | null;
 };
 
 export function createWorkerQueue(connectionString: string): PgBoss {

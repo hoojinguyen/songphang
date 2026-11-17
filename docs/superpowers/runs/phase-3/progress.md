@@ -13,7 +13,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3A.4 — web photos on the form and the stream; stage gate 3A
 - [x] 3B.1 — receipt reading schema and arithmetic check
 - [x] 3B.2 — receipt reader adapters, cost ledger, quotas
-- [ ] 3B.3 — receipt scans endpoint, job, stage gate 3B
+- [x] 3B.3 — receipt scans endpoint, job, stage gate 3B
 - [ ] 3C.1 — core items split
 - [ ] 3C.2 — API items split method and items preview
 - [ ] 3C.3 — web camera in entry bar and receipt review screen
@@ -156,6 +156,22 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - Worker/API startup config guards rejected missing `ANTHROPIC_API_KEY` (without leaking secret values), `AI_PROVIDER=fake` in production, and `AI_FAKE_RECEIPT_FIXTURE` with `anthropic` or in production; `GET /api/v1/features` returned `receiptReading: false` when unset and `true` when `AI_PROVIDER=fake`.
   - Stubbed `fetch` Anthropic adapter sent single `POST` with `x-api-key`, `anthropic-version: 2023-06-01`, forced `record_receipt` tool schema, returned `50000` VND + usage counts, and surfaced 429 as `AnthropicTransportError` (`retryable: true`) with 1 attempt and no leaked API key.
 - Security review: checked items 1, 2, 4, 8; no secrets logged or thrown, Zod validated env and response payloads, atomic advisory lock on quota checks; no issues found.
+
+## Task 3B.3 — approach
+
+- Files to create/modify: create `packages/db/src/{schema-scans,receipt-scans}.ts`, Drizzle migration `0012_clumsy_ravenous.sql`, `apps/api/src/{services,routes}/receipt-scans.ts`, `apps/worker/src/jobs/read-receipt.ts`; modify `packages/contract/src/{error,jobs}.ts`, `packages/db/{drizzle.config.ts,src/{schema-ai,ai-calls,index}.ts}`, `apps/api/src/app.ts`, `apps/worker/src/{queue,main}.ts`.
+- Approach: add `receipt_scans` with `UNIQUE (attachment_id)`, `ai_calls.receipt_scan_id` FK (`ON DELETE SET NULL`), `AI_QUOTA_EXCEEDED`, and `JOB_NAMES.readReceipt`. Under `runIdempotent`, `lockGroup`, and a single DB transaction, return any existing scan (`200`) before reserving quota; otherwise reserve `ai_calls`, insert `queued` scan, link reservation, and enqueue atomically (`201` + `receiptScans` SSE event). Worker `read-receipt` atomically claims `reserved -> started` after verifying purpose/caller/group/scan ownership and current quota window, rejects expired or crashed attempts without calling the provider, performs at most one separately reserved retry on retryable transport errors, runs `checkReceipt`, stores `result`/`errorCode`, notifies via `NOTIFY`, and recovers stale `processing` scans.
+- Why simplest: keeps admission, uniqueness, scan creation, and durable job enqueue in one `lockGroup`-ordered transaction without extra state tables.
+- Rejected alternative: pre-reserving quota outside the scan uniqueness check, which would burn user/month quota on duplicate scan submissions.
+
+### Task 3B.3 results & stage gate 3B — passed
+
+- `pnpm check` (`370 files`, 7 workspace typechecks) and `API_ORIGIN=http://localhost:4010 pnpm build` passed cleanly after final edits.
+- Migration `0012_clumsy_ravenous.sql` applied on reset isolated `songphang_phase3_gate`.
+- `exercise_3b3_spec15.mts`: concurrent 5-key scan creations -> `1` created (`201`), `4` existing (`200`), `1` `ai_calls` row, `1` job; forced `enqueue` error -> full rollback; job redelivery -> `1` provider call; retry at quota boundary -> blocked without unreserved second request; sentence + receipt shared month ceiling verified; expired reservation (`READER_UNAVAILABLE`), crashed `started` claim (`READ_FAILED`), and stale `processing` recovery (`READ_FAILED`) verified with `0` provider calls.
+- `exercise_3b3_live.mts`: live API + worker + SSE stream verified `clean.jpg` (`201 queued` -> `receiptScans` SSE -> `done 440000 []`), duplicate attachment (`200`, 1 `ai_calls`), `mismatch.jpg` (`done TOTAL_MISMATCH computed=442000 vs total=450000`), `not-a-receipt.jpg` (`failed NOT_A_RECEIPT`), unchanged transactions/balances, viewer `403`, outsider/cross-group `404`/`400`, worker stop->queue->start recovery, daily quota `2` -> 3rd `429 AI_QUOTA_EXCEEDED (scope=user)`, and unset `AI_PROVIDER` -> `features.receiptReading=false` + `POST 404`.
+- Cumulative gate replay (`baseline_gate.mjs`, `verify_87_samples.ts`, `exercise_3a2.mts`, `exercise_3a3.mts`, `exercise_3b1.mts`, `exercise_3b2.mts`, `check-balances.ts`): all passed; `All groups balanced`.
+- Security review: checked items 1, 2, 3, 4, 6, 8; no issues found.
 
 ## Not verified
 

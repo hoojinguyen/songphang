@@ -12,6 +12,7 @@ import {
 import { uuidv7 } from "uuidv7";
 import { users } from "./schema.js";
 import { groups } from "./schema-groups.js";
+import { receiptScans } from "./schema-scans.js";
 
 export const aiCalls = pgTable(
 	"ai_calls",
@@ -21,6 +22,9 @@ export const aiCalls = pgTable(
 			onDelete: "set null",
 		}),
 		groupId: uuid("group_id").references(() => groups.id, {
+			onDelete: "set null",
+		}),
+		receiptScanId: uuid("receipt_scan_id").references(() => receiptScans.id, {
 			onDelete: "set null",
 		}),
 		purpose: text("purpose").notNull(),
@@ -53,5 +57,6 @@ export const aiCalls = pgTable(
 			table.createdAt,
 		),
 		index("ai_calls_created_index").on(table.createdAt),
+		index("ai_calls_scan_index").on(table.receiptScanId),
 	],
 );

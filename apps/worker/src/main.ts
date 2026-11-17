@@ -4,6 +4,10 @@ import { loadWorkerConfig, type WorkerConfig } from "./config.js";
 import { registerCleanupAttachmentsJob } from "./jobs/cleanup-attachments.js";
 import { registerDeleteFilesJob } from "./jobs/delete-files.js";
 import { registerHeartbeatJob } from "./jobs/heartbeat.js";
+import {
+	recoverStaleScans,
+	registerReadReceiptJob,
+} from "./jobs/read-receipt.js";
 import { createWorkerQueue, type WorkerDeps } from "./queue.js";
 
 let config: WorkerConfig;
@@ -35,9 +39,17 @@ try {
 	await registerHeartbeatJob(boss, deps);
 	await registerCleanupAttachmentsJob(boss, deps);
 	await registerDeleteFilesJob(boss, deps);
+	await registerReadReceiptJob(boss, deps);
+	await recoverStaleScans(deps);
+	const recoveryTimer = setInterval(() => {
+		void recoverStaleScans(deps).catch(() => {
+			console.error("Failed to recover stale receipt scans");
+		});
+	}, 60_000);
 	console.log(JSON.stringify({ event: "worker.started" }));
 
 	const shutdown = async () => {
+		clearInterval(recoveryTimer);
 		await boss.stop({ graceful: true }).catch(() => {
 			console.error("Failed to stop worker queue");
 			process.exitCode = 1;

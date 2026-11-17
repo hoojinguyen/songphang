@@ -22,6 +22,7 @@ export * from "./invites.js";
 export * from "./members.js";
 export { runMigrations } from "./migrate.js";
 export * from "./payment-methods.js";
+export * from "./receipt-scans.js";
 export { sessions, users } from "./schema.js";
 export { authTokens, userIdentities } from "./schema-accounts.js";
 export { aiCalls } from "./schema-ai.js";
@@ -31,6 +32,7 @@ export { groupCategories } from "./schema-categories.js";
 export { groups, groupUsers, members } from "./schema-groups.js";
 export * from "./schema-payments.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";
+export { receiptScans } from "./schema-scans.js";
 export * from "./schema-settlements.js";
 export {
 	transactionPayers,

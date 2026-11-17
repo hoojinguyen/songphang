@@ -4,6 +4,7 @@ export const JOB_NAMES = {
 	heartbeat: "heartbeat",
 	cleanupAttachments: "cleanup-attachments",
 	deleteFiles: "delete-files",
+	readReceipt: "read-receipt",
 } as const;
 
 export const HeartbeatPayload = z.object({});
@@ -18,6 +19,12 @@ export const DeleteFilesPayload = z.object({
 	keys: z.array(z.string().regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}$/)).max(10000),
 });
 export type DeleteFilesPayload = z.infer<typeof DeleteFilesPayload>;
+
+export const ReadReceiptPayload = z.object({
+	scanId: z.uuid(),
+	reservationId: z.uuid(),
+});
+export type ReadReceiptPayload = z.infer<typeof ReadReceiptPayload>;
 
 export const GroupEventResource = z.enum([
 	"group",

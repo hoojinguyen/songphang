@@ -1,5 +1,5 @@
 import { quotaWindowStarts } from "@songphang/core";
-import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { aiCalls } from "./schema-ai.js";
 
@@ -88,6 +88,16 @@ export async function findAiCall(
 	return row ?? null;
 }
 
+export async function linkAiCallToScan(
+	executor: DbExecutor,
+	input: { id: string; receiptScanId: string },
+): Promise<void> {
+	await executor
+		.update(aiCalls)
+		.set({ receiptScanId: input.receiptScanId })
+		.where(eq(aiCalls.id, input.id));
+}
+
 export async function claimAiCall(
 	executor: DbExecutor,
 	input: {
@@ -95,6 +105,8 @@ export async function claimAiCall(
 		purpose: AiPurpose;
 		userId: string;
 		groupId: string;
+		receiptScanId: string | null;
+		minCreatedAt: Date;
 		startedAt: Date;
 	},
 ): Promise<AiCallRow | null> {
@@ -111,10 +123,34 @@ export async function claimAiCall(
 				eq(aiCalls.purpose, input.purpose),
 				eq(aiCalls.userId, input.userId),
 				eq(aiCalls.groupId, input.groupId),
+				gte(aiCalls.createdAt, input.minCreatedAt),
+				input.receiptScanId === null
+					? isNull(aiCalls.receiptScanId)
+					: eq(aiCalls.receiptScanId, input.receiptScanId),
 			),
 		)
 		.returning();
 	return row ?? null;
+}
+
+export async function finishStaleStartedAiCalls(
+	executor: DbExecutor,
+	input: { scanIds: string[]; finishedAt: Date },
+): Promise<void> {
+	if (input.scanIds.length === 0) return;
+	await executor
+		.update(aiCalls)
+		.set({
+			state: "finished",
+			ok: false,
+			finishedAt: input.finishedAt,
+		})
+		.where(
+			and(
+				inArray(aiCalls.receiptScanId, input.scanIds),
+				eq(aiCalls.state, "started"),
+			),
+		);
 }
 
 export async function recordAiCall(
