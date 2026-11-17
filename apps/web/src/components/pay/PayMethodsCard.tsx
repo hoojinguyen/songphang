@@ -41,11 +41,13 @@ export function PayMethodsCard({
 		<div className="grid gap-4">
 			{bank && (
 				<>
-					<QrCard
-						payload={bank.qrPayload}
-						label={t(vi.pay.title, { to: toName })}
-						hint={vi.pay.qrHint}
-					/>
+					{bank.qrPayload && (
+						<QrCard
+							payload={bank.qrPayload}
+							label={t(vi.pay.title, { to: toName })}
+							hint={vi.pay.qrHint}
+						/>
+					)}
 					<section className="grid gap-2 rounded-card bg-surface p-5">
 						<CopyRow label={vi.payment.bank} value={bank.bankShortName} />
 						<CopyRow

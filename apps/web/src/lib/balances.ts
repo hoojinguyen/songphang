@@ -17,7 +17,8 @@ export function settlementHref(
 	groupId: string,
 	transfer: { fromMemberId: string; toMemberId: string; amount: number },
 ) {
-	return `/g/${encodeURIComponent(groupId)}/settle?from=${encodeURIComponent(transfer.fromMemberId)}&to=${encodeURIComponent(transfer.toMemberId)}&amount=${transfer.amount}`;
+	const cappedAmount = Math.min(transfer.amount, 999_999_999_999);
+	return `/g/${encodeURIComponent(groupId)}/settle?from=${encodeURIComponent(transfer.fromMemberId)}&to=${encodeURIComponent(transfer.toMemberId)}&amount=${cappedAmount}`;
 }
 
 export function payHref(

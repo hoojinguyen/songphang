@@ -19,6 +19,9 @@ import {
 import type { AppDeps } from "../app.js";
 import { AppError } from "../errors.js";
 import { paymentMethodDto } from "./payment-methods.js";
+
+const MAX_VIETQR_AMOUNT = 999_999_999_999;
+
 export async function getBalances(
 	deps: AppDeps,
 	groupId: string,
@@ -84,12 +87,15 @@ export async function getBalances(
 						return method.kind === "bank"
 							? {
 									...method,
-									qrPayload: buildVietQrPayload({
-										bankBin: method.bankBin,
-										accountNumber: method.accountNumber,
-										amount: transfer.amount,
-										purpose,
-									}),
+									qrPayload:
+										transfer.amount <= MAX_VIETQR_AMOUNT
+											? buildVietQrPayload({
+													bankBin: method.bankBin,
+													accountNumber: method.accountNumber,
+													amount: transfer.amount,
+													purpose,
+												})
+											: null,
 								}
 							: method;
 					});

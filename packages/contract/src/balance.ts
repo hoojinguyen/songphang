@@ -2,7 +2,9 @@ import { z } from "@hono/zod-openapi";
 import { FundSummary } from "./fund.ts";
 import { PaymentMethodDto } from "./payment.ts";
 export const PayTo = z.discriminatedUnion("kind", [
-	PaymentMethodDto.options[0].extend({ qrPayload: z.string().min(1).max(512) }),
+	PaymentMethodDto.options[0].extend({
+		qrPayload: z.string().min(1).max(512).nullable(),
+	}),
 	PaymentMethodDto.options[1],
 	PaymentMethodDto.options[2],
 ]);
