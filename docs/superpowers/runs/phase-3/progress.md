@@ -20,7 +20,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3C.4 — stage gate 3C
 - [x] 3D.1 — sentence AI and parse fallback
 - [x] 3D.2 — core category suggestion
-- [ ] 3D.3 — web AI readings on the confirmation card
+- [x] 3D.3 — web AI readings on the confirmation card
 - [ ] 3D.4 — README, non-functional checks, final gate 3D
 
 ## Baseline failures
@@ -261,6 +261,24 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - Service/DB checks on `songphang_phase3_gate`: `"phở 60k chia 2"` -> `reader="rules"`, `draft.category="food"`, `draft.categoryId=null`; live custom category `"Cà phê"` -> `draft.categoryId`; archived custom category ignored and fell back to `food`; stub AI kept explicit `"entertainment"` on draft 1 and filled `"transport"` on null-category draft 2.
 - `verify_87_samples.ts` (all 87 samples) and `exercise_3d1.mts` (all 15 fixtures + timeout/quota/boundary checks): passed.
 - Security review: checked items 2, 4, 8; pure matching in core, live category filter enforced in API, no issues found.
+
+## Task 3D.3 — approach
+
+- Files to modify: `apps/web/src/messages/vi.ts`, `apps/web/src/components/quick-entry/ConfirmationCard.tsx`, `apps/web/src/components/quick-entry/QuestionCard.tsx`, `apps/web/src/components/expense-form/use-expense-form.ts`, `apps/web/src/app/g/[groupId]/tx/new/ComposeScreen.tsx`.
+- Approach: add the Spec §8.4 Vietnamese strings (`Đang đọc…`, `Đọc bằng AI. Hãy xem lại.`, `Khoản {index}/{count}`, `Lưu và sang khoản sau`, `Bỏ khoản này`) to `vi.compose`. In `ComposeScreen`, display `Đang đọc…` (`role="status"`) when `query.isFetching` stays pending beyond 1000ms, suppress phrase highlighting (`spans: []`) whenever `reader === "ai"`, iterate `[first, ...moreDrafts]` with distinct `${sentence}:${activeIndex}` idempotency keys and category overrides, forward non-`ok` AI items (and `unparsed`) to `/tx/new?form` prefilled via `useDraft`, and preserve `category`/`categoryId` into `CreateTransactionRequest` preview, save, `QuestionCard`, and `useExpenseForm`. On `ConfirmationCard`, show the AI note for `reader === "ai"`, the `Khoản {index}/{count}` badge + `Bỏ khoản này` for multi-draft reads, and a tappable suggested category chip opening `CategoryPicker` inline.
+- Why simplest: reuses `CategoryPicker`, `QuestionCard`, and `DraftProvider` rather than introducing a second quick-entry state store or modal category selector.
+- Rejected alternative: nesting a modal category `<dialog>` inside `ConfirmationCard`, which would collide with `CategoryPicker`'s `+ Thêm danh mục` dialog.
+
+### Task 3D.3 results
+
+- `pnpm check` (`389 files`, all 8 workspace typechecks Done) and `API_ORIGIN=http://127.0.0.1:4010 pnpm --filter @songphang/web build` passed cleanly after all web edits.
+- Live Chrome DevTools verification on production Next.js `3010` + API `4010` (`AI_PROVIDER=fake`, group `Nhóm 3D3`):
+  - `lẩu 300k lan 100 lan 200` (`AI01`): rendered `Đọc bằng AI. Hãy xem lại.`, `Ăn uống` category chip, `0` `<mark>` highlights in sentence input, saved `lẩu` (`300.000`, `Ăn uống`) to feed.
+  - `cà phê 180k và bánh 50k` (`AI02`): rendered `Khoản 1/2` (`cà phê`, `180.000 đ`) with `Lưu và sang khoản sau` and `Bỏ khoản này`; saving first advanced to `Khoản 2/2` (`bánh`, `50.000 đ`); clicking `Bỏ khoản này` returned to feed with only `cà phê` saved (`bánh` absent).
+  - `cà phê 180k hôm qua` (`AI15` uncertain): navigated to `/tx/new?form` with `Mình chưa hiểu hết câu này`, `180000`, `cà phê`, and `Ăn uống` pressed.
+  - `cà phê 180k chia 4` (rule): omitted `Đọc bằng AI. Hãy xem lại.` and rendered phrase highlights (`số tiền: 180k`, `phần chia: chia 4`).
+  - `phở 60k chia 2` with a 1.3s delayed `/transactions/parse` response: displayed `Đang đọc…` (`role="status"`) after 1s, cleared it when `QuestionCard` resolved, opened `Ăn uống` chip into `CategoryPicker`, switched to `Đi lại`, selected Minh + Lan, saved `phở` (`60.000`, `Đi lại`) to feed. Zero console errors.
+- Security review: checked items 1, 2, 7, 8; boundary Zod parsing intact before preview/save, no `dangerouslySetInnerHTML`, no secrets; no issues found.
 
 ## Not verified
 

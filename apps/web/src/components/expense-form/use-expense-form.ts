@@ -62,9 +62,9 @@ export function useExpenseForm(
 	const [description, setDescription] = useState(draft?.description ?? "");
 	const [category, setBuiltInCategory] = useState<
 		SplitTransactionRequest["category"]
-	>(transaction?.category ?? null);
+	>(draft?.category ?? null);
 	const [categoryId, setCustomCategoryId] = useState<string | null>(
-		transaction?.categoryId ?? null,
+		draft?.categoryId ?? null,
 	);
 	const setCategory = (next: SplitTransactionRequest["category"]) => {
 		setBuiltInCategory(next);
