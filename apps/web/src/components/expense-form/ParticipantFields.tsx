@@ -24,6 +24,7 @@ export function ParticipantFields({
 		categoryId,
 		setCategoryId,
 		active,
+		payerOptions,
 		payerIds,
 		togglePayer,
 		payerAmounts,
@@ -52,11 +53,15 @@ export function ParticipantFields({
 						: vi.expenseForm.payerTitle}
 				</h2>
 				<MemberToggleGrid
-					members={active}
+					members={payerOptions}
 					selectedIds={payerIds}
 					onToggle={togglePayer}
 					captionFor={(member) =>
-						member.id === myMemberId ? vi.common.you : member.name
+						member.kind === "fund"
+							? t(vi.fund.payerOption, { name: member.name })
+							: member.id === myMemberId
+								? vi.common.you
+								: member.name
 					}
 					label={
 						type === "income"
@@ -67,7 +72,9 @@ export function ParticipantFields({
 			</section>
 			{payerIds.length > 1 && (
 				<PayerAmounts
-					members={active.filter((member) => payerIds.includes(member.id))}
+					members={payerOptions.filter((member) =>
+						payerIds.includes(member.id),
+					)}
 					values={payerAmounts}
 					amount={amount}
 					onChange={setPayerAmount}

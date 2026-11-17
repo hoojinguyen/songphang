@@ -3,8 +3,9 @@ import { type MemberDto, TransactionDto } from "@songphang/contract";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { z } from "zod";
+import { useBalances } from "../../lib/balances";
 import { useDraft } from "../../lib/draft-context";
-import { formatAmount } from "../../lib/money";
+import { formatAmount, formatMoney, parseAmountInput } from "../../lib/money";
 import {
 	useDeleteTransaction,
 	useRestoreTransaction,
@@ -21,7 +22,7 @@ import { SplitStatus } from "./SplitStatus";
 import { TransferFields } from "./TransferFields";
 import { TypeSwitch } from "./TypeSwitch";
 import { UnparsedBanner } from "./UnparsedBanner";
-import { useExpenseForm } from "./use-expense-form";
+import { type FormPrefill, useExpenseForm } from "./use-expense-form";
 export function ExpenseForm({
 	groupId,
 	members,
@@ -29,6 +30,7 @@ export function ExpenseForm({
 	current,
 	onReload,
 	myMemberId,
+	prefill,
 }: {
 	groupId: string;
 	members: MemberDto[];
@@ -36,10 +38,12 @@ export function ExpenseForm({
 	transaction?: TransactionDto;
 	current?: TransactionDto;
 	onReload?: (t: TransactionDto) => void;
+	prefill?: FormPrefill;
 }) {
 	const memory = useDraft();
 	const router = useRouter();
 	const snackbar = useSnackbar();
+	const balances = useBalances(groupId);
 	const deletion = useDeleteTransaction(groupId);
 	const restore = useRestoreTransaction(groupId);
 	const [splitOpen, setSplitOpen] = useState(
@@ -47,9 +51,17 @@ export function ExpenseForm({
 			memory.draft?.issues.some((i) => i.code === "SUM_MISMATCH")) ??
 			false,
 	);
-	const form = useExpenseForm(groupId, members, myMemberId, transaction);
+	const form = useExpenseForm(
+		groupId,
+		members,
+		myMemberId,
+		transaction,
+		prefill,
+	);
 	const {
 		active,
+		fund,
+		transferMembers,
 		amountText,
 		setAmountText,
 		description,
@@ -59,6 +71,7 @@ export function ExpenseForm({
 		title,
 		amount,
 		payerIds,
+		payerAmounts,
 		transferFrom,
 		setTransferFrom,
 		transferTo,
@@ -177,7 +190,7 @@ export function ExpenseForm({
 
 			{type === "transfer" ? (
 				<TransferFields
-					members={active}
+					members={transferMembers}
 					from={transferFrom}
 					to={transferTo}
 					onFrom={setTransferFrom}
@@ -207,6 +220,39 @@ export function ExpenseForm({
 				</p>
 			)}
 			{preview.isError && <p role="alert">{vi.common.loadError}</p>}
+			{type === "expense" &&
+				preview.current &&
+				preview.data?.warnings.includes("FUND_OVERDRAWN") &&
+				fund &&
+				balances.data?.fund &&
+				(() => {
+					const fundPaid = payerIds.includes(fund.id)
+						? payerIds.length === 1
+							? amount
+							: (parseAmountInput(payerAmounts[fund.id] ?? "") ?? 0)
+						: 0;
+					const oldFundPaid =
+						transaction?.payers.find((p) => p.memberId === fund.id)?.amount ??
+						0;
+					const beforeCash =
+						balances.data.fund.cash +
+						(transaction?.type === "expense"
+							? oldFundPaid
+							: transaction?.type === "income"
+								? -oldFundPaid
+								: 0);
+					const overdraft = fundPaid - beforeCash;
+					return overdraft > 0 ? (
+						<p
+							role="status"
+							className="rounded-[20px] bg-phrase-amount px-4 py-3 text-sm font-bold text-ink"
+						>
+							{t(vi.fund.overdrawnWarning, {
+								amount: formatMoney(overdraft),
+							})}
+						</p>
+					) : null;
+				})()}
 			{type !== "transfer" && <SplitStatus {...status} />}
 			{conflict && (
 				<ConflictNotice

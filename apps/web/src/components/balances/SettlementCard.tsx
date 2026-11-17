@@ -2,7 +2,7 @@ import type { BalancesResponse, MemberDto } from "@songphang/contract";
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
-import { TransferAction } from "./TransferAction";
+import { fundTransferCaption, TransferAction } from "./TransferAction";
 export function SettlementCard({
 	groupId,
 	transfer,
@@ -23,11 +23,12 @@ export function SettlementCard({
 	if (!from || !to) return null;
 	const other = transfer.fromMemberId === myMemberId ? to : from;
 	const caption =
-		transfer.fromMemberId === myMemberId
+		fundTransferCaption(from, to, transfer.amount) ??
+		(transfer.fromMemberId === myMemberId
 			? t(vi.balances.youPayMember, { name: to.name })
 			: transfer.toMemberId === myMemberId
 				? t(vi.balances.memberPaysYou, { name: from.name })
-				: t(vi.balances.memberPaysMember, { from: from.name, to: to.name });
+				: t(vi.balances.memberPaysMember, { from: from.name, to: to.name }));
 	return (
 		<div className="settlement-card grid gap-4 rounded-[36px] bg-surface p-5">
 			<div className="flex items-center gap-4">

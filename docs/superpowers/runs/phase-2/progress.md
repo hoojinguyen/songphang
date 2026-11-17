@@ -38,7 +38,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2C.1 — fund member integrity
 - [x] 2C.2 — fund endpoints and balances
 - [x] 2C.3 — fund sentence reader
-- [ ] 2C.4 — fund UI
+- [x] 2C.4 — fund UI
 - [ ] 2C.5 — gate 2C
 - [ ] 2D.1 — budget core and API
 - [ ] 2D.2 — budget UI
@@ -327,3 +327,18 @@ Commit reference: `feat(core): read expenses paid from the fund`. pnpm check pas
 | F12 | `ăn 300k quy tra` (fund + Quy) | `needs_input` (`MEMBER_AMBIGUOUS`) | `needs_input` (`MEMBER_AMBIGUOUS`, fund + Quy) | match |
 
 Security review: relevant items 1/2/6/8 checked against full diff; pure token parsing without dynamic regex or DB mutation, `FUND_CANNOT_SHARE` validated in contract `ParseIssue`, no new dependencies. Not verified: browser typing UI for `ăn tối 300k quỹ trả` (2C.4).
+
+
+## Task 2C.4 — approach
+
+- Files to create/modify: create `apps/web/src/components/ui/FundShape.tsx`, `apps/web/src/lib/fund.ts`, `apps/web/src/components/fund/{FundBlock,CreateFundDialog}.tsx`, and `apps/web/src/app/g/[groupId]/fund/page.tsx`; modify `apps/web/src/app/globals.css`, `apps/web/src/messages/vi.ts`, `apps/web/src/components/ui/MemberShape.tsx`, `apps/web/src/components/balances/{TransferAction,SettlementCard,OwnSettlementCard,OtherSettlements,AllSettled}.tsx`, `apps/web/src/app/g/[groupId]/{page,balances/page,members/page,tx/new/page}.tsx`, `apps/web/src/components/expense-form/{use-expense-form.ts,ParticipantFields.tsx,ExpenseForm.tsx,UnparsedBanner.tsx}`, and `apps/web/src/components/quick-entry/ConfirmationCard.tsx`.
+- Approach: add `--color-sun: #ffd84d` in `globals.css` and Spec 9.2/9.4 strings in `vi.ts`. Render `FundShape` (1.6× pill in `bg-sun`, no initial) and delegate `shape === "fund"` in `MemberShape`. Add `useCreateFund`/`useUpdateFund`/`useDeleteFund` hooks in `lib/fund.ts`. On S5 (`balances/page.tsx`), show `FundBlock` (`Quỹ còn` / `Quỹ đang âm` + holder) above balances when a fund exists, localize fund transfers with `Quỹ hoàn {to} {amount}` / `{from} góp thêm vào quỹ {amount}`, and route fund actions directly to `/settle` (`Ghi nhận`) for editors with no QR paying screen. Build S17 (`/g/{id}/fund`) with cash summary, `Đã góp` list, prefilled `Góp vào quỹ` / `Rút khỏi quỹ` transfer links (`/tx/new?form&type=transfer&...`), and rename/holder/close (`FUND_NOT_EMPTY` guard)/delete controls. On S10, show `Lập quỹ chung` (`CreateFundDialog` modal `<dialog>`) or the fund row linking to S17 while keeping people count/lists separate. In `ExpenseForm` / `ConfirmationCard` / `UnparsedBanner`, list fund (`{name} trả`) in payers only, keep sharers people-only, compute overdrawn preview warning from `fund.cash` and draft amount by integer subtraction, and explain `FUND_CANNOT_SHARE`.
+- Why simplest: delegates `fund` visuals via `MemberShape` and reuses `/settle` and `/tx/new?form&type=transfer` via query parameters without building duplicate transfer forms.
+- Rejected alternative: building custom contribution/withdrawal modal forms on S17 instead of prefilling `TransferFields` in `ExpenseForm`.
+
+
+### Task 2C.4 results
+
+Commit reference: `feat(web): add the shared fund`. pnpm check passed (305 files, five workspace typechecks Done) and production web built with `API_ORIGIN=http://localhost:4001`. Exercised in Chrome on `http://localhost:3001` (`Quỹ 2C.4` group): S10 kept subtitle `3 người` before and after `Lập quỹ chung` (holder `Lan`), rendered `Quỹ chung` pill row linking to S17 (`/fund`), `Góp vào quỹ` (`Lan → Quỹ chung 500.000 đ`) updated S17 to `Quỹ còn 500.000 đ`, quick-entry `ăn tối 300k quỹ trả` displayed `Quỹ chung trả` with three people shares (`100.000` each), saved and updated S5 (`Quỹ còn 200.000 đ`, `Quỹ hoàn Lan 200.000 đ` with `Ghi nhận` linking to `/settle`, people-only bars `+400.000 / -100.000 / -100.000`), `Đóng quỹ` on non-empty fund showed `Quỹ còn tiền. Hãy hoàn hết cho mọi người trước.`, `Thuê xe` `300.000` with `Quỹ chung trả` showed preview warning `Quỹ không đủ. Sau khoản này quỹ âm 100.000 đ.` and saved (`Quỹ đang âm 100.000 đ`, `Hùng góp thêm vào quỹ 100.000 đ`), and typing `ăn 300k chia quỹ` showed `Quỹ không thể là người chia.`.
+
+Security review: relevant items 1/2/4/6/7/8 checked against full diff; modal `<dialog>` uses native `showModal()`/`closedby="any"`/`overscroll-behavior: contain`, transfer prefill params validated against loaded group members, overdraft computed from integer `fund.cash` subtraction for display only, no `dangerouslySetInnerHTML`/`eval`/new libraries. Not verified: browser reload of renamed fund label in `ParticipantFields` (fund service rename already verified in 2C.2 API tests).

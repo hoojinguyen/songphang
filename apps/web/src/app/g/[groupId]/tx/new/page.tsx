@@ -84,6 +84,11 @@ export default function NewExpensePage() {
 					groupId={groupId}
 					members={members.data}
 					myMemberId={group.data.myMemberId}
+					prefill={{
+						...(search.get("type") === "transfer" ? { type: "transfer" } : {}),
+						...(search.get("from") ? { from: search.get("from") } : {}),
+						...(search.get("to") ? { to: search.get("to") } : {}),
+					}}
 				/>
 			)}
 		</main>

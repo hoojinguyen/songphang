@@ -27,7 +27,10 @@ export function ConfirmationCard({
 	const name = (id: string) => members.find((m) => m.id === id)?.name ?? "";
 	const equal = shares.every((s) => s.amount === shares[0]?.amount);
 	const notIncluded = members.filter(
-		(m) => m.active && !shares.some((s) => s.memberId === m.id),
+		(m) =>
+			m.kind === "person" &&
+			m.active &&
+			!shares.some((s) => s.memberId === m.id),
 	);
 	const rest =
 		split?.method === "exact" && draft.amount !== null

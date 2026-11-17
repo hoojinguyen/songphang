@@ -8,6 +8,7 @@ import { OtherSettlements } from "../../../../components/balances/OtherSettlemen
 import { OwnSettlementCard } from "../../../../components/balances/OwnSettlementCard";
 import { PendingRequestRow } from "../../../../components/balances/PendingRequestRow";
 import { SettlementCard } from "../../../../components/balances/SettlementCard";
+import { FundBlock } from "../../../../components/fund/FundBlock";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { useBalances } from "../../../../lib/balances";
@@ -133,6 +134,13 @@ export default function BalancesPage() {
 				backHref={`/g/${groupId}`}
 				backLabel={vi.common.back}
 			/>
+			{balances.data.fund && (
+				<FundBlock
+					groupId={groupId}
+					fund={balances.data.fund}
+					members={members.data}
+				/>
+			)}
 			{!hasTransactions ? (
 				<div className="my-auto py-12">
 					<h2 className="text-[34px] font-black">{vi.balances.emptyTitle}</h2>

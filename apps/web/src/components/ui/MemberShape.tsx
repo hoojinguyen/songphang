@@ -1,19 +1,19 @@
+import { FundShape } from "./FundShape";
+
 export type ShapeCode = "circle" | "diamond" | "squircle" | "leaf" | "fund";
 export type ColorCode = "mint" | "sky" | "coral" | "lilac" | "sun";
 
-const COLORS: Record<ColorCode, string> = {
+const COLORS: Record<Exclude<ColorCode, "sun">, string> = {
 	mint: "bg-mint",
 	sky: "bg-sky",
 	coral: "bg-coral",
 	lilac: "bg-lilac",
-	sun: "bg-accent",
 };
 const SHAPES = {
 	circle: { scale: 1, radius: "50%", rotation: 0 },
 	diamond: { scale: 0.72, radius: "24%", rotation: 45 },
 	squircle: { scale: 1, radius: "38%", rotation: 0 },
 	leaf: { scale: 0.86, radius: "50% 10% 50% 10%", rotation: 0 },
-	fund: { scale: 1, radius: "9999px", rotation: 0 },
 } as const;
 
 type MemberShapeProps = {
@@ -31,7 +31,9 @@ export function MemberShape({
 	name,
 	showInitial,
 }: MemberShapeProps) {
+	if (shape === "fund") return <FundShape name={name} size={size} />;
 	const geometry = SHAPES[shape];
+	const fillColor = color === "sun" ? "bg-sun" : COLORS[color];
 	const initial = Array.from(name.trim())[0]?.toLocaleUpperCase("vi");
 	return (
 		<span
@@ -41,7 +43,7 @@ export function MemberShape({
 			style={{ width: size, height: size }}
 		>
 			<span
-				className={`flex items-center justify-center text-ink ${COLORS[color]}`}
+				className={`flex items-center justify-center text-ink ${fillColor}`}
 				style={{
 					width: size * geometry.scale,
 					height: size * geometry.scale,

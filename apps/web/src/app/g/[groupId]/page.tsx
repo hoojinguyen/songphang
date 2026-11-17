@@ -144,9 +144,12 @@ function GroupScreen() {
 						aria-label={vi.feed.membersLink}
 						className="flex h-12 items-center rounded-[24px] bg-surface px-3"
 					>
-						{members.data.slice(0, 4).map((member) => (
-							<MemberShape key={member.id} {...member} size={24} />
-						))}
+						{members.data
+							.filter((member) => member.kind === "person")
+							.slice(0, 4)
+							.map((member) => (
+								<MemberShape key={member.id} {...member} size={24} />
+							))}
 					</Link>
 				}
 			/>
@@ -202,7 +205,7 @@ function GroupScreen() {
 				</div>
 			) : (
 				<EmptyStream
-					members={members.data}
+					members={members.data.filter((member) => member.kind === "person")}
 					groupId={groupId}
 					canInvite={group.data.role !== "viewer"}
 				/>

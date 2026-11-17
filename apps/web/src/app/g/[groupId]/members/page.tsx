@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { CreateFundDialog } from "../../../../components/fund/CreateFundDialog";
 import { AddMemberRow } from "../../../../components/members/AddMemberRow";
 import { InviteCard } from "../../../../components/members/InviteCard";
 import { LeaveGroupButton } from "../../../../components/members/LeaveGroupButton";
@@ -10,6 +11,7 @@ import { MemberRow } from "../../../../components/members/MemberRow";
 import { PaymentMethodsFields } from "../../../../components/members/PaymentMethodsFields";
 import { UserControls } from "../../../../components/members/UserControls";
 import { Button } from "../../../../components/ui/Button";
+import { FundShape } from "../../../../components/ui/FundShape";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { VerifyEmailBanner } from "../../../../components/ui/VerifyEmailBanner";
@@ -23,6 +25,7 @@ import { t, vi } from "../../../../messages/vi";
 export default function MembersPage() {
 	const { groupId } = useParams<{ groupId: string }>();
 	const [expanded, setExpanded] = useState<string | null>(null);
+	const [fundDialogOpen, setFundDialogOpen] = useState(false);
 	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
@@ -82,17 +85,42 @@ export default function MembersPage() {
 				/>
 			</main>
 		);
+	const people = members.data.filter((member) => member.kind === "person");
+	const fund = members.data.find((member) => member.kind === "fund") ?? null;
+	const holder = fund?.fundHolderMemberId
+		? people.find((person) => person.id === fund.fundHolderMemberId)
+		: undefined;
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-4 px-5 py-6">
 			<ScreenHeader
 				title={group.data.name}
 				subtitle={t(vi.members.memberCount, {
-					count: String(members.data.length),
+					count: String(people.length),
 				})}
 				backHref={`/g/${groupId}`}
 				backLabel={vi.common.back}
 			/>
-			{members.data.map((member) => (
+			{fund && (
+				<Link
+					href={`/g/${groupId}/fund`}
+					className="flex w-full items-center gap-3 rounded-[28px] bg-surface p-4 text-left text-ink"
+				>
+					<FundShape name={fund.name} size={44} />
+					<span className="min-w-0 flex-1">
+						<span className="block break-words text-base font-extrabold">
+							{fund.name}
+						</span>
+						<span className="text-xs text-muted">
+							{!fund.active
+								? vi.fund.inactiveTag
+								: holder
+									? t(vi.fund.holderLine, { name: holder.name })
+									: vi.fund.defaultName}
+						</span>
+					</span>
+				</Link>
+			)}
+			{people.map((member) => (
 				<div key={member.id} className="grid gap-2">
 					<MemberRow
 						member={member}
@@ -145,10 +173,25 @@ export default function MembersPage() {
 				</div>
 			))}
 			{me.data.emailVerified && group.data.role !== "viewer" ? (
-				<AddMemberRow groupId={groupId} members={members.data} />
-			) : (
+				<>
+					<AddMemberRow groupId={groupId} members={members.data} />
+					{!fund && members.data.length < 100 && (
+						<>
+							<Button variant="surface" onClick={() => setFundDialogOpen(true)}>
+								{vi.fund.createEntry}
+							</Button>
+							<CreateFundDialog
+								open={fundDialogOpen}
+								groupId={groupId}
+								people={people}
+								onClose={() => setFundDialogOpen(false)}
+							/>
+						</>
+					)}
+				</>
+			) : !me.data.emailVerified ? (
 				<VerifyEmailBanner />
-			)}
+			) : null}
 			{users.data
 				.filter((user) => user.memberId === null)
 				.map((user) => (

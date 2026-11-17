@@ -16,6 +16,7 @@ export function UnparsedBanner({ activeCount }: { activeCount: number }) {
 				"AMOUNT_MISSING",
 				"SUM_MISMATCH",
 				"MEMBER_UNKNOWN",
+				"FUND_CANNOT_SHARE",
 				"COUNT_MISMATCH",
 				"TEXT_NOT_UNDERSTOOD",
 			].includes(i.code),
@@ -58,11 +59,15 @@ export function UnparsedBanner({ activeCount }: { activeCount: number }) {
 								)
 							: issue.code === "MEMBER_UNKNOWN"
 								? t(vi.unparsed.memberUnknown, { word })
-								: issue.code === "COUNT_MISMATCH"
-									? t(vi.unparsed.countTooLarge, { total: String(activeCount) })
-									: issue.code === "TEXT_NOT_UNDERSTOOD"
-										? t(vi.unparsed.notUnderstood, { fragment: word })
-										: null;
+								: issue.code === "FUND_CANNOT_SHARE"
+									? vi.unparsed.fundCannotShare
+									: issue.code === "COUNT_MISMATCH"
+										? t(vi.unparsed.countTooLarge, {
+												total: String(activeCount),
+											})
+										: issue.code === "TEXT_NOT_UNDERSTOOD"
+											? t(vi.unparsed.notUnderstood, { fragment: word })
+											: null;
 				return line ? (
 					<p
 						key={`${issue.code}-${issue.start}-${issue.end}`}

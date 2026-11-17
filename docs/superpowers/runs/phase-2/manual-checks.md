@@ -12,12 +12,13 @@ Status: advisor preparation completed; feature implementation pending. The secti
 2. Minh presses `Đã nhận` → snackbar `Đã ghi nhận ... từ Hùng.`, debt disappears and balances update in both windows.
 3. On another pending request, Minh presses `Chưa nhận` → `Đã báo lại là chưa nhận.`, balances remain unchanged and Hùng sees the pay link again; or Hùng presses `Huỷ báo` → pending row returns to the pay link.
 4. Open the same pending request in two tabs, resolve in the first tab, then click `Đã nhận` in the second stale tab → `Yêu cầu này đã được xử lý.` and the list refreshes.
-
-Pending 2C.4 for fund block and fund suggestions.
+5. When the group has a fund, `FundBlock` (`Quỹ còn ...` or `Quỹ đang âm ...` + holder) appears above balances and opens S17; any fund settlement uses `Quỹ hoàn {to} {amount}` / `{from} góp thêm vào quỹ {amount}` with `Ghi nhận` opening S9 (`/settle`, no `/pay` QR screen).
 
 ## S10 — members and payment methods
 
-Pending 2A.5 and 2C.4.
+1. On S10 (`/g/{id}/members`), editors see `Lập quỹ chung` when no fund exists (opens modal with `Tên quỹ` default `Quỹ chung` and `Ai giữ tiền quỹ?`), and the people count (`{count} người`) excludes the fund.
+2. When a fund exists, S10 shows the fund row (`FundShape` yellow pill) linking to S17 (`/g/{id}/fund`) with no generic member-edit controls.
+3. Expand a person → `Thông tin nhận tiền` → search bank, enter account/name or MoMo/ZaloPay, submit → `Đã lưu.`; dashed account → `Số tài khoản chỉ gồm chữ và số.`; short phone → `Số điện thoại chưa đúng.`; viewer sees others read-only and own details editable.
 
 ## S11 — categories and budget settings
 
@@ -43,7 +44,10 @@ Pending 2D.2 for budget settings.
 
 ## S17 — shared fund
 
-Pending 2C.4.
+1. S10 → `Lập quỹ chung` → S17 (`/g/{id}/fund`) → `Góp vào quỹ` 500.000 from one person → S5 shows `Quỹ còn 500.000 đ` and S17 lists the contributor under `Đã góp`.
+2. Add an expense with `Quỹ chung trả` (or type `ăn tối 300k quỹ trả` in quick-entry) → fund drops, `Quỹ chung trả` badge renders, sharers list stays people-only, and personal debts only change by each person's share.
+3. Pay more than the fund holds in manual form → `Quỹ không đủ. Sau khoản này quỹ âm {amount}.` warning appears and still saves; S5 shows `Quỹ đang âm {amount}`.
+4. Try `Đóng quỹ` on S17 while cash ≠ 0 → `Quỹ còn tiền. Hãy hoàn hết cho mọi người trước.`; type `ăn 300k chia quỹ` in quick-entry → unparsed banner shows `Quỹ không thể là người chia.`.
 
 ## S4 — filters and budget banner
 
