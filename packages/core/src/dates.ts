@@ -36,6 +36,24 @@ export function isWithinFiveYears(from: string, to: string): boolean {
 	return to <= limit;
 }
 
+export function toVietnamDate(date: Date): string {
+	const shifted = new Date(date.getTime() + VIETNAM_UTC_OFFSET_MS);
+	return shifted.toISOString().slice(0, 10);
+}
+
+export function bucketFor(from: string, to: string): "day" | "week" | "month" {
+	const start = parseCalendarParts(from);
+	const end = parseCalendarParts(to);
+	if (!start || !end || from > to)
+		throw new RangeError("Invalid date range for bucket");
+	const startMs = Date.UTC(start.year, start.month - 1, start.day);
+	const endMs = Date.UTC(end.year, end.month - 1, end.day);
+	const inclusiveDays = Math.floor((endMs - startMs) / 86_400_000) + 1;
+	if (inclusiveDays <= 31) return "day";
+	if (inclusiveDays <= 182) return "week";
+	return "month";
+}
+
 export function localDateRangeToUtc(
 	from?: string,
 	to?: string,

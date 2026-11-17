@@ -36,6 +36,7 @@ export {
 	insertSession,
 } from "./sessions.js";
 export * from "./settlement-requests.js";
+export * from "./stats.js";
 export * from "./transaction-changes.js";
 export * from "./transactions.js";
 export { findUserById, listUsers } from "./users.js";

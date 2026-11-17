@@ -32,7 +32,9 @@ Pending 2B.6 and 2D.2.
 
 ## S16 — statistics and CSV
 
-Pending 2B.4 and 2B.5.
+1. Record three expenses and one refund in a new group, then open S16 (`Tổng chuyến đi`) → total equals expenses minus the refund.
+
+Pending 2B.4 and 2B.5 for statistics UI and CSV export.
 
 ## S17 — shared fund
 

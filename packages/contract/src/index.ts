@@ -12,4 +12,5 @@ export * from "./member.ts";
 export * from "./payment.ts";
 export * from "./quick-entry.ts";
 export * from "./settlement-request.ts";
+export * from "./stats.ts";
 export * from "./transaction.ts";

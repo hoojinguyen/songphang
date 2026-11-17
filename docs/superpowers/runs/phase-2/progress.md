@@ -31,7 +31,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2A.6 — paying screen, confirmation and gate 2A
 - [x] 2B.1 — custom categories
 - [x] 2B.2 — search and filters
-- [ ] 2B.3 — statistics
+- [x] 2B.3 — statistics
 - [ ] 2B.4 — statistics screen and filters
 - [ ] 2B.5 — CSV export
 - [ ] 2B.6 — categories UI and gate 2B
@@ -202,3 +202,16 @@ Security review: relevant items 1/2/4/5/6/8 checked against full diff; parameter
 Commit reference: `feat(api): add search and filters to the transaction list`. pnpm check passed (273 files, five workspace typechecks Done); migration `0007_gifted_white_tiger.sql` generated and applied cleanly, and `backfill-description-search.ts` ran idempotently (0 remaining rows after `runMigrations` backfill). Exercised all 2B.2 December-ledger cases on API 4001: `q=pho` → `[S6]`, `q=PHỞ` → `[S6]`, `q=%25` → `[]`, `q==sum` → `[S7]`, `memberId=Thu` → `[S7, S4, S3, S1]`, `type=transfer` → `[S5]`, `category=food` → `[S6, S1]`, `from=2026-12-31&to=2026-12-31` → `[S6]`, `from=2027-01-01` → `[S7]`, `to=2026-12-05` → `[S1]`, inverted range / 101-char `q` / invalid date `2026-13-01` → 400 `VALIDATION_FAILED` each, and `limit=2&memberId=Thu` keyset pagination → `[S7, S4]` then `[S3, S1]` then `nextCursor: null`.
 
 Security review: relevant items 1/2/4/5/6/8 checked against full diff; query params validated with Zod (lengths, Gregorian dates, 5-year range), `LIKE` wildcards escaped and parameterized, `description_search` excluded from DTOs, viewer group-scoped query preserved, internal `@songphang/core` workspace link only (D13). Not verified: none.
+
+## Task 2B.3 — approach
+
+- Files to create/modify: create `packages/db/src/stats.ts`, `packages/contract/src/stats.ts`, `apps/api/src/services/stats.ts`, `apps/api/src/routes/stats.ts`; modify `packages/core/src/dates.ts`, `packages/core/src/index.ts`, `packages/db/src/index.ts`, `packages/contract/src/index.ts`, `apps/api/src/app.ts`.
+- Approach: add `bucketFor` and `toVietnamDate` in `core/dates.ts`, `StatsQuery` and `StatsResponse` in `contract/stats.ts`, and `sumByCategory`, `sumByMember`, `sumByBucket`, and `findCountedDateBounds` in `db/stats.ts`. Inside one repeatable-read read-only transaction, resolve effective `from`/`to` bounds (defaulting missing bounds from counted Vietnam dates or today), compute `bucket` via `bucketFor`, and aggregate expenses (+) minus income (−) across SQL `bigint` sums while ignoring transfers and soft-deleted rows.
+- Why simplest: reuses `localDateRangeToUtc` and runs all money sums directly in SQL on `bigint` with a CTE/subquery for `date_trunc(..., occurred_at AT TIME ZONE $tz)`, avoiding JS money sums and parameter-grouping mismatches.
+- Rejected alternative: aggregating in TypeScript after fetching all rows, which violates spec 7.2's SQL `bigint` rule and scales poorly on 500+ transactions.
+
+### Task 2B.3 results
+
+Commit reference: `feat(api): add spending statistics`. pnpm check passed (277 files, five workspace typechecks Done). Exercised all 2B.3 December-ledger cases on API 4001: `from=2026-12-01&to=2026-12-31` → `bucket: day`, `total: 1999999`, `byCategory` (`lodging: 1100000`, `food: 699999`, `transport: 200000`), `byMember` paid (`1700000/200000/99999/0`) and share (`558333/558333/458333/425000`), `byBucket` (`12-05: 600000`, `12-06: 100000`, `12-20: 1200000`, `12-31: 99999`), all four lists summing to `1999999`. Unbounded query → `total: 2009999`, 5th bucket `2027-01-01: 10000`, uncategorized `10000`; `2026-09-01..2026-12-31` → `week` (`11-30: 700000`, `12-14: 1200000`, `12-28: 99999`); `2026-01-01..2026-12-31` → `month` (`2026-12-01: 1999999`); delete S4 → `799999`, restore → `1999999`; viewer 200, outsider 404, signed-out 401, inverted dates 400.
+
+Security review: relevant items 1/2/4/5/6/8 checked against full diff; parameterized SQL `bigint` aggregates inside a single repeatable-read read-only snapshot, viewer role + `group_id` filters, Zod calendar/range checks, no new dependencies. Not verified: none for this API task.
