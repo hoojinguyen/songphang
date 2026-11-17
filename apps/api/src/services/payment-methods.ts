@@ -49,7 +49,7 @@ export async function setPaymentMethods(
 			minimumRole: "viewer",
 		});
 		const member = await findMember(executor, input.groupId, input.memberId);
-		if (member === null)
+		if (member === null || member.kind !== "person")
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
 		if (access.role === "viewer" && access.memberId !== member.id)
 			throw new AppError(403, "FORBIDDEN", "Insufficient group role");

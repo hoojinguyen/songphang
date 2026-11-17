@@ -144,11 +144,23 @@ export const TransactionDto = z
 	})
 	.openapi("TransactionDto");
 export type TransactionDto = z.infer<typeof TransactionDto>;
+export const TransactionWarning = z.enum([
+	"FUND_OVERDRAWN",
+	"BUDGET_NEAR",
+	"BUDGET_OVER",
+]);
+export type TransactionWarning = z.infer<typeof TransactionWarning>;
 export const TransactionResponse = z
-	.object({ transaction: TransactionDto })
+	.object({
+		transaction: TransactionDto,
+		warnings: z.array(TransactionWarning).default([]),
+	})
 	.openapi("TransactionResponse");
 export const PreviewTransactionResponse = z
-	.object({ shares: z.array(ShareDto) })
+	.object({
+		shares: z.array(ShareDto),
+		warnings: z.array(TransactionWarning).default([]),
+	})
 	.openapi("PreviewTransactionResponse");
 export const TransactionsQuery = z
 	.object({

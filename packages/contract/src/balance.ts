@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { FundSummary } from "./fund.ts";
 import { PaymentMethodDto } from "./payment.ts";
 export const PayTo = z.discriminatedUnion("kind", [
 	PaymentMethodDto.options[0].extend({ qrPayload: z.string().min(1).max(512) }),
@@ -26,6 +27,7 @@ export const BalancesResponse = z
 					.nullable(),
 			}),
 		),
+		fund: FundSummary.nullable().default(null),
 	})
 	.openapi("BalancesResponse");
 export type BalancesResponse = z.infer<typeof BalancesResponse>;

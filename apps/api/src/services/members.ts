@@ -51,7 +51,7 @@ async function getMember(
 	if (!z.uuid().safeParse(memberId).success)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	const member = await findMember(executor, groupId, memberId);
-	if (member === null)
+	if (member === null || member.kind !== "person")
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	return member;
 }

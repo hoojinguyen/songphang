@@ -22,6 +22,7 @@ import { AppError } from "../errors.js";
 import { assertLiveCategory } from "./categories.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { mapTransactions } from "./transactions.js";
+import { transactionWarnings } from "./warnings.js";
 
 async function readTransaction(
 	executor: DbExecutor,
@@ -108,7 +109,7 @@ export async function editTransaction(
 		const altered = fields.filter(
 			(field) => JSON.stringify(before[field]) !== JSON.stringify(next[field]),
 		);
-		if (altered.length === 0) return { transaction: before };
+		if (altered.length === 0) return { transaction: before, warnings: [] };
 		changed = true;
 		await clearTransactionSides(executor, input.id);
 		await updateTransactionRow(executor, {
@@ -138,6 +139,11 @@ export async function editTransaction(
 		);
 		const after = (await readTransaction(executor, input.groupId, input.id))
 			.transaction;
+		const warnings = await transactionWarnings(executor, {
+			groupId: input.groupId,
+			request: input.request,
+			applied: true,
+		});
 		await insertActivity(executor, {
 			groupId: input.groupId,
 			actorUserId: input.userId,
@@ -149,7 +155,7 @@ export async function editTransaction(
 			after: Object.fromEntries(altered.map((k) => [k, after[k]])),
 			createdAt: deps.now(),
 		});
-		return { transaction: after };
+		return { transaction: after, warnings };
 	});
 	if (changed) publish(deps, input.groupId);
 	return TransactionResponse.parse(result);

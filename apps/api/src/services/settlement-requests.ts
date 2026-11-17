@@ -87,13 +87,15 @@ export async function createSettlementRequest(
 	});
 	if (!mayCreate(access, input.request.fromMemberId))
 		throw new AppError(403, "FORBIDDEN", "Insufficient group role");
-	for (const id of [input.request.fromMemberId, input.request.toMemberId])
-		if (!(await findMember(executor, input.groupId, id)))
+	for (const id of [input.request.fromMemberId, input.request.toMemberId]) {
+		const member = await findMember(executor, input.groupId, id);
+		if (member?.kind !== "person")
 			throw new AppError(
 				400,
 				"MEMBER_NOT_IN_GROUP",
 				"Member does not belong to group",
 			);
+	}
 	const pending = await findPendingSettlement(executor, {
 		groupId: input.groupId,
 		...input.request,

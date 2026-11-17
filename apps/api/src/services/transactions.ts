@@ -28,6 +28,7 @@ import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { assertLiveCategory } from "./categories.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
+import { transactionWarnings } from "./warnings.js";
 
 const CURSOR_SCHEMA = z.object({ occurredAt: z.iso.datetime(), id: z.uuid() });
 function decodeCursor(cursor: string | undefined): TransactionCursor | null {
@@ -49,9 +50,11 @@ export async function previewTransaction(
 ) {
 	if (request.type !== "transfer")
 		await assertLiveCategory(deps.db, groupId, request.categoryId);
-	return PreviewTransactionResponse.parse({
-		shares: await calculateShares(deps.db, groupId, request),
-	});
+	const [shares, warnings] = await Promise.all([
+		calculateShares(deps.db, groupId, request),
+		transactionWarnings(deps.db, { groupId, request, applied: false }),
+	]);
+	return PreviewTransactionResponse.parse({ shares, warnings });
 }
 export async function mapTransactions(
 	executor: DbExecutor,
@@ -144,7 +147,12 @@ export async function createTransactionIn(
 	const [transaction] = await mapTransactions(executor, input.groupId, [
 		stored,
 	]);
-	return TransactionResponse.parse({ transaction });
+	const warnings = await transactionWarnings(executor, {
+		groupId: input.groupId,
+		request: input.request,
+		applied: true,
+	});
+	return TransactionResponse.parse({ transaction, warnings });
 }
 function buildFilters(query: TransactionsQuery): TransactionFilters {
 	const range = localDateRangeToUtc(query.from, query.to);

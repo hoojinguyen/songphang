@@ -1,5 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import { PaymentMethodDto } from "./payment.ts";
+export const MemberKind = z.enum(["person", "fund"]);
+export type MemberKind = z.infer<typeof MemberKind>;
 export const MemberShapeCode = z.enum([
 	"circle",
 	"diamond",
@@ -7,8 +9,24 @@ export const MemberShapeCode = z.enum([
 	"leaf",
 ]);
 export type MemberShapeCode = z.infer<typeof MemberShapeCode>;
+export const AnyMemberShapeCode = z.enum([
+	"circle",
+	"diamond",
+	"squircle",
+	"leaf",
+	"fund",
+]);
+export type AnyMemberShapeCode = z.infer<typeof AnyMemberShapeCode>;
 export const MemberColorCode = z.enum(["mint", "sky", "coral", "lilac"]);
 export type MemberColorCode = z.infer<typeof MemberColorCode>;
+export const AnyMemberColorCode = z.enum([
+	"mint",
+	"sky",
+	"coral",
+	"lilac",
+	"sun",
+]);
+export type AnyMemberColorCode = z.infer<typeof AnyMemberColorCode>;
 type Appearance = { shape: MemberShapeCode; color: MemberColorCode };
 const SHAPES = MemberShapeCode.options;
 const COLORS = MemberColorCode.options;
@@ -37,12 +55,14 @@ export const MemberName = z.string().trim().min(1).max(50);
 export const MemberDto = z
 	.object({
 		id: z.uuid(),
+		kind: MemberKind.default("person"),
+		fundHolderMemberId: z.uuid().nullable().default(null),
 		name: MemberName,
 		active: z.boolean(),
 		defaultWeight: z.string(),
 		position: z.int().nonnegative(),
-		shape: MemberShapeCode,
-		color: MemberColorCode,
+		shape: AnyMemberShapeCode,
+		color: AnyMemberColorCode,
 		isMe: z.boolean(),
 		claimed: z.boolean(),
 		paymentMethods: z.array(PaymentMethodDto).max(3).default([]),

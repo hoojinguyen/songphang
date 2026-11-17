@@ -22,7 +22,11 @@ function OpenMemberRow({
 	return (
 		<div className="grid gap-3">
 			<NewMemberRow
-				usedPairs={members}
+				usedPairs={members.flatMap((member) =>
+					member.shape === "fund" || member.color === "sun"
+						? []
+						: [{ shape: member.shape, color: member.color }],
+				)}
 				position={(members.at(-1)?.position ?? -1) + 1}
 				onAdd={(name) =>
 					create.mutate({ request: { name }, key }, { onSuccess: onClose })

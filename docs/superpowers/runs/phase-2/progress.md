@@ -36,7 +36,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2B.5 — CSV export
 - [x] 2B.6 — categories UI and gate 2B
 - [x] 2C.1 — fund member integrity
-- [ ] 2C.2 — fund endpoints and balances
+- [x] 2C.2 — fund endpoints and balances
 - [ ] 2C.3 — fund sentence reader
 - [ ] 2C.4 — fund UI
 - [ ] 2C.5 — gate 2C
@@ -282,3 +282,18 @@ Security review: relevant items 1/2/4/6/7/8 checked against full diff; `Category
 Commit reference: `feat(db): add fund members and their integrity rules`. pnpm check passed (294 files, five workspace typechecks Done) and migration `0008_youthful_preak.sql` applied cleanly. Exercised all five `psql` constraint/trigger rows on rolled-back/cleaned test transactions: second fund in group → `members_group_fund_unique` unique violation; `transaction_shares` on fund for an `expense` with matching totals → `assert_transaction_integrity` raised `fund member cannot appear in transaction shares` at `COMMIT`; `transfer` with share row on fund → `COMMIT` succeeded; `group_users.member_id` pointing to fund → `check_group_user_member_is_person` trigger raised `group user cannot link to a fund member`; `person` with `fund_holder_member_id` set → `members_fund_holder_kind_check` check violation. `pnpm db:check-balances` → `All groups balanced`.
 
 Security review: relevant items 1/2/3/4/5/8 checked against full diff; DB triggers/constraints enforce fund share and `group_users` invariants even outside app code, `invites.ts` `claimableMember` and `chooseMember` reject non-person members with 400, `listPeople` separates user-facing counts/previews from `fund`, no secrets/new dependencies. Not verified: runtime API `POST /fund` (pending 2C.2).
+
+
+## Task 2C.2 — approach
+
+- Files to create/modify: create `packages/contract/src/fund.ts`, `packages/db/src/fund.ts`, `apps/api/src/services/fund.ts`, and `apps/api/src/routes/fund.ts`; modify `packages/contract/src/{member,balance,transaction,error,index}.ts`, `packages/db/src/{members,index}.ts`, `apps/api/src/services/{transaction-input,transactions,transaction-changes,balances,members,payment-methods,settlement-requests}.ts`, `apps/api/src/app.ts`, and `apps/web/src/components/{ui/MemberShape.tsx,balances/BalanceBars.tsx}` (color/shape union completeness).
+- Approach: add `kind` and `fundHolderMemberId` to `MemberDto` plus `"fund"`/`"sun"` in `AnyMemberShapeCode`/`AnyMemberColorCode`, keeping `MemberShapeCode`/`MemberColorCode` (4 person shapes & 4 colors) unchanged for `nextMemberAppearance` and categories. Add `FUND_EXISTS`, `FUND_NOT_EMPTY`, `FUND_CANNOT_SHARE` error codes and `TransactionWarning` (`FUND_OVERDRAWN` | `BUDGET_NEAR` | `BUDGET_OVER`) always returned as `warnings: [...]` on preview, create, and edit responses. In `transaction-input.ts`, reject any fund share (`expense` or `income`) with 422 `FUND_CANNOT_SHARE` before totals checks; compute `FUND_OVERDRAWN` cleanly when a transaction reduces fund cash below 0 (`afterCash < 0 && deltaCash < 0`). Implement `fundCashAndContributions` in SQL, keep `BalancesResponse.balances` people-only while passing all balances into settlement suggestions and attaching `fund`, expose `POST`/`PATCH`/`DELETE /groups/{groupId}/fund` (editor), and return 404/400 if fund IDs hit person-only member/payment/settlement routes.
+- Why simplest: reuses `listMemberBalances`, `runIdempotent`, and existing transaction lock/activity patterns while keeping warning computation isolated for 2D.1's budget warnings.
+- Rejected alternative: creating dedicated fund-transfer endpoints, which would duplicate transaction history, edit, delete, restore, and CSV export flows.
+
+
+### Task 2C.2 results
+
+Commit reference: `feat(api): add the shared fund`. pnpm check passed (299 files, five workspace typechecks Done). Exercised the full fund ledger and rules against API 4001: unused `POST /fund` → 201 (`Quỹ chung`, `shape: fund`, `color: sun`) and `DELETE /fund` → 204; duplicate `POST /fund` → 409 `FUND_EXISTS`; viewer `POST /fund` → 403; outsider → 404; `PATCH`/`DELETE /members/{fundId}` and `PUT /members/{fundId}/payment-methods` → 404; invite preview/group list exclude fund from `memberCount`/`previewMembers` and `join` with fund id → 400. F0 (`cash: 0`), F1 (`Lan → fund 500000`, `cash: 500000`, `contributions: [Lan: 500000]`, `DELETE /fund` → 422 `MEMBER_HAS_TRANSACTIONS`), F2 (`Ăn tối 300000` paid by fund, `cash: 200000`, `balances` people-only summing to `+200000`, minimized transfers `fund → Lan 200000`, `Minh → Lan 100000`, `Hùng → Lan 100000`; `FUND_CANNOT_SHARE` 422 checked before totals on equal/exact/shares/percent/income; `income` received by fund raised cash to `260000` and reverted to `200000` on delete; `PATCH /fund active: false` → 422 `FUND_NOT_EMPTY`), F3 (`fund → Lan 200000`, `cash: 0`, `contributions: [Lan: 300000]`, preview & create 50000 paid by fund → `warnings: ["FUND_OVERDRAWN"]`, `PATCH active: false, name: "Quỹ lớp", holderMemberId: null` → 200). `pnpm db:check-balances` → `All groups balanced`.
+
+Security review: relevant items 1/2/3/4/5/8 checked against full diff; editor role + idempotency key enforced on `POST /fund`, `holderMemberId` validated against group people, person-only `members`/`payment-methods`/`settlement-requests` reject fund IDs, parameterized SQL `bigint` contribution query, no secrets or new dependencies. All new files under 190 lines. Not verified: browser UI for fund (2C.4).

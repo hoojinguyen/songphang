@@ -9,6 +9,7 @@ import {
 } from "@songphang/core";
 import {
 	findGroup,
+	fundCashAndContributions,
 	listGroupMembers,
 	listLedgerSides,
 	listMemberBalances,
@@ -35,16 +36,26 @@ export async function getBalances(
 					minimized: group.minimizeDebts,
 					balances: [],
 					transfers: [],
+					fund: null,
 				});
 			const sides = group.minimizeDebts
 				? null
 				: await listLedgerSides(executor, groupId);
 			const debts = sides === null ? [] : ledgerDebts(sides);
-			const [members, methods, pending] = await Promise.all([
+			const [members, methods, pending, fund] = await Promise.all([
 				listGroupMembers(executor, groupId),
 				listPaymentMethodsByGroup(executor, groupId),
 				listPendingSettlements(executor, groupId),
+				fundCashAndContributions(executor, groupId),
 			]);
+			const peopleIds = new Set(
+				members
+					.filter((member) => member.kind === "person")
+					.map((member) => member.id),
+			);
+			const peopleBalances = balances.filter((entry) =>
+				peopleIds.has(entry.memberId),
+			);
 			const transfers = group.minimizeDebts
 				? suggestMinimizedSettlements(balances)
 				: netPairwiseDebts(
@@ -54,7 +65,8 @@ export async function getBalances(
 			return BalancesResponse.parse({
 				currency: group.currency,
 				minimized: group.minimizeDebts,
-				balances,
+				balances: peopleBalances,
+				fund,
 				transfers: transfers.map((transfer) => {
 					const from = members.find(
 						(member) => member.id === transfer.fromMemberId,

@@ -8,6 +8,7 @@ export {
 	type Db,
 	type DbExecutor,
 } from "./client.js";
+export * from "./fund.js";
 export * from "./google-accounts.js";
 export * from "./group-users.js";
 export * from "./groups.js";

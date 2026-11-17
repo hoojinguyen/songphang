@@ -25,6 +25,9 @@ export const ErrorCode = z
 		"SPLIT_TOTAL_MISMATCH",
 		"CATEGORY_EXISTS",
 		"LIMIT_REACHED",
+		"FUND_CANNOT_SHARE",
+		"FUND_NOT_EMPTY",
+		"FUND_EXISTS",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

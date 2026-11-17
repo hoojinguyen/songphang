@@ -78,6 +78,7 @@ export function updateMember(
 			name?: string;
 			defaultWeight?: string;
 			active?: boolean;
+			fundHolderMemberId?: string | null;
 			updatedAt: Date;
 		};
 	},

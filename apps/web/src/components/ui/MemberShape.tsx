@@ -1,17 +1,19 @@
-export type ShapeCode = "circle" | "diamond" | "squircle" | "leaf";
-export type ColorCode = "mint" | "sky" | "coral" | "lilac";
+export type ShapeCode = "circle" | "diamond" | "squircle" | "leaf" | "fund";
+export type ColorCode = "mint" | "sky" | "coral" | "lilac" | "sun";
 
 const COLORS: Record<ColorCode, string> = {
 	mint: "bg-mint",
 	sky: "bg-sky",
 	coral: "bg-coral",
 	lilac: "bg-lilac",
+	sun: "bg-accent",
 };
 const SHAPES = {
 	circle: { scale: 1, radius: "50%", rotation: 0 },
 	diamond: { scale: 0.72, radius: "24%", rotation: 45 },
 	squircle: { scale: 1, radius: "38%", rotation: 0 },
 	leaf: { scale: 0.86, radius: "50% 10% 50% 10%", rotation: 0 },
+	fund: { scale: 1, radius: "9999px", rotation: 0 },
 } as const;
 
 type MemberShapeProps = {

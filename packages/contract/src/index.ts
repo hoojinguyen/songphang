@@ -4,6 +4,7 @@ export * from "./balance.ts";
 export * from "./category.ts";
 export { ErrorCode, ErrorResponse } from "./error.ts";
 export * from "./features.ts";
+export * from "./fund.ts";
 export * from "./group.ts";
 export * from "./group-user.ts";
 export { HealthResponse } from "./health.ts";
