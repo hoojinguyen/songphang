@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/features",
+    "body": null
+  },
+  "status": 404,
+  "response": {
+    "error": {
+      "code": "NOT_FOUND",
+      "message": "Resource not found",
+      "requestId": "01a1e4bd-cc05-7279-8563-c6bd186bf0cd"
+    }
+  }
+}

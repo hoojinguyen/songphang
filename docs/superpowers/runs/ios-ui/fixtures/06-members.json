@@ -1,0 +1,56 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/members",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "members": [
+      {
+        "id": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+        "name": "Minh",
+        "active": true,
+        "defaultWeight": "1.00",
+        "position": 0,
+        "shape": "circle",
+        "color": "mint",
+        "isMe": true,
+        "claimed": true
+      },
+      {
+        "id": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+        "name": "Lan",
+        "active": true,
+        "defaultWeight": "1.00",
+        "position": 1,
+        "shape": "diamond",
+        "color": "sky",
+        "isMe": false,
+        "claimed": false
+      },
+      {
+        "id": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+        "name": "Hùng",
+        "active": true,
+        "defaultWeight": "1.00",
+        "position": 2,
+        "shape": "squircle",
+        "color": "coral",
+        "isMe": false,
+        "claimed": false
+      },
+      {
+        "id": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+        "name": "Thu",
+        "active": true,
+        "defaultWeight": "1.00",
+        "position": 3,
+        "shape": "leaf",
+        "color": "lilac",
+        "isMe": false,
+        "claimed": false
+      }
+    ]
+  }
+}

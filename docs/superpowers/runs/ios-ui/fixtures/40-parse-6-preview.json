@@ -1,0 +1,50 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions/preview",
+    "body": {
+      "type": "expense",
+      "description": "chợ",
+      "amount": 500000,
+      "payers": [
+        {
+          "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+          "amount": 500000
+        }
+      ],
+      "split": {
+        "method": "exact",
+        "members": [
+          "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+          "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+        ],
+        "entries": [
+          {
+            "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "amount": 200000
+          },
+          {
+            "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+            "amount": 300000
+          }
+        ],
+        "remainder": "none"
+      },
+      "occurredAt": "2026-11-10T12:00:00.000Z",
+      "category": null
+    }
+  },
+  "status": 200,
+  "response": {
+    "shares": [
+      {
+        "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+        "amount": 200000
+      },
+      {
+        "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+        "amount": 300000
+      }
+    ]
+  }
+}

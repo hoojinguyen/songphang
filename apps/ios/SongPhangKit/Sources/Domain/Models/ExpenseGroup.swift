@@ -1,0 +1,58 @@
+public struct ExpenseGroup: Sendable, Hashable, Identifiable {
+  public struct ID: Sendable, Hashable {
+    public let rawValue: String
+    public init(_ rawValue: String) { self.rawValue = rawValue }
+  }
+
+  public struct PreviewMember: Sendable, Hashable, Identifiable {
+    public let id: Member.ID
+    public let name: String
+    public let shape: MemberShape
+    public let color: MemberColor
+
+    public init(id: Member.ID, name: String, shape: MemberShape, color: MemberColor) {
+      self.id = id
+      self.name = name
+      self.shape = shape
+      self.color = color
+    }
+  }
+
+  public let id: ID
+  public var name: String
+  public var currency: String
+  public var memberCount: Int
+  public var previewMembers: [PreviewMember]
+  public var myBalance: Money
+  public var minimizeDebts: Bool
+  public var defaultRole: Role
+  public var role: Role
+  public var myMemberId: Member.ID?
+  public var createdAt: String
+
+  public init(
+    id: ID,
+    name: String,
+    currency: String = "VND",
+    memberCount: Int,
+    previewMembers: [PreviewMember],
+    myBalance: Money,
+    minimizeDebts: Bool = true,
+    defaultRole: Role = .editor,
+    role: Role = .owner,
+    myMemberId: Member.ID? = nil,
+    createdAt: String = "2026-11-16T14:23:26.244Z"
+  ) {
+    self.id = id
+    self.name = name
+    self.currency = currency
+    self.memberCount = memberCount
+    self.previewMembers = previewMembers
+    self.myBalance = myBalance
+    self.minimizeDebts = minimizeDebts
+    self.defaultRole = defaultRole
+    self.role = role
+    self.myMemberId = myMemberId
+    self.createdAt = createdAt
+  }
+}

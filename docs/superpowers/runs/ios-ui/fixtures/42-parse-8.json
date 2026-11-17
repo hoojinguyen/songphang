@@ -1,0 +1,49 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions/parse",
+    "body": {
+      "text": "180k"
+    }
+  },
+  "status": 200,
+  "response": {
+    "status": "needs_input",
+    "text": "180k",
+    "draft": {
+      "type": "expense",
+      "description": null,
+      "amount": 180000,
+      "payers": [
+        {
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "amount": 180000
+        }
+      ],
+      "split": {
+        "method": "equal",
+        "members": [
+          "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+          "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+          "01a1e4bd-cc30-7cba-91a9-e810bb195d04"
+        ]
+      }
+    },
+    "spans": [
+      {
+        "start": 0,
+        "end": 4,
+        "kind": "amount"
+      }
+    ],
+    "issues": [
+      {
+        "code": "DESCRIPTION_MISSING",
+        "start": 0,
+        "end": 0,
+        "candidates": []
+      }
+    ]
+  }
+}

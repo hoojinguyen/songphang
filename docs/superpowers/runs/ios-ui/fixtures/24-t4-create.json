@@ -1,0 +1,97 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions",
+    "body": {
+      "type": "expense",
+      "description": "Vé",
+      "amount": 99999,
+      "occurredAt": "2026-11-10T12:00:00.000Z",
+      "category": "transport",
+      "payers": [
+        {
+          "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+          "amount": 99999
+        }
+      ],
+      "split": {
+        "method": "percent",
+        "entries": [
+          {
+            "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "percent": "50"
+          },
+          {
+            "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "percent": "30"
+          },
+          {
+            "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+            "percent": "20"
+          }
+        ]
+      }
+    }
+  },
+  "status": 201,
+  "response": {
+    "transaction": {
+      "type": "expense",
+      "description": "Vé",
+      "amount": 99999,
+      "occurredAt": "2026-11-10T12:00:00.000Z",
+      "category": "transport",
+      "payers": [
+        {
+          "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+          "amount": 99999
+        }
+      ],
+      "split": {
+        "method": "percent",
+        "entries": [
+          {
+            "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "percent": "50"
+          },
+          {
+            "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "percent": "30"
+          },
+          {
+            "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+            "percent": "20"
+          }
+        ]
+      },
+      "id": "01a1e4bd-ce0b-72e9-8a78-0e0ee8f04bdc",
+      "currency": "VND",
+      "shares": [
+        {
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "amount": 49999
+        },
+        {
+          "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+          "amount": 30000
+        },
+        {
+          "memberId": "01a1e4bd-cc30-7cba-91a9-e810bb195d04",
+          "amount": 20000
+        }
+      ],
+      "version": 1,
+      "updatedBy": {
+        "id": "01a1e491-7216-7bb1-8048-06f98325653f",
+        "name": "Minh"
+      },
+      "createdBy": {
+        "id": "01a1e491-7216-7bb1-8048-06f98325653f",
+        "name": "Minh"
+      },
+      "createdAt": "2026-11-16T14:23:26.728Z",
+      "updatedAt": "2026-11-16T14:23:26.728Z",
+      "deletedAt": null
+    }
+  }
+}

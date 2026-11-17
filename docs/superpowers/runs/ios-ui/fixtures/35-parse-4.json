@@ -1,0 +1,90 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions/parse",
+    "body": {
+      "text": "lẩu 300k, mình trả. mình 80 lan 60 hùng 40, còn lại chia đều"
+    }
+  },
+  "status": 200,
+  "response": {
+    "status": "ok",
+    "text": "lẩu 300k, mình trả. mình 80 lan 60 hùng 40, còn lại chia đều",
+    "draft": {
+      "type": "expense",
+      "description": "lẩu",
+      "amount": 300000,
+      "payers": [
+        {
+          "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "amount": 300000
+        }
+      ],
+      "split": {
+        "method": "exact",
+        "members": [
+          "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+          "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+          "01a1e4bd-cc2d-7e66-888f-34564633c78d"
+        ],
+        "entries": [
+          {
+            "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+            "amount": 80000
+          },
+          {
+            "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+            "amount": 60000
+          },
+          {
+            "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+            "amount": 40000
+          }
+        ],
+        "remainder": "equal_among_all"
+      }
+    },
+    "shares": [
+      {
+        "memberId": "01a1e4bd-cc28-78ec-ad3c-e455610b60ff",
+        "amount": 120000
+      },
+      {
+        "memberId": "01a1e4bd-cc2b-79cd-952d-547466dcfcd5",
+        "amount": 100000
+      },
+      {
+        "memberId": "01a1e4bd-cc2d-7e66-888f-34564633c78d",
+        "amount": 80000
+      }
+    ],
+    "spans": [
+      {
+        "start": 0,
+        "end": 3,
+        "kind": "description"
+      },
+      {
+        "start": 4,
+        "end": 8,
+        "kind": "amount"
+      },
+      {
+        "start": 10,
+        "end": 18,
+        "kind": "payer"
+      },
+      {
+        "start": 20,
+        "end": 42,
+        "kind": "exact"
+      },
+      {
+        "start": 44,
+        "end": 60,
+        "kind": "remainder"
+      }
+    ],
+    "issues": []
+  }
+}

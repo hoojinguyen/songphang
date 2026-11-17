@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/v1/groups/01a1e4bd-cc25-70c6-860e-275da20487f1/transactions",
+    "body": null
+  },
+  "status": 200,
+  "response": {
+    "transactions": [],
+    "nextCursor": null
+  }
+}

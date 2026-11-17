@@ -1,0 +1,359 @@
+import DesignSystem
+public import Domain
+public import SwiftUI
+
+#if DEBUG
+  import PreviewSupport
+#endif
+
+public struct GroupListView: View {
+  private let model: GroupListModel
+  private let user: User
+  private let statusNotice: String?
+  private let onOpenGroup: (ExpenseGroup.ID) -> Void
+  private let onOpenCreateGroup: () -> Void
+  private let onOpenAccount: () -> Void
+  private let onResendVerification: () async throws(AppError) -> Void
+
+  @State private var isResendingVerification = false
+  @State private var verificationResent = false
+  @State private var verificationError: String?
+
+  public init(
+    model: GroupListModel,
+    user: User,
+    statusNotice: String? = nil,
+    onOpenGroup: @escaping (ExpenseGroup.ID) -> Void,
+    onOpenCreateGroup: @escaping () -> Void,
+    onOpenAccount: @escaping () -> Void,
+    onResendVerification: @escaping () async throws(AppError) -> Void = {}
+  ) {
+    self.model = model
+    self.user = user
+    self.statusNotice = statusNotice
+    self.onOpenGroup = onOpenGroup
+    self.onOpenCreateGroup = onOpenCreateGroup
+    self.onOpenAccount = onOpenAccount
+    self.onResendVerification = onResendVerification
+  }
+
+  private var isOffline: Bool {
+    if model.refreshError == .offline { return true }
+    if case .failed(.offline) = model.groups { return true }
+    return false
+  }
+
+  public var body: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 20) {
+        if model.refreshError != nil {
+          OfflineBanner()
+        }
+
+        headerView
+
+        if let statusNotice {
+          Text(statusNotice)
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+        }
+
+        contentSection
+
+        Spacer(minLength: 16)
+
+        bottomSection
+      }
+      .padding(.horizontal, 20)
+      .padding(.vertical, 24)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .refreshable {
+      await model.load()
+    }
+    .background(Tokens.bg.ignoresSafeArea())
+    .task {
+      await model.load()
+    }
+  }
+
+  private var headerView: some View {
+    HStack(alignment: .center, spacing: 16) {
+      VStack(alignment: .leading, spacing: 4) {
+        Text(L10n.t("groups.greeting", ["name": user.name]))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.muted)
+        Text(L10n.tr("groups.title"))
+          .font(Typography.pageTitle)
+          .foregroundStyle(Tokens.ink)
+      }
+      Spacer()
+      Button(action: onOpenAccount) {
+        MemberShapeView(
+          shape: .circle,
+          color: .mint,
+          name: user.name,
+          size: 52
+        )
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel(L10n.tr("account.title"))
+    }
+  }
+
+  @ViewBuilder
+  private var contentSection: some View {
+    switch model.groups {
+    case .loading:
+      LoadingSkeleton(rowCount: 2, rowHeight: 160)
+
+    case .failed:
+      LoadError(isRetrying: model.isRefreshing) {
+        Task { await model.load() }
+      }
+
+    case .loaded(let items):
+      if items.isEmpty {
+        VStack(spacing: 12) {
+          Text(L10n.tr("groups.emptyTitle"))
+            .font(Typography.sectionTitle)
+            .foregroundStyle(Tokens.ink)
+          Text(L10n.tr("groups.emptyHint"))
+            .font(Typography.body)
+            .foregroundStyle(Tokens.muted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 48)
+      } else {
+        VStack(spacing: 16) {
+          ForEach(Array(items.enumerated()), id: \.element.id) { index, group in
+            if index == 0 {
+              featuredCard(for: group)
+            } else {
+              regularCard(for: group)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private func featuredCard(for group: ExpenseGroup) -> some View {
+    let caption =
+      group.myBalance.isPositive
+      ? L10n.tr("groups.owedToYou")
+      : group.myBalance.isNegative
+        ? L10n.tr("groups.youOwe")
+        : L10n.tr("groups.settled")
+
+    return Button {
+      onOpenGroup(group.id)
+    } label: {
+      VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 4) {
+          ForEach(group.previewMembers) { member in
+            MemberShapeView(
+              shape: member.shape,
+              color: member.color,
+              name: member.name,
+              size: 30
+            )
+          }
+        }
+        .padding(.bottom, 4)
+
+        Text(group.name)
+          .font(Typography.sectionTitle)
+          .foregroundStyle(Tokens.ink)
+
+        MoneyText(
+          group.myBalance,
+          style: .signed,
+          font: Typography.heroNumber,
+          color: Tokens.ink
+        )
+
+        Text(caption)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
+      }
+      .padding(.horizontal, 22)
+      .padding(.vertical, 20)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Tokens.accent)
+      .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
+    }
+    .buttonStyle(.plain)
+  }
+
+  private func regularCard(for group: ExpenseGroup) -> some View {
+    let chipColor: Color =
+      group.myBalance.isPositive
+      ? Tokens.accent
+      : group.myBalance.isNegative
+        ? Tokens.debtSoft
+        : Tokens.sunken
+
+    let chipCaption =
+      group.myBalance.isPositive
+      ? L10n.tr("groups.chipOwedToYou")
+      : group.myBalance.isNegative
+        ? L10n.tr("groups.chipYouOwe")
+        : L10n.tr("groups.chipSettled")
+
+    return Button {
+      onOpenGroup(group.id)
+    } label: {
+      HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
+          HStack(spacing: 4) {
+            ForEach(group.previewMembers) { member in
+              MemberShapeView(
+                shape: member.shape,
+                color: member.color,
+                name: member.name,
+                size: 22
+              )
+            }
+            if group.memberCount > 4 {
+              Text(L10n.t("groups.moreMembers", ["count": String(group.memberCount - 4)]))
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.ink)
+            }
+          }
+
+          Text(group.name)
+            .font(Typography.screenHeaderTitle)
+            .foregroundStyle(Tokens.ink)
+
+          Text(L10n.t("groups.memberCount", ["count": String(group.memberCount)]))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.muted)
+        }
+        Spacer(minLength: 8)
+        VStack(alignment: .trailing, spacing: 2) {
+          MoneyText(
+            group.myBalance,
+            style: .signed,
+            font: Typography.screenHeaderTitle,
+            color: Tokens.ink
+          )
+          Text(chipCaption)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(chipColor)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+      }
+      .padding(.horizontal, 20)
+      .padding(.vertical, 18)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Tokens.surface)
+      .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+    }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  private var bottomSection: some View {
+    if !user.emailVerified {
+      SPCard(tone: .accent, padding: 20) {
+        VStack(alignment: .leading, spacing: 12) {
+          Text(L10n.tr("verify.banner"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+
+          SPButton(
+            L10n.tr("verify.resend"),
+            variant: .surface,
+            isPending: isResendingVerification
+          ) {
+            Task {
+              isResendingVerification = true
+              defer { isResendingVerification = false }
+              do throws(AppError) {
+                try await onResendVerification()
+                verificationResent = true
+                verificationError = nil
+              } catch {
+                verificationError = L10n.tr("common.saveError")
+              }
+            }
+          }
+
+          if verificationResent {
+            Text(L10n.tr("verify.resent"))
+              .font(Typography.subheadlineBold)
+          }
+          if let verificationError {
+            Text(verificationError)
+              .font(Typography.subheadlineBold)
+          }
+        }
+      }
+    } else {
+      SPButton(
+        L10n.tr("groups.create"),
+        variant: .primary,
+        size: .lg,
+        isFullWidth: true,
+        isOfflineBlocked: isOffline,
+        action: onOpenCreateGroup
+      )
+    }
+  }
+}
+
+#if DEBUG
+  #Preview("Loaded") {
+    let world = FakeWorld(preset: .tripStep4)
+    GroupListView(
+      model: GroupListModel(repository: FakeGroupsRepository(world: world)),
+      user: PreviewSamples.user,
+      onOpenGroup: { _ in },
+      onOpenCreateGroup: {},
+      onOpenAccount: {}
+    )
+  }
+
+  #Preview("Loading") {
+    let world = FakeWorld(
+      preset: .tripStep4,
+      behavior: FakeBehavior(latency: .seconds(10), hasSnapshot: false)
+    )
+    GroupListView(
+      model: GroupListModel(repository: FakeGroupsRepository(world: world)),
+      user: PreviewSamples.user,
+      onOpenGroup: { _ in },
+      onOpenCreateGroup: {},
+      onOpenAccount: {}
+    )
+  }
+
+  #Preview("Empty") {
+    let world = FakeWorld(preset: .empty)
+    GroupListView(
+      model: GroupListModel(repository: FakeGroupsRepository(world: world)),
+      user: PreviewSamples.user,
+      onOpenGroup: { _ in },
+      onOpenCreateGroup: {},
+      onOpenAccount: {}
+    )
+  }
+
+  #Preview("Failed") {
+    let world = FakeWorld(
+      preset: .tripStep4,
+      behavior: FakeBehavior(failure: .offline, hasSnapshot: false)
+    )
+    GroupListView(
+      model: GroupListModel(repository: FakeGroupsRepository(world: world)),
+      user: PreviewSamples.user,
+      onOpenGroup: { _ in },
+      onOpenCreateGroup: {},
+      onOpenAccount: {}
+    )
+  }
+#endif
