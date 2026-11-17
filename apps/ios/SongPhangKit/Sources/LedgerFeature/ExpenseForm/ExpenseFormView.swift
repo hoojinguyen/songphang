@@ -34,6 +34,7 @@ public struct ExpenseFormView: View {
       case .failed(let error):
         if case .api(_, 404) = error {
           VStack(spacing: 16) {
+            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("common.groupNotFound"))
               .font(Typography.bodyBold)
@@ -43,6 +44,7 @@ public struct ExpenseFormView: View {
           .padding(20)
         } else {
           VStack {
+            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             LoadError {
               Task { await model.load() }
@@ -55,6 +57,7 @@ public struct ExpenseFormView: View {
       case .loaded(let data):
         if data.group.role == .viewer {
           VStack(spacing: 16) {
+            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("common.forbidden"))
               .font(Typography.bodyBold)
@@ -64,6 +67,7 @@ public struct ExpenseFormView: View {
           .padding(20)
         } else if !isEmailVerified {
           VStack(spacing: 16) {
+            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             SPCard(tone: .accent, padding: 20) {
               Text(L10n.tr("verify.banner"))
                 .font(Typography.subheadlineBold)
@@ -74,6 +78,7 @@ public struct ExpenseFormView: View {
           .padding(20)
         } else if let editingTx = data.editingTransaction, editingTx.deletedAt != nil {
           VStack(spacing: 16) {
+            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("expenseForm.deletedNotice"))
               .font(Typography.bodyBold)

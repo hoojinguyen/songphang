@@ -15,7 +15,11 @@ public struct SPTextField: View {
   private let hint: String?
   private let maxLength: Int?
   private let onSubmit: (() -> Void)?
-  @FocusState private var isFocused: Bool
+  private let submitLabel: SubmitLabel?
+  private let externalFocus: FocusState<Bool>.Binding?
+  @FocusState private var internalFocus: Bool
+
+  private var focus: FocusState<Bool>.Binding { externalFocus ?? $internalFocus }
 
   public init(
     label: String,
@@ -25,7 +29,9 @@ public struct SPTextField: View {
     error: String? = nil,
     hint: String? = nil,
     maxLength: Int? = nil,
-    onSubmit: (() -> Void)? = nil
+    onSubmit: (() -> Void)? = nil,
+    submitLabel: SubmitLabel? = nil,
+    focus: FocusState<Bool>.Binding? = nil
   ) {
     self.label = label
     self._text = text
@@ -35,6 +41,8 @@ public struct SPTextField: View {
     self.hint = hint
     self.maxLength = maxLength
     self.onSubmit = onSubmit
+    self.submitLabel = submitLabel
+    self.externalFocus = focus
   }
 
   public var body: some View {
@@ -60,8 +68,8 @@ public struct SPTextField: View {
           TextField(placeholder, text: $text)
         }
       }
-      .focused($isFocused)
-      .submitLabel(onSubmit == nil ? .done : .go)
+      .focused(focus)
+      .submitLabel(submitLabel ?? (onSubmit == nil ? .done : .go))
       .onSubmit { onSubmit?() }
       .font(Typography.bodyBold)
       .foregroundStyle(Tokens.ink)
@@ -74,7 +82,7 @@ public struct SPTextField: View {
           .strokeBorder(Tokens.muted.opacity(0.35), lineWidth: 1.5)
       )
       .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-      .onTapGesture { isFocused = true }
+      .onTapGesture { focus.wrappedValue = true }
       .onChange(of: text) { _, newValue in
         if let maxLength, newValue.count > maxLength {
           text = String(newValue.prefix(maxLength))
