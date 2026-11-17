@@ -19,3 +19,10 @@ export function settlementHref(
 ) {
 	return `/g/${encodeURIComponent(groupId)}/settle?from=${encodeURIComponent(transfer.fromMemberId)}&to=${encodeURIComponent(transfer.toMemberId)}&amount=${transfer.amount}`;
 }
+
+export function payHref(
+	groupId: string,
+	transfer: { fromMemberId: string; toMemberId: string },
+) {
+	return `/g/${encodeURIComponent(groupId)}/pay?from=${encodeURIComponent(transfer.fromMemberId)}&to=${encodeURIComponent(transfer.toMemberId)}`;
+}

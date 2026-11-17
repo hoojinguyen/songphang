@@ -1,19 +1,22 @@
 import type { BalancesResponse, MemberDto } from "@songphang/contract";
-import { settlementHref } from "../../lib/balances";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
-import { OnlineLink } from "../ui/OnlineLink";
+import { TransferAction } from "./TransferAction";
 export function OtherSettlements({
 	groupId,
 	transfers,
 	members,
-	canEdit,
+	myMemberId,
+	role,
+	verified,
 }: {
 	groupId: string;
 	transfers: BalancesResponse["transfers"];
 	members: MemberDto[];
-	canEdit: boolean;
+	myMemberId: string | null;
+	role: "owner" | "editor" | "viewer";
+	verified: boolean;
 }) {
 	if (transfers.length === 0) return null;
 	return (
@@ -38,14 +41,16 @@ export function OtherSettlements({
 						<span className="text-sm font-extrabold">
 							{formatMoney(transfer.amount)}
 						</span>
-						{canEdit && (
-							<OnlineLink
-								href={settlementHref(groupId, transfer)}
-								className="flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold"
-							>
-								{vi.balances.record}
-							</OnlineLink>
-						)}
+						<TransferAction
+							groupId={groupId}
+							transfer={transfer}
+							from={from}
+							to={to}
+							myMemberId={myMemberId}
+							role={role}
+							verified={verified}
+							compact
+						/>
 					</div>
 				);
 			})}

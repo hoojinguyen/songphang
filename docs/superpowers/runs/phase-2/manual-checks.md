@@ -4,11 +4,16 @@ Status: advisor preparation completed; feature implementation pending. The secti
 
 ## With real money
 
-Pending 2A.6. After implementation, use only an account you control for the approved 1,000 VND scan/transfer check. Verify bank, account, amount and purpose in the banking app before sending. This has not been performed by the agent.
+1. Put your own real bank account on one member in S10, open a 1.000 đ debt to that member in S5 → S14 (`/g/{id}/pay`), scan the QR code with your banking app → bank, account number, account name, amount (1.000 đ), and content (`SP {from} tra {to}`) are all filled in and correct. Verify before sending, then send. (Not performed by the agent.)
 
 ## S5 — balances and settlement confirmation
 
-Pending 2A.6 and 2C.4.
+1. In two browser windows (Hùng viewer who owes, Minh owner who receives), Hùng opens the debt to Minh and presses `Tôi đã chuyển` → Hùng sees `Đang chờ Minh xác nhận` and `Huỷ báo`, Minh sees `Hùng báo đã chuyển ...` with `Đã nhận` and `Chưa nhận` without refreshing; balances remain unchanged.
+2. Minh presses `Đã nhận` → snackbar `Đã ghi nhận ... từ Hùng.`, debt disappears and balances update in both windows.
+3. On another pending request, Minh presses `Chưa nhận` → `Đã báo lại là chưa nhận.`, balances remain unchanged and Hùng sees the pay link again; or Hùng presses `Huỷ báo` → pending row returns to the pay link.
+4. Open the same pending request in two tabs, resolve in the first tab, then click `Đã nhận` in the second stale tab → `Yêu cầu này đã được xử lý.` and the list refreshes.
+
+Pending 2C.4 for fund block and fund suggestions.
 
 ## S10 — members and payment methods
 
@@ -20,7 +25,10 @@ Pending 2B.6 and 2D.2.
 
 ## S14 — paying
 
-Pending 2A.6.
+1. Tap a suggested transfer in S5 → opens `/g/{id}/pay?from=&to=` with both member shapes, large amount, `Sao chép số tiền`, QR card (`>= 240×240` with white quiet zone), bank rows (`Ngân hàng`, `Số tài khoản`, `Tên tài khoản`, `Nội dung`), wallet rows if present, and `Tôi đã chuyển`.
+2. Click `Sao chép` on account number or content → button text changes to `Đã sao chép` for two seconds; double-tap `Tôi đã chuyển` → creates only one pending request and returns to S5 with `Đã báo cho {to}. Sổ sẽ ghi nhận khi {to} xác nhận.`.
+3. Open a transfer to a member without payment details → `{to} chưa có thông tin nhận tiền.`; owner/editor (or the linked receiver) sees `Thêm thông tin`, while another viewer does not.
+4. Open S14 as an editor/owner → `Ghi nhận luôn` link opens S9 (`/settle`); open as a viewer for another member's transfer → neither `Tôi đã chuyển` nor `Ghi nhận luôn` is shown; open `/pay` for an already-settled pair → redirects back to S5.
 
 ## S16 — statistics and CSV
 

@@ -1,21 +1,22 @@
 import type { BalancesResponse, MemberDto } from "@songphang/contract";
-import { settlementHref } from "../../lib/balances";
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
-import { OnlineLink } from "../ui/OnlineLink";
+import { TransferAction } from "./TransferAction";
 export function SettlementCard({
 	groupId,
-	canEdit,
 	transfer,
 	members,
 	myMemberId,
+	role,
+	verified,
 }: {
 	groupId: string;
-	canEdit: boolean;
 	transfer: BalancesResponse["transfers"][number];
 	members: MemberDto[];
 	myMemberId: string | null;
+	role: "owner" | "editor" | "viewer";
+	verified: boolean;
 }) {
 	const from = members.find((member) => member.id === transfer.fromMemberId);
 	const to = members.find((member) => member.id === transfer.toMemberId);
@@ -40,16 +41,15 @@ export function SettlementCard({
 					</p>
 				</div>
 			</div>
-			{canEdit && (
-				<OnlineLink
-					href={settlementHref(groupId, transfer)}
-					className="flex min-h-[60px] items-center justify-center rounded-[30px] bg-accent font-extrabold"
-				>
-					{transfer.toMemberId === myMemberId
-						? vi.balances.received
-						: vi.balances.record}
-				</OnlineLink>
-			)}
+			<TransferAction
+				groupId={groupId}
+				transfer={transfer}
+				from={from}
+				to={to}
+				myMemberId={myMemberId}
+				role={role}
+				verified={verified}
+			/>
 		</div>
 	);
 }

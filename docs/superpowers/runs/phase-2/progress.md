@@ -28,7 +28,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2A.3 — settlement requests
 - [x] 2A.4 — payment data and pending requests on balances
 - [x] 2A.5 — payment methods editor
-- [ ] 2A.6 — paying screen, confirmation and gate 2A
+- [x] 2A.6 — paying screen, confirmation and gate 2A
 - [ ] 2B.1 — custom categories
 - [ ] 2B.2 — search and filters
 - [ ] 2B.3 — statistics
@@ -152,3 +152,16 @@ Security review: relevant items 1/2/4/6/7/8 checked against full diff; contract 
 ## Handoff checkpoint — 2026-11-17
 
 The owner requested handoff to another agent because of the current agent's usage limit. Current implementation checkpoint is 5b911ff, through 2A.5; first unticked task is 2A.6 and no code for it has been started. Full continuation instructions, current runtime/backup/exercise details and remaining work are in handoff.md. This documentation-only checkpoint does not mark the phase complete. Historical preparation-blocker/Not verified text above is superseded for completed tasks by their later recorded results. Current outstanding work: 2A.6, all 2B/2C/2D tasks and cumulative stage/final gates. No Phase 2 stage gate has been attempted yet.
+
+## Task 2A.6 — approach
+
+- Files to create/modify: create `apps/web/src/lib/settlement-requests.ts`, `apps/web/src/components/pay/QrCard.tsx`, `apps/web/src/components/pay/CopyRow.tsx`, `apps/web/src/components/balances/PendingRequestRow.tsx`, `apps/web/src/components/balances/TransferAction.tsx`, and `apps/web/src/app/g/[groupId]/pay/page.tsx`; modify `apps/web/src/lib/balances.ts`, `apps/web/src/lib/use-group-events.ts`, `apps/web/src/messages/vi.ts`, `apps/web/src/app/g/[groupId]/balances/page.tsx`, and the three settlement card components (`OwnSettlementCard.tsx`, `SettlementCard.tsx`, `OtherSettlements.tsx`).
+- Approach: add `settlementRequests` to SSE invalidation (invalidating both `balances` and `settlementRequests`), add settlement-request create/resolve/list hooks, and build the `/pay` screen drawing the server `qrPayload` via `qrcode` (`create`) as a 240px SVG with 4-module quiet zone (`#1c1b22` on `#ffffff`). Replace editor-only S5 actions with `TransferAction` linking to `/pay` or rendering `PendingRequestRow` with role/claim-based resolver and creator/payer cancel actions plus 409 handling via `useSnackbar`.
+- Why simplest: reuses existing `qrcode` SVG rendering (`InviteCard`), `SnackbarProvider`, `ScreenHeader`, `MemberShape`, and shared `TransferAction` across all three balance cards without duplicating permission or mutation logic.
+- Rejected alternative: duplicating pending-request state and buttons in each of the three balance cards, or introducing `uqr` (already rejected by D2).
+
+### Task 2A.6 results
+
+Commit reference: `feat(web): add paying screen and settlement confirmation`. pnpm check passed (264 files, five workspace typechecks Done) and production web built with API_ORIGIN=http://localhost:4001. Exercised in two isolated Chrome browser contexts on localhost:3001 against current-source API 4001: Minh rejected Hùng's pending 150.000 đ request (`Đã báo lại là chưa nhận.` snackbar) and Hùng's S5 updated live via SSE `settlementRequests` to show `Trả`. Hùng opened `/pay`, saw 240×240 QR SVG (`viewBox="0 0 45 45"` = 37+8 with 4-module quiet zone), Vietcombank/0011001234567/NGUYEN VAN MINH/`SP Hung tra Minh`, clicked `Sao chép Số tài khoản` → `Đã sao chép`, and double-clicked `Tôi đã chuyển` → network log showed exactly one `POST .../settlement-requests` (201) and Hùng returned to S5 (`Đang chờ Minh xác nhận` + `Huỷ báo`) while Minh's S5 updated live via SSE to `Hùng báo đã chuyển 150.000 đ` (`Đã nhận` / `Chưa nhận`). Hùng (viewer) opening `Lan → Minh` saw no `Tôi đã chuyển` or `Ghi nhận luôn`; Minh (owner) saw both `Ghi nhận luôn` and `Tôi đã chuyển`. Minh clicked `Đã nhận` → `Đã ghi nhận 150.000 đ từ Hùng.` snackbar, Minh +300.000, Hùng 0 in both windows via SSE; revisiting settled Hùng→Minh `/pay` redirected to S5. Clearing Minh's payment methods showed `Minh chưa có thông tin nhận tiền.` with `Thêm thông tin` for Minh and without it for Hùng; Minh created and cancelled (`Huỷ báo`) a request cleanly.
+
+Security review: relevant items 1/2/4/6/7/8 checked against full diff; query parameters and SSE resources validated with Zod, safe SVG rendering via `qrcode` matrix, no `dangerouslySetInnerHTML`/`eval`/browser secret storage, internal-only redirects, same-origin API requests, no new dependency. All new files under 150 lines; preexisting oversized `balances/page.tsx` retained with minimal additions (D11). Not verified: real banking-app scan/transfer and clipboard unavailability fallback in an insecure context.
