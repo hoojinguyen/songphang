@@ -1,4 +1,5 @@
 export { allocateByWeights } from "./allocate.ts";
+export { BANKS } from "./banks.ts";
 export { parseHundredths } from "./decimal.ts";
 export { type LedgerEntry, pairDebtsOf } from "./pair-debts.ts";
 export { foldVietnamese } from "./quick-entry/normalize.ts";
@@ -22,3 +23,9 @@ export {
 	type SplitInput,
 	splitEqually,
 } from "./split.ts";
+export {
+	buildVietQrPayload,
+	crc16CcittFalse,
+	findBank,
+	transferPurpose,
+} from "./vietqr.ts";

@@ -38,3 +38,8 @@ Pending 2B.4 and 2D.2.
 
 1. Open `/api/v1/features` on the local API → receiptReading, sentenceAi, telegram, push, appleSignIn and errorAlerts are all false; no sign-in required.
 2. Open `/api/v1/receipts` or `/api/v1/auth/apple` → 404; no optional service is enabled.
+
+## Core VietQR reference — 2A.1
+
+1. After the paying screen exists, compare its reference payload with task 2A.1 before scanning → exact bytes, bank/account/amount/purpose match. Do not send money to reference accounts.
+2. Call buildVietQrPayload with amount 0, 1.5 or an account containing a space → RangeError; an unknown findBank BIN returns undefined.

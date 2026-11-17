@@ -23,7 +23,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 
 - [x] Advisor preparation — commit reference `docs(phase-2): prepare approved real-money phase`
 - [x] Task 0 — commit reference `docs(run): re-baseline phase 2`
-- [ ] 2A.1 — VietQR payload and bank lookup
+- [x] 2A.1 — VietQR payload and bank lookup
 - [ ] 2A.2 — member payment methods
 - [ ] 2A.3 — settlement requests
 - [ ] 2A.4 — payment data and pending requests on balances
@@ -102,3 +102,11 @@ pnpm check passed: 240 files, all five workspace typechecks Done. pnpm build pas
 GET /features on the current-source API returned 200 with all six documented capabilities false; six unavailable optional route probes returned 404. The original API on 4000 predates this added route, so this new feature was exercised on a separate current-source API on 4001; all baseline ledger code remains identical.
 
 Balance checker after replay: All groups balanced. Restored the original private dump with pg_restore --clean --if-exists --exit-on-error, then balance checker again: All groups balanced. No dump, cookie jar or exercise script is committed. Security review: relevant items 1/2/3/6/8 checked against the full diff; intentionally public schema-validated fixed booleans, no group data, no secrets/dependencies/configuration; all Phase 1 authorization/session/SSE/snapshot code untouched. No baseline failure found. Banking/device/external-provider checks remain unverified.
+
+## Task 2A.1 — approach
+
+Create core/vietqr.ts with the specified ASCII TLV fields and CRC-16/CCITT-FALSE; reuse foldVietnamese for the purpose and the prepared BANKS snapshot for lookup. Export these functions through core/index.ts. Validate all public builder inputs before formatting. Keep QR rendering out of core and avoid any dependency or network call. Exercise fixed payloads, standard CRC vector, normalized purposes and invalid inputs before committing.
+
+### Task 2A.1 results
+
+Commit reference: `feat(core): add VietQR payload builder and bank lookup`. pnpm check passed (241 files, five workspace typechecks Done). Temporary direct function exercise printed CRC 29B1; all three purpose references exactly; both fixed QR strings exactly ending 6329/A05F; five invalid cases each RangeError; lookup Vietcombank/undefined. Purpose folding preserves original case because the reader normalizer intentionally lowercases names. No money division or sum was added. Security review: relevant items 1/2/8 checked; bounded safe integer amount, ASCII payload, six-digit BIN and bounded alphanumeric account; no secret, new dependency or service. Full core diff reviewed; no out-of-scope change. Actual bank-app acceptance remains Not verified.
