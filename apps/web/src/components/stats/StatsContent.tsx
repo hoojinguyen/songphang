@@ -23,23 +23,35 @@ function formatBucketLabel(
 function bucketRange(
 	start: string,
 	bucket: StatsResponse["bucket"],
+	periodRange: { from?: string; to?: string },
 ): { from: string; to: string } {
-	if (bucket === "day") return { from: start, to: start };
-	const [year, month, day] = start.split("-").map(Number);
-	if (bucket === "week" && year && month && day) {
-		const end = new Date(Date.UTC(year, month - 1, day + 6))
-			.toISOString()
-			.slice(0, 10);
-		return { from: start, to: end };
+	let range: { from: string; to: string };
+	if (bucket === "day") range = { from: start, to: start };
+	else {
+		const [year, month, day] = start.split("-").map(Number);
+		if (bucket === "week" && year && month && day) {
+			const end = new Date(Date.UTC(year, month - 1, day + 6))
+				.toISOString()
+				.slice(0, 10);
+			range = { from: start, to: end };
+		} else if (bucket === "month" && year && month) {
+			const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+			range = {
+				from: start,
+				to: `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`,
+			};
+		} else {
+			range = { from: start, to: start };
+		}
 	}
-	if (bucket === "month" && year && month) {
-		const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-		return {
-			from: start,
-			to: `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`,
-		};
-	}
-	return { from: start, to: start };
+	const from =
+		periodRange.from && periodRange.from > range.from
+			? periodRange.from
+			: range.from;
+	const to =
+		periodRange.to && periodRange.to < range.to ? periodRange.to : range.to;
+	if (to < from) return { from, to: from };
+	return { from, to };
 }
 
 export function StatsContent({
@@ -127,12 +139,13 @@ export function StatsContent({
 									amount={entry.amount}
 									maxAmount={maxCategory}
 									color={color}
-									href={feedHref({
-										...(entry.category ? { category: entry.category } : {}),
-										...(entry.categoryId
-											? { categoryId: entry.categoryId }
-											: {}),
-									})}
+									href={feedHref(
+										entry.category
+											? { category: entry.category }
+											: entry.categoryId
+												? { categoryId: entry.categoryId }
+												: { uncategorized: true },
+									)}
 								/>
 							);
 						})}
@@ -167,7 +180,9 @@ export function StatsContent({
 								amount={entry.amount}
 								maxAmount={maxBucket}
 								color="sky"
-								href={feedHref(bucketRange(entry.start, stats.bucket))}
+								href={feedHref(
+									bucketRange(entry.start, stats.bucket, periodRange),
+								)}
 							/>
 						))}
 					</section>

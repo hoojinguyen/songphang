@@ -158,6 +158,7 @@ export function useExpenseForm(
 	const preview = usePreviewShares(
 		groupId,
 		request?.type === "transfer" ? null : request,
+		transaction?.id,
 	);
 	useSessionGuard(preview.error);
 	const setType = (next: FormTransactionType) => {

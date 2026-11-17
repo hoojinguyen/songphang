@@ -46,6 +46,7 @@ export type TransactionFilters = {
 	memberId?: string;
 	category?: string;
 	categoryId?: string;
+	uncategorized?: boolean;
 	type?: "expense" | "transfer" | "income";
 	start?: Date;
 	endExclusive?: Date;
@@ -106,6 +107,9 @@ export function listTransactionRows(
 				filters?.categoryId === undefined
 					? undefined
 					: eq(transactions.categoryId, filters.categoryId),
+				filters?.uncategorized
+					? and(isNull(transactions.category), isNull(transactions.categoryId))
+					: undefined,
 				filters?.type === undefined
 					? undefined
 					: eq(transactions.type, filters.type),

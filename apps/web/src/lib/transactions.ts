@@ -2,6 +2,7 @@
 import {
 	CalendarDate,
 	CreateTransactionRequest,
+	PreviewTransactionRequest,
 	PreviewTransactionResponse,
 	TransactionCategory,
 	TransactionResponse,
@@ -27,6 +28,7 @@ export type TransactionFilters = {
 	memberId?: string | undefined;
 	category?: z.infer<typeof TransactionCategory> | undefined;
 	categoryId?: string | undefined;
+	uncategorized?: true | undefined;
 	type?: "expense" | "transfer" | "income" | undefined;
 	from?: string | undefined;
 	to?: string | undefined;
@@ -38,6 +40,7 @@ export function hasActiveFilters(filters: TransactionFilters): boolean {
 			filters.memberId ||
 			filters.category ||
 			filters.categoryId ||
+			filters.uncategorized ||
 			filters.type ||
 			filters.from ||
 			filters.to,
@@ -52,6 +55,12 @@ export function readTransactionFilters(params: {
 	const memberParsed = CalendarUuid.safeParse(params.get("member"));
 	const categoryParsed = TransactionCategory.safeParse(params.get("category"));
 	const categoryIdParsed = CalendarUuid.safeParse(params.get("categoryId"));
+	const uncategorized =
+		!categoryParsed.success &&
+		!categoryIdParsed.success &&
+		params.get("uncategorized") === "true"
+			? (true as const)
+			: undefined;
 	const typeParsed = TypeFilter.safeParse(params.get("type"));
 	const fromParsed = CalendarDate.safeParse(params.get("from"));
 	const toParsed = CalendarDate.safeParse(params.get("to"));
@@ -66,6 +75,7 @@ export function readTransactionFilters(params: {
 		...(memberParsed.success ? { memberId: memberParsed.data } : {}),
 		...(categoryParsed.success ? { category: categoryParsed.data } : {}),
 		...(categoryIdParsed.success ? { categoryId: categoryIdParsed.data } : {}),
+		...(uncategorized ? { uncategorized } : {}),
 		...(typeParsed.success ? { type: typeParsed.data } : {}),
 		...(from ? { from } : {}),
 		...(to ? { to } : {}),
@@ -78,6 +88,7 @@ export function buildFilterQueryString(filters: TransactionFilters): string {
 	if (filters.memberId) params.set("member", filters.memberId);
 	if (filters.category) params.set("category", filters.category);
 	if (filters.categoryId) params.set("categoryId", filters.categoryId);
+	if (filters.uncategorized) params.set("uncategorized", "true");
 	if (filters.type) params.set("type", filters.type);
 	if (filters.from) params.set("from", filters.from);
 	if (filters.to) params.set("to", filters.to);
@@ -109,6 +120,7 @@ export function useTransactions(
 			if (filters.memberId) params.set("memberId", filters.memberId);
 			if (filters.category) params.set("category", filters.category);
 			if (filters.categoryId) params.set("categoryId", filters.categoryId);
+			if (filters.uncategorized) params.set("uncategorized", "true");
 			if (filters.type) params.set("type", filters.type);
 			if (filters.from) params.set("from", filters.from);
 			if (filters.to) params.set("to", filters.to);
@@ -167,9 +179,16 @@ export function useCreateTransaction(groupId: string) {
 export function usePreviewShares(
 	groupId: string,
 	request: CreateTransactionRequest | null,
+	transactionId?: string,
 ) {
-	const serialized = request === null ? null : JSON.stringify(request);
-	const [debounced, setDebounced] = useState<CreateTransactionRequest | null>(
+	const payload =
+		request === null || request.type === "transfer"
+			? null
+			: transactionId
+				? { ...request, transactionId }
+				: request;
+	const serialized = payload === null ? null : JSON.stringify(payload);
+	const [debounced, setDebounced] = useState<PreviewTransactionRequest | null>(
 		null,
 	);
 	useEffect(() => {
@@ -178,7 +197,7 @@ export function usePreviewShares(
 				setDebounced(
 					serialized === null
 						? null
-						: CreateTransactionRequest.parse(JSON.parse(serialized)),
+						: PreviewTransactionRequest.parse(JSON.parse(serialized)),
 				),
 			250,
 		);

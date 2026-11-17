@@ -156,6 +156,15 @@ export const TransactionResponse = z
 		warnings: z.array(TransactionWarning).default([]),
 	})
 	.openapi("TransactionResponse");
+export const PreviewTransactionRequest = z
+	.intersection(
+		SplitTransactionRequest,
+		z.object({ transactionId: z.uuid().optional() }),
+	)
+	.openapi("PreviewTransactionRequest");
+export type PreviewTransactionRequest = z.infer<
+	typeof PreviewTransactionRequest
+>;
 export const PreviewTransactionResponse = z
 	.object({
 		shares: z.array(ShareDto),
@@ -170,15 +179,20 @@ export const TransactionsQuery = z
 		memberId: z.uuid().optional(),
 		category: TransactionCategory.optional(),
 		categoryId: z.uuid().optional(),
+		uncategorized: z.enum(["true", "false"]).optional(),
 		type: z.enum(["expense", "transfer", "income"]).optional(),
 		from: CalendarDate.optional(),
 		to: CalendarDate.optional(),
 	})
 	.refine(
 		(query) =>
-			query.from === undefined ||
-			query.to === undefined ||
-			isWithinFiveYears(query.from, query.to),
+			!(
+				query.uncategorized === "true" &&
+				(query.category !== undefined || query.categoryId !== undefined)
+			) &&
+			(query.from === undefined ||
+				query.to === undefined ||
+				isWithinFiveYears(query.from, query.to)),
 	);
 export type TransactionsQuery = z.infer<typeof TransactionsQuery>;
 export const TransactionsResponse = z

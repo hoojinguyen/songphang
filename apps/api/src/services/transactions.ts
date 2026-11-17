@@ -1,6 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import {
 	type CreateTransactionRequest,
+	type PreviewTransactionRequest,
 	PreviewTransactionResponse,
 	TransactionDto,
 	TransactionResponse,
@@ -46,20 +47,39 @@ function decodeCursor(cursor: string | undefined): TransactionCursor | null {
 export async function previewTransaction(
 	deps: AppDeps,
 	groupId: string,
-	request: CreateTransactionRequest,
+	request: PreviewTransactionRequest,
 ) {
-	if (request.type !== "transfer")
-		await assertLiveCategory(deps.db, groupId, request.categoryId);
-	const [shares, warnings] = await Promise.all([
-		calculateShares(deps.db, groupId, request),
-		transactionWarnings(deps.db, {
-			groupId,
-			request,
-			applied: false,
-			now: deps.now(),
-		}),
-	]);
-	return PreviewTransactionResponse.parse({ shares, warnings });
+	return deps.db.transaction(
+		async (executor) => {
+			let existingCategoryId: string | null = null;
+			if (request.transactionId !== undefined) {
+				const existing = await findTransactionRow(
+					executor,
+					groupId,
+					request.transactionId,
+				);
+				if (existing === null || existing.deletedAt !== null)
+					throw new AppError(404, "NOT_FOUND", "Resource not found");
+				existingCategoryId = existing.categoryId;
+			}
+			if (
+				request.categoryId !== null &&
+				request.categoryId !== existingCategoryId
+			)
+				await assertLiveCategory(executor, groupId, request.categoryId);
+			const [shares, warnings] = await Promise.all([
+				calculateShares(executor, groupId, request),
+				transactionWarnings(executor, {
+					groupId,
+					request,
+					applied: false,
+					now: deps.now(),
+				}),
+			]);
+			return PreviewTransactionResponse.parse({ shares, warnings });
+		},
+		{ isolationLevel: "repeatable read", accessMode: "read only" },
+	);
 }
 export async function mapTransactions(
 	executor: DbExecutor,
@@ -171,6 +191,7 @@ function buildFilters(query: TransactionsQuery): TransactionFilters {
 		...(query.memberId === undefined ? {} : { memberId: query.memberId }),
 		...(query.category === undefined ? {} : { category: query.category }),
 		...(query.categoryId === undefined ? {} : { categoryId: query.categoryId }),
+		...(query.uncategorized === "true" ? { uncategorized: true } : {}),
 		...(query.type === undefined ? {} : { type: query.type }),
 		...(range.start === undefined ? {} : { start: range.start }),
 		...(range.endExclusive === undefined

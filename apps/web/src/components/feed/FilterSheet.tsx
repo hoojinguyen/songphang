@@ -75,6 +75,7 @@ export function FilterSheet({
 	const [memberId, setMemberId] = useState(filters.memberId);
 	const [category, setCategory] = useState(filters.category);
 	const [categoryId, setCategoryId] = useState(filters.categoryId);
+	const [uncategorized, setUncategorized] = useState(filters.uncategorized);
 	const [type, setType] = useState(filters.type);
 	const [from, setFrom] = useState(filters.from ?? "");
 	const [to, setTo] = useState(filters.to ?? "");
@@ -87,6 +88,7 @@ export function FilterSheet({
 			setMemberId(filters.memberId);
 			setCategory(filters.category);
 			setCategoryId(filters.categoryId);
+			setUncategorized(filters.uncategorized);
 			setType(filters.type);
 			setFrom(filters.from ?? "");
 			setTo(filters.to ?? "");
@@ -102,7 +104,9 @@ export function FilterSheet({
 		? `b:${category}`
 		: categoryId
 			? `c:${categoryId}`
-			: undefined;
+			: uncategorized
+				? "uncategorized"
+				: undefined;
 	const categoryOptions = [
 		...TransactionCategory.options.map((code) => ({
 			value: `b:${code}`,
@@ -112,6 +116,7 @@ export function FilterSheet({
 			value: `c:${custom.id}`,
 			label: custom.name,
 		})),
+		{ value: "uncategorized", label: vi.stats.uncategorised },
 	];
 
 	return (
@@ -139,13 +144,20 @@ export function FilterSheet({
 						if (!val) {
 							setCategory(undefined);
 							setCategoryId(undefined);
+							setUncategorized(undefined);
+						} else if (val === "uncategorized") {
+							setCategory(undefined);
+							setCategoryId(undefined);
+							setUncategorized(true);
 						} else if (val.startsWith("b:")) {
 							const parsed = TransactionCategory.safeParse(val.slice(2));
 							setCategory(parsed.success ? parsed.data : undefined);
 							setCategoryId(undefined);
+							setUncategorized(undefined);
 						} else {
 							setCategory(undefined);
 							setCategoryId(val.slice(2));
+							setUncategorized(undefined);
 						}
 					}}
 				/>
@@ -198,6 +210,7 @@ export function FilterSheet({
 								...(memberId ? { memberId } : {}),
 								...(category ? { category } : {}),
 								...(categoryId ? { categoryId } : {}),
+								...(uncategorized ? { uncategorized } : {}),
 								...(type ? { type } : {}),
 								...(from ? { from } : {}),
 								...(to ? { to } : {}),

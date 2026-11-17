@@ -57,6 +57,13 @@ export function FilterChips({
 			remove: () => onChange({ ...filters, categoryId: undefined }),
 		});
 	}
+	if (filters.uncategorized) {
+		chips.push({
+			key: "uncategorized",
+			label: `${vi.filter.category}: ${vi.stats.uncategorised}`,
+			remove: () => onChange({ ...filters, uncategorized: undefined }),
+		});
+	}
 	if (filters.type) {
 		chips.push({
 			key: "type",
