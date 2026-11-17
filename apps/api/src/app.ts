@@ -13,6 +13,7 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerDevRoutes } from "./routes/dev.js";
 import { registerEventRoutes } from "./routes/events.js";
+import { registerFeatureRoute } from "./routes/features.js";
 import { registerGoogleRoutes } from "./routes/google.js";
 import { registerGroupUserRoutes } from "./routes/group-users.js";
 import { registerGroupRoutes } from "./routes/groups.js";
@@ -68,6 +69,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	});
 	registerHealthRoute(app, deps.db);
+	registerFeatureRoute(app);
 	registerMeRoute(app, deps);
 	registerGroupRoutes(app, deps);
 	registerEventRoutes(app, deps);

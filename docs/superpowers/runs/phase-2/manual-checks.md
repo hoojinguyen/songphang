@@ -1,6 +1,6 @@
 # Phase 2 run — owner manual checks
 
-Status: preparation blocked; no Phase 2 feature is available yet. The sections below reserve the approved flow organization. Concrete task checks must be added as tasks are implemented, including invalid cases and actual URLs/commands where needed.
+Status: advisor preparation completed; feature implementation pending. The sections below reserve the approved flow organization. Concrete task checks must be added as tasks are implemented, including invalid cases and actual URLs/commands where needed.
 
 ## With real money
 
@@ -33,3 +33,8 @@ Pending 2C.4.
 ## S4 — filters and budget banner
 
 Pending 2B.4 and 2D.2.
+
+## Task 0 — local capabilities
+
+1. Open `/api/v1/features` on the local API → receiptReading, sentenceAi, telegram, push, appleSignIn and errorAlerts are all false; no sign-in required.
+2. Open `/api/v1/receipts` or `/api/v1/auth/apple` → 404; no optional service is enabled.

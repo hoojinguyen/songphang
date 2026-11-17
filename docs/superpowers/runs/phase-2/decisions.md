@@ -64,3 +64,44 @@ Problem: NAPAS complete BIN mapping was inaccessible. Options: continue blocked;
 ## D5 — Advisor sample fixtures and standing amendments
 
 Choice: append F01–F12 without modifying any prior byte of the 75 existing samples. Define separate F/N/Q groups for fund, absent fund and person-name ambiguity. Calculate shares before implementation using the approved largest-remainder position rule. Amend standing documents additively in English, superseding the explicitly identified older Phase 2 reservations. No library or product requirement beyond approved spec added.
+
+## Task 0 — named path mapping
+
+| Plan path | Actual location / adaptation |
+|---|---|
+| apps/api/src/app.ts | apps/api/src/app.ts |
+| apps/api/src/rate-limit.ts | apps/api/src/rate-limit.ts |
+| apps/api/src/routes/members.ts | apps/api/src/routes/members.ts |
+| apps/api/src/routes/transactions.ts | apps/api/src/routes/transactions.ts |
+| apps/api/src/services/balances.ts | apps/api/src/services/balances.ts |
+| apps/api/src/services/invites.ts | apps/api/src/services/invites.ts |
+| apps/api/src/services/members.ts | apps/api/src/services/members.ts |
+| apps/api/src/services/transactions.ts | apps/api/src/services/transactions.ts |
+| apps/web/src/app/globals.css | apps/web/src/app/globals.css |
+| apps/web/src/components/members/MemberEditor.tsx | apps/web/src/components/members/MemberEditor.tsx |
+| apps/web/src/lib/members.ts | apps/web/src/lib/members.ts |
+| apps/web/src/lib/transactions.ts | apps/web/src/lib/transactions.ts |
+| apps/web/src/lib/use-group-events.ts | apps/web/src/lib/use-group-events.ts |
+| apps/web/src/messages/vi.ts | apps/web/src/messages/vi.ts |
+| packages/contract/src/balance.ts | packages/contract/src/balance.ts |
+| packages/contract/src/error.ts | packages/contract/src/error.ts |
+| packages/contract/src/index.ts | packages/contract/src/index.ts |
+| packages/contract/src/member.ts | packages/contract/src/member.ts |
+| packages/contract/src/transaction.ts | packages/contract/src/transaction.ts |
+| packages/core/src/ | packages/core/src/ |
+| packages/core/src/dates.ts | Missing at baseline; locate equivalent below or create in its producing task |
+| packages/core/src/index.ts | packages/core/src/index.ts |
+| packages/core/src/settlements.ts | packages/core/src/settlements.ts |
+| packages/db/src/check-balances.ts | packages/db/src/check-balances.ts |
+| packages/db/src/index.ts | packages/db/src/index.ts |
+| packages/db/src/members.ts | packages/db/src/members.ts |
+| packages/db/src/schema-groups.ts | packages/db/src/schema-groups.ts |
+| packages/db/src/schema-transactions.ts | packages/db/src/schema-transactions.ts |
+| packages/db/src/schema.ts | packages/db/src/schema.ts |
+| packages/db/src/transactions.ts | packages/db/src/transactions.ts |
+
+Semantic equivalents: members schema is schema-groups.ts; ledger schema is schema-transactions.ts; integrity SQL is packages/db/drizzle/0002_ledger-integrity.sql (replace via new generated migration). Split and settlement functions live in packages/core/src/split.ts and settlements.ts; reader in quick-entry/read-sentence.ts. Balance DTO is contract/src/balance.ts. Transactions create/preview/list use services/transactions.ts; edit/delete/restore use services/transaction-changes.ts. Payer/split normalization uses transaction-input.ts. Member queries use listGroupMembers, not listMembers. Existing member UI is MemberEditor/MemberRow, participant grid MemberToggleGrid, payer controls ParticipantFields/PayerAmounts, shape renderer ui/MemberShape.tsx. Feed components are components/feed; settings page app/g/[groupId]/settings/page.tsx; balances page app/g/[groupId]/balances/page.tsx. Source paths introduced by 2B/2C/2D are not missing Phase 1 prerequisites.
+
+Phase 1 is the only earlier roadmap phase on main; its run directory contains all stages and review fixes. No later phase dependency applies to Phase 2. Preserve Phase 1 account-first session/password serialization, group post-lock checks, terminal SSE guards and repeatable-read ledger snapshots.
+
+D6 — Features endpoint: expose receiptReading, sentenceAi, telegram, push, appleSignIn and errorAlerts booleans, all false in Phase 2. Google remains separately discoverable through /auth/providers. No optional adapter route is registered; no new environment variable. Missing endpoint supplied in Task 0 as an explicit common-plan prerequisite.
