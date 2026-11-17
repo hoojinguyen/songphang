@@ -232,3 +232,10 @@ Problem: an empty default split cannot satisfy the existing split contract and o
 Options: add a new public issue/copy; use the existing count-too-large refusal for one required participant and zero active members.
 Choice: COUNT_MISMATCH with count 1/candidates [], unparsed and split null; preserve any understood amount/description. The existing localized banner states that the group has zero active people.
 Reason: accurate actionable refusal without changing public schemas or the 75 approved examples, inventing a payer, or weakening member/split rules.
+
+
+## D37 — Terminal SSE connection lifecycle (R3 follow-up)
+Problem: resolving disconnect while draining pending delivery allows an already-validated session check to send after logout, and can hold the response open behind a database lock.
+Options: drain with another session lookup; synchronously mark the connection terminal, abort revoked connections, and discard obsolete delivery continuations.
+Choice: terminal state plus installed Hono stream.abort for revocation/access loss/client disconnect, post-await write guards, immediate timer/subscription cleanup without waiting for pending queries. A removed control event marks the connection terminal and is flushed before graceful close, independently of pending authorization queries.
+Reason: closes access immediately without cancelling unrelated database work, changing public events, or weakening authorization; preserves required removed delivery even when an earlier membership check is blocked. The existing per-connection route closure remains cohesive despite exceeding the function-length guideline.

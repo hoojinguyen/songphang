@@ -136,7 +136,7 @@ These are owner checks, not claims of verification. Use disposable local data an
 
 1. Queue a transaction/member/invite write while the owner removes or demotes the writer → removed gets 404, demoted gets 403, nothing is written.
 2. Reset/change a password during a pending old-password login → no surviving old-password session; the new password works.
-3. With group event streams open, logout/reset/delete the account → affected streams close; changing password with revoke-others keeps only the caller's session stream; idle expiry closes by the next keep-alive.
+3. With group event streams open, logout/reset/delete the account → affected streams close; changing password with revoke-others keeps only the caller's session stream; idle expiry closes by the next keep-alive. When an authorization query is deliberately delayed, logout must still end the stream before that query resumes; releasing it must emit no late connected, changed or keep-alive bytes. A queued removal must still deliver exactly one removed event and then EOF. Reconnecting after logout gets 401; reconnecting after removal gets 404.
 4. Edit amounts while another client reads pairwise balances and transaction details → every response is internally consistent, with no 500 or mismatched totals.
 5. Revoke a loaded browser session and navigate → usable login form; sign into another account → only its profile/groups appear.
 6. Delete a linked member without history while their group is open → the choose-your-shape prompt and unclaimed state update without reload.

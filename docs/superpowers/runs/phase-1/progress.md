@@ -3554,3 +3554,350 @@ Gate not passed: none in this fix run. Unresolved review findings: none.
 Not verified: real Google/mail round trips, deployment/HTTPS, physical device/screen-reader/software-keyboard/native-share/camera behavior, 4G timing, owner visual acceptance; password-form browser sign-in (API password flows passed), each edit dependency's individual browser-failure variant, and R6's multi-profile prompt timing. These are not presented as verified by the API exercises or source review. Manual owner regression steps are in manual-checks.md.
 
 Cleanup: restored the private pre-fix PostgreSQL dump after all reset/load exercises. Restore completed without SQL errors; the original six group IDs returned, each sum 0/mismatches 0, All groups balanced. Temporary exercise fixtures are gone; no backup or exercise script is committed. Final pnpm check passed (237 files, all five workspace typechecks Done). No push or merge performed.
+
+
+## R3 follow-up — cancel in-flight SSE delivery
+
+Approach:
+- Modify only the existing SSE route and the phase-run records; retain middleware, hub/session contracts and public event payloads.
+- Give each connection a synchronous terminal state, abort revoked/disconnected streams, and check that state after every asynchronous access check.
+- Start initial authorization on the owned delivery chain, but do not await that chain after disconnection; cleanup must not wait for a blocked database query.
+- Deliver removed as a terminal control event before graceful close, cancelling obsolete changed/keep-alive work without losing the required removed notification.
+- Reuse installed Hono abort/close semantics rather than add a cancellation framework, dependency or database API. Rejected alternative: draining pending deliveries preserves the reproduced revocation race. Questions: none.
+
+
+### R3 follow-up — result and self-review
+
+- [x] R3 follow-up / re-review F1 — terminal SSE cancellation implemented. Commit reference: `fix(api): cancel in-flight events on session revocation` (unique subject; D33 convention). This supersedes the earlier R3 PASS conclusions that did not cover in-flight callbacks.
+- Completed: synchronous terminal state, Hono abort on revocation/access loss, guards before and after asynchronous authorization, no delivery-chain drain on disconnect, terminal removed frame flushed separately, timer/subscription cleanup even while a query remains blocked. Stale delivery errors cannot interrupt an already-terminal removed frame.
+- Files: apps/api/src/routes/events.ts plus this report, D37 and the existing R3 manual regression item. No endpoint/schema/payload, package, dependency, environment, money or UI change.
+- pnpm check: passed, 237 files and all five workspace typechecks Done. Outbound-denied pnpm build passed: compile, TypeScript and 11/11 pages.
+- Original delayed-membership/logout sequence ran twice against the actual updated app route/hub and PostgreSQL: logout 204, /me 401, EOF before releasing the membership lock, zero bytes after release. Initial authorization, real 25-second keep-alive, and queued changed deliveries were also delayed and cancelled. The temporary exercise uses real queries and transport, prints observed results, has no assertions and is not committed.
+- Normal routes exercised on a current-source local HTTP instance: logout, change/reset password, expiry and account deletion close the intended sessions; revoke-others keeps the caller's stream; remaining users receive deletion invalidation. Development login obtained additional real sessions for repeated stream cases without disabling password limits. The separate old-password race also still returned reset 204 / old login 401 / new login 204.
+- Web-origin curl exercise: invalid transaction 400 emitted no event; create 201 emitted one changed frame observed after 359 ms; replay of the same idempotency key returned 201 with still one frame. Two real 25-second keep-alives appeared; removal 204 emitted one removed and closed with curl exit 0; reconnect 404.
+- Fresh reset migration/seed succeeded. Replayed final trip, A/B/C, all 75 D samples and full permission matrix: four replay processes exited 0, real outputs inspected. Fixed figures preserved: edited shares 130000/90000/110000, old version 409; pre-settlement 320001/180000/-180001/-320000/0, then five zeros/transfers []; delete group 204, later 404 and zero dependent rows; reader 75/75 match, saved counts 4/0/0. All eleven disposable post-exercise groups had sum 0/mismatches 0, All groups balanced.
+- Security review: relevant items 1–6 and 8 checked against the actual diff. Shared authorization and session checks retained; no post-revocation writes, secret/log/payload additions, query changes or new dependency. Item 7 is not applicable (no web change). Online dependency audit remains Not verified under the no-external-service rule; manifests/lockfile unchanged.
+- Self-review using review-code: Task R3 follow-up: PASS. Read the full source and run-record diff; repeated the original race and normal stream cases. Pending initial checks cannot delay transport closure; revoked streams abort immediately; removed still flushes; all promise chains own their error handlers; cancelled query completions cannot write or abort an already-terminal removal. The per-connection transport closure remains longer than the function guideline because its state, timer and subscription share one lifetime (D37); no extra abstraction or business logic was added.
+- Manual checks: updated existing review-regression item 3 with delayed-query EOF, no late frames, terminal removed and 401/404 reconnect cases. Normal two-session change-password behavior remains in that item.
+- Decisions: D37. Deviations: none from the authorized fix. Gate not passed: none. Unresolved: none. Out of scope: none newly found.
+- Not verified: physical multi-device/browser interaction, real Google/mail/HTTPS and online audit; no UI was changed. The previous 500-transaction latency exercise was not repeated for this transport-only change; all functional acceptance and permission gates above were rerun. No external service, push or merge.
+
+#### Original reproduction, repeated after fix
+
+```text
+group create 201
+initial : connected
+in-flight membership checks blocked 1
+logout 204
+me after logout 401
+EOF before releasing membership lock true
+events delivered after logout completed ""
+```
+
+#### Connection lifecycle exercise
+
+```text
+removed initial : connected
+removed pending checks 1
+removed terminal frame before unlock event: removed
+data: {}
+removed EOF before unlock true
+removed late bytes ""
+initial pending checks 1
+initial logout 204
+initial EOF before unlock true
+initial late bytes ""
+keepalive initial : connected
+waiting for real 25-second keepalive
+keepalive pending checks 1
+keepalive logout 204
+keepalive EOF before unlock true
+keepalive and queued late bytes ""
+normal initial : connected
+normal changed event: changed
+data: {"resources":["members","balances"]}
+active after normal disconnect 0
+active after 50 open/cancel 0
+outsider SSE 404
+unsigned SSE 401
+malformed group SSE 404
+```
+
+#### Web-origin SSE exercise
+
+```text
+create 201
+join 200
+invalid write 400
+after invalid events 0
+create transaction 201
+web changed observed ms 359 count 1
+idempotent replay 201
+after replay changed count 1
+waiting for two real keepalives
+remove Lan 204
+stream curl exit 0 keepalive count 2 changed count 1 removed count 1
+stream data : connected
+
+event: changed
+data: {"resources":["transactions","balances","activity"]}
+
+: keep-alive
+
+: keep-alive
+
+event: removed
+data: {}
+
+
+removed reconnect 404
+```
+
+#### Account/session stream exercise
+
+```text
+join 200
+logout 204
+owner event 201
+logout closed True
+logout event data : connected
+login A 204
+login B 204
+change 204
+other closed True
+other event data : connected
+current closed False
+current event data : connected
+
+event: changed
+data: {"resources":["members","balances","activity"]}
+forgot 204
+reset 204
+reset closed True
+reset event data : connected
+login after reset 204
+expiry closed True
+expiry event data : connected
+login before delete 204
+delete wrong email 400
+delete 204
+delete closed True
+delete event data : connected
+owner closed False
+owner event data : connected
+
+event: changed
+data: {"resources":["users","members","group","activity"]}
+
+event: changed
+data: {"resources":["members","balances","activity"]}
+deleted /me 401
+outsider SSE 404
+unsigned SSE 401
+```
+
+#### Permission matrix replay
+
+```text
+matrix GET /group minh 200
+matrix GET /group lan 200
+matrix GET /group ngan 200
+matrix GET /group hung 404
+matrix GET /group None 401
+matrix GET  malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET  random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /members minh 200
+matrix GET /members lan 200
+matrix GET /members ngan 200
+matrix GET /members hung 404
+matrix GET /members None 401
+matrix GET /members malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /members random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /users minh 200
+matrix GET /users lan 200
+matrix GET /users ngan 200
+matrix GET /users hung 404
+matrix GET /users None 401
+matrix GET /users malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /users random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /transactions minh 200
+matrix GET /transactions lan 200
+matrix GET /transactions ngan 200
+matrix GET /transactions hung 404
+matrix GET /transactions None 401
+matrix GET /transactions malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /transactions random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /balances minh 200
+matrix GET /balances lan 200
+matrix GET /balances ngan 200
+matrix GET /balances hung 404
+matrix GET /balances None 401
+matrix GET /balances malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /balances random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /events minh 200
+matrix GET /events lan 200
+matrix GET /events ngan 200
+matrix GET /events hung 404
+matrix GET /events None 401
+matrix GET /events malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /events random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /invite minh 200
+matrix GET /invite lan 200
+matrix GET /invite ngan 403
+matrix GET /invite hung 404
+matrix GET /invite None 401
+matrix GET /invite malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix GET /invite random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /members minh 201
+matrix POST /members lan 201
+matrix POST /members ngan 403
+matrix POST /members hung 404
+matrix POST /members None 401
+matrix POST /members malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /members random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 minh 200
+matrix PATCH /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 lan 200
+matrix PATCH /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 ngan 403
+matrix PATCH /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 hung 404
+matrix PATCH /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 None 401
+matrix PATCH /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions minh 201
+matrix POST /transactions lan 201
+matrix POST /transactions ngan 403
+matrix POST /transactions hung 404
+matrix POST /transactions None 401
+matrix POST /transactions malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions/preview minh 200
+matrix POST /transactions/preview lan 200
+matrix POST /transactions/preview ngan 403
+matrix POST /transactions/preview hung 404
+matrix POST /transactions/preview None 401
+matrix POST /transactions/preview malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transactions/preview random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /group minh 200
+matrix PATCH /group lan 403
+matrix PATCH /group ngan 403
+matrix PATCH /group hung 404
+matrix PATCH /group None 401
+matrix PATCH  malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH  random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /invite minh 200
+matrix PATCH /invite lan 403
+matrix PATCH /invite ngan 403
+matrix PATCH /invite hung 404
+matrix PATCH /invite None 401
+matrix PATCH /invite malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /invite random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /invite/rotate minh 200
+matrix POST /invite/rotate lan 403
+matrix POST /invite/rotate ngan 403
+matrix POST /invite/rotate hung 404
+matrix POST /invite/rotate None 401
+matrix POST /invite/rotate malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /invite/rotate random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /users/01a1e799-4fef-7862-b6a3-783af7db7e4f minh 200
+matrix PATCH /users/01a1e799-4fef-7862-b6a3-783af7db7e4f lan 403
+matrix PATCH /users/01a1e799-4fef-7862-b6a3-783af7db7e4f ngan 403
+matrix PATCH /users/01a1e799-4fef-7862-b6a3-783af7db7e4f hung 404
+matrix PATCH /users/01a1e799-4fef-7862-b6a3-783af7db7e4f None 401
+matrix PATCH /users/01a1e799-4fef-7862-b6a3-783af7db7e4f malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PATCH /users/01a1e799-4fef-7862-b6a3-783af7db7e4f random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PUT /me/member minh 200
+matrix PUT /me/member lan 200
+matrix PUT /me/member ngan 200
+matrix PUT /me/member hung 404
+matrix PUT /me/member None 401
+matrix POST /transfer-ownership lan 403
+matrix POST /transfer-ownership ngan 403
+matrix POST /transfer-ownership hung 404
+matrix POST /transfer-ownership None 401
+matrix POST /transfer-ownership minh 200
+matrix DELETE /users/user lan 403
+matrix DELETE /users/user ngan 403
+matrix DELETE /users/user hung 404
+matrix DELETE /users/user None 401
+matrix DELETE /users/user minh 204
+matrix POST /leave minh 422
+matrix POST /leave lan 204
+matrix POST /leave ngan 204
+matrix POST /leave hung 404
+matrix POST /leave None 401
+matrix DELETE /members/member minh 204
+matrix DELETE /members/member lan 204
+matrix DELETE /members/member ngan 403
+matrix DELETE /members/member hung 404
+matrix DELETE /members/member None 401
+matrix PUT /me/member malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix PUT /me/member random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transfer-ownership malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /transfer-ownership random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /users/01a1e799-4fef-7862-b6a3-783af7db7e4f malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /users/01a1e799-4fef-7862-b6a3-783af7db7e4f random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /leave malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix POST /leave random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 malformed [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix DELETE /members/01a1e79b-1e5b-7d07-85df-85eac60ce832 random [404, {"error": {"code": "NOT_FOUND", "message": "Resource not found"}}]
+matrix parse minh 200
+matrix parse lan 200
+matrix parse ngan 403
+matrix parse hung 404
+matrix parse None 401
+matrix parse bad group invalid (404, {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e79c-154e-7254-aad8-e3ebd2e22bcc'}})
+matrix parse bad group 00000000-0000-4000-8000-000000000000 (404, {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found', 'requestId': '01a1e79c-1556-7e35-ade5-596575dbcd6f'}})
+final matrix GET detail minh 200
+final matrix GET activity minh 200
+final matrix GET detail lan 200
+final matrix GET activity lan 200
+final matrix GET detail ngan 200
+final matrix GET activity ngan 200
+final matrix GET detail hung 404
+final matrix GET activity hung 404
+final matrix GET detail None 401
+final matrix GET activity None 401
+final matrix PATCH detail minh 200
+final matrix PATCH detail lan 200
+final matrix PATCH detail ngan 403
+final matrix PATCH detail hung 404
+final matrix PATCH detail None 401
+final matrix DELETE detail minh 204
+final matrix restore minh 200
+final matrix DELETE detail lan 204
+final matrix restore lan 200
+final matrix DELETE detail ngan 403
+final matrix restore ngan 403
+final matrix DELETE detail hung 404
+final matrix restore hung 404
+final matrix DELETE detail None 401
+final matrix restore None 401
+final matrix malformed/random group GET /transactions/01a1e79b-2371-7539-a824-9f7b93a15935 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group GET /transactions/01a1e79b-2371-7539-a824-9f7b93a15935 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group GET /activity 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group GET /activity 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group PATCH /transactions/01a1e79b-2371-7539-a824-9f7b93a15935 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group PATCH /transactions/01a1e79b-2371-7539-a824-9f7b93a15935 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group DELETE /transactions/01a1e79b-2371-7539-a824-9f7b93a15935 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group DELETE /transactions/01a1e79b-2371-7539-a824-9f7b93a15935 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group POST /transactions/01a1e79b-2371-7539-a824-9f7b93a15935/restore 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group POST /transactions/01a1e79b-2371-7539-a824-9f7b93a15935/restore 404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group DELETE  404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix malformed/random group DELETE  404 {'error': {'code': 'NOT_FOUND', 'message': 'Resource not found'}}
+final matrix missing detail invalid minh 404
+final matrix missing detail invalid lan 404
+final matrix missing detail invalid ngan 404
+final matrix missing detail invalid hung 404
+final matrix missing detail invalid None 401
+final matrix missing detail 3f05f245-2b54-478d-a05d-f43b08c35607 minh 404
+final matrix missing detail 3f05f245-2b54-478d-a05d-f43b08c35607 lan 404
+final matrix missing detail 3f05f245-2b54-478d-a05d-f43b08c35607 ngan 404
+final matrix missing detail 3f05f245-2b54-478d-a05d-f43b08c35607 hung 404
+final matrix missing detail 3f05f245-2b54-478d-a05d-f43b08c35607 None 401
+final matrix DELETE group lan 403
+final matrix DELETE group ngan 403
+final matrix DELETE group hung 404
+final matrix DELETE group None 401
+final matrix DELETE group minh 204
+```
+
+Cleanup verified: the private pre-fix dump was restored without SQL errors after the reset exercises. The original six group IDs returned; each sum 0/mismatches 0, All groups balanced. The temporary extra API instance was stopped; normal API remains on port 4000. Temporary exercise scripts, console logs, cookies and backup remain outside Git. No push or merge.

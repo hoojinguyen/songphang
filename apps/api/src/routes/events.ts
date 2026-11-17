@@ -25,13 +25,31 @@ export function registerEventRoutes(app: OpenAPIHono<AppEnv>, deps: AppDeps) {
 		},
 		(c) => {
 			const response = streamSSE(c, async (stream) => {
+				let isStopped = false;
 				let finish = () => {};
 				const disconnected = new Promise<void>((resolve) => {
-					finish = resolve;
+					finish = () => {
+						isStopped = true;
+						resolve();
+					};
 				});
+				const stop = () => {
+					finish();
+					stream.abort();
+				};
+				const stopOnError = () => {
+					if (!isStopped) stop();
+				};
 				const access = {
 					groupId: c.var.groupAccess.groupId,
 					token: c.var.sessionToken,
+				};
+				const canWrite = async () => {
+					if (isStopped) return false;
+					const hasAccess = await hasGroupSession(deps, access);
+					if (isStopped) return false;
+					if (!hasAccess) stop();
+					return hasAccess;
 				};
 				let pending = Promise.resolve();
 				const unsubscribe = deps.events.subscribe(
@@ -42,49 +60,47 @@ export function registerEventRoutes(app: OpenAPIHono<AppEnv>, deps: AppDeps) {
 					},
 					(event) => {
 						if (event.type === "revoked") {
-							finish();
+							stop();
+							return;
+						}
+						if (isStopped) return;
+						if (event.type === "removed") {
+							isStopped = true;
+							void stream
+								.writeSSE({ event: "removed", data: "{}" })
+								.then(finish, stop);
 							return;
 						}
 						pending = pending
 							.then(async () => {
-								if (
-									event.type === "changed" &&
-									!(await hasGroupSession(deps, access))
-								) {
-									finish();
-									return;
-								}
+								if (!(await canWrite()) || isStopped) return;
 								await stream.writeSSE({
 									event: event.type,
-									data: JSON.stringify(
-										event.type === "changed"
-											? { resources: event.resources }
-											: {},
-									),
+									data: JSON.stringify({ resources: event.resources }),
 								});
-								if (event.type === "removed") finish();
 							})
-							.catch(() => finish());
+							.catch(stopOnError);
 					},
 				);
-				stream.onAbort(finish);
+				stream.onAbort(stop);
 				const timer = setInterval(() => {
 					pending = pending
 						.then(async () => {
-							if (!(await hasGroupSession(deps, access))) {
-								finish();
-								return;
-							}
+							if (!(await canWrite()) || isStopped) return;
 							await stream.write(": keep-alive\n\n");
 						})
-						.catch(() => finish());
+						.catch(stopOnError);
 				}, 25_000);
 				try {
-					if (!(await hasGroupSession(deps, access))) return;
-					await stream.write(": connected\n\n");
+					pending = pending
+						.then(async () => {
+							if (!(await canWrite()) || isStopped) return;
+							await stream.write(": connected\n\n");
+						})
+						.catch(stopOnError);
 					await disconnected;
-					await pending;
 				} finally {
+					finish();
 					clearInterval(timer);
 					unsubscribe();
 				}
