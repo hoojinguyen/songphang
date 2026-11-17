@@ -27,6 +27,12 @@ export {
 	type SpanKind,
 } from "./quick-entry/read-sentence.ts";
 export {
+	checkReceipt,
+	type ReceiptCheckFlag,
+	type ReceiptCheckInput,
+	type ReceiptCheckResult,
+} from "./receipt.ts";
+export {
 	type MemberBalance,
 	netPairwiseDebts,
 	type PairDebt,

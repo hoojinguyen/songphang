@@ -11,7 +11,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3A.2 — file storage and attachments API
 - [x] 3A.3 — attachments on transactions; cleanup job
 - [x] 3A.4 — web photos on the form and the stream; stage gate 3A
-- [ ] 3B.1 — receipt reading schema and arithmetic check
+- [x] 3B.1 — receipt reading schema and arithmetic check
 - [ ] 3B.2 — receipt reader adapters, cost ledger, quotas
 - [ ] 3B.3 — receipt scans endpoint, job, stage gate 3B
 - [ ] 3C.1 — core items split
@@ -126,6 +126,19 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
 - `exercise_3a3.mts`: transaction `attachmentIds`, `TransactionListItemDto.attachmentCount`, attachment edit deletion, soft-delete/restore preservation, 24h cleanup grace period, group delete `delete-files`, shared `STORAGE_DIR` resolution passed.
 - `test_pgboss_tx.mts`: `pg-boss@12.38.2` `fromDrizzle(tx, sql)` transactional enqueue & rollback proof passed (ready for Stage 3B).
 - `check-balances.ts`: `All groups balanced`.
+
+## Task 3B.1 — approach
+
+- Files to create/modify: create `packages/contract/src/receipt.ts`, `packages/core/src/receipt.ts`; modify `packages/contract/src/index.ts`, `packages/core/src/index.ts`.
+- Approach: define `ReceiptReading`, `ReceiptFlag`, `ReceiptScanDto`, `ReceiptScanResponse`, and `CreateReceiptScanRequest` in `packages/contract/src/receipt.ts` with integer bounds `0..999_999_999_999`, string trimming, and unknown-key stripping. Implement pure `checkReceipt(reading)` in `packages/core/src/receipt.ts` computing `computed = Σ items.amount + Σ extras(tax, service, other).amount − Σ extras(discount).amount` with safe integer arithmetic and emitting `NOT_A_RECEIPT`, `NO_ITEMS`, `TOTAL_MISSING`, and `TOTAL_MISMATCH` exactly per spec 5.4 and Stage 3B Decision 1.
+- Why simplest: keeps `packages/core` dependency-free with one pure function and shares exact Zod schemas across contract, API, worker, and web.
+- Rejected alternative: duplicating validation or arithmetic checks in worker job handlers.
+
+### Task 3B.1 results
+
+- `pnpm check`: passed (`Checked 355 files`, all 7 workspace typechecks Done).
+- `exercise_3b1.mts`: all 6 `checkReceipt` table rows matched (`442000 []`, `442000 ["TOTAL_MISMATCH"]`, `442000 ["TOTAL_MISSING"]`, `0 ["NO_ITEMS","TOTAL_MISMATCH"]`, `failed NOT_A_RECEIPT`, `110000 []`); invalid `12.5`, `"12000"`, 61 items, and `kind: "tip"` each failed Zod parsing; trimming and unknown-key stripping verified; all 4 advisor fixture JSONs (`clean`, `tax-service`, `mismatch`, `not-a-receipt`) matched `manifest.json`; `z.toJSONSchema(ReceiptReading, { unrepresentable: "any" })` produced valid object JSON Schema.
+- Security review: checked items 1, 2, 8; strict integer bounds and safe-integer checks, no secrets or dependencies; no issues found.
 
 ## Not verified
 
