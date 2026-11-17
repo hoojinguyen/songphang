@@ -6,12 +6,18 @@ import { OnlineButton } from "../ui/OnlineButton";
 export function AmountField({
 	value,
 	onChange,
+	autoFocus = true,
+	label = vi.expenseForm.amountLabel,
 }: {
 	value: string;
 	onChange: (value: string) => void;
+	autoFocus?: boolean;
+	label?: string;
 }) {
 	const input = useRef<HTMLInputElement>(null);
-	useEffect(() => input.current?.focus(), []);
+	useEffect(() => {
+		if (autoFocus) input.current?.focus();
+	}, [autoFocus]);
 	const change = (text: string) => {
 		if (!text.replace(/[^0-9]/g, "")) {
 			onChange("");
@@ -24,7 +30,7 @@ export function AmountField({
 		<div className="flex items-center gap-2 rounded-[32px] border-[3px] border-ink bg-surface px-4 py-2">
 			<input
 				ref={input}
-				aria-label={vi.expenseForm.amountLabel}
+				aria-label={label}
 				inputMode="numeric"
 				value={value}
 				onChange={(event) => change(event.target.value)}

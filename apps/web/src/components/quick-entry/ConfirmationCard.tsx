@@ -12,6 +12,7 @@ export function ConfirmationCard({
 	disabled,
 	children,
 	saveLabel,
+	overBudget,
 }: {
 	result: ParseResponse;
 	members: MemberDto[];
@@ -20,6 +21,7 @@ export function ConfirmationCard({
 	disabled: boolean;
 	children?: ReactNode;
 	saveLabel?: string;
+	overBudget?: boolean;
 }) {
 	const { draft, shares = [] } = result;
 	const payer = members.find((m) => m.id === draft.payers[0]?.memberId);
@@ -93,6 +95,14 @@ export function ConfirmationCard({
 						return member ? [{ member, amount: s.amount }] : [];
 					})}
 				/>
+			)}
+			{overBudget && (
+				<p
+					role="status"
+					className="rounded-[18px] bg-coral px-3 py-2 text-xs font-bold text-ink"
+				>
+					{vi.budget.overWarning}
+				</p>
 			)}
 			{children}
 			<p className="text-xs text-muted">

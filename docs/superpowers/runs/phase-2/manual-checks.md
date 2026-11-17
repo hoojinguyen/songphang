@@ -25,8 +25,8 @@ Status: advisor preparation completed; feature implementation pending. The secti
 1. On S11 (`/g/{id}/settings`), under `Danh mục của nhóm`, create a custom category with a name and color swatch → appears immediately; submit an accent/case duplicate (e.g. `ca phe sang`) → `Nhóm đã có danh mục này.`.
 2. Rename/recolor an existing custom category, create an expense picking it in `CategoryPicker`, then tap `Ẩn danh mục` (either on S11 or from `CategoryPicker`'s `+ Thêm danh mục` modal) → the old expense keeps showing the category name and color dot in the stream and stays selected (`(đã ẩn)`) when editing that expense until changed, while new-expense picker no longer offers it.
 3. On a group with 30 live custom categories, attempt adding a 31st → `Nhóm đã có 30 danh mục.`.
-
-Pending 2D.2 for budget settings.
+4. As group owner, under `Hạn mức`, select `Theo tháng`, enter `1.000.000`, tap `Lưu hạn mức` → saved; opening S11 as an editor returns redirect/`Chỉ chủ nhóm thấy trang này` and `PUT /api/v1/groups/{id}/budget` returns 403.
+5. Tap `Bỏ hạn mức` on S11 → cleared in place and any active budget banner disappears in a second window without reload.
 
 ## S14 — paying
 
@@ -54,8 +54,7 @@ Pending 2D.2 for budget settings.
 1. On S4, scroll to the top of the stream → search field (`Tìm khoản chi`) and `Lọc` button appear.
 2. Type a partial or unaccented description (e.g. `pho`) → matching transactions filter after debounce; reload the page → URL keeps filters and results; type a non-matching term → `Không có khoản nào khớp`.
 3. Tap `Lọc` → filter modal opens with `Người`, `Danh mục`, `Loại`, `Từ ngày`, `Đến ngày`; apply filters → `BalanceBlock` hides while `EntryBar` remains; tap `Xoá lọc` → full stream and `BalanceBlock` return.
-
-Pending 2D.2 for budget banner.
+4. Set a monthly budget `1.000.000` in S11, add `799.999` → no banner on S4; add `1` → `Đã chi 800.000 đ trên hạn mức 1.000.000 đ.` banner appears (`bg-sunken`, ≥ 44px) live in a second window via SSE; preview `200.001` in quick-entry confirmation card (or manual form) → `Khoản này làm nhóm vượt hạn mức.` appears; save → banner switches to `Đã vượt hạn mức 1 đ.` (`bg-coral`), tapping opens S16 with the budget line shown under total.
 
 ## Task 0 — local capabilities
 

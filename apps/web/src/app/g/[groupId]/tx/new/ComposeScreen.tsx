@@ -15,7 +15,10 @@ import { OnlineButton } from "../../../../../components/ui/OnlineButton";
 import { ScreenHeader } from "../../../../../components/ui/ScreenHeader";
 import { useDraft } from "../../../../../lib/draft-context";
 import { useParseSentence } from "../../../../../lib/quick-entry";
-import { useCreateTransaction } from "../../../../../lib/transactions";
+import {
+	useCreateTransaction,
+	usePreviewShares,
+} from "../../../../../lib/transactions";
 import { vi } from "../../../../../messages/vi";
 export function ComposeScreen({
 	writerMemberId,
@@ -36,7 +39,23 @@ export function ComposeScreen({
 	const keys = useRef(new Map<string, { key: string; occurredAt: string }>());
 	const saving = useRef(false);
 	const [collapsing, setCollapsing] = useState(false);
+	const [previewAt] = useState(
+		() =>
+			`${new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)}T05:00:00.000Z`,
+	);
 	const result = sentence.trim() ? query.data : undefined;
+	const okPreview =
+		query.current && result?.status === "ok"
+			? CreateTransactionRequest.safeParse({
+					...result.draft,
+					occurredAt: previewAt,
+					category: null,
+				})
+			: null;
+	const preview = usePreviewShares(
+		groupId,
+		okPreview?.success ? okPreview.data : null,
+	);
 	useEffect(() => {
 		if (
 			query.current &&
@@ -134,6 +153,9 @@ export function ComposeScreen({
 						onEdit={() => edit()}
 						onSave={() => save()}
 						disabled={!query.current || mutation.isPending}
+						overBudget={Boolean(
+							preview.current && preview.data?.warnings.includes("BUDGET_OVER"),
+						)}
 					/>
 				) : null}
 			</div>

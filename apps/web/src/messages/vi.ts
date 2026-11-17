@@ -574,6 +574,17 @@ export const vi = {
 		hasTransactions: "Quỹ đã có khoản chi nên không xoá được. Hãy đóng quỹ.",
 		inactiveTag: "đã đóng",
 	},
+	budget: {
+		title: "Hạn mức",
+		periodMonth: "Theo tháng",
+		periodTotal: "Cả chuyến",
+		amountLabel: "Số tiền",
+		save: "Lưu hạn mức",
+		remove: "Bỏ hạn mức",
+		nearBanner: "Đã chi {spent} trên hạn mức {amount}.",
+		overBanner: "Đã vượt hạn mức {over}.",
+		overWarning: "Khoản này làm nhóm vượt hạn mức.",
+	},
 	showcase: { members: { minh: "Minh", lan: "Lan", hung: "Hùng", thu: "Thu" } },
 } as const;
 

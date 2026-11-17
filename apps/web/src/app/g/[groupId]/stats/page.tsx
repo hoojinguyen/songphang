@@ -14,6 +14,7 @@ import {
 import { StatsContent } from "../../../../components/stats/StatsContent";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
+import { useBudget } from "../../../../lib/budget";
 import { useCategories } from "../../../../lib/categories";
 import { useGroup } from "../../../../lib/groups";
 import { useMembers } from "../../../../lib/members";
@@ -52,6 +53,7 @@ export default function StatsPage() {
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
 	const categories = useCategories(groupId);
+	const budget = useBudget(groupId);
 	const stats = useGroupStats(groupId, range);
 	const error =
 		group.error ?? members.error ?? categories.error ?? stats.error ?? me.error;
@@ -133,6 +135,7 @@ export default function StatsPage() {
 				members={members.data}
 				categories={categories.data}
 				periodRange={range}
+				budget={budget.data ?? null}
 			/>
 			<a
 				href={`/api/v1/groups/${encodeURIComponent(groupId)}/export.csv`}

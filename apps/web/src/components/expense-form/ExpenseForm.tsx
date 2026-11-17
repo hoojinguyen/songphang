@@ -253,6 +253,16 @@ export function ExpenseForm({
 						</p>
 					) : null;
 				})()}
+			{type !== "transfer" &&
+				preview.current &&
+				preview.data?.warnings.includes("BUDGET_OVER") && (
+					<p
+						role="status"
+						className="rounded-[20px] bg-coral px-4 py-3 text-sm font-bold text-ink"
+					>
+						{vi.budget.overWarning}
+					</p>
+				)}
 			{type !== "transfer" && <SplitStatus {...status} />}
 			{conflict && (
 				<ConflictNotice

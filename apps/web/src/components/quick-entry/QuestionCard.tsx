@@ -97,7 +97,7 @@ export function QuestionCard({
 		(!missing || !!description.trim());
 	const parsed = CreateTransactionRequest.safeParse({
 		...draft,
-		occurredAt: "2026-01-01T00:00:00.000Z",
+		occurredAt: `${new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)}T05:00:00.000Z`,
 		category: null,
 	});
 	const preview = usePreviewShares(
@@ -126,6 +126,9 @@ export function QuestionCard({
 			onSave={() => onSave(effective)}
 			onEdit={() => onEdit(effective)}
 			disabled={disabled || !ready}
+			overBudget={Boolean(
+				ready && preview.data?.warnings.includes("BUDGET_OVER"),
+			)}
 			saveLabel={
 				count && selected.length < (count.count ?? 0)
 					? t(vi.compose.chooseMore, {

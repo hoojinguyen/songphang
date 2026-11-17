@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useMemo, useState } from "react";
 import { BalanceBlock } from "../../../components/feed/BalanceBlock";
+import { BudgetBanner } from "../../../components/feed/BudgetBanner";
 import { EmptyStream } from "../../../components/feed/EmptyStream";
 import { EntryBar } from "../../../components/feed/EntryBar";
 import { ExpenseStream } from "../../../components/feed/ExpenseStream";
@@ -14,6 +15,7 @@ import { MemberShape } from "../../../components/ui/MemberShape";
 import { ScreenHeader } from "../../../components/ui/ScreenHeader";
 import { VerifyEmailBanner } from "../../../components/ui/VerifyEmailBanner";
 import { useBalances } from "../../../lib/balances";
+import { useBudget } from "../../../lib/budget";
 import { useCategories } from "../../../lib/categories";
 import { useGroup } from "../../../lib/groups";
 import { useMembers } from "../../../lib/members";
@@ -45,6 +47,7 @@ function GroupScreen() {
 	const members = useMembers(groupId);
 	const categories = useCategories(groupId);
 	const balances = useBalances(groupId);
+	const budget = useBudget(groupId);
 	const transactions = useTransactions(groupId, filters);
 	const error =
 		group.error ??
@@ -178,6 +181,7 @@ function GroupScreen() {
 					hasFilters={filtersActive}
 				/>
 			)}
+			<BudgetBanner groupId={groupId} budget={budget.data} />
 			{filtersActive && (
 				<FilterChips
 					filters={filters}

@@ -1,12 +1,13 @@
 "use client";
 import type {
+	BudgetDto,
 	CategoryDto,
 	MemberDto,
 	StatsResponse,
 } from "@songphang/contract";
 import { formatMoney } from "../../lib/money";
 import { buildFilterQueryString } from "../../lib/transactions";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import { BarRow } from "./BarRow";
 import { MemberStatsRow } from "./MemberStatsRow";
 
@@ -47,12 +48,14 @@ export function StatsContent({
 	members,
 	categories,
 	periodRange,
+	budget,
 }: {
 	groupId: string;
 	stats: StatsResponse;
 	members: MemberDto[];
 	categories: CategoryDto[];
 	periodRange: { from?: string; to?: string };
+	budget?: BudgetDto | null;
 }) {
 	const isEmpty = stats.byBucket.length === 0 && stats.byCategory.length === 0;
 	const maxCategory = Math.max(
@@ -82,6 +85,22 @@ export function StatsContent({
 				<p className="text-[40px] font-black tracking-tight text-ink">
 					{formatMoney(stats.total)}
 				</p>
+				{budget && (
+					<p className="mt-2 text-xs font-bold text-ink">
+						{budget.period === "month"
+							? vi.budget.periodMonth
+							: vi.budget.periodTotal}{" "}
+						·{" "}
+						{budget.state === "over"
+							? t(vi.budget.overBanner, {
+									over: formatMoney(budget.spent - budget.amount),
+								})
+							: t(vi.budget.nearBanner, {
+									spent: formatMoney(budget.spent),
+									amount: formatMoney(budget.amount),
+								})}
+					</p>
+				)}
 			</section>
 			{isEmpty ? (
 				<section className="rounded-card bg-surface p-6 text-center">
