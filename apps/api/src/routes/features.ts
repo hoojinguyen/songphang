@@ -1,8 +1,11 @@
 import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import { FeaturesResponse } from "@songphang/contract";
-import type { AppEnv } from "../app.js";
+import type { AppDeps, AppEnv } from "../app.js";
 
-export function registerFeatureRoute(app: OpenAPIHono<AppEnv>): void {
+export function registerFeatureRoute(
+	app: OpenAPIHono<AppEnv>,
+	_deps: AppDeps,
+): void {
 	app.openapi(
 		createRoute({
 			method: "get",

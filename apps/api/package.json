@@ -11,10 +11,11 @@
 		"@hono/node-server": "2.1.7",
 		"@hono/zod-openapi": "1.6.3",
 		"@songphang/contract": "workspace:*",
+		"@songphang/core": "workspace:*",
 		"@songphang/db": "workspace:*",
 		"hono": "4.13.18",
-		"uuidv7": "1.2.1",
-		"@songphang/core": "workspace:*"
+		"pg-boss": "12.38.2",
+		"uuidv7": "1.2.1"
 	},
 	"devDependencies": {
 		"@types/node": "26.6.6",

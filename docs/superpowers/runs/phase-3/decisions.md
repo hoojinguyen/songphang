@@ -6,6 +6,14 @@
 - Baseline commit on `main`: `6b36336` (`chore(phase-3): prepare advisor fixtures and standing documents`), containing `257fc50` (`fix(stats): preserve spending scope in feed drill-downs`) and `d12f622` (`merge: add phase 2 real-money features`).
 - Earlier phases on `main`: Phase 0, Phase 1 (1A–1E), Phase 2 (2A–2D + 2B drill-down correction). Server step has not run (`infra/compose.prod.yml` does not exist).
 
+## D1 — pg-boss version, license, size, and transactional enqueue adapter (Task 3A.1)
+
+- Package: `pg-boss@12.38.2` (MIT, unpacked size `1,369,609` bytes, Node `>=22.12.0`).
+- Transactional adapter: `pg-boss` exports `fromDrizzle(executor, drizzleSql)`. Exercised against `songphang_phase3_gate`: `boss.send(..., { db: fromDrizzle(tx, sql) })` inside `db.transaction` inserts into `pgboss.job` on commit and leaves zero rows on rollback.
+- API queue initialization: API runs `PgBoss` with `{ supervise: false, schedule: false, registerInstance: false }` and calls `createQueue` for each `JOB_NAMES` entry so API can enqueue even while the worker is stopped.
+- `drizzle.config.ts`: sets `schemaFilter: ["public"]` so `drizzle-kit` ignores `pgboss`.
+- `listenPgChannel` in `packages/db/src/client.ts`: exposes `postgres.js` `LISTEN` with exponential backoff `(retries) => Math.min(2 ** Math.max(0, retries - 1), 30)` so `apps/api` does not duplicate a direct `postgres` dependency.
+
 ## Re-baseline
 
 | Plan reference | Real name and location | Status / adaptation |

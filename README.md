@@ -19,7 +19,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) and choose the development sign-in link, then Minh.
 
-`pnpm dev` waits for PostgreSQL to become healthy, applies migrations, seeds the four development users, and starts the API and web app. Migrations and seed operations can run repeatedly without creating duplicate users.
+`pnpm dev` waits for PostgreSQL to become healthy, applies migrations, seeds the four development users, and starts the API, worker, and web app. Migrations and seed operations can run repeatedly without creating duplicate users.
 
 Press Ctrl+C to stop the API and web app. PostgreSQL continues running in Docker. Run `pnpm dev` again to restart the application; existing data and valid login sessions are preserved.
 

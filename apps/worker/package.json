@@ -1,0 +1,21 @@
+{
+	"name": "@songphang/worker",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"dev": "tsx watch --env-file=../../.env src/main.ts",
+		"start": "tsx --env-file=../../.env src/main.ts"
+	},
+	"dependencies": {
+		"@songphang/contract": "workspace:*",
+		"@songphang/core": "workspace:*",
+		"@songphang/db": "workspace:*",
+		"pg-boss": "12.38.2",
+		"zod": "4.6.7"
+	},
+	"devDependencies": {
+		"@types/node": "26.6.6",
+		"tsx": "4.23.15"
+	}
+}

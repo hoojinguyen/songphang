@@ -7,7 +7,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 ## Task checklist
 
 - [x] Task 0 — re-baseline (`docs(run): re-baseline phase 3`)
-- [ ] 3A.1 — worker process, queue, event bridge, features endpoint
+- [x] 3A.1 — worker process, queue, event bridge, features endpoint
 - [ ] 3A.2 — file storage and attachments API
 - [ ] 3A.3 — attachments on transactions; cleanup job
 - [ ] 3A.4 — web photos on the form and the stream; stage gate 3A
@@ -45,6 +45,20 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
 - Baseline API replay on port 4010 against `songphang_phase3_gate`: `GET /api/v1/features` returned 200 with all 6 booleans `false`; `/receipts` and `/auth/apple` returned 404; Phase 1 group/transaction/edit/409/settle, Phase 2A payment-methods/VietQR/settlement-request, Phase 2B categories/stats/`spendingOnly`/CSV BOM, Phase 2C fund create/parse, Phase 2D budget `near`, and permission checks (`403`/`404` matching random UUID/`401`) passed.
 - Quick-entry baseline: all 87 samples (75 Phase 1 + 12 Phase 2 fund samples from `docs/08-quick-entry-samples.md`) passed against `@songphang/core`.
 - `check-balances.ts` on `songphang_phase3_gate`: `All groups balanced`.
+
+## Task 3A.1 — approach
+
+- Files to create/modify: create `apps/worker/{package.json,tsconfig.json}`, `apps/worker/src/{main.ts,config.ts,queue.ts,notify.ts,jobs/heartbeat.ts}`, `packages/contract/src/jobs.ts`, `apps/api/src/{queue.ts,events/listen.ts}`; modify `packages/contract/src/index.ts`, `apps/api/src/{app.ts,server.ts,config.ts,routes/features.ts}`, `packages/db/drizzle.config.ts`, `package.json` (`dev`), `.env.example`, `README.md`.
+- Approach: install `pg-boss` (latest stable) in `apps/worker` and `apps/api`. Define Zod job payload schemas (`JOB_NAMES`) in `packages/contract/src/jobs.ts`. Implement worker `PgBoss` startup, `registerJob`, `heartbeat` minute schedule, and `notifyGroup` (`SELECT pg_notify('songphang_events', $1)`). Implement API `enqueue(executor, name, data, options)` using `boss.send(..., { db })` bound to the caller's Drizzle `DbExecutor` transaction, and `listenForGroupEvents` on a dedicated `postgres` connection with 1s–30s exponential backoff reconnect forwarding validated payloads to `createEventHub`. Extend `GET /api/v1/features` from config (still returning all false at 3A.1).
+- Why simplest: keeps queue contracts shared in `packages/contract`, uses `pg-boss`'s native custom `db` adapter (`executeSql`) with the existing `DbExecutor` transaction without introducing a separate outbox table unless the installed adapter fails transaction rollback verification.
+- Rejected alternative: building a custom polling outbox table before testing `pg-boss` transactional `db` adapter support.
+
+### Task 3A.1 results
+
+- `pnpm check`: passed (`Checked 334 files`, all 6 workspace typechecks Done). `pnpm build`: passed.
+- `pg-boss@12.38.2` `fromDrizzle(tx, sql)` test on `songphang_phase3_gate`: forced rollback left 0 rows in `pgboss.job`; committed tx persisted 1 job row.
+- Live API + worker exercise: `GET /api/v1/features` returned `200` with all 6 booleans `false`; valid `SELECT pg_notify('songphang_events', ...)` delivered `event: changed` (`["transactions"]`, `["balances"]`) via SSE; malformed JSON and invalid schema triggered `Ignoring malformed group event notification` / `Ignoring invalid group event notification` without forwarding; after `docker compose restart db`, listener reconnected and delivered `["activity"]` via SSE; worker logged `{"event":"worker.heartbeat","at":"2026-11-17T17:09:29.836Z"}`; stopping worker left `GET /api/v1/features` answering `200`.
+- Security review: checked items 1, 2, 4, 5, 6, 8; no secrets/raw payloads logged, Zod validation at `NOTIFY` boundary, parameterized `pg_notify`, approved `pg-boss@12.38.2` MIT with lockfile updated; no issues found.
 
 ## Not verified
 

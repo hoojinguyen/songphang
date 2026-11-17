@@ -1,3 +1,4 @@
+export { sql as drizzleSql } from "drizzle-orm";
 export * from "./accounts.js";
 export * from "./activity.js";
 export * from "./balances.js";
@@ -8,6 +9,7 @@ export {
 	createDb,
 	type Db,
 	type DbExecutor,
+	listenPgChannel,
 } from "./client.js";
 export * from "./fund.js";
 export * from "./google-accounts.js";

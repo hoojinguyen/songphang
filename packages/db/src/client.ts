@@ -23,6 +23,30 @@ export function createDb(url: string): { db: Db; close(): Promise<void> } {
 	};
 }
 
+export function listenPgChannel(
+	url: string,
+	channel: string,
+	onNotification: (payload: string) => void,
+	onListen?: () => void,
+): { ready: Promise<void>; close(): Promise<void> } {
+	const result = DATABASE_URL_SCHEMA.safeParse(url);
+	if (!result.success) {
+		throw new Error("DATABASE_URL must be a valid PostgreSQL URL");
+	}
+	const client = postgres(result.data, {
+		connect_timeout: 5,
+		max: 1,
+		backoff: (retries) => Math.min(2 ** Math.max(0, retries - 1), 30),
+	});
+	const ready = client
+		.listen(channel, onNotification, onListen)
+		.then(() => undefined);
+	return {
+		ready,
+		close: () => client.end({ timeout: 5 }),
+	};
+}
+
 export async function checkDatabaseHealth(db: Db): Promise<boolean> {
 	let timeout: ReturnType<typeof setTimeout> | undefined;
 	try {

@@ -7,6 +7,7 @@ import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
 import type { createEventHub } from "./events/hub.js";
 import type { Mailer } from "./mailer.js";
+import type { EnqueueFn } from "./queue.js";
 import type { createRateLimiter } from "./rate-limit.js";
 import { registerActivityRoutes } from "./routes/activity.js";
 import { registerAuthRoutes } from "./routes/auth.js";
@@ -45,6 +46,7 @@ export type AppDeps = {
 	now: () => Date;
 	mailer: Mailer;
 	rateLimiter: ReturnType<typeof createRateLimiter>;
+	enqueue: EnqueueFn;
 };
 
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
@@ -75,7 +77,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	});
 	registerHealthRoute(app, deps.db);
-	registerFeatureRoute(app);
+	registerFeatureRoute(app, deps);
 	registerMeRoute(app, deps);
 	registerGroupRoutes(app, deps);
 	registerEventRoutes(app, deps);
