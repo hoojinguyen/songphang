@@ -1,7 +1,7 @@
 import type {
 	CategoryDto,
 	MemberDto,
-	TransactionDto,
+	TransactionListItemDto,
 } from "@songphang/contract";
 import {
 	formatAmount,
@@ -17,7 +17,7 @@ export function ExpenseRow({
 	categories = [],
 	myMemberId,
 }: {
-	transaction: TransactionDto;
+	transaction: TransactionListItemDto;
 	members: MemberDto[];
 	categories?: CategoryDto[];
 	myMemberId: string | null;

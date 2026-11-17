@@ -32,6 +32,9 @@ importers:
       '@songphang/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@songphang/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       hono:
         specifier: 4.13.18
         version: 4.13.18
@@ -106,6 +109,9 @@ importers:
       '@songphang/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@songphang/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       pg-boss:
         specifier: 12.38.2
         version: 12.38.2(@opentelemetry/api@1.10.0)
@@ -161,6 +167,16 @@ importers:
       tsx:
         specifier: 4.23.15
         version: 4.23.15
+
+  packages/storage:
+    dependencies:
+      '@songphang/contract':
+        specifier: workspace:*
+        version: link:../contract
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
 
 packages:
 

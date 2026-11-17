@@ -1,4 +1,5 @@
 import type { Db } from "@songphang/db";
+import type { FileStore } from "@songphang/storage";
 import { PgBoss } from "pg-boss";
 import type { ZodType } from "zod";
 import type { WorkerConfig } from "./config.js";
@@ -6,6 +7,7 @@ import type { WorkerConfig } from "./config.js";
 export type WorkerDeps = {
 	config: WorkerConfig;
 	db: Db;
+	fileStore: FileStore;
 	now: () => Date;
 };
 

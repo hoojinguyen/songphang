@@ -1,4 +1,7 @@
+import path from "node:path";
 import { z } from "zod";
+
+const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 
 const WORKER_CONFIG_SCHEMA = z
 	.object({
@@ -6,10 +9,12 @@ const WORKER_CONFIG_SCHEMA = z
 		DATABASE_URL: z
 			.url({ protocol: /^postgres(ql)?$/, hostname: /.+/ })
 			.max(8192),
+		STORAGE_DIR: z.string().min(1).max(1024).default("./.data/uploads"),
 	})
 	.transform((env) => ({
 		appEnv: env.APP_ENV,
 		databaseUrl: env.DATABASE_URL,
+		storageDir: path.resolve(REPO_ROOT, env.STORAGE_DIR),
 	}));
 
 export type WorkerConfig = z.infer<typeof WORKER_CONFIG_SCHEMA>;

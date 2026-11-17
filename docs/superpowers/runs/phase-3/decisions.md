@@ -14,6 +14,12 @@
 - `drizzle.config.ts`: sets `schemaFilter: ["public"]` so `drizzle-kit` ignores `pgboss`.
 - `listenPgChannel` in `packages/db/src/client.ts`: exposes `postgres.js` `LISTEN` with exponential backoff `(retries) => Math.min(2 ** Math.max(0, retries - 1), 30)` so `apps/api` does not duplicate a direct `postgres` dependency.
 
+## D2 — Extract shared `packages/storage` workspace package (Task 3A.3)
+
+- Problem: both `apps/api` and `apps/worker` need `FileStore`, `diskFileStore`, and `sniffImageType` with identical key/path-traversal validation and `STORAGE_DIR` resolution.
+- Options: duplicate `diskFileStore` into `apps/worker/src/storage.ts`; extract `@songphang/storage` into `packages/storage`.
+- Choice: extract `packages/storage` (`@songphang/storage`), explicitly permitted by spec section 15.1 and Stage 3A task 3A.3. No external dependency added.
+
 ## Re-baseline
 
 | Plan reference | Real name and location | Status / adaptation |

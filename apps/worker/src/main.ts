@@ -1,5 +1,8 @@
 import { createDb, runMigrations } from "@songphang/db";
+import { diskFileStore } from "@songphang/storage";
 import { loadWorkerConfig, type WorkerConfig } from "./config.js";
+import { registerCleanupAttachmentsJob } from "./jobs/cleanup-attachments.js";
+import { registerDeleteFilesJob } from "./jobs/delete-files.js";
 import { registerHeartbeatJob } from "./jobs/heartbeat.js";
 import { createWorkerQueue, type WorkerDeps } from "./queue.js";
 
@@ -26,9 +29,12 @@ try {
 	const deps: WorkerDeps = {
 		config,
 		db,
+		fileStore: diskFileStore(config.storageDir),
 		now: () => new Date(),
 	};
 	await registerHeartbeatJob(boss, deps);
+	await registerCleanupAttachmentsJob(boss, deps);
+	await registerDeleteFilesJob(boss, deps);
 	console.log(JSON.stringify({ event: "worker.started" }));
 
 	const shutdown = async () => {

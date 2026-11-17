@@ -13,6 +13,7 @@
 		"@songphang/contract": "workspace:*",
 		"@songphang/core": "workspace:*",
 		"@songphang/db": "workspace:*",
+		"@songphang/storage": "workspace:*",
 		"hono": "4.13.18",
 		"pg-boss": "12.38.2",
 		"uuidv7": "1.2.1"

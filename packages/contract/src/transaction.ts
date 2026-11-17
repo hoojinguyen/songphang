@@ -1,5 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { isValidCalendarDate, isWithinFiveYears } from "@songphang/core";
+import { AttachmentDto } from "./attachment.ts";
 export const MoneyAmount = z.int().min(1).max(999_999_999_999);
 export const CalendarDate = z
 	.string()
@@ -93,6 +94,10 @@ const Payers = z
 	.refine(
 		(payers) => new Set(payers.map((p) => p.memberId)).size === payers.length,
 	);
+const AttachmentIds = z
+	.array(z.uuid())
+	.max(3)
+	.refine((ids) => new Set(ids).size === ids.length);
 const LedgerFields = {
 	description: z.string().trim().min(1).max(200),
 	amount: MoneyAmount,
@@ -103,7 +108,11 @@ const LedgerFields = {
 	split: SplitInput,
 };
 export const SplitTransactionRequest = z
-	.object({ type: z.enum(["expense", "income"]), ...LedgerFields })
+	.object({
+		type: z.enum(["expense", "income"]),
+		...LedgerFields,
+		attachmentIds: AttachmentIds.optional(),
+	})
 	.refine(
 		(request) => !(request.category !== null && request.categoryId !== null),
 	)
@@ -117,6 +126,7 @@ export const TransferRequest = z
 		fromMemberId: z.uuid(),
 		toMemberId: z.uuid(),
 		description: z.string().trim().min(1).max(200).optional(),
+		attachmentIds: AttachmentIds.optional(),
 	})
 	.refine((request) => request.fromMemberId !== request.toMemberId)
 	.openapi("TransferRequest");
@@ -128,22 +138,33 @@ export const ShareDto = z.object({
 	memberId: z.uuid(),
 	amount: z.int().nonnegative(),
 });
+const BaseTransactionFields = {
+	type: z.enum(["expense", "income", "transfer"]),
+	...LedgerFields,
+	id: z.uuid(),
+	currency: z.literal("VND"),
+	shares: z.array(ShareDto),
+	version: z.int().positive(),
+	updatedBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+	createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+	createdAt: z.iso.datetime(),
+	updatedAt: z.iso.datetime(),
+	deletedAt: z.iso.datetime().nullable(),
+};
 export const TransactionDto = z
 	.object({
-		type: z.enum(["expense", "income", "transfer"]),
-		...LedgerFields,
-		id: z.uuid(),
-		currency: z.literal("VND"),
-		shares: z.array(ShareDto),
-		version: z.int().positive(),
-		updatedBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-		createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-		createdAt: z.iso.datetime(),
-		updatedAt: z.iso.datetime(),
-		deletedAt: z.iso.datetime().nullable(),
+		...BaseTransactionFields,
+		attachments: z.array(AttachmentDto).max(3),
 	})
 	.openapi("TransactionDto");
 export type TransactionDto = z.infer<typeof TransactionDto>;
+export const TransactionListItemDto = z
+	.object({
+		...BaseTransactionFields,
+		attachmentCount: z.int().nonnegative(),
+	})
+	.openapi("TransactionListItemDto");
+export type TransactionListItemDto = z.infer<typeof TransactionListItemDto>;
 export const TransactionWarning = z.enum([
 	"FUND_OVERDRAWN",
 	"BUDGET_NEAR",
@@ -199,7 +220,7 @@ export const TransactionsQuery = z
 export type TransactionsQuery = z.infer<typeof TransactionsQuery>;
 export const TransactionsResponse = z
 	.object({
-		transactions: z.array(TransactionDto),
+		transactions: z.array(TransactionListItemDto),
 		nextCursor: z.string().nullable(),
 	})
 	.openapi("TransactionsResponse");

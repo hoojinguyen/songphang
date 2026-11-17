@@ -1,5 +1,6 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import { AttachmentResponse } from "@songphang/contract";
+import { sniffImageType } from "@songphang/storage";
 import type { AppDeps, AppEnv } from "../app.js";
 import { requireGroupRole } from "../auth/group-access.js";
 import { requireSameOrigin, requireUser } from "../auth/middleware.js";
@@ -14,7 +15,6 @@ import {
 	getAttachmentContent,
 	uploadAttachment,
 } from "../services/attachments.js";
-import { sniffImageType } from "../storage/sniff.js";
 import {
 	readSingleUploadedFile,
 	streamingUploadLimit,

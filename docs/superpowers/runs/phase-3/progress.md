@@ -9,7 +9,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] Task 0 — re-baseline (`docs(run): re-baseline phase 3`)
 - [x] 3A.1 — worker process, queue, event bridge, features endpoint
 - [x] 3A.2 — file storage and attachments API
-- [ ] 3A.3 — attachments on transactions; cleanup job
+- [x] 3A.3 — attachments on transactions; cleanup job
 - [ ] 3A.4 — web photos on the form and the stream; stage gate 3A
 - [ ] 3B.1 — receipt reading schema and arithmetic check
 - [ ] 3B.2 — receipt reader adapters, cost ledger, quotas
@@ -78,6 +78,26 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - Delete -> `204`, subsequent `GET` -> `404`, file removed from `STORAGE_DIR`; `diskFileStore.put("../../etc/x", ...)` threw.
   - Parallel 4×5 MiB uploads at 190 MiB group usage -> `[201, 201, 422, 422]` (`STORAGE_QUOTA_EXCEEDED`); 31st upload by user in an hour -> `429`.
 - Security review: checked items 1, 2, 3, 4, 5, 6, 8; no issues found.
+
+## Task 3A.3 — approach
+
+- Files to create/modify: create `packages/storage/{package.json,tsconfig.json,src/{index,file-store,disk-file-store,sniff}.ts}`, `apps/worker/src/jobs/{cleanup-attachments,delete-files}.ts`; remove `apps/api/src/storage/`; modify `apps/api/package.json`, `apps/worker/{package.json,src/{config,queue,main}.ts}`, `packages/contract/src/{transaction,jobs}.ts`, `packages/db/src/{attachments,groups}.ts`, `apps/api/src/services/{transactions,transaction-changes,groups}.ts`, `apps/web/src/components/{feed/{ExpenseRow,LedgerPill}.tsx,balances/AllSettled.tsx}`.
+- Approach: extract `FileStore`, `diskFileStore`, and `sniffImageType` into `@songphang/storage` so API and worker share one implementation and storage root resolution (`STORAGE_DIR` resolved from repo root). Add `attachmentIds` (0–3 unique UUIDs) to transaction create/edit, returning `attachments` on `TransactionDto` and `attachmentCount` on `TransactionListItemDto`. Validate ownership and unattached/self-attached state inside `lockGroup`, delete removed attachment rows+files on edit, keep files across soft delete/restore, and enqueue `delete-files` inside `deleteGroup`'s transaction with keys read before cascade. Implement `cleanup-attachments` (03:30 Asia/Ho_Chi_Minh) coordinating with `lockGroup` and enforcing a 24-hour age floor before deleting unattached DB rows or untracked/temp disk files.
+- Why simplest: shares `@songphang/storage` without duplicating disk path validation across apps, and coordinates DB/disk cleanup under the existing `lockGroup` advisory/row lock.
+- Rejected alternative: duplicating `diskFileStore` in `apps/worker/src/storage.ts`, which risks storage path/validation drift between API and worker.
+
+### Task 3A.3 results
+
+- `pnpm check`: passed (`Checked 349 files`, all 7 workspace typechecks Done).
+- Extracted `@songphang/storage` (`packages/storage`) and verified API + worker `loadConfig` resolve `./.data/uploads` identically to `<repoRoot>/.data/uploads`.
+- Real HTTP & worker exercises on `songphang_phase3_gate` (API 4010 + worker):
+  - Created expense with 2 uploaded attachments -> `201` (`attachments` length 2); `GET /transactions` returned `attachmentCount: 2` without `attachments`.
+  - Reuse attached ID, 4 IDs, and cross-group ID each returned `400`.
+  - Edited transaction keeping only first ID -> `200` (`version: 2`, 1 attachment), second attachment's DB row and disk file removed.
+  - Soft-deleted then restored transaction -> attachment row and disk file remained intact (`1` attachment).
+  - `runCleanupAttachments`: 25h unattached row+file deleted, 1h unattached row+file preserved, fresh untracked/temp files preserved, >24h untracked and `.tmp-*` files deleted.
+  - Deleted group with attachments -> worker executed `delete-files` and removed all remaining files from disk.
+- Security review: checked items 1, 2, 4, 5, 6, 8; no issues found.
 
 ## Not verified
 

@@ -1,6 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { GroupRole, UserDto } from "@songphang/contract";
 import type { Db } from "@songphang/db";
+import type { FileStore } from "@songphang/storage";
 import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
 import type { Config } from "./config.js";
@@ -30,7 +31,6 @@ import { registerMemberRoutes } from "./routes/members.js";
 import { registerSettlementRoutes } from "./routes/settlement-requests.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
-import type { FileStore } from "./storage/file-store.js";
 
 export type AppEnv = {
 	Variables: {

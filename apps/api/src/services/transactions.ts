@@ -4,12 +4,15 @@ import {
 	type PreviewTransactionRequest,
 	PreviewTransactionResponse,
 	TransactionDto,
+	TransactionListItemDto,
 	TransactionResponse,
 	type TransactionsQuery,
 	TransactionsResponse,
 } from "@songphang/contract";
 import { foldVietnamese, localDateRangeToUtc } from "@songphang/core";
 import {
+	attachToTransaction,
+	countAttachmentsForTransactions,
 	type DbExecutor,
 	findGroup,
 	findTransactionRow,
@@ -17,6 +20,7 @@ import {
 	insertTransaction,
 	insertTransactionPayers,
 	insertTransactionShares,
+	listAttachmentsForTransactions,
 	listTransactionPayers,
 	listTransactionRows,
 	listTransactionShares,
@@ -27,6 +31,10 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import {
+	toAttachmentDto,
+	validateTransactionAttachmentIds,
+} from "./attachments.js";
 import { assertLiveCategory } from "./categories.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { type ReplacedTransaction, transactionWarnings } from "./warnings.js";
@@ -106,9 +114,10 @@ export async function mapTransactions(
 	rows: Awaited<ReturnType<typeof listTransactionRows>>,
 ) {
 	const ids = rows.map((row) => row.id);
-	const [payers, shares] = await Promise.all([
+	const [payers, shares, attachmentRows] = await Promise.all([
 		listTransactionPayers(executor, groupId, ids),
 		listTransactionShares(executor, groupId, ids),
+		listAttachmentsForTransactions(executor, groupId, ids),
 	]);
 	return rows.map((row) =>
 		TransactionDto.parse({
@@ -119,6 +128,34 @@ export async function mapTransactions(
 			deletedAt: row.deletedAt?.toISOString() ?? null,
 			payers: payers.filter((payer) => payer.transactionId === row.id),
 			shares: shares.filter((share) => share.transactionId === row.id),
+			attachments: attachmentRows
+				.filter((attachment) => attachment.transactionId === row.id)
+				.map(toAttachmentDto),
+		}),
+	);
+}
+
+async function mapTransactionListItems(
+	executor: DbExecutor,
+	groupId: string,
+	rows: Awaited<ReturnType<typeof listTransactionRows>>,
+) {
+	const ids = rows.map((row) => row.id);
+	const [payers, shares, attachmentCounts] = await Promise.all([
+		listTransactionPayers(executor, groupId, ids),
+		listTransactionShares(executor, groupId, ids),
+		countAttachmentsForTransactions(executor, groupId, ids),
+	]);
+	return rows.map((row) =>
+		TransactionListItemDto.parse({
+			...row,
+			occurredAt: row.occurredAt.toISOString(),
+			createdAt: row.createdAt.toISOString(),
+			updatedAt: row.updatedAt.toISOString(),
+			deletedAt: row.deletedAt?.toISOString() ?? null,
+			payers: payers.filter((payer) => payer.transactionId === row.id),
+			shares: shares.filter((share) => share.transactionId === row.id),
+			attachmentCount: attachmentCounts.get(row.id) ?? 0,
 		}),
 	);
 }
@@ -148,6 +185,13 @@ export async function createTransactionIn(
 	const shares = await calculateShares(executor, input.groupId, input.request);
 	const request = normalizeTransaction(input.request);
 	await assertLiveCategory(executor, input.groupId, request.categoryId);
+	const attachmentIds = input.request.attachmentIds ?? [];
+	await validateTransactionAttachmentIds(
+		executor,
+		input.groupId,
+		attachmentIds,
+		null,
+	);
 	const group = await findGroup(executor, input.groupId);
 	if (group === null)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
@@ -176,6 +220,7 @@ export async function createTransactionIn(
 		executor,
 		shares.map((share) => ({ ...share, transactionId: row.id })),
 	);
+	await attachToTransaction(executor, input.groupId, row.id, attachmentIds);
 	await insertActivity(executor, {
 		groupId: input.groupId,
 		actorUserId: input.userId,
@@ -245,7 +290,7 @@ export async function listTransactions(
 						).toString("base64url")
 					: null;
 			return TransactionsResponse.parse({
-				transactions: await mapTransactions(executor, groupId, page),
+				transactions: await mapTransactionListItems(executor, groupId, page),
 				nextCursor,
 			});
 		},

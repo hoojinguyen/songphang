@@ -4,6 +4,7 @@ import {
 	deleteExpiredIdempotencyKeys,
 	runMigrations,
 } from "@songphang/db";
+import { diskFileStore } from "@songphang/storage";
 import { createApp } from "./app.js";
 import { type Config, loadConfig } from "./config.js";
 import { createEventHub } from "./events/hub.js";
@@ -11,7 +12,6 @@ import { listenForGroupEvents } from "./events/listen.js";
 import { createConsoleMailer } from "./mailer.js";
 import { createApiQueue } from "./queue.js";
 import { createRateLimiter } from "./rate-limit.js";
-import { diskFileStore } from "./storage/disk-file-store.js";
 
 let config: Config;
 try {

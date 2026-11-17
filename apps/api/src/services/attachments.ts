@@ -5,10 +5,12 @@ import {
 	AttachmentDto,
 	AttachmentResponse,
 } from "@songphang/contract";
+import type { DbExecutor } from "@songphang/db";
 import {
 	type AttachmentRow,
 	deleteAttachmentRow,
 	findAttachment,
+	findAttachmentsByIds,
 	insertAttachment,
 	lockGroup,
 	sumGroupAttachmentBytes,
@@ -20,7 +22,7 @@ import { AppError } from "../errors.js";
 
 const GROUP_QUOTA_BYTES = 209_715_200; // 200 MiB
 
-function toAttachmentDto(row: AttachmentRow): AttachmentDto {
+export function toAttachmentDto(row: AttachmentRow): AttachmentDto {
 	return AttachmentDto.parse({
 		id: row.id,
 		contentType: row.contentType,
@@ -28,6 +30,31 @@ function toAttachmentDto(row: AttachmentRow): AttachmentDto {
 		transactionId: row.transactionId,
 		createdAt: row.createdAt.toISOString(),
 	});
+}
+
+export async function validateTransactionAttachmentIds(
+	executor: DbExecutor,
+	groupId: string,
+	attachmentIds: string[],
+	currentTransactionId: string | null,
+): Promise<void> {
+	if (attachmentIds.length === 0) return;
+	const rows = await findAttachmentsByIds(executor, groupId, attachmentIds);
+	if (rows.length !== attachmentIds.length) {
+		throw new AppError(400, "VALIDATION_FAILED", "Invalid attachment IDs");
+	}
+	for (const row of rows) {
+		if (
+			row.transactionId !== null &&
+			row.transactionId !== currentTransactionId
+		) {
+			throw new AppError(
+				400,
+				"VALIDATION_FAILED",
+				"Attachment already belongs to another transaction",
+			);
+		}
+	}
 }
 
 export async function uploadAttachment(
