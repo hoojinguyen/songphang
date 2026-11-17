@@ -14,6 +14,7 @@ export default defineConfig({
 		"./src/schema-categories.ts",
 		"./src/schema-budgets.ts",
 		"./src/schema-attachments.ts",
+		"./src/schema-ai.ts",
 	],
 	out: "./drizzle",
 });

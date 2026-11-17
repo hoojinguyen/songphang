@@ -12,7 +12,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3A.3 — attachments on transactions; cleanup job
 - [x] 3A.4 — web photos on the form and the stream; stage gate 3A
 - [x] 3B.1 — receipt reading schema and arithmetic check
-- [ ] 3B.2 — receipt reader adapters, cost ledger, quotas
+- [x] 3B.2 — receipt reader adapters, cost ledger, quotas
 - [ ] 3B.3 — receipt scans endpoint, job, stage gate 3B
 - [ ] 3C.1 — core items split
 - [ ] 3C.2 — API items split method and items preview
@@ -139,6 +139,23 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
 - `pnpm check`: passed (`Checked 355 files`, all 7 workspace typechecks Done).
 - `exercise_3b1.mts`: all 6 `checkReceipt` table rows matched (`442000 []`, `442000 ["TOTAL_MISMATCH"]`, `442000 ["TOTAL_MISSING"]`, `0 ["NO_ITEMS","TOTAL_MISMATCH"]`, `failed NOT_A_RECEIPT`, `110000 []`); invalid `12.5`, `"12000"`, 61 items, and `kind: "tip"` each failed Zod parsing; trimming and unknown-key stripping verified; all 4 advisor fixture JSONs (`clean`, `tax-service`, `mismatch`, `not-a-receipt`) matched `manifest.json`; `z.toJSONSchema(ReceiptReading, { unrepresentable: "any" })` produced valid object JSON Schema.
 - Security review: checked items 1, 2, 8; strict integer bounds and safe-integer checks, no secrets or dependencies; no issues found.
+
+## Task 3B.2 — approach
+
+- Files to create/modify: create `packages/core/src/ai-quota.ts`, `packages/db/src/{schema-ai,ai-calls}.ts`, a Drizzle migration, `apps/worker/src/ai/{receipt-reader,anthropic-receipt-reader,fake-receipt-reader,anthropic-client,prompts/receipt}.ts`; modify `packages/core/src/index.ts`, `packages/db/{drizzle.config.ts,src/index.ts}`, `apps/worker/src/config.ts`, `apps/api/src/{config,routes/features}.ts`, `.env.example`.
+- Approach: add `quotaWindowStarts` (Vietnam calendar day/month starts) in `core/ai-quota.ts`. Add `ai_calls` table with lifecycle states (`reserved`, `started`, `finished`), `started_at`, `finished_at`, and indexes, plus `countAiCalls`, `reserveAiCall` (serialized with `pg_advisory_xact_lock` inside a transaction/savepoint), `claimAiCall`, `finishAiCall`, and `recordAiCall`. Add `AI_*` config variables and production/fake-fixture startup guards in both API and worker configs, and expose `features.receiptReading` from API config. Implement `anthropicMessages` (single 30s attempt covering fetch and body JSON parse, no internal retry, safe status/type-only error logging), `anthropicReceiptReader` (base64 image block + forced `record_receipt` tool with `z.toJSONSchema(ReceiptReading)`), and `fakeReceiptReader` (SHA-256 lookup against `manifest.json` + `AI_FAKE_RECEIPT_FIXTURE` override + default 3-item fallback).
+- Why simplest: keeps transport single-attempt so the job orchestrator controls every retry reservation, and enforces quota atomically across concurrent callers via `pg_advisory_xact_lock`.
+- Rejected alternative: letting HTTP transport retry internally, which could trigger an unreserved second provider call past the daily or monthly ceiling.
+
+### Task 3B.2 results
+
+- `pnpm check`: passed (`Checked 364 files`, all 7 workspace typechecks Done). Migration `0011_fancy_maginty.sql` generated and applied to `songphang_phase3_gate`.
+- `exercise_3b2.mts`:
+  - Fake receipt reader verified all 4 advisor fixtures (`clean` -> `done` `440000 []`, `tax-service` -> `done` `110000 []`, `mismatch` -> `done` `442000 ["TOTAL_MISMATCH"]`, `not-a-receipt` -> `failed NOT_A_RECEIPT`), override selection, and 3-item fallback (`180000`).
+  - Parallel 25 `reserveAiCall` calls with daily limit 20 produced `ok=20, user_limit=5`; monthly limit 10 across two users produced `ok=10, month_limit=2`.
+  - Worker/API startup config guards rejected missing `ANTHROPIC_API_KEY` (without leaking secret values), `AI_PROVIDER=fake` in production, and `AI_FAKE_RECEIPT_FIXTURE` with `anthropic` or in production; `GET /api/v1/features` returned `receiptReading: false` when unset and `true` when `AI_PROVIDER=fake`.
+  - Stubbed `fetch` Anthropic adapter sent single `POST` with `x-api-key`, `anthropic-version: 2023-06-01`, forced `record_receipt` tool schema, returned `50000` VND + usage counts, and surfaced 429 as `AnthropicTransportError` (`retryable: true`) with 1 attempt and no leaked API key.
+- Security review: checked items 1, 2, 4, 8; no secrets logged or thrown, Zod validated env and response payloads, atomic advisory lock on quota checks; no issues found.
 
 ## Not verified
 

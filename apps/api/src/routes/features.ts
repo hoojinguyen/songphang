@@ -4,7 +4,7 @@ import type { AppDeps, AppEnv } from "../app.js";
 
 export function registerFeatureRoute(
 	app: OpenAPIHono<AppEnv>,
-	_deps: AppDeps,
+	deps: AppDeps,
 ): void {
 	app.openapi(
 		createRoute({
@@ -20,7 +20,7 @@ export function registerFeatureRoute(
 		(context) =>
 			context.json(
 				FeaturesResponse.parse({
-					receiptReading: false,
+					receiptReading: Boolean(deps.config.aiProvider),
 					sentenceAi: false,
 					telegram: false,
 					push: false,

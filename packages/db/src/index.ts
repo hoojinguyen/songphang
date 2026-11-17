@@ -1,6 +1,7 @@
 export { sql as drizzleSql } from "drizzle-orm";
 export * from "./accounts.js";
 export * from "./activity.js";
+export * from "./ai-calls.js";
 export * from "./attachments.js";
 export * from "./balances.js";
 export * from "./budgets.js";
@@ -23,6 +24,7 @@ export { runMigrations } from "./migrate.js";
 export * from "./payment-methods.js";
 export { sessions, users } from "./schema.js";
 export { authTokens, userIdentities } from "./schema-accounts.js";
+export { aiCalls } from "./schema-ai.js";
 export { attachments } from "./schema-attachments.js";
 export { budgets } from "./schema-budgets.js";
 export { groupCategories } from "./schema-categories.js";

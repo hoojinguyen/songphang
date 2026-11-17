@@ -20,6 +20,15 @@
 - Options: duplicate `diskFileStore` into `apps/worker/src/storage.ts`; extract `@songphang/storage` into `packages/storage`.
 - Choice: extract `packages/storage` (`@songphang/storage`), explicitly permitted by spec section 15.1 and Stage 3A task 3A.3. No external dependency added.
 
+## D3 — Anthropic Messages API documented request shape (Task 3B.2)
+
+- Documentation consulted: `https://platform.claude.com/docs/en/api/messages` (vision and forced tool use), read on `2026-11-18`. Not called by the agent per `AGENTS.md` section 11.
+- Endpoint: `POST https://api.anthropic.com/v1/messages`
+- Headers: `content-type: application/json`, `x-api-key: <ANTHROPIC_API_KEY>`, `anthropic-version: 2023-06-01`
+- Vision block: `{ type: "image", source: { type: "base64", media_type: contentType, data: base64 } }` inside `messages[0].content` alongside a `text` block.
+- Forced tool use: `tools: [{ name, description, input_schema }]` with `tool_choice: { type: "tool", name }`; response parsed from `content` `tool_use` block `input` and `usage.input_tokens` / `usage.output_tokens`.
+- `features.receiptReading` is wired from `Boolean(config.aiProvider)` in 3B.2; `features.sentenceAi` remains `false` until Task 3D.1 implements the sentence AI parse fallback.
+
 ## Re-baseline
 
 | Plan reference | Real name and location | Status / adaptation |
