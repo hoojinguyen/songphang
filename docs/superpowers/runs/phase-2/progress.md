@@ -417,6 +417,16 @@ Commit reference: `docs(repo): document phase 2`.
 - Restored `/tmp/songphang-p2-pre-gate2d.dump` and verified `pnpm db:check-balances` (`All groups balanced`).
 
 
+## Advisor review fixes — passed
+
+- Addressed all Codex review findings across four new commits on `phase-2`:
+  1. `7c60daf`: made bank `qrPayload` nullable in `PayTo` (`balances.ts` omits `qrPayload` when `transfer.amount > 999_999_999_999` while keeping full `balances` and `transfer.amount`; `PayMethodsCard` hides only the QR card when null; `settlementHref` and `PayFooter` cap settlement reports at `999_999_999_999`); extracted `PayFooter.tsx` (`PayContent.tsx` 92 lines, `PayFooter.tsx` 128 lines, updated `D11`).
+  2. `680d778`: added `PreviewTransactionRequest` optional `transactionId` so `previewTransaction` validates archived `categoryId` per `D12` (allowing keeping existing `categoryId` on edit while rejecting it on new create); passed `transaction?.id` from `use-expense-form.ts`; clamped `bucketRange` drill-down in `StatsContent.tsx` to the intersection with `periodRange`; added `uncategorized` filter across `TransactionsQuery` (rejecting conflict with `category`/`categoryId`), `packages/db`, `apps/api`, `lib/transactions.ts`, `FilterChips`, `FilterSheet`, and `StatsContent` `Chưa phân loại`.
+  3. `b91e7b3`: routed `từ quỹ` in `packages/core/src/quick-entry/phrases.ts` through `readName` + `nameIssue` so groups with a matching person name (e.g. `Quy`) emit `MEMBER_AMBIGUOUS` identically to `quỹ trả`.
+  4. `869b729`: added optional `replacing` to `transactionWarnings` (`budgetLimitWarning` and `fundOverdrawWarning`), passed from both `previewTransaction` (`transactionId`) and `editTransaction` (`before`), eliminating double-counting of the replaced transaction during edit previews and already-applied edits.
+- Re-verified `pnpm check` (316 files, 5 typechecks), `API_ORIGIN=http://localhost:4001 pnpm build`, full reset-DB replay (`Phase 1` x4 + `2A` + `2B` + `2C` + `2D` + `/tmp/songphang-p2-review-regressions.py`), restored `/tmp/songphang-p2-pre-gate-fixes.dump` (`All groups balanced`), and verified in Chrome on `http://localhost:3001` (`Reg 2A Large Debt` `/balances` + `/pay` with `1.999.999.999.998 đ`, `Reg 2BD Preview Filter` `Chưa phân loại` -> `?uncategorized=true` + edit `Uống cafe` with `Cafe (đã ẩn)` at `650.000` and `1.050.000`).
+
+
 ## Not verified
 
 - Real-money VietQR scan with an external banking app (reserved for the project owner under `With real money` in `docs/superpowers/runs/phase-2/manual-checks.md`).
