@@ -42,7 +42,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2C.5 — gate 2C
 - [x] 2D.1 — budget core and API
 - [x] 2D.2 — budget UI
-- [ ] 2D.3 — README, final gate and final records
+- [x] 2D.3 — README, final gate and final records
 
 ## Preparation exercises
 
@@ -382,3 +382,48 @@ Security review: route params/bodies validated via `z.uuid()` and `PutBudgetRequ
 Commit reference: `feat(web): add budget settings and warnings`. `pnpm check` passed (315 files, 5 workspace typechecks Done), `API_ORIGIN=http://localhost:4001 pnpm --filter @songphang/web build` passed, and `pnpm db:check-balances` passed (`All groups balanced`). Exercised in two open Chrome browser tabs against `http://localhost:3001` (`Ngân sách 2D.2`): on S11, owner set `Theo tháng` + `1.000.000` (`Lưu hạn mức`, without hijacking focus from group name); added `ăn tối 799999` via quick-entry (no over-budget warning, no S4 banner in either tab); added `nước lọc` `1 đ` via manual form (banner `Đã chi 800.000 đ trên hạn mức 1.000.000 đ.` appeared live via SSE in both tabs); typed `cà phê 200001` in quick-entry (`ConfirmationCard` displayed `Khoản này làm nhóm vượt hạn mức.` via `usePreviewShares`), saved → banner updated live in both tabs to `Đã vượt hạn mức 1 đ.`, tapped banner → navigated to S16 showing `Theo tháng · Đã vượt hạn mức 1 đ.` directly below `1.000.001 đ`; clicked `Bỏ hạn mức` on S11 → banner disappeared live in the second tab without reload. File sizes: `apps/web/src/lib/budget.ts` (59 lines), `apps/web/src/components/settings/BudgetCard.tsx` (111), `apps/web/src/components/feed/BudgetBanner.tsx` (34).
 
 Security review: over-budget amount rendered via integer subtraction (`spent - amount`), authoritative state and `BUDGET_OVER` warning come from `/budget` and `/transactions/preview`, `AmountField` enforces integer digit bounds `1..999_999_999_999`, `encodeURIComponent(groupId)` used on URLs/links, no `dangerouslySetInnerHTML`/`eval`/unvalidated redirects.
+
+
+## Task 2D.3 — approach
+
+- Files to modify: `README.md`, `docs/superpowers/runs/phase-2/manual-checks.md`, and `docs/superpowers/runs/phase-2/progress.md`.
+- Approach: update `README.md` with Phase 2 features and screens (`/pay`, `/stats`, `/fund`, settings categories and budget, stream filters and CSV export), the bank dataset origin (`https://api.vietqr.io/v2/banks`, retrieved 2026-11-17, 76 entries, not NAPAS-certified), and the owner's manual VietQR banking-app scan step. Seed a 500-transaction group (`Perf 500`) to measure S16 load time on throttled Fast 4G and CSV export download time (< 2s each), run a keyboard-only walk (`Tab`, `Enter`/`Space`, `Escape`) over S14, S16, S17, and S4's filter sheet, record WCAG AA contrast ratios for `BudgetBanner`, execute cumulative Stage Gate 2D on a reset DB replaying Phase 1 + 2A + 2B + 2C + 2D + full permission matrix + `/features`, restore the pre-gate database backup, verify `pnpm db:check-balances`, and finalize `manual-checks.md` and `progress.md`.
+- Why simplest: reuses the Phase 1/2A/2B/2C replay scripts on the clean reset DB and exercises real throttled browser timing directly against the production build.
+- Rejected alternative: measuring only warm localhost reloads without network throttling, which would miss Fast 4G cold-load latency on a 500-transaction group.
+
+
+### Task 2D.3 results
+
+Commit reference: `docs(repo): document phase 2`.
+- Updated `README.md` with Phase 2 features and screens (`/pay`, `/stats`, `/fund`, settings categories and budget, feed filters/CSV export), bank dataset origin (`https://api.vietqr.io/v2/banks`, retrieved `2026-11-17`, 76 entries, not NAPAS-certified), and manual VietQR banking-app scan guidance.
+- Non-functional checks:
+  - 500-transaction seed (`Perf 500`, 4 members, 100.000 đ equal splits across 2 months, balanced sum 0): under Chrome DevTools `"Fast 4G"` cold load (`ignoreCache: true`), S16 loaded with `domInteractive 232 ms`, `loadEventEnd 232 ms`, `/stats` + `/budget` API responses completed at `579 ms` (< 2.000 ms), and `/export.csv` (501 rows, 44.348 chars) downloaded in `176 ms` (< 2.000 ms).
+  - Keyboard-only walk (`Tab`, `Enter`, `Space`, `Escape`) passed across **S4 `FilterSheet`** (`Tab` -> `Lọc` -> `Enter` opens modal -> `Tab`/`Space` toggles chip -> `Escape` closes and returns focus to `Lọc`), **S16** (`Tab` -> `Tháng này` -> `Enter` updates totals to `35.000.000 đ`), **S17** (`Tab` through fund links/inputs -> `Đóng quỹ` + `Enter` announces `Quỹ còn tiền. Hãy hoàn hết cho mọi người trước.`), and **S14** (`Tab` -> `Sao chép số tiền` + `Enter` -> `Đã sao chép`, `Tab` through actions).
+  - WCAG AA contrast ratios computed from `apps/web/src/app/globals.css`: `near` (`#1c1b22` ink on `#e9e4f3` sunken) = `13.71:1`; `over` (`#1c1b22` ink on `#ff8a73` coral) = `7.43:1` (both pass WCAG AA 4.5:1 and AAA 7:1).
+- Finalized `docs/superpowers/runs/phase-2/manual-checks.md` organized by screen (`With real money`, `S5`, `S10`, `S11`, `S14`, `S16`, `S17`, `S4`).
+
+
+## Stage gate 2D — passed
+
+- `pnpm check` (315 files, 5 workspace typechecks Done) and `API_ORIGIN=http://localhost:4001 pnpm build` passed.
+- Backed up pre-gate DB (`/tmp/songphang-p2-pre-gate2d.dump`), dropped/recreated `public` and `drizzle` schemas, ran `pnpm db:migrate` and `pnpm db:seed`.
+- Executed cumulative acceptance & permission suite on the reset DB:
+  - All 4 Phase 1 suites (`songphang-final-orchestrate.py`: `songphang-final-trip.py`, `songphang-replay-acceptance.py`, `songphang-gate1d-reader.py`, `songphang-final-permissions.py`) exited `0`.
+  - Stage 2A (`/tmp/songphang-p2-gate2a.py`, including `GET /api/v1/features` all-false and disabled 404 probes + 2A permission matrix) exited `0`.
+  - Stage 2B (`/tmp/songphang-p2-gate2b.py`, stats, search/filters, CSV export + 2B permission matrix) exited `0`.
+  - Stage 2C (`/tmp/songphang-p2-gate2c.py` + `2C.1` row 2 `psql` deferred trigger `ERROR: fund member cannot appear in transaction shares` at `COMMIT`) exited `0`.
+  - Stage 2D (`/tmp/songphang-p2-gate2d.py` API rows 2–7 + budget permission matrix `GET` 200/200/200/404/401, `PUT`/`DELETE` 200|204/403/403/404/401; `tsx` `budgetState` rows 1–4) exited `0`.
+  - `pnpm db:check-balances` passed (`All groups balanced`) on the reset DB.
+- Restored `/tmp/songphang-p2-pre-gate2d.dump` and verified `pnpm db:check-balances` (`All groups balanced`).
+
+
+## Not verified
+
+- Real-money VietQR scan with an external banking app (reserved for the project owner under `With real money` in `docs/superpowers/runs/phase-2/manual-checks.md`).
+- Automated NAPAS account-name lookup, real SMTP delivery, and Google OAuth credentials (optional external services stay disabled by policy; `/api/v1/features` returns all false).
+- iOS workspace (`songphang-ios-ui`), not modified in Phase 2.
+
+
+## Gate not passed
+
+none

@@ -52,6 +52,18 @@ pnpm dev
 - Integer-only expense/income/transfer ledgers with equal, exact, weighted and percentage splits, balances and settlements.
 - Vietnamese sentence entry, clarification/manual hand-off, version-safe editing, undo/history, group deletion and offline read state.
 
+## Phase 2 features
+
+- **VietQR and settlement confirmation:** Receiving bank/wallet methods on Members (`/g/{id}/members`), a paying screen (`/g/{id}/pay`) with a 240px VietQR QR code (`SP {from} tra {to}`) and payment fields, and pending-settlement report/confirm/reject/cancel flow on Balances (`/g/{id}/balances`).
+- **Custom categories, filters, statistics, and CSV export:** Up to 30 custom categories per group on Settings (`/g/{id}/settings`), unaccented search and filters (`Người`, `Danh mục`, `Loại`, `Từ ngày`, `Đến ngày`) on the group feed (`/g/{id}`), Statistics (`/g/{id}/stats`) with category, member, and timeline breakdowns, and formula-safe UTF-8 CSV download (`/api/v1/groups/{id}/export.csv`).
+- **Shared fund:** A group fund on Fund (`/g/{id}/fund`) held by a chosen member, funded by contributions/withdrawals, supporting fund-paid expenses (including quick entry such as `ăn tối 300k quỹ trả`), and reported separately on Balances.
+- **Budget and spending warnings:** Owner-configured monthly (`Theo tháng`) or trip (`Cả chuyến`) limits on Settings (`/g/{id}/settings`), `80%` near/over banners on the group feed, summary line on Statistics, and `BUDGET_OVER` confirmation warnings.
+
+### Bank dataset and manual VietQR check
+
+- `packages/core/src/banks.ts` contains the 76-bank BIN mapping sourced from `https://api.vietqr.io/v2/banks` (VietQR.io by Casso, retrieved `2026-11-17`). It is not a NAPAS-certified dataset; automated NAPAS bank-account verification is disabled.
+- Before real-money use, verify the QR payload bytes match the VietQR specification and scan a 1.000 đ test transfer from `/g/{id}/pay` with a Vietnamese banking app to confirm bank, account number, account name, amount, and transfer note fill in accurately.
+
 ## Development mail and optional Google sign-in
 
 Mail is printed by the API process to its development console. Read the verification/reset link there and open it locally; no mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration without a real mailer is refused.

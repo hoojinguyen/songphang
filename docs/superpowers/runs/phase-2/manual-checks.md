@@ -1,6 +1,6 @@
 # Phase 2 run — owner manual checks
 
-Status: advisor preparation completed; feature implementation pending. The sections below reserve the approved flow organization. Concrete task checks must be added as tasks are implemented, including invalid cases and actual URLs/commands where needed.
+Checks are organized by screen (S5, S10, S11, S14, S16, S17, S4 filters) plus API/core gate references below. Start with **With real money** once local verification completes.
 
 ## With real money
 
@@ -41,6 +41,7 @@ Status: advisor preparation completed; feature implementation pending. The secti
 2. Switch between `Tất cả`, `Tháng này`, `Tháng trước`, and `Tuỳ chọn` → totals change and bars resize; an empty period shows `Chưa có khoản chi nào trong khoảng này`.
 3. Tap a category or member row on S16 → opens S4 filtered to that category/member (and active period) with filter chips above the stream.
 4. Tap `Xuất CSV` on S16 → downloads `song-phang-YYYYMMDD.csv`; open in Excel or Google Sheets → Vietnamese reads correctly, one row per transaction, one column per member, and cells starting with `=`/`+`/`-`/`@` are plain text (not evaluated as formulas).
+5. When a budget is configured on S11, open S16 → the budget summary line appears directly underneath the total.
 
 ## S17 — shared fund
 
