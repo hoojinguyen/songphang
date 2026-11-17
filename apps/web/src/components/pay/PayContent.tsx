@@ -10,6 +10,7 @@ import { PayFooter } from "./PayFooter";
 import { PayMethodsCard } from "./PayMethodsCard";
 
 type Transfer = BalancesResponse["transfers"][number];
+const MAX_TRANSFER_AMOUNT = 999_999_999_999;
 
 export function PayContent({
 	groupId,
@@ -37,6 +38,8 @@ export function PayContent({
 		(role === "editor" && !to.claimed);
 	const canCancel =
 		Boolean(transfer.pendingRequest?.createdByMe) || myMemberId === from.id;
+	const payAmount = Math.min(transfer.amount, MAX_TRANSFER_AMOUNT);
+	const isPartial = transfer.amount > MAX_TRANSFER_AMOUNT;
 
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 py-6 pb-28">
@@ -60,15 +63,23 @@ export function PayContent({
 			</div>
 			<div className="grid justify-items-center gap-2 text-center">
 				<p className="text-[40px] font-black tracking-tight">
-					{formatMoney(transfer.amount)}
+					{formatMoney(payAmount)}
 				</p>
 				<CopyRow
 					label={vi.pay.copyAmount}
-					value={formatMoney(transfer.amount)}
-					copyValue={String(transfer.amount)}
+					value={formatMoney(payAmount)}
+					copyValue={String(payAmount)}
 					buttonLabel={vi.pay.copyAmount}
 					compact
 				/>
+				{isPartial && (
+					<p className="text-xs font-semibold text-muted">
+						{t(vi.pay.partialNote, {
+							amount: formatMoney(payAmount),
+							total: formatMoney(transfer.amount),
+						})}
+					</p>
+				)}
 			</div>
 			<PayMethodsCard
 				groupId={groupId}
@@ -81,6 +92,7 @@ export function PayContent({
 				from={from}
 				to={to}
 				transfer={transfer}
+				payAmount={payAmount}
 				mayCreate={mayCreate}
 				canEdit={canEdit}
 				canResolve={canResolve}

@@ -14,13 +14,13 @@ import { useSnackbar } from "../ui/Snackbar";
 import { VerifyEmailBanner } from "../ui/VerifyEmailBanner";
 
 type Transfer = BalancesResponse["transfers"][number];
-const MAX_TRANSFER_AMOUNT = 999_999_999_999;
 
 export function PayFooter({
 	groupId,
 	from,
 	to,
 	transfer,
+	payAmount,
 	mayCreate,
 	canEdit,
 	canResolve,
@@ -31,6 +31,7 @@ export function PayFooter({
 	from: MemberDto;
 	to: MemberDto;
 	transfer: Transfer;
+	payAmount: number;
 	mayCreate: boolean;
 	canEdit: boolean;
 	canResolve: boolean;
@@ -54,7 +55,7 @@ export function PayFooter({
 				request: {
 					fromMemberId: from.id,
 					toMemberId: to.id,
-					amount: Math.min(transfer.amount, MAX_TRANSFER_AMOUNT),
+					amount: payAmount,
 				},
 			},
 			{

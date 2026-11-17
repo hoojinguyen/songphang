@@ -75,6 +75,7 @@ export const vi = {
 		confirmedNotice: "Đã ghi nhận {amount} từ {from}.",
 		rejectedNotice: "Đã báo lại là chưa nhận.",
 		alreadyResolved: "Yêu cầu này đã được xử lý.",
+		partialNote: "Trả trước {amount} trên tổng nợ {total}.",
 	},
 	payment: {
 		title: "Thông tin nhận tiền",
