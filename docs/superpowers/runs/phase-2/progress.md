@@ -256,3 +256,14 @@ Security review: relevant items 1/2/4/5/6/7/8 checked against full diff; formula
 Commit reference: `feat(web): add custom categories`. pnpm check passed (293 files, five workspace typechecks Done) and production web built with `API_ORIGIN=http://localhost:4001`. Exercised in Chrome on `http://localhost:3001` (`Phase 2 exercise` group): S11 `Danh mục của nhóm` created `Cà phê sáng` (coral), normalized-duplicate `ca phe sang` showed alert `Nhóm đã có danh mục này.`, renamed/recolored to `Trà đá` (sky), selected `Trà đá` on new expense `Nước mía` (`40.000`) which displayed `Trà đá` with color dot in the stream, opened `+ Thêm danh mục` modal `<dialog>` on S6 to hide `Trà đá` (`Ẩn danh mục`), confirmed `Trà đá` disappeared from `CategoryPicker` for new expenses while `Nước mía` retained `Trà đá` in the stream and `Trà đá (đã ẩn)` pressed in edit mode, and confirmed 31st category creation in S11 showed `Nhóm đã có 30 danh mục.`.
 
 Security review: relevant items 1/2/4/6/7/8 checked against full diff; `CategoryName`/`MemberColorCode` bounded in UI and contract, API `CATEGORY_EXISTS`/`LIMIT_REACHED`/`403` errors mapped without exposing internal details, modal `<dialog>` uses native `showModal()`/`closedby="any"`/`overscroll-behavior: contain`, no `dangerouslySetInnerHTML`/`eval`/new libraries. `CategoryList.tsx` and `CategoryRow.tsx` kept cohesive under 150 lines each. Not verified: none for 2B.6.
+
+
+## Stage gate 2B — passed
+
+- `pnpm check` (293 files, 5 typechecks) and `API_ORIGIN=http://localhost:4001 pnpm build` passed.
+- Backed up DB (`/tmp/songphang-p2-pre-gate2b.dump`), reset `public`/`drizzle`, ran `pnpm db:migrate` and `pnpm db:seed`.
+- Replayed all four Phase 1 suites (`songphang-final-trip.py`, `songphang-replay-acceptance.py`, `songphang-gate1d-reader.py`, `songphang-final-permissions.py`) and Stage Gate 2A (`songphang-p2-gate2a.py`, including `GET /api/v1/features` all-false check and 404 probes) on current-source API 4001: all passed.
+- Stage 2B acceptance (`/tmp/songphang-p2-gate2b.py`): December ledger S1–S7 created; 2B.3 first table (`from=2026-12-01&to=2026-12-31`, `bucket: day`, `total: 1999999`, `byCategory`, `byMember` paid/share, `byBucket`) passed; 2B.2 rows 1/5/8 (`q=pho`, `memberId=Thu`, `from=2026-12-31&to=2026-12-31`) passed; 2B.5 rows 1/2/6 (`EF BB BF` BOM, header, row S6, row S7 `'=SUM(A1)`) passed.
+- Stage 2B permission matrix: read `/categories`, `/stats`, `/export.csv` (`200/200/200/404/401`); write `/categories` (`201/201/403/404/401`).
+- `pnpm db:check-balances`: `All groups balanced` after reset acceptance and after restoring `/tmp/songphang-p2-pre-gate2b.dump`.
+- Not verified: opening the exported `.csv` in Excel/Google Sheets (owner manual check).
