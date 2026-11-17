@@ -4,6 +4,8 @@ import {
 	IdempotencyKeyHeader,
 	ParseRequest,
 	ParseResponse,
+	PreviewItemsRequest,
+	PreviewItemsResponse,
 	PreviewTransactionRequest,
 	PreviewTransactionResponse,
 	TransactionResponse,
@@ -22,6 +24,7 @@ import { parseSentence } from "../services/quick-entry.js";
 import {
 	createTransaction,
 	listTransactions,
+	previewItemsSplit,
 	previewTransaction,
 } from "../services/transactions.js";
 import { registerTransactionChangeRoutes } from "./transaction-changes.js";
@@ -73,6 +76,23 @@ const previewRoute = createRoute({
 		200: {
 			description: "Shares preview",
 			content: { "application/json": { schema: PreviewTransactionResponse } },
+		},
+	},
+});
+const previewItemsRoute = createRoute({
+	method: "post",
+	path: "/api/v1/groups/{groupId}/transactions/items/preview",
+	request: {
+		params,
+		body: {
+			required: true,
+			content: { "application/json": { schema: PreviewItemsRequest } },
+		},
+	},
+	responses: {
+		200: {
+			description: "Items split calculation",
+			content: { "application/json": { schema: PreviewItemsResponse } },
 		},
 	},
 });
@@ -143,6 +163,16 @@ export function registerTransactionRoutes(
 	app.openapi({ ...previewRoute, middleware: write }, async (context) =>
 		context.json(
 			await previewTransaction(
+				deps,
+				context.var.groupAccess.groupId,
+				context.req.valid("json"),
+			),
+			200,
+		),
+	);
+	app.openapi({ ...previewItemsRoute, middleware: write }, async (context) =>
+		context.json(
+			await previewItemsSplit(
 				deps,
 				context.var.groupAccess.groupId,
 				context.req.valid("json"),

@@ -29,11 +29,20 @@ export async function calculateShares(
 	input: CreateTransactionRequest,
 ) {
 	const request = normalizeTransaction(input);
+	if (input.type === "income" && request.split.method === "items") {
+		throw new AppError(
+			400,
+			"VALIDATION_FAILED",
+			"Income transactions cannot split by items",
+		);
+	}
 	const members = await listGroupMembers(executor, groupId);
 	const splitIds =
 		request.split.method === "equal" || request.split.method === "exact"
 			? request.split.members
-			: request.split.entries.map((e) => e.memberId);
+			: request.split.method === "items"
+				? [...new Set(request.split.items.flatMap((item) => item.memberIds))]
+				: request.split.entries.map((e) => e.memberId);
 	const allIds = [...request.payers.map((p) => p.memberId), ...splitIds];
 	if (allIds.some((id) => !members.some((m) => m.id === id)))
 		throw new AppError(
@@ -67,9 +76,11 @@ export async function calculateShares(
 		if (result.code === "ITEM_UNASSIGNED") {
 			throw new AppError(
 				400,
-				"VALIDATION_FAILED",
+				"ITEM_UNASSIGNED",
 				"Item has no assigned members",
-				{ itemIndex: result.itemIndex },
+				{
+					itemIndex: result.itemIndex,
+				},
 			);
 		}
 		throw new AppError(400, result.code, "Split total differs from amount", {

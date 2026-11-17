@@ -1,6 +1,9 @@
 import { z } from "@hono/zod-openapi";
 import {
 	type CreateTransactionRequest,
+	type ItemsPreviewIssue,
+	type PreviewItemsRequest,
+	PreviewItemsResponse,
 	type PreviewTransactionRequest,
 	PreviewTransactionResponse,
 	TransactionDto,
@@ -9,7 +12,12 @@ import {
 	type TransactionsQuery,
 	TransactionsResponse,
 } from "@songphang/contract";
-import { foldVietnamese, localDateRangeToUtc } from "@songphang/core";
+import {
+	computeItemShares,
+	computeItemsNetTotal,
+	foldVietnamese,
+	localDateRangeToUtc,
+} from "@songphang/core";
 import {
 	attachToTransaction,
 	countAttachmentsForTransactions,
@@ -21,6 +29,7 @@ import {
 	insertTransactionPayers,
 	insertTransactionShares,
 	listAttachmentsForTransactions,
+	listGroupMembers,
 	listTransactionPayers,
 	listTransactionRows,
 	listTransactionShares,
@@ -292,6 +301,88 @@ export async function listTransactions(
 			return TransactionsResponse.parse({
 				transactions: await mapTransactionListItems(executor, groupId, page),
 				nextCursor,
+			});
+		},
+		{ isolationLevel: "repeatable read", accessMode: "read only" },
+	);
+}
+
+const MAX_TRANSACTION_AMOUNT = 999_999_999_999;
+
+export async function previewItemsSplit(
+	deps: AppDeps,
+	groupId: string,
+	request: PreviewItemsRequest,
+): Promise<PreviewItemsResponse> {
+	return deps.db.transaction(
+		async (executor) => {
+			const members = await listGroupMembers(executor, groupId);
+			const memberIds = [
+				...new Set(request.items.flatMap((item) => item.memberIds)),
+			];
+			if (memberIds.some((id) => !members.some((m) => m.id === id))) {
+				throw new AppError(
+					400,
+					"MEMBER_NOT_IN_GROUP",
+					"Member does not belong to group",
+				);
+			}
+			if (
+				memberIds.some(
+					(id) => members.find((m) => m.id === id)?.kind === "fund",
+				)
+			) {
+				throw new AppError(
+					422,
+					"FUND_CANNOT_SHARE",
+					"Fund member cannot bear a share",
+				);
+			}
+
+			const computedAmount = computeItemsNetTotal(
+				request.items,
+				request.extras,
+			);
+			const issues: ItemsPreviewIssue[] = [];
+			const unassignedIndex = request.items.findIndex(
+				(item) => item.memberIds.length === 0,
+			);
+			if (unassignedIndex >= 0) {
+				issues.push({ code: "ITEM_UNASSIGNED", itemIndex: unassignedIndex });
+			}
+			if (computedAmount < 1 || computedAmount > MAX_TRANSACTION_AMOUNT) {
+				issues.push({ code: "INVALID_TOTAL" });
+			}
+			if (issues.length > 0) {
+				return PreviewItemsResponse.parse({ computedAmount, issues });
+			}
+
+			const result = computeItemShares(
+				computedAmount,
+				{
+					method: "items",
+					items: request.items,
+					extras: request.extras,
+				},
+				members.map((m) => m.id),
+			);
+			if (!result.ok) {
+				if (result.code === "ITEM_UNASSIGNED") {
+					return PreviewItemsResponse.parse({
+						computedAmount,
+						issues: [{ code: "ITEM_UNASSIGNED", itemIndex: result.itemIndex }],
+					});
+				}
+				return PreviewItemsResponse.parse({
+					computedAmount,
+					issues: [{ code: "INVALID_TOTAL" }],
+				});
+			}
+
+			return PreviewItemsResponse.parse({
+				computedAmount,
+				shares: result.shares,
+				issues: [],
 			});
 		},
 		{ isolationLevel: "repeatable read", accessMode: "read only" },

@@ -18,16 +18,20 @@ export function useSplitState(
 	amount: number,
 	initial?: SplitInput | null,
 ) {
-	const [method, setMethod] = useState<SplitMethod>(initial?.method ?? "equal");
-	const [ids, setIds] = useState(
+	const [method, setMethod] = useState<SplitMethod>(
+		initial && initial.method !== "items" ? initial.method : "equal",
+	);
+	const [ids, setIds] = useState<string[]>(() =>
 		initial
 			? initial.method === "equal" || initial.method === "exact"
-				? initial.members
-				: initial.entries.map((e) => e.memberId)
+				? [...initial.members]
+				: initial.method === "items"
+					? [...new Set(initial.items.flatMap((item) => item.memberIds))]
+					: initial.entries.map((e) => e.memberId)
 			: members.map((member) => member.id),
 	);
 	const [values, setValues] = useState<Record<string, string>>(() =>
-		initial && initial.method !== "equal"
+		initial && initial.method !== "equal" && initial.method !== "items"
 			? Object.fromEntries(
 					initial.entries.map((e) => [
 						e.memberId,

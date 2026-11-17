@@ -30,6 +30,7 @@ export const ErrorCode = z
 		"FUND_EXISTS",
 		"STORAGE_QUOTA_EXCEEDED",
 		"AI_QUOTA_EXCEEDED",
+		"ITEM_UNASSIGNED",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

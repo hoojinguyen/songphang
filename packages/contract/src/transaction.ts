@@ -78,12 +78,35 @@ const PercentSplitInput = z
 			new Set(split.entries.map((e) => e.memberId)).size ===
 			split.entries.length,
 	);
+export const NonnegativeMoneyAmount = z.int().min(0).max(999_999_999_999);
+export const ItemsSplitItem = z.object({
+	name: z.string().trim().min(1).max(80),
+	amount: NonnegativeMoneyAmount,
+	memberIds: z
+		.array(z.uuid())
+		.max(20)
+		.refine((ids) => new Set(ids).size === ids.length),
+});
+export type ItemsSplitItem = z.infer<typeof ItemsSplitItem>;
+export const ItemsSplitExtra = z.object({
+	kind: z.enum(["tax", "service", "discount", "other"]),
+	label: z.string().trim().max(40),
+	amount: NonnegativeMoneyAmount,
+});
+export type ItemsSplitExtra = z.infer<typeof ItemsSplitExtra>;
+export const ItemsSplitInput = z.object({
+	method: z.literal("items"),
+	items: z.array(ItemsSplitItem).min(1).max(60),
+	extras: z.array(ItemsSplitExtra).max(6),
+});
+export type ItemsSplitInput = z.infer<typeof ItemsSplitInput>;
 export const SplitInput = z
 	.discriminatedUnion("method", [
 		EqualSplitInput,
 		ExactSplitInput,
 		SharesSplitInput,
 		PercentSplitInput,
+		ItemsSplitInput,
 	])
 	.openapi("SplitInput");
 export type SplitInput = z.infer<typeof SplitInput>;
@@ -114,7 +137,9 @@ export const SplitTransactionRequest = z
 		attachmentIds: AttachmentIds.optional(),
 	})
 	.refine(
-		(request) => !(request.category !== null && request.categoryId !== null),
+		(request) =>
+			!(request.category !== null && request.categoryId !== null) &&
+			!(request.type === "income" && request.split.method === "items"),
 	)
 	.openapi("SplitTransactionRequest");
 export type SplitTransactionRequest = z.infer<typeof SplitTransactionRequest>;
@@ -192,6 +217,26 @@ export const PreviewTransactionResponse = z
 		warnings: z.array(TransactionWarning).default([]),
 	})
 	.openapi("PreviewTransactionResponse");
+export const PreviewItemsRequest = z
+	.object({
+		items: ItemsSplitInput.shape.items,
+		extras: ItemsSplitInput.shape.extras,
+	})
+	.openapi("PreviewItemsRequest");
+export type PreviewItemsRequest = z.infer<typeof PreviewItemsRequest>;
+export const ItemsPreviewIssue = z.object({
+	code: z.enum(["ITEM_UNASSIGNED", "INVALID_TOTAL"]),
+	itemIndex: z.int().nonnegative().optional(),
+});
+export type ItemsPreviewIssue = z.infer<typeof ItemsPreviewIssue>;
+export const PreviewItemsResponse = z
+	.object({
+		computedAmount: z.int(),
+		shares: z.array(ShareDto).optional(),
+		issues: z.array(ItemsPreviewIssue),
+	})
+	.openapi("PreviewItemsResponse");
+export type PreviewItemsResponse = z.infer<typeof PreviewItemsResponse>;
 export const TransactionsQuery = z
 	.object({
 		cursor: z.string().max(512).optional(),

@@ -15,7 +15,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3B.2 — receipt reader adapters, cost ledger, quotas
 - [x] 3B.3 — receipt scans endpoint, job, stage gate 3B
 - [x] 3C.1 — core items split
-- [ ] 3C.2 — API items split method and items preview
+- [x] 3C.2 — API items split method and items preview
 - [ ] 3C.3 — web camera in entry bar and receipt review screen
 - [ ] 3C.4 — stage gate 3C
 - [ ] 3D.1 — sentence AI and parse fallback
@@ -185,6 +185,23 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
 - `pnpm check`: passed (`Checked 371 files`, all 7 workspace typechecks Done).
 - `exercise_3c1.mts`: Row 1 intermediate subtotals `[206667, 116667, 116666]` and extra parts `[940, 530, 530]` verified; all 9 table rows (`[207607, 117197, 117196]`, `[206667, 116667, 116666]`, `[197273, 111364, 111363]`, `[33334, 33333, 33333]`, `[5455, 54545]`, `[15000, 15000]`, `ITEM_UNASSIGNED` index `1`, `SPLIT_TOTAL_MISMATCH` expected `450000` actual `442000`, `[55000, 55000]`) matched and summed to exact transaction totals with nonnegative shares.
 - Security review: checked items 1, 2, 8; integer-only safe checks and strict membership validation, no dependencies; no issues found.
+
+## Task 3C.2 — approach
+
+- Files to create/modify: Drizzle migration `0013_lively_random.sql`; modify `packages/contract/src/{error,transaction}.ts`, `packages/db/src/schema-transactions.ts`, `apps/api/src/{routes/transactions,services/{transaction-input,transactions}}.ts`, and `apps/web/src/{components/expense-form/use-split-state,lib/activity-sentences}.ts` (safe narrowing until 3C.3 UI arrives).
+- Approach: add `ITEM_UNASSIGNED`, `ItemsSplitInput` (1–60 items, 0–20 unique memberIds, 0–6 extras), and `PreviewItemsRequest`/`PreviewItemsResponse` to `@songphang/contract`. Extend `transactions_split_method_check` to include `'items'`. Wire `items` through `calculateShares` (expense-only, fund refusal `422`, foreign member refusal `400`, `ITEM_UNASSIGNED` `400` with `details.itemIndex`). Add `POST /api/v1/groups/{groupId}/transactions/items/preview` computing `computedAmount`, authoritative `shares`, and `issues` purely in `core`.
+- Why simplest: stores items inside existing `split_input` JSONB with no extra tables and reuses existing transaction create/edit/preview/warning pipelines.
+- Rejected alternative: creating normalized item tables, which violates ADR-023 and complicates versioned snapshots and undo/edit.
+
+### Task 3C.2 results
+
+- `pnpm check`: passed (`Checked 372 files`, all 7 workspace typechecks Done). Migration `0013_lively_random.sql` applied on `songphang_phase3_gate`.
+- `exercise_3c2.mts`:
+  - Rows 1–4: ordinary preview (`207607, 117197, 117196`), create with photo (`balances +234393/-117197/-117196`), `GET` preserving item order (`["Lẩu", "Bia"]`), `PATCH` edit moving Bia to Lan (`117197, 207607, 117196`; `balances +324803/-207607/-117196`) passed.
+  - Rows 5–8: `memberIds: []` -> `400 ITEM_UNASSIGNED (itemIndex: 1)`, amount `450000` -> `400 SPLIT_TOTAL_MISMATCH`, 61 items / `1.5` / foreign member / fund member / income with `items` returned `400`/`400`/`400 MEMBER_NOT_IN_GROUP`/`422 FUND_CANNOT_SHARE`/`400`.
+  - Spec 15.4 `POST .../transactions/items/preview`: valid complete state returned `200 computedAmount=442000` + shares; unassigned returned `200` with `issues=[{code:"ITEM_UNASSIGNED",itemIndex:1}]` and no shares; `0` and out-of-range `1.2e12` returned `200` with `INVALID_TOTAL`; empty items returned `400`; fund returned `422`; viewer returned `403`.
+  - `check-balances.ts`: `All groups balanced`.
+- Security review: checked items 1, 2, 3, 4, 8; no issues found.
 
 ## Not verified
 
