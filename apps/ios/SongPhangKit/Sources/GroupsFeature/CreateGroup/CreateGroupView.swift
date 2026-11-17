@@ -117,36 +117,46 @@ public struct CreateGroupView: View {
           .font(Typography.captionBold)
           .foregroundStyle(Tokens.muted)
 
-        Spacer(minLength: 16)
-
-        if model.submitError != nil {
-          Text(L10n.tr("common.saveError"))
-            .font(Typography.subheadlineBold)
-            .foregroundStyle(Tokens.ink)
-        }
-
-        let submitLabel =
-          model.addedMembers.isEmpty
-          ? L10n.tr("newGroup.submitOne")
-          : L10n.t("newGroup.submitMany", ["count": String(model.addedMembers.count + 1)])
-
-        SPButton(
-          submitLabel,
-          variant: .accent,
-          size: .lg,
-          isFullWidth: true,
-          isDisabled: !model.canSubmit,
-          isPending: model.isSubmitting
-        ) {
-          Task { await model.submit() }
-        }
       }
       .padding(.horizontal, 20)
       .padding(.vertical, 24)
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      submitBar
+    }
     .navigationBarBackButtonHidden(true)
+  }
+
+  private var submitBar: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      if model.submitError != nil {
+        Text(L10n.tr("common.saveError"))
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
+      }
+
+      let submitLabel =
+        model.addedMembers.isEmpty
+        ? L10n.tr("newGroup.submitOne")
+        : L10n.t("newGroup.submitMany", ["count": String(model.addedMembers.count + 1)])
+
+      SPButton(
+        submitLabel,
+        variant: .accent,
+        size: .lg,
+        isFullWidth: true,
+        isDisabled: !model.canSubmit,
+        isPending: model.isSubmitting
+      ) {
+        Task { await model.submit() }
+      }
+    }
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    .padding(.horizontal, 20)
+    .padding(.vertical, 12)
+    .background(Tokens.bg)
   }
 }
 

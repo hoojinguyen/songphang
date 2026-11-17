@@ -10,6 +10,7 @@ public struct SignInView: View {
   @Bindable private var model: SignInModel
   private let onOpenRegister: () -> Void
   private let onOpenForgotPassword: () -> Void
+  @FocusState private var isPasswordFocused: Bool
 
   public init(
     model: SignInModel,
@@ -93,7 +94,9 @@ public struct SignInView: View {
         label: L10n.tr("auth.email"),
         text: $model.email,
         kind: .email,
-        maxLength: 254
+        maxLength: 254,
+        onSubmit: { isPasswordFocused = true },
+        submitLabel: .next
       )
 
       SPTextField(
@@ -101,7 +104,8 @@ public struct SignInView: View {
         text: $model.password,
         kind: .password,
         maxLength: 1024,
-        onSubmit: { Task { await model.submitEmailPassword() } }
+        onSubmit: { Task { await model.submitEmailPassword() } },
+        focus: $isPasswordFocused
       )
 
       if let errorMessage = AuthErrorMessages.message(for: model.submitError) {
