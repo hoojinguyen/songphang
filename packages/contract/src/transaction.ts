@@ -180,12 +180,14 @@ export const TransactionsQuery = z
 		category: TransactionCategory.optional(),
 		categoryId: z.uuid().optional(),
 		uncategorized: z.enum(["true", "false"]).optional(),
+		spendingOnly: z.enum(["true", "false"]).optional(),
 		type: z.enum(["expense", "transfer", "income"]).optional(),
 		from: CalendarDate.optional(),
 		to: CalendarDate.optional(),
 	})
 	.refine(
 		(query) =>
+			!(query.spendingOnly === "true" && query.type === "transfer") &&
 			!(
 				query.uncategorized === "true" &&
 				(query.category !== undefined || query.categoryId !== undefined)

@@ -212,6 +212,9 @@ export function FilterSheet({
 								...(categoryId ? { categoryId } : {}),
 								...(uncategorized ? { uncategorized } : {}),
 								...(type ? { type } : {}),
+								...(filters.spendingOnly && type === undefined
+									? { spendingOnly: true }
+									: {}),
 								...(from ? { from } : {}),
 								...(to ? { to } : {}),
 							});

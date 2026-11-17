@@ -163,3 +163,7 @@ Phase 3: approve or revise spec section 15 and its aligned stage plans. These pr
 
 - Stage 2B statistics drill-down finding above.
 - Fresh Fast 4G non-functional gate is not established. Do not describe this report as an unqualified full-phase PASS.
+
+## Subsequent correction — 2026-11-17
+
+The owner authorized fixing the Stage 2B finding and preparing Phase 3 advisor inputs, while continuing to withhold Phase 3 execution. The correction and fresh HTTP/browser/permission/balance evidence are in `statistics-fix-2026-11-17.md`. That focused finding is resolved; the historical review above remains unchanged as evidence of the original failure. This resolution does not turn the unverified real-bank/Fast-4G/spreadsheet checks into passes.

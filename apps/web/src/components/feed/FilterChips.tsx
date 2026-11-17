@@ -71,6 +71,13 @@ export function FilterChips({
 			remove: () => onChange({ ...filters, type: undefined }),
 		});
 	}
+	if (filters.spendingOnly) {
+		chips.push({
+			key: "spendingOnly",
+			label: `${vi.filter.type}: ${vi.expenseForm.typeExpense} / ${vi.expenseForm.typeIncome}`,
+			remove: () => onChange({ ...filters, spendingOnly: undefined }),
+		});
+	}
 	if (filters.from || filters.to) {
 		const dateText =
 			filters.from && filters.to

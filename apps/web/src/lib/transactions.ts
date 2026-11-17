@@ -29,6 +29,7 @@ export type TransactionFilters = {
 	category?: z.infer<typeof TransactionCategory> | undefined;
 	categoryId?: string | undefined;
 	uncategorized?: true | undefined;
+	spendingOnly?: true | undefined;
 	type?: "expense" | "transfer" | "income" | undefined;
 	from?: string | undefined;
 	to?: string | undefined;
@@ -41,6 +42,7 @@ export function hasActiveFilters(filters: TransactionFilters): boolean {
 			filters.category ||
 			filters.categoryId ||
 			filters.uncategorized ||
+			filters.spendingOnly ||
 			filters.type ||
 			filters.from ||
 			filters.to,
@@ -77,6 +79,10 @@ export function readTransactionFilters(params: {
 		...(categoryIdParsed.success ? { categoryId: categoryIdParsed.data } : {}),
 		...(uncategorized ? { uncategorized } : {}),
 		...(typeParsed.success ? { type: typeParsed.data } : {}),
+		...(params.get("spendingOnly") === "true" &&
+		(!typeParsed.success || typeParsed.data !== "transfer")
+			? { spendingOnly: true as const }
+			: {}),
 		...(from ? { from } : {}),
 		...(to ? { to } : {}),
 	};
@@ -89,6 +95,7 @@ export function buildFilterQueryString(filters: TransactionFilters): string {
 	if (filters.category) params.set("category", filters.category);
 	if (filters.categoryId) params.set("categoryId", filters.categoryId);
 	if (filters.uncategorized) params.set("uncategorized", "true");
+	if (filters.spendingOnly) params.set("spendingOnly", "true");
 	if (filters.type) params.set("type", filters.type);
 	if (filters.from) params.set("from", filters.from);
 	if (filters.to) params.set("to", filters.to);
@@ -121,6 +128,7 @@ export function useTransactions(
 			if (filters.category) params.set("category", filters.category);
 			if (filters.categoryId) params.set("categoryId", filters.categoryId);
 			if (filters.uncategorized) params.set("uncategorized", "true");
+			if (filters.spendingOnly) params.set("spendingOnly", "true");
 			if (filters.type) params.set("type", filters.type);
 			if (filters.from) params.set("from", filters.from);
 			if (filters.to) params.set("to", filters.to);

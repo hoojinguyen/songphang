@@ -87,7 +87,11 @@ export function StatsContent({
 	);
 
 	function feedHref(extra: Parameters<typeof buildFilterQueryString>[0]) {
-		const qs = buildFilterQueryString({ ...periodRange, ...extra });
+		const qs = buildFilterQueryString({
+			...periodRange,
+			...extra,
+			spendingOnly: true,
+		});
 		return `/g/${encodeURIComponent(groupId)}${qs ? `?${qs}` : ""}`;
 	}
 

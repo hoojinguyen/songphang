@@ -47,6 +47,7 @@ export type TransactionFilters = {
 	category?: string;
 	categoryId?: string;
 	uncategorized?: boolean;
+	spendingOnly?: boolean;
 	type?: "expense" | "transfer" | "income";
 	start?: Date;
 	endExclusive?: Date;
@@ -113,6 +114,9 @@ export function listTransactionRows(
 				filters?.type === undefined
 					? undefined
 					: eq(transactions.type, filters.type),
+				filters?.spendingOnly
+					? inArray(transactions.type, ["expense", "income"])
+					: undefined,
 				filters?.start === undefined
 					? undefined
 					: gte(transactions.occurredAt, filters.start),

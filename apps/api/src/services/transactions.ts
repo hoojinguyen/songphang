@@ -211,6 +211,7 @@ function buildFilters(query: TransactionsQuery): TransactionFilters {
 		...(query.category === undefined ? {} : { category: query.category }),
 		...(query.categoryId === undefined ? {} : { categoryId: query.categoryId }),
 		...(query.uncategorized === "true" ? { uncategorized: true } : {}),
+		...(query.spendingOnly === "true" ? { spendingOnly: true } : {}),
 		...(query.type === undefined ? {} : { type: query.type }),
 		...(range.start === undefined ? {} : { start: range.start }),
 		...(range.endExclusive === undefined
