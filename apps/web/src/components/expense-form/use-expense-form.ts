@@ -118,6 +118,7 @@ export function useExpenseForm(
 					amount,
 					occurredAt: timestamp,
 					category,
+					categoryId: transaction?.categoryId ?? null,
 					payers,
 					split: splitState.split,
 				},

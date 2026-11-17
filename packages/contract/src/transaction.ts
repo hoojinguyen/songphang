@@ -93,11 +93,15 @@ const LedgerFields = {
 	amount: MoneyAmount,
 	occurredAt: z.iso.datetime(),
 	category: TransactionCategory.nullable(),
+	categoryId: z.uuid().nullable().default(null),
 	payers: Payers,
 	split: SplitInput,
 };
 export const SplitTransactionRequest = z
 	.object({ type: z.enum(["expense", "income"]), ...LedgerFields })
+	.refine(
+		(request) => !(request.category !== null && request.categoryId !== null),
+	)
 	.openapi("SplitTransactionRequest");
 export type SplitTransactionRequest = z.infer<typeof SplitTransactionRequest>;
 export const TransferRequest = z

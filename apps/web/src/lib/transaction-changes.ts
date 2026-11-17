@@ -18,6 +18,7 @@ export function transactionRequestOf(
 				amount: t.amount,
 				occurredAt: t.occurredAt,
 				category: t.category,
+				categoryId: t.categoryId,
 				payers: t.payers,
 				split: t.split,
 			};

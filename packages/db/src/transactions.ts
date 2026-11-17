@@ -19,6 +19,7 @@ export const TRANSACTION_COLUMNS = {
 	currency: transactions.currency,
 	occurredAt: transactions.occurredAt,
 	category: transactions.category,
+	categoryId: transactions.categoryId,
 	split: transactions.splitInput,
 	version: transactions.version,
 	createdAt: transactions.createdAt,

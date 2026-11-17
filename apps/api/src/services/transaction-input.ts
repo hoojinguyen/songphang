@@ -18,6 +18,7 @@ export function normalizeTransaction(request: CreateTransactionRequest) {
 		amount: request.amount,
 		occurredAt: request.occurredAt,
 		category: null,
+		categoryId: null,
 		payers: [{ memberId: request.fromMemberId, amount: request.amount }],
 		split,
 	};

@@ -1,6 +1,7 @@
 export * from "./accounts.js";
 export * from "./activity.js";
 export * from "./balances.js";
+export * from "./categories.js";
 export {
 	checkDatabaseHealth,
 	createDb,
@@ -17,6 +18,7 @@ export { runMigrations } from "./migrate.js";
 export * from "./payment-methods.js";
 export { sessions, users } from "./schema.js";
 export { authTokens, userIdentities } from "./schema-accounts.js";
+export { groupCategories } from "./schema-categories.js";
 export { groups, groupUsers, members } from "./schema-groups.js";
 export * from "./schema-payments.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";

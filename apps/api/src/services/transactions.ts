@@ -24,6 +24,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertLiveCategory } from "./categories.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 
 const CURSOR_SCHEMA = z.object({ occurredAt: z.iso.datetime(), id: z.uuid() });
@@ -44,6 +45,8 @@ export async function previewTransaction(
 	groupId: string,
 	request: CreateTransactionRequest,
 ) {
+	if (request.type !== "transfer")
+		await assertLiveCategory(deps.db, groupId, request.categoryId);
 	return PreviewTransactionResponse.parse({
 		shares: await calculateShares(deps.db, groupId, request),
 	});
@@ -95,6 +98,7 @@ export async function createTransactionIn(
 ) {
 	const shares = await calculateShares(executor, input.groupId, input.request);
 	const request = normalizeTransaction(input.request);
+	await assertLiveCategory(executor, input.groupId, request.categoryId);
 	const group = await findGroup(executor, input.groupId);
 	if (group === null)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
@@ -106,6 +110,7 @@ export async function createTransactionIn(
 		currency: group.currency,
 		occurredAt: new Date(request.occurredAt),
 		category: request.category,
+		categoryId: request.categoryId,
 		splitMethod: request.split.method,
 		splitInput: request.split,
 		createdBy: input.userId,

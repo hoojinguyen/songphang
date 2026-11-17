@@ -43,6 +43,13 @@
 			"when": 1794893294103,
 			"tag": "0005_tan_infant_terrible",
 			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "7",
+			"when": 1794895216953,
+			"tag": "0006_blue_oracle",
+			"breakpoints": true
 		}
 	]
 }

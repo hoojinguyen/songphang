@@ -1,6 +1,7 @@
 export * from "./activity.ts";
 export * from "./auth.ts";
 export * from "./balance.ts";
+export * from "./category.ts";
 export { ErrorCode, ErrorResponse } from "./error.ts";
 export * from "./features.ts";
 export * from "./group.ts";

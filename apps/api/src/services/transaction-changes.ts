@@ -18,6 +18,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertLiveCategory } from "./categories.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { mapTransactions } from "./transactions.js";
 
@@ -59,6 +60,7 @@ const fields = [
 	"amount",
 	"occurredAt",
 	"category",
+	"categoryId",
 	"payers",
 	"shares",
 	"split",
@@ -96,6 +98,11 @@ export async function editTransaction(
 			input.request,
 		);
 		const normalized = normalizeTransaction(input.request);
+		if (
+			normalized.categoryId !== null &&
+			normalized.categoryId !== before.categoryId
+		)
+			await assertLiveCategory(executor, input.groupId, normalized.categoryId);
 		const next = { ...normalized, shares };
 		const altered = fields.filter(
 			(field) => JSON.stringify(before[field]) !== JSON.stringify(next[field]),
@@ -111,6 +118,7 @@ export async function editTransaction(
 				amount: normalized.amount,
 				occurredAt: new Date(normalized.occurredAt),
 				category: normalized.category,
+				categoryId: normalized.categoryId,
 				splitMethod: normalized.split.method,
 				splitInput: normalized.split,
 				version: before.version + 1,

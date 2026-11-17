@@ -29,7 +29,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2A.4 — payment data and pending requests on balances
 - [x] 2A.5 — payment methods editor
 - [x] 2A.6 — paying screen, confirmation and gate 2A
-- [ ] 2B.1 — custom categories
+- [x] 2B.1 — custom categories
 - [ ] 2B.2 — search and filters
 - [ ] 2B.3 — statistics
 - [ ] 2B.4 — statistics screen and filters
@@ -176,3 +176,16 @@ Security review: relevant items 1/2/4/6/7/8 checked against full diff; query par
 - Stage 2A permission matrix: read `200/200/200/404/401`; write other payment methods `200/200/403/404/401`; write own as viewer `200`; create other-payer request `403/404/401`; confirm linked receiver `403/403/404/401`; confirm unlinked receiver viewer `403`, editor `200`; outsider 404 body matched random UUID 404 body.
 - `pnpm db:check-balances`: `All groups balanced` after reset acceptance and after restoring `/tmp/songphang-p2-pre-gate2a.dump`.
 - Not verified: whether real banking apps accept the generated VietQR code (owner manual check).
+
+## Task 2B.1 — approach
+
+- Files to create/modify: create `packages/db/src/schema-categories.ts`, `packages/db/src/categories.ts`, `packages/contract/src/category.ts`, `apps/api/src/services/categories.ts`, `apps/api/src/routes/categories.ts`, and a generated migration; modify `packages/db/drizzle.config.ts`, `packages/db/src/schema-transactions.ts`, `packages/db/src/transactions.ts`, `packages/db/src/index.ts`, `packages/contract/src/transaction.ts`, `packages/contract/src/error.ts`, `packages/contract/src/index.ts`, `apps/api/src/events/hub.ts`, `apps/api/src/services/transactions.ts`, `apps/api/src/services/transaction-input.ts`, `apps/api/src/services/transaction-changes.ts`, `apps/api/src/app.ts`, and `apps/web/src/lib/transaction-changes.ts` (if `categoryId` needs forwarding on edit).
+- Approach: add `group_categories` with partial unique `(group_id, name_key) WHERE archived_at IS NULL` and `transactions.category_id` with mutual-exclusion check against `category`. Normalize `nameKey` in `apps/api` using `core`'s `foldVietnamese` so `packages/db` remains dependency-free. Lock the group before category mutations, enforce live limit 30 and duplicate name check, validate `categoryId` on transaction preview/create/edit (preserving existing archived categories on unrelated edits), and add `categories` SSE resource.
+- Why simplest: reuses `foldVietnamese`, `lockGroup`, `runIdempotent`, and existing transaction validation/change tracking without adding dependencies to `db` or parallel transaction paths.
+- Rejected alternative: normalizing category names in SQL extensions (`unaccent`) instead of existing `foldVietnamese`, which would couple uniqueness to Postgres extension state.
+
+### Task 2B.1 results
+
+Commit reference: `feat(api): add custom categories per group`. pnpm check passed (270 files, five workspace typechecks Done); generated and applied migration `0006_blue_oracle.sql`. Exercised all 2B.1 cases on API 4001: Lan created `Cà phê` (201); `ca phe` duplicate returned 409 `CATEGORY_EXISTS`; Hùng viewer create returned 403; Minh expense with `categoryId` returned 201 and echoed `categoryId`; `category`+`categoryId` both non-null returned 400; cross-group `categoryId` returned 400; DELETE archived (204), `GET /categories` showed `archived: true`, existing expense kept `categoryId` and still allowed editing amount/payers (200); new expense with archived `categoryId` returned 400; recreating `Cà phê` succeeded (201); 31st live category returned 422 `LIMIT_REACHED`; outsider returned 404; signed-out returned 401.
+
+Security review: relevant items 1/2/4/5/6/8 checked against full diff; parameterized Drizzle queries, group-locked editor mutations, partial unique live index and exclusive category CHECK in migration `0006_blue_oracle.sql`, cross-group `categoryId` rejected, no secrets/new dependencies. All new files under 170 lines (D12). Not verified: none for this API task.
