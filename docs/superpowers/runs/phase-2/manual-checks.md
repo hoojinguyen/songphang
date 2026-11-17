@@ -43,3 +43,10 @@ Pending 2B.4 and 2D.2.
 
 1. After the paying screen exists, compare its reference payload with task 2A.1 before scanning → exact bytes, bank/account/amount/purpose match. Do not send money to reference accounts.
 2. Call buildVietQrPayload with amount 0, 1.5 or an account containing a space → RangeError; an unknown findBank BIN returns undefined.
+
+### Payment details API — 2A.2
+
+1. As a viewer, PUT the complete methods list for your linked member → 200 and reloading members retains it.
+2. PUT for another member → 403; sign in outside the group and retry → 404.
+3. Submit a dashed bank account, unsupported BIN, duplicate method kind or short wallet phone → 400; existing saved details remain intact.
+4. Save an empty methods list → 200 and no receiving details remain. Invite previews and activity details must never show bank accounts or phone numbers.

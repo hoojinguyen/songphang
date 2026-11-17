@@ -105,3 +105,7 @@ Semantic equivalents: members schema is schema-groups.ts; ledger schema is schem
 Phase 1 is the only earlier roadmap phase on main; its run directory contains all stages and review fixes. No later phase dependency applies to Phase 2. Preserve Phase 1 account-first session/password serialization, group post-lock checks, terminal SSE guards and repeatable-read ledger snapshots.
 
 D6 — Features endpoint: expose receiptReading, sentenceAi, telegram, push, appleSignIn and errorAlerts booleans, all false in Phase 2. Google remains separately discoverable through /auth/providers. No optional adapter route is registered; no new environment variable. Missing endpoint supplied in Task 0 as an explicit common-plan prerequisite.
+
+## D7 — Payment schema registration and shared core export (2A.2)
+
+Problem: drizzle-kit enumerates schema files explicitly and contract did not yet depend on core. Options: duplicate the catalogue or import across source paths; register the new schema and the planned workspace dependency. Choice: add schema-payments.ts to drizzle.config.ts and link existing @songphang/core into contract with pnpm --offline (downloaded 0, added 0 external packages). Reason: generated migration and one bank catalogue shared by API/web, as task 2A.5 requires. No new library. Generated snapshot/journal formatting follows existing Biome rules; no lint configuration changed. Member DTO defaults paymentMethods to [] for newly created members while read/edit/PUT explicitly load persisted methods.

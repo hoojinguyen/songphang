@@ -21,6 +21,8 @@ import {
 	removeMember,
 } from "../services/members.js";
 
+import { registerPaymentMethodRoutes } from "./payment-methods.js";
+
 const params = z.object({ groupId: z.uuid() });
 const memberParams = params.extend({ memberId: z.string() });
 const listRoute = createRoute({
@@ -79,6 +81,7 @@ export function registerMemberRoutes(
 	app: OpenAPIHono<AppEnv>,
 	deps: AppDeps,
 ): void {
+	registerPaymentMethodRoutes(app, deps);
 	const read = [requireUser(deps), requireGroupRole(deps, "viewer")];
 	const write = [
 		requireUser(deps),

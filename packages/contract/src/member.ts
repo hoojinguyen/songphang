@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { PaymentMethodDto } from "./payment.ts";
 export const MemberShapeCode = z.enum([
 	"circle",
 	"diamond",
@@ -44,6 +45,7 @@ export const MemberDto = z
 		color: MemberColorCode,
 		isMe: z.boolean(),
 		claimed: z.boolean(),
+		paymentMethods: z.array(PaymentMethodDto).max(3).default([]),
 	})
 	.openapi("MemberDto");
 export type MemberDto = z.infer<typeof MemberDto>;

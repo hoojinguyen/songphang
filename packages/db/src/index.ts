@@ -14,9 +14,11 @@ export * from "./idempotency.js";
 export * from "./invites.js";
 export * from "./members.js";
 export { runMigrations } from "./migrate.js";
+export * from "./payment-methods.js";
 export { sessions, users } from "./schema.js";
 export { authTokens, userIdentities } from "./schema-accounts.js";
 export { groups, groupUsers, members } from "./schema-groups.js";
+export * from "./schema-payments.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";
 export {
 	transactionPayers,

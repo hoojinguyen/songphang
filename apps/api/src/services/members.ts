@@ -16,12 +16,15 @@ import {
 	insertActivity,
 	insertMember,
 	listGroupMembers,
+	listPaymentMethodsByGroup,
 	lockGroup,
 	updateMember,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+
+import { paymentMethodDto } from "./payment-methods.js";
 
 type MemberOperation = {
 	groupId: string;
@@ -30,10 +33,12 @@ type MemberOperation = {
 };
 export async function listMembers(deps: AppDeps, input: MemberOperation) {
 	const members = await listGroupMembers(deps.db, input.groupId);
+	const payments = await listPaymentMethodsByGroup(deps.db, input.groupId);
 	return MembersResponse.parse({
 		members: members.map((member) => ({
 			...member,
 			isMe: member.id === input.myMemberId,
+			paymentMethods: payments.get(member.id)?.map(paymentMethodDto) ?? [],
 		})),
 	});
 }
@@ -133,7 +138,14 @@ export async function editMember(
 			createdAt: deps.now(),
 		});
 		return MemberResponse.parse({
-			member: { ...member, isMe: member.id === input.myMemberId },
+			member: {
+				...member,
+				isMe: member.id === input.myMemberId,
+				paymentMethods:
+					(await listPaymentMethodsByGroup(transaction, input.groupId))
+						.get(member.id)
+						?.map(paymentMethodDto) ?? [],
+			},
 		});
 	});
 	deps.events.publishChanged(input.groupId, [

@@ -24,7 +24,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] Advisor preparation — commit reference `docs(phase-2): prepare approved real-money phase`
 - [x] Task 0 — commit reference `docs(run): re-baseline phase 2`
 - [x] 2A.1 — VietQR payload and bank lookup
-- [ ] 2A.2 — member payment methods
+- [x] 2A.2 — member payment methods
 - [ ] 2A.3 — settlement requests
 - [ ] 2A.4 — payment data and pending requests on balances
 - [ ] 2A.5 — payment methods editor
@@ -110,3 +110,13 @@ Create core/vietqr.ts with the specified ASCII TLV fields and CRC-16/CCITT-FALSE
 ### Task 2A.1 results
 
 Commit reference: `feat(core): add VietQR payload builder and bank lookup`. pnpm check passed (241 files, five workspace typechecks Done). Temporary direct function exercise printed CRC 29B1; all three purpose references exactly; both fixed QR strings exactly ending 6329/A05F; five invalid cases each RangeError; lookup Vietcombank/undefined. Purpose folding preserves original case because the reader normalizer intentionally lowercases names. No money division or sum was added. Security review: relevant items 1/2/8 checked; bounded safe integer amount, ASCII payload, six-digit BIN and bounded alphanumeric account; no secret, new dependency or service. Full core diff reviewed; no out-of-scope change. Actual bank-app acceptance remains Not verified.
+
+## Task 2A.2 — approach
+
+Add the payment table/migration and typed group-scoped reads/replacement queries, then a discriminated request/DTO contract. The service locks the group, rechecks viewer access and applies own-member/editor rules before replacing the complete list and recording a value-free activity entry. Batch payment reads into member responses; keep invite DTOs unchanged. Add a thin PUT route with existing write/session/origin middleware; register the new schema in drizzle-kit configuration so generated migrations own all constraints.
+
+### Task 2A.2 results
+
+Commit reference: `feat(api): add payment details of members`. pnpm check passed (247 files, all five workspace typechecks Done); generated/applied migration 0004. Real HTTP: owner bank+momo 200; editor other member's zalopay 200; viewer own momo 200; viewer other member 403 FORBIDDEN; outsider 404 NOT_FOUND. Unknown BIN, duplicate momo, short phone and dashed account each 400 VALIDATION_FAILED. Readback normalized 0901234567 and 0912345678; clear list 200 []. Invite preview contained no paymentMethods. SQL observed the payment-update activity row with before/after both NULL. An initial temporary helper used id instead of actual userId; corrected the helper from the installed contract, no product change needed. Generated JSON initially failed formatting; formatting only fixed it, without disabling checks.
+
+Security review: relevant items 1–8 checked against schema, migration, query, service, route and entire diff. Same-origin/verified writes, shared group auth and post-lock recheck retained; no group data accessible to outsiders; payment values absent from activity snapshots/invite DTOs/logging; parameterized group-scoped queries and atomic replacement. Internal workspace dependency only; no network audit under local-only rule. setPaymentMethods exceeds 40 lines to retain one explicit authorized replacement transaction; files remain under 200 lines. D7 records schema/dependency adaptation. Out of scope: none.
