@@ -27,28 +27,23 @@ export function readPayers(context: ReaderContext): {
 			secondToken?.value === "quy" &&
 			!context.used.has(index + 1)
 		) {
+			const name = readName(context, index + 1);
+			const end = index + 1 + name.length;
+			const lastToken = context.tokens[end - 1] ?? secondToken;
 			if (explicit) {
 				context.issues.push({
 					code: "TEXT_NOT_UNDERSTOOD",
 					start: firstToken.start,
-					end: secondToken.end,
+					end: lastToken.end,
 					candidates: [],
 				});
 			} else {
-				if (context.fund) payerMemberId = context.fund.id;
-				else {
-					payerMemberId = null;
-					context.issues.push({
-						code: "MEMBER_UNKNOWN",
-						start: secondToken.start,
-						end: secondToken.end,
-						candidates: [],
-					});
-				}
+				nameIssue(context, index + 1, name);
+				payerMemberId = name.memberId;
 				explicit = true;
 			}
-			consume(context, index, index + 2, "payer");
-			index++;
+			consume(context, index, end, "payer");
+			index = end - 1;
 			continue;
 		}
 		const name = readName(context, index);
