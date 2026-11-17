@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
-import type { AppEnv } from "./app.js";
+import type { AppDeps, AppEnv } from "./app.js";
 import { AppError } from "./errors.js";
 export function createRateLimiter(now: () => Date) {
 	const windows = new Map<string, { count: number; expiresAt: number }>();
@@ -38,4 +38,13 @@ export function createRateLimiter(now: () => Date) {
 			});
 		},
 	};
+}
+
+export function requireUploadLimit(deps: AppDeps) {
+	return deps.rateLimiter.limit({
+		name: "attachment_upload",
+		max: 30,
+		windowMs: 60 * 60 * 1000,
+		key: (context) => context.var.user.id,
+	});
 }

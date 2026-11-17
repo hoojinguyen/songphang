@@ -8,7 +8,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 
 - [x] Task 0 — re-baseline (`docs(run): re-baseline phase 3`)
 - [x] 3A.1 — worker process, queue, event bridge, features endpoint
-- [ ] 3A.2 — file storage and attachments API
+- [x] 3A.2 — file storage and attachments API
 - [ ] 3A.3 — attachments on transactions; cleanup job
 - [ ] 3A.4 — web photos on the form and the stream; stage gate 3A
 - [ ] 3B.1 — receipt reading schema and arithmetic check
@@ -59,6 +59,25 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
 - `pg-boss@12.38.2` `fromDrizzle(tx, sql)` test on `songphang_phase3_gate`: forced rollback left 0 rows in `pgboss.job`; committed tx persisted 1 job row.
 - Live API + worker exercise: `GET /api/v1/features` returned `200` with all 6 booleans `false`; valid `SELECT pg_notify('songphang_events', ...)` delivered `event: changed` (`["transactions"]`, `["balances"]`) via SSE; malformed JSON and invalid schema triggered `Ignoring malformed group event notification` / `Ignoring invalid group event notification` without forwarding; after `docker compose restart db`, listener reconnected and delivered `["activity"]` via SSE; worker logged `{"event":"worker.heartbeat","at":"2026-11-17T17:09:29.836Z"}`; stopping worker left `GET /api/v1/features` answering `200`.
 - Security review: checked items 1, 2, 4, 5, 6, 8; no secrets/raw payloads logged, Zod validation at `NOTIFY` boundary, parameterized `pg_notify`, approved `pg-boss@12.38.2` MIT with lockfile updated; no issues found.
+
+## Task 3A.2 — approach
+
+- Files to create/modify: create `apps/api/src/storage/{file-store,disk-file-store,sniff}.ts`, `packages/db/src/{schema-attachments,attachments}.ts`, `packages/contract/src/attachment.ts`, `apps/api/src/services/attachments.ts`, `apps/api/src/routes/attachments.ts`, and a Drizzle migration; modify `apps/api/src/{config,app,server,rate-limit}.ts`, `packages/contract/src/{error,index}.ts`, `packages/db/{drizzle.config.ts,src/index.ts}`, `.env.example`, `.gitignore`.
+- Approach: add `FileStore`, `diskFileStore` (enforcing `{groupId}/{uuid}` regex and resolved root prefix + atomic temp-file rename), and magic-byte `sniffImageType` (JPEG/PNG/WebP). Add `attachments` table with checks and `STORAGE_QUOTA_EXCEEDED` error code. Resolve `STORAGE_DIR` against the repo root in config. Bypass the global 100 KiB `bodyLimit` only for `POST .../attachments` and enforce a route-specific 6 MiB actual streaming body bound before `formData()` parsing (rejecting oversized `Content-Length` or actual streamed bytes with 413 regardless of header). Serialize group quota checks, storage write, DB insert, and deletion under `lockGroup` with a fresh role check. Serve content with stored `Content-Type`, `X-Content-Type-Options: nosniff`, `Content-Disposition: inline; filename="hoa-don.jpg"`, and `Cache-Control: private, no-store`.
+- Why simplest: reuses `lockGroup`, `getGroupAccess`, `createRateLimiter`, and native `Request.formData()` without adding multipart dependencies.
+- Rejected alternative: trusting Hono's built-in `bodyLimit`, which skips streaming byte counting whenever a client supplies a small `Content-Length` header.
+
+### Task 3A.2 results
+
+- `pnpm check`: passed (`Checked 344 files`, all 6 workspace typechecks Done). Migration `0010_mean_ben_grimm.sql` generated and applied.
+- Real HTTP & storage exercises on isolated DB `songphang_phase3_gate` and API 4010:
+  - Lan (editor) uploaded JPEG -> `201` (`contentType: image/jpeg`); `GET .../content` -> `200` with identical SHA-256, `X-Content-Type-Options: nosniff`, `Cache-Control: private, no-store`, `Content-Disposition: inline; filename="hoa-don.jpg"`.
+  - Hùng (viewer) `GET .../content` -> `200`; Hùng upload -> `403`. After removing Hùng from group, `GET .../content` -> `404`.
+  - Outsider `GET .../content` -> `404` matching random UUID; owner of another group `GET /groups/{theirGroup}/attachments/{thisId}/content` -> `404`.
+  - PNG declared as `image/jpeg` -> `201` stored `image/png`; WebP -> `201` `image/webp`; `x.jpg` text -> `400 not_an_image`; 5.1 MB JPEG -> `400 too_large`; 7 MB Content-Length & chunked stream -> `413`; part named `photo` -> `400`; 120 KiB JSON to `/transactions` -> `400` (100 KiB global limit preserved).
+  - Delete -> `204`, subsequent `GET` -> `404`, file removed from `STORAGE_DIR`; `diskFileStore.put("../../etc/x", ...)` threw.
+  - Parallel 4×5 MiB uploads at 190 MiB group usage -> `[201, 201, 422, 422]` (`STORAGE_QUOTA_EXCEEDED`); 31st upload by user in an hour -> `429`.
+- Security review: checked items 1, 2, 3, 4, 5, 6, 8; no issues found.
 
 ## Not verified
 

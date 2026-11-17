@@ -13,6 +13,7 @@ export default defineConfig({
 		"./src/schema-settlements.ts",
 		"./src/schema-categories.ts",
 		"./src/schema-budgets.ts",
+		"./src/schema-attachments.ts",
 	],
 	out: "./drizzle",
 });

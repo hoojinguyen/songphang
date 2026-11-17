@@ -10,6 +10,7 @@ import type { Mailer } from "./mailer.js";
 import type { EnqueueFn } from "./queue.js";
 import type { createRateLimiter } from "./rate-limit.js";
 import { registerActivityRoutes } from "./routes/activity.js";
+import { registerAttachmentRoutes } from "./routes/attachments.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerBudgetRoutes } from "./routes/budget.js";
@@ -29,6 +30,7 @@ import { registerMemberRoutes } from "./routes/members.js";
 import { registerSettlementRoutes } from "./routes/settlement-requests.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
+import type { FileStore } from "./storage/file-store.js";
 
 export type AppEnv = {
 	Variables: {
@@ -47,6 +49,7 @@ export type AppDeps = {
 	mailer: Mailer;
 	rateLimiter: ReturnType<typeof createRateLimiter>;
 	enqueue: EnqueueFn;
+	fileStore: FileStore;
 };
 
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
@@ -60,19 +63,22 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 		await next();
 	});
 	app.onError(handleError);
-	app.use(
-		"*",
-		bodyLimit({
-			maxSize: 100 * 1024,
-			onError: () => {
-				throw new AppError(
-					400,
-					"VALIDATION_FAILED",
-					"Request body is too large",
-				);
-			},
-		}),
-	);
+	const defaultBodyLimit = bodyLimit({
+		maxSize: 100 * 1024,
+		onError: () => {
+			throw new AppError(400, "VALIDATION_FAILED", "Request body is too large");
+		},
+	});
+	app.use("*", async (context, next) => {
+		if (
+			context.req.method === "POST" &&
+			/^\/api\/v1\/groups\/[^/]+\/attachments$/.test(context.req.path)
+		) {
+			await next();
+			return;
+		}
+		await defaultBodyLimit(context, next);
+	});
 	app.notFound(() => {
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	});
@@ -88,6 +94,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerCategoryRoutes(app, deps);
 	registerSettlementRoutes(app, deps);
 	registerTransactionRoutes(app, deps);
+	registerAttachmentRoutes(app, deps);
 	registerBalanceRoutes(app, deps);
 	registerBudgetRoutes(app, deps);
 	registerStatsRoutes(app, deps);

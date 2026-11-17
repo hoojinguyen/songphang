@@ -1,4 +1,5 @@
 export * from "./activity.ts";
+export * from "./attachment.ts";
 export * from "./auth.ts";
 export * from "./balance.ts";
 export * from "./budget.ts";

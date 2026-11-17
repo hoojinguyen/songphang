@@ -11,6 +11,7 @@ import { listenForGroupEvents } from "./events/listen.js";
 import { createConsoleMailer } from "./mailer.js";
 import { createApiQueue } from "./queue.js";
 import { createRateLimiter } from "./rate-limit.js";
+import { diskFileStore } from "./storage/disk-file-store.js";
 
 let config: Config;
 try {
@@ -56,6 +57,7 @@ try {
 		mailer: createConsoleMailer(),
 		rateLimiter: createRateLimiter(() => new Date()),
 		enqueue: queue.enqueue,
+		fileStore: diskFileStore(config.storageDir),
 	});
 	const server = serve(
 		{ fetch: app.fetch, port: config.apiPort, hostname: "127.0.0.1" },

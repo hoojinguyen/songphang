@@ -1,4 +1,7 @@
+import path from "node:path";
 import { z } from "@hono/zod-openapi";
+
+const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 
 const CONFIG_SCHEMA = z
 	.object({
@@ -15,6 +18,7 @@ const CONFIG_SCHEMA = z
 		GOOGLE_CLIENT_ID: z.string().max(1024).optional(),
 		GOOGLE_CLIENT_SECRET: z.string().max(4096).optional(),
 		DEV_LOGIN: z.enum(["true", "false"]),
+		STORAGE_DIR: z.string().min(1).max(1024).default("./.data/uploads"),
 	})
 	.superRefine((env, context) => {
 		if (Boolean(env.GOOGLE_CLIENT_ID) === Boolean(env.GOOGLE_CLIENT_SECRET))
@@ -34,6 +38,7 @@ const CONFIG_SCHEMA = z
 		apiPort: env.API_PORT,
 		webOrigin: env.WEB_ORIGIN,
 		devLogin: env.DEV_LOGIN === "true" && env.APP_ENV !== "production",
+		storageDir: path.resolve(REPO_ROOT, env.STORAGE_DIR),
 	}));
 
 export type Config = z.infer<typeof CONFIG_SCHEMA>;
