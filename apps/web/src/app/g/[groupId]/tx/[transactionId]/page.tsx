@@ -23,31 +23,51 @@ export default function EditPage() {
 	const query = useTransaction(groupId, transactionId);
 	const error = group.error ?? members.error ?? query.error ?? me.error;
 	useSessionGuard(error);
+	const loadError = (
+		<LoadError
+			onRetry={() => {
+				void me.refetch();
+				void group.refetch();
+				void members.refetch();
+				void query.refetch();
+			}}
+			isRetrying={
+				me.isFetching ||
+				group.isFetching ||
+				members.isFetching ||
+				query.isFetching
+			}
+		/>
+	);
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-4 p-5">
 			{group.data?.role === "viewer" ? (
 				<p role="alert">{vi.common.forbidden}</p>
 			) : error?.status === 404 ? (
 				<p>{vi.common.groupNotFound}</p>
-			) : query.isPending || !members.data || !group.data || !me.data ? (
+			) : error?.status === 401 ? (
 				<div aria-busy="true" className="h-96 rounded-card bg-sunken" />
-			) : query.isError ? (
-				<LoadError
-					onRetry={() => {
-						void query.refetch();
-					}}
-					isRetrying={query.isFetching}
-				/>
+			) : error && (!query.data || !members.data || !group.data || !me.data) ? (
+				loadError
+			) : query.isPending ||
+				!query.data ||
+				!members.data ||
+				!group.data ||
+				!me.data ? (
+				<div aria-busy="true" className="h-96 rounded-card bg-sunken" />
 			) : !me.data.emailVerified ? (
 				<VerifyEmailBanner />
 			) : (
-				<LoadedEdit
-					key={transactionId}
-					groupId={groupId}
-					transaction={query.data}
-					members={members.data}
-					myMemberId={group.data.myMemberId}
-				/>
+				<>
+					<LoadedEdit
+						key={transactionId}
+						groupId={groupId}
+						transaction={query.data}
+						members={members.data}
+						myMemberId={group.data.myMemberId}
+					/>
+					{error && loadError}
+				</>
 			)}
 			<Link className="min-h-11 text-center" href={`/g/${groupId}`}>
 				{vi.common.back}

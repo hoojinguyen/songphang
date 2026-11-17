@@ -131,3 +131,16 @@ These are owner checks, not claims of verification. Use disposable local data an
 1. Create the OAuth Web application with exact callback `http://localhost:3000/api/v1/auth/google/callback`; keep client id/secret in local .env and restart. Review D19's native adapter deviation before real use; Google was never contacted in this run.
 2. First sign-in creates a verified user/identity. A matching verified password email links the same account; a matching unverified password email shows the approved warning and is not linked. Known subject returns to the same user.
 3. Verify state/PKCE cookies, expiry, failure/cancel handling and internal-only redirects in the real round trip. Remove optional credentials: button hidden/routes 404. Real mail delivery, deployment, HTTPS and backup checks belong to the server step.
+
+## Review-fix regression checks
+
+1. Queue a transaction/member/invite write while the owner removes or demotes the writer → removed gets 404, demoted gets 403, nothing is written.
+2. Reset/change a password during a pending old-password login → no surviving old-password session; the new password works.
+3. With group event streams open, logout/reset/delete the account → affected streams close; changing password with revoke-others keeps only the caller's session stream; idle expiry closes by the next keep-alive.
+4. Edit amounts while another client reads pairwise balances and transaction details → every response is internally consistent, with no 500 or mismatched totals.
+5. Revoke a loaded browser session and navigate → usable login form; sign into another account → only its profile/groups appear.
+6. Delete a linked member without history while their group is open → the choose-your-shape prompt and unclaimed state update without reload.
+7. Delete all transaction-free members → balances works with empty lists in either mode; add a member again → normal zero balance.
+8. Record the two-payer hotel example → both paid amounts and the viewer's share appear; exact/weighted/percent captions name the correct method; equal wording stays unchanged.
+9. Deactivate everyone and type an expense → the manual form explains zero active people, no expense saved; reactivate someone → normal parse works.
+10. Fail an initial edit dependency, then recover and retry → form loads; fail a background refresh while editing → the unsaved draft remains. Invalid access still follows the role rules.
