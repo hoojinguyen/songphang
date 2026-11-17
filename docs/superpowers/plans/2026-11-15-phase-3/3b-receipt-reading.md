@@ -1,6 +1,6 @@
 # Phase 3 — Stage 3B: Receipt Reading
 
-> Part of the phase 3 plan. Read `00-overview.md` first.
+> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision 2026-11-17: pending owner review; do not execute yet.
 
 **Stage goal:** a photo of a bill becomes a validated list of items, extras and a total, within a fixed budget of calls. Nothing reaches the ledger in this stage; the review screen is stage 3C.
 
@@ -54,14 +54,14 @@ Schema: an item amount `12.5`, an amount as the string `"12000"`, 61 items, a `k
 
 **Interfaces — produces:**
 - `interface ReceiptReader { read(image: { bytes: Uint8Array; contentType: string }): Promise<{ reading: unknown; model: string; inputTokens: number; outputTokens: number }> }` — the caller parses `reading` with `ReceiptReading`.
-- `anthropicMessages(deps, body): Promise<unknown>` in `anthropic-client.ts`: one `fetch` with a 30-second `AbortSignal.timeout`, one retry on a network error, a timeout or a 5xx; headers and body per the documentation read for this task. Shared with stage 3D.
+- `anthropicMessages(deps, body): Promise<unknown>` in `anthropic-client.ts`: exactly one `fetch` attempt with a 30-second deadline covering headers and body parsing; the caller may reserve and perform at most one further attempt on a network error, timeout, or 5xx, per spec 15.3; headers and body per the documentation read for this task. Shared with stage 3D.
 - The Anthropic reader sends the image as a base64 image block and forces one tool named `record_receipt` whose input schema is `z.toJSONSchema(ReceiptReading)`; it returns the tool call's input. The prompt tells the model to copy numbers as printed, in đồng, as integers, to leave `total` null when not printed, and to return no items when the image is not a receipt.
 - The fake reader hashes the bytes, returns the matching fixture, returns `{ items: [], extras: [], total: null, merchant: null, occurredOn: null }` for `not-a-receipt.jpg`'s hash, and for any other image a fixed reading: `Món 1` 100000, `Món 2` 50000, `Món 3` 30000, total 180000.
-- Selection by `AI_PROVIDER`: `anthropic` (requires `ANTHROPIC_API_KEY` and `AI_MODEL`, checked at start-up), `fake`, or unset → null. The API's configuration reads the same variable to compute `features.receiptScan` and `features.sentenceAi`, and refuses `fake` in production.
+- Selection by `AI_PROVIDER`: `anthropic` (requires `ANTHROPIC_API_KEY` and `AI_MODEL`, checked at start-up), `fake`, or unset → null. The API's configuration reads the same variable to compute `features.receiptReading` and `features.sentenceAi`, and refuses `fake` in production.
 - Table `ai_calls` as spec 5.2, index `(purpose, created_at)` and `(user_id, purpose, created_at)`.
-- `countAiCalls(db, { purpose, userId?, since: Date }): Promise<number>`; `recordAiCall(db, row)`.
+- `countAiCalls(db, { purpose?, userId?, since: Date }): Promise<number>`; `recordAiCall(db, row)`.
 - `quotaWindowStarts(now: Date): { dayStart: Date; monthStart: Date }` in `core/ai-quota.ts` (Vietnam calendar).
-- `reserveAiCall(db, { purpose, userId, limits, now }): Promise<"ok" | "user_limit" | "month_limit">`: inside one transaction, takes `pg_advisory_xact_lock` on a constant key, counts, and inserts the `ai_calls` row with `ok = false` and zero tokens as a reservation; the caller updates the row after the call. The lock makes parallel requests see each other.
+- `reserveAiCall(executor, { purpose, userId, groupId, limits, now }): Promise<{ status: "ok"; reservationId: string } | { status: "user_limit" | "month_limit" }>`: inside the caller transaction when creating a scan, takes `pg_advisory_xact_lock` on a constant key, counts, and inserts the `ai_calls` row with `ok = false` and zero tokens as a reservation; the caller updates the row after the call. The lock makes parallel requests see each other.
 
 - [ ] **Step 1: Read the Anthropic documentation; record the request shape; write the adapters**
 - [ ] **Step 2: `pnpm check`**
@@ -70,8 +70,8 @@ Schema: an item amount `12.5`, an amount as the string `"12000"`, 61 items, a `k
 | Check | Expected |
 |---|---|
 | fake reader on each of the four fixtures, then `ReceiptReading.parse` and `checkReceipt` | `clean`: done, no flags; `tax-service`: done, no flags; `mismatch`: done, `TOTAL_MISMATCH`; `not-a-receipt`: failed |
-| `reserveAiCall` 25 times in parallel (`Promise.all`) for one user, user limit 20 | exactly 20 `ok`, 5 `user_limit`; 20 rows |
-| the same with month limit 10 and user limit 100 | exactly 10 `ok` |
+| `reserveAiCall` 25 times in parallel (`Promise.all`) for one user, user limit 20 | exactly 20 results with status `ok` and unique reservation IDs, 5 `user_limit`; 20 rows |
+| the same with month limit 10 and user limit 100 | exactly 10 results with status `ok` |
 | start the worker with `AI_PROVIDER=anthropic` and no key | it refuses to start, naming the missing variable and not printing any value |
 | start the API with `APP_ENV=production` and `AI_PROVIDER=fake` | it refuses to start |
 | read the Anthropic adapter's code path with a stubbed `fetch` returning a canned tool-use response | the tool input is returned; the key is absent from every log line produced |
@@ -90,9 +90,9 @@ Record under "Not verified": the real adapter against the real API.
 
 **Interfaces — produces:**
 - Table `receipt_scans` as spec 5.2, `UNIQUE (attachment_id)`.
-- `POST /groups/{groupId}/receipt-scans` (editor; `{ attachmentId }`; `Idempotency-Key`): 404 when `features.receiptScan` is false; the attachment must belong to the group (else 400); an existing scan is returned with 200; otherwise `reserveAiCall` — `user_limit` or `month_limit` → 429 `AI_QUOTA_EXCEEDED` with `details.scope` `"user"` or `"month"` — then insert `queued`, enqueue `read-receipt` with the scan id and the reservation's `ai_calls` id, and answer 201.
+- `POST /groups/{groupId}/receipt-scans` (editor; `{ attachmentId }`; `Idempotency-Key`): 404 when `features.receiptReading` is false; the attachment must belong to the group (else 400); an existing scan is returned with 200; otherwise, atomically in the same group-locked transaction as scan insertion and durable enqueue, `reserveAiCall` — `user_limit` or `month_limit` → 429 `AI_QUOTA_EXCEEDED` with `details.scope` `"user"` or `"month"` — then insert `queued`, enqueue `read-receipt` with the scan id and the reservation's `ai_calls` id, and answer 201.
 - `GET /groups/{groupId}/receipt-scans/{id}` (viewer).
-- Job `read-receipt`: set `processing`; load the bytes; call the reader; parse; `checkReceipt`; store `result`, flags and status; update the `ai_calls` row with tokens and `ok`; `notifyGroup(groupId, ["receiptScans"])`. Every failure path of decisions 1–2 ends in `failed` with its code and a notification; the job never retries a provider call beyond the adapter's own retry.
+- Job `read-receipt`: set `processing`; load the bytes; call the reader; parse; `checkReceipt`; store `result`, flags and status; update the `ai_calls` row with tokens and `ok`; `notifyGroup(groupId, ["receiptScans"])`. Every failure path of decisions 1–2 ends in `failed` with its code and a notification; the receipt orchestrator performs at most one separately reserved retry; the transport never retries invisibly.
 - The scan creates no transaction and changes no balance.
 
 - [ ] **Step 1: Write it**
@@ -109,7 +109,7 @@ Record under "Not verified": the real adapter against the real API.
 | viewer creates a scan | 403 |
 | outsider reads a scan | 404 |
 | set `AI_RECEIPTS_PER_USER_PER_DAY=2`, create a third scan | 429 `AI_QUOTA_EXCEEDED`, scope `user` |
-| unset `AI_PROVIDER`, restart | `features.receiptScan` false; the POST answers 404 |
+| unset `AI_PROVIDER`, restart | `features.receiptReading` false; the POST answers 404 |
 | stop the worker, create a scan, start the worker | the scan completes after start |
 
 - [ ] **Step 4: Commit** — `feat(api): add receipt scans`
@@ -117,3 +117,8 @@ Record under "Not verified": the real adapter against the real API.
 
 **Manual checks for the project owner**
 1. None in the browser yet; the review screen arrives in 3C.
+
+
+**Reservation and fake-provider amendment:** implement spec 15.3's reservation lifecycle, combined-purpose monthly ceiling, at-most-once claim/recovery, and separately reserved provider retry. Do not embed retry inside a transport that can bypass reservation. Register `AI_FAKE_RECEIPT_FIXTURE` and its startup guards per spec 15.4 for deterministic browser exercises. The transport policy must also support sentence requests (8 seconds overall, no retry).
+
+**Additional required exercises:** concurrent same-attachment creates with different keys -> one scan/reservation/job; forced enqueue failure -> no persisted admission; job redelivery -> no second provider attempt; retry at quota boundary -> no unreserved request; both purposes share the month ceiling; expired reservation and crashed claimed attempt reach explained terminal states. Use a stub transport only; never call the real provider.

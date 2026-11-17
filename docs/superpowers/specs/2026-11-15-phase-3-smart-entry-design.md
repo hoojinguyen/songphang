@@ -1,6 +1,6 @@
 # Phase 3 — Smart Entry ("Nhập liệu thông minh") — Design
 
-Date: 2026-11-15. Status: draft, waiting for the project owner's approval. Read `2026-11-15-roadmap-remaining-phases-overview.md` first; its sections 4 and 5 apply here.
+Date: 2026-11-15. Advisor revision: 2026-11-17. Status: revised draft, awaiting the owner's review; execution is not authorized. The owner approved request-local AI member references on 2026-11-17. All other advisor clarifications below are proposals for this review. Read `2026-11-15-roadmap-remaining-phases-overview.md` first; its sections 4 and 5 apply here.
 
 ## 1. Intent
 
@@ -33,7 +33,7 @@ Nothing else. The Anthropic API is called with `fetch` (one request shape, about
 
 ### 4.1 Worker
 
-A new application `apps/worker`: one Node process that depends on `db`, `core` and `contract`, runs pg-boss workers, and serves no HTTP. `pnpm dev` starts it with the API and the web app. The job handlers live in `apps/worker/src/jobs/`, one file per job; services they share with the API move to a new package `packages/services` only if a handler needs one (decide in the re-baseline task; the default is that handlers call `db` and `core` directly).
+A new application `apps/worker`: one Node process that depends on `db`, `core`, `contract`, and the explicitly planned shared workspace packages `storage` and `ai`, runs pg-boss workers, and serves no HTTP. `pnpm dev` starts it with the API and the web app. The job handlers live in `apps/worker/src/jobs/`, one file per job; handlers call `db` and `core` directly; share file and AI transport code only through the explicitly planned `packages/storage` and `packages/ai`. No `packages/services` is required by this plan.
 
 **Worker to API:** after a job changes group data the worker runs `NOTIFY songphang_events` with `{ groupId, resources }`; the API listens on one dedicated connection and forwards to the in-memory hub (SAD 6.3). The payload carries no user data.
 
@@ -59,7 +59,7 @@ A new application `apps/worker`: one Node process that depends on `db`, `core` a
 
 - **Upload:** `POST /groups/{groupId}/attachments`, `multipart/form-data` with one `file`. Editor. The body limit for this route alone is 6 MB. The server checks the size, then the type **from the file's leading bytes**, never from the declared type or the name.
 - **Client-side preparation:** the web app draws the chosen photo to a canvas with the longest side at most 2,000 pixels and exports JPEG at quality 0.85. This shrinks the upload and drops the photo's embedded location and device data. The server cannot rely on it and does not.
-- **Read:** `GET /groups/{groupId}/attachments/{id}/content`, viewer, through the group middleware like everything else. Headers: the stored content type, `X-Content-Type-Options: nosniff`, `Content-Disposition: inline; filename="hoa-don.jpg"`, `Cache-Control: private, max-age=3600`. No public URL exists.
+- **Read:** `GET /groups/{groupId}/attachments/{id}/content`, viewer, through the group middleware like everything else. Headers: the stored content type, `X-Content-Type-Options: nosniff`, `Content-Disposition: inline; filename="hoa-don.jpg"`, `Cache-Control: private, no-store`. No public URL exists.
 - **Attach:** transaction bodies gain `attachmentIds` (at most 3, same group, not attached elsewhere).
 - **Delete:** removing an attachment from a transaction deletes the row and the file. A worker job deletes, daily, attachments that stayed unattached for 24 hours, and files of deleted groups.
 - **Limits:** 30 uploads per hour per user; 200 MB per group (422 `STORAGE_QUOTA_EXCEEDED`).
@@ -84,7 +84,7 @@ A new application `apps/worker`: one Node process that depends on `db`, `core` a
 
 ```
 interface ReceiptReader {
-  read(image: { bytes, contentType }): Promise<ReceiptReading>
+  read(image: { bytes, contentType }): Promise<{ reading: unknown; model: string; inputTokens: number; outputTokens: number }>
 }
 ```
 
@@ -102,7 +102,7 @@ Selection by `AI_PROVIDER`:
 
 - `anthropic`: the Messages API with the image and one forced tool whose input schema is the table above; model from `AI_MODEL`; key from `ANTHROPIC_API_KEY`; 30-second timeout; one retry on a 5xx or a timeout. The plan links the current API reference; the agent reads it rather than relying on memory, and does not call it.
 - `fake`: looks up `apps/worker/fixtures/receipts/{sha256}.json`; an unknown image returns a fixed three-item reading. The advisor adds four fixture images with their readings to the repository with the plan (a clean bill; one with tax and service charge; one whose items do not add up; one that is not a receipt).
-- unset: `features.receiptScan` is false, the camera button is hidden, and the endpoint answers 404.
+- unset: `features.receiptReading` is false, the camera button is hidden, and the endpoint answers 404.
 
 ### 5.4 After the reader
 
@@ -120,15 +120,15 @@ Checked before a job is created and again before the call:
 
 | Limit | Default | Variable | Answer |
 |---|---|---|---|
-| Receipt scans per user per day | 20 | `AI_RECEIPTS_PER_USER_PER_DAY` | 429 `AI_QUOTA_EXCEEDED` |
+| Receipt provider attempts per user per day | 20 | `AI_RECEIPTS_PER_USER_PER_DAY` | 429 `AI_QUOTA_EXCEEDED` |
 | Sentence calls per user per day | 100 | `AI_SENTENCES_PER_USER_PER_DAY` | The rule reader's answer is returned unchanged |
 | All AI calls per calendar month | 1,000 | `AI_CALLS_PER_MONTH` | As above, per purpose |
 
-Counts come from `ai_calls`. The ceiling is a call count, not money, because a count can be enforced exactly; the owner derives the count from the measured cost per call.
+Counts come from `ai_calls`; one receipt scan can consume two permitted attempts if retried (advisor proposal pending owner approval). The ceiling is a call count, not money, because a count can be enforced exactly; the owner derives the count from the measured cost per call.
 
 ### 5.6 Privacy
 
-Photos and sentences are sent to the AI provider only when a user takes that action. Sentences are sent with members' display names; no email, no id, no amount history. Phase 7B's privacy policy must state this; until then the feature is for internal use.
+Photos and sentences are sent to the AI provider only when a user takes that action. Sentences are sent with members' display names and request-local references; no email, database ID, or amount history. The API creates a fresh reference namespace for each request (for example `<random-request-nonce>:p1`, `<random-request-nonce>:p2`, using a fresh `node:crypto` random nonce), keeps its reference-to-member mapping only in request memory, and resolves references before ordinary draft validation. References are not credentials and never authorize access. Every payer and split entry uses these references at the provider boundary. Never send, store, or log the reference-to-database-ID mapping; never reuse it across requests. Bound reference strings to 80 ASCII characters with nonce/ref syntax validated by Zod. Unknown references are removed and force a non-`ok` result; never guess a person from a name. Phase 7B's privacy policy must state this; until then the feature is for internal use.
 
 ## 6. Item split (3C)
 
@@ -155,7 +155,7 @@ Rules, all in one function in `core` that calls the existing rounding function:
 
 - `POST …/transactions/parse` is unchanged for every sentence the rule reader understands (`ok` or `needs_input`): no AI call, as FR-3.5 requires.
 - When the rule reader answers `unparsed`, `features.sentenceAi` is on and the quota allows, the API calls `SentenceAi.read(sentence, members)` **inside the same request**, with an 8-second timeout. On a timeout, an error or an invalid answer, the rule reader's `unparsed` answer is returned as before.
-- The AI returns the same draft shape as the rule reader, naming members only by ids taken from the list it was given. The API validates it with the same Zod schema, discards any member id not in the group, and computes `shares` through `core`. A draft the AI marks as uncertain, or one that fails the arithmetic, is returned as `needs_input` or `unparsed`, never as `ok`.
+- The AI returns the same draft shape as the rule reader, naming members only by request-local references taken from the list it was given. The API validates the provider reference schema, maps valid references to active group people on the server and discards unknown references, validates the ordinary UUID draft schema, and computes `shares` through `core`. A draft the AI marks as uncertain, or one that fails the arithmetic, is returned as `needs_input` or `unparsed`, never as `ok`.
 - The response gains `reader: "rules" | "ai"` and `moreDrafts` (0–4 further drafts when the sentence held several expenses). There are no `spans` for an AI reading.
 - `SentenceAi` adapters: `anthropic` (same variables as the receipt reader) and `fake` (a fixture table of sentence → draft, added by the advisor with 15 sentences taken from the refused part of `docs/08-quick-entry-samples.md`).
 - **Category (FR-3.6):** a keyword table in `core`, `suggestCategory(description)`, maps normalised words to the seven built-in categories (`pho`, `com`, `lau`, `cafe` → `food`; `grab`, `xang`, `ve xe` → `transport`; …; about 120 entries, added by the advisor). It runs for every draft from either reader and costs nothing. The AI reader may also return a category, which wins when present. Custom categories are suggested only by exact normalised name match.
@@ -166,7 +166,7 @@ Strings are final.
 
 ### 8.1 Entry bar (S4)
 
-The camera button of mockup GE2, hidden in phase 1, appears when `features.receiptScan` is true.
+The camera button of mockup GE2, hidden in phase 1, appears when `features.receiptReading` is true.
 
 | Element | String |
 |---|---|
@@ -231,7 +231,7 @@ An attachment or scan id from another group answers 404 even to that group's own
 ## 10. Gate acceptance scripts (outline)
 
 - **3A:** upload a JPEG, read it back byte for byte as a member, get 404 as an outsider; a text file renamed `.jpg` is refused; a 7 MB file is refused; the worker deletes an orphan after its age is forced.
-- **3B (fake provider):** each of the four fixture images produces its expected status and flags; the 21st scan of a day answers 429; with `AI_PROVIDER` unset the endpoint answers 404 and `features.receiptScan` is false.
+- **3B (fake provider):** each of the four fixture images produces its expected status and flags; the 21st scan of a day answers 429; with `AI_PROVIDER` unset the endpoint answers 404 and `features.receiptReading` is false.
 - **3C:** the example of section 6 yields hand-computed shares that sum to the amount; an unassigned item is refused; a discount larger than someone's subtotal cannot produce a negative share; `db:check-balances` passes.
 - **3D (fake provider):** a rule-readable sentence makes no `ai_calls` row; each of the 15 fixture sentences returns its expected draft with shares from `core`; a fixture answer naming a foreign member id loses that member and is not `ok`.
 
@@ -257,3 +257,47 @@ Job names and retry counts; the forced tool's wording and the prompts (kept in o
 ## 14. Owner's prerequisites
 
 Before the run: approve this spec and `pg-boss`. Any time after: an Anthropic API key; the 30-receipt measurement of the roadmap, done with the built feature, to confirm or change the provider, the model and the monthly ceiling.
+
+
+## 15. Advisor preflight revision — 2026-11-17 (pending owner review)
+
+This section resolves underspecified interfaces in the original draft. No product implementation is authorized by this revision. Existing acceptance money figures are unchanged. The owner-approved privacy decision is section 5.6; the remaining choices here are advisor proposals for approval with this revision.
+
+### 15.1 Existing contracts and shared packages
+
+- Preserve all six existing capability fields: `receiptReading`, `sentenceAi`, `telegram`, `push`, `appleSignIn`, `errorAlerts`. `receiptReading` is the canonical receipt capability; do not introduce or rename it to `receiptScan`.
+- Parse implementation is `apps/api/src/services/quick-entry.ts`, with schemas in `packages/contract/src/quick-entry.ts`. Transaction writes remain in `transactions.ts` and `transaction-changes.ts`. All ordinary post-lock editor checks, Phase 2 archived-category preservation, budget warnings, fund exclusions, and snapshots remain required.
+- `ParseDraft` gains nullable `category` and `categoryId`, mutually exclusive. Add `ParsedDraftResult = { status, draft, issues, shares? }` using the same status and validation rules as the first draft. `moreDrafts` is an array of 0–4 such results, not untyped drafts. Every issue includes `candidates: []` when no candidates exist. AI input/output schemas use request-local references rather than reusing the UUID-based ordinary `SplitInput` at the provider boundary. Only the API service maps references and validates the ordinary UUID draft. Unknown references in payer, equal members, exact members/entries, shares, or percent entries make the result non-confident and non-`ok`.
+- Keep current transaction detail semantics. Define `TransactionListItemDto` separately: existing list fields plus `attachmentCount`, without attachment bodies. Detail/create/edit responses include `attachments`; every affected client validates the appropriate schema.
+- `packages/storage` and `packages/ai` are approved workspace package proposals, not external libraries. Worker never imports from `apps/api`. Shared AI transport receives explicit timeout/retry policy: receipts 30 seconds per attempt, at most one retry; sentences 8 seconds overall, no retry. Timeout covers response body parsing as well as fetch.
+
+### 15.2 Upload, storage, authorization, and cleanup
+
+- Apply a 6 MiB actual streaming body bound only to the attachment upload route, before multipart parsing; preserve the current 100 KiB bound everywhere else. Missing, false, or understated `Content-Length` never bypasses the bound. Header overflow is rejected early with 413.
+- Resolve `STORAGE_DIR` against the repository root to one absolute directory shared by API and worker, regardless of their process working directories. `.data/` remains ignored.
+- Serialize attachment quota checks, creation, replacement, deletion, and cleanup with the existing group lock and a fresh authorization check under that lock. Never delete a fresh untracked file: orphan disk files must be older than 24 hours, and cleanup must coordinate with in-progress writes under the same group lock. Temporary files are cleaned only after the same grace period. If the group vanished, its file deletion job remains safe and idempotent.
+- Serve private images with `Cache-Control: private, no-store` and `nosniff`, so a newly unauthorized request cannot be satisfied by the one-hour application cache. Previously downloaded bytes cannot be revoked.
+- Exercise parallel uploads near 200 MiB and cleanup during an upload, plus access removal before a repeat image request. Verify the upload from API and the worker resolve the same disk key.
+
+### 15.3 Durable scans, quota reservations, and retry accounting
+
+- `reserveAiCall(executor, input)` accepts the caller's `DbExecutor` and returns `{ status: "ok", reservationId } | { status: "user_limit" | "month_limit" }`. `countAiCalls` accepts optional purpose; monthly counts include both purposes. A reservation consumes one permitted provider attempt, even when the outcome is uncertain; do not release it on failure.
+- In task 3B.3, after creating `receipt_scans`, add nullable `receipt_scan_id` (FK to the owning scan; ON DELETE SET NULL) to `ai_calls`; task 3B.2 creates the remaining lifecycle fields first. Add `started_at` and `finished_at` to `ai_calls` (admission is initially unlinked and linked to the scan in the same transaction). Both initial and retry receipt reservations point to that scan; sentence rows have no scan. Add a bounded `state` to `ai_calls`: `reserved`, `started`, `finished`. An atomic conditional update claims `reserved -> started`; a redelivered job cannot claim the same attempt twice. A crash after claim ends in an explicitly failed/uncertain scan on recovery rather than a blind repeated provider call. Successful and failed responses finish the attempt and record only model/token/status metadata.
+- Each actual receipt retry requires its own reservation checked immediately before the second provider request; if unavailable, make no second call and end `failed / READER_UNAVAILABLE`. Sentence admission opens a short transaction for reservation, commits and releases the global quota lock before HTTP; never hold a database transaction across provider I/O. Sentences never retry. The original admission reservation is validated/claimed by the worker, not reserved a second time. Validate purpose, caller, group, and scan ownership when claiming; verify quota windows at claim time, and fail an expired reservation without calling the provider. This makes the count ceiling a bound on provider attempts, including retries.
+- Under one group lock and one database transaction: return an existing unique scan before reserving; otherwise reserve quota, insert the scan, and enqueue its job using the same transaction. Task 3A.1 must verify the installed stable pg-boss transaction adapter can execute on the existing database transaction and demonstrate rollback before 3B. If it cannot, stop at the readiness gate and propose a durable outbox in a separate advisor amendment; do not ship a non-atomic sequence.
+- A repeated scan creation, including simultaneous requests with distinct idempotency keys, produces one scan, one admission reservation and one durable job. An enqueue failure rolls back all three. A committed job survives process restart. A repeated worker delivery never makes an extra unreserved provider call. Recover stale `processing` scans to a terminal failure with notification; do not leave them indefinitely running.
+
+### 15.4 Receipt preview and fake fixtures
+
+- Add `POST /groups/{groupId}/transactions/items/preview` (editor), accepting `{ items, extras }` with the same bounds as `ItemsSplitInput`, without requiring a final amount or payer. Response is `{ computedAmount, shares?, issues }`; issues include `ITEM_UNASSIGNED` with the first index, and refusal for invalid/nonpositive/out-of-range totals. Structural schema failures are 400; a valid incomplete editor state returns 200 with issues and no shares. All sums and allocations run in `core`; only complete valid states include authoritative shares in member-position order. Fund participation remains refused. The ordinary transaction preview/create/edit retain mandatory amount and full validation.
+- The review UI consumes `computedAmount` after edits; it never sums item or extra money locally. Its only money arithmetic is the approved integer difference for the mismatch choice. Both mismatch choices must be reflected in the core preview before save.
+- A receipt with no items but a printed total initializes one editable item using merchant or the approved `Hoá đơn` fallback, amount equal to printed total, empty editor extras, and nobody assigned; the original reading and its extras remain untouched in the stored scan for inspection. This avoids counting printed tax/service twice. It keeps the AI note and requires assignment/review before save. No silently saved zero total.
+- Preserve at most six extras. If a mismatch adjustment would be the seventh, keep save blocked and require the user to edit/remove an existing extra; never silently merge unrelated taxes/discounts or exceed the schema bound. Reuse existing validation text until an owner-approved dedicated message exists.
+- Direct API fixtures still match image SHA-256. For browser exercises, which re-encode photos, add development-only `AI_FAKE_RECEIPT_FIXTURE=default|clean|tax-service|mismatch|not-a-receipt` to API and worker configuration (`default` when unset). With `fake`, a named value selects that advisor fixture independently of image bytes; restart the isolated runtime per scenario. In production, any fake provider or this variable being set refuses startup. With `anthropic`, setting this variable is invalid. No user-facing fixture control is added. Record the selected mode in exercise evidence, never in user receipt data. This is a proposed local configuration change for approval.
+- UI refetches on `receiptScans` events and uses a 3-second fallback while pending, ending in an explained failed state after 60 seconds; it does not claim to have no polling.
+
+### 15.5 Regression gates and readiness
+
+- With AI unset, all 75 original and 12 fund samples preserve status, issues, payer, split, and shares; additive `reader`, `moreDrafts`, and category fields are expected. With fake AI enabled, rule `ok` and `needs_input` never call AI; selected refused fixtures may become AI results. Unknown fake sentences preserve the rule refusal.
+- Before any implementation: owner approves the revised spec/plan and pg-boss; advisor supplies all four fixture images/readings, fifteen sentence fixtures (including two-expense, foreign-reference and uncertain cases), and the category table; standing documents receive the listed amendments. These files are currently absent. Do not tick them or start Task 0 because the plan exists.
+- The Phase 2 review and any blocking findings must be resolved before Phase 3 execution. This advisor review does not create a branch, install a library, scaffold packages, or implement a Phase 3 endpoint.

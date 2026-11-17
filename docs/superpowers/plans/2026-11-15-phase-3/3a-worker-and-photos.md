@@ -1,6 +1,6 @@
 # Phase 3 — Stage 3A: Worker and Photos
 
-> Part of the phase 3 plan. Read `00-overview.md` first.
+> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision 2026-11-17: pending owner review; do not execute yet.
 
 **Stage goal:** background jobs run; a photo can be attached to a transaction and seen by the group, and by nobody else.
 
@@ -25,9 +25,9 @@
 - `packages/contract/src/jobs.ts`: one Zod schema per job payload and `JOB_NAMES` (`"heartbeat"` now; later tasks add theirs). API and worker both import it; a payload is parsed on both sides.
 - Worker `registerJob<T>(boss, name, schema: ZodType<T>, handler: (data: T, deps) => Promise<void>)`.
 - Worker `notifyGroup(db, groupId: string, resources: string[]): Promise<void>` — `SELECT pg_notify('songphang_events', $1)`.
-- API `enqueue<T>(name, data: T, options?: { singletonKey?: string; startAfter?: Date })` in `deps`.
+- API `enqueue<T>(executor: DbExecutor, name, data: T, options?: { singletonKey?: string; startAfter?: Date })` in `deps`.
 - API `listenForGroupEvents(connectionString, hub)`: one dedicated connection that `LISTEN`s, parses each payload with Zod, forwards to the existing hub, and reconnects with backoff (1 s doubling to 30 s) when the connection drops.
-- `GET /api/v1/features` (public): `{ receiptScan: boolean, sentenceAi: boolean }` for now; later phases add fields. If a `features` route already exists from another phase, extend it.
+- `GET /api/v1/features` (public): the existing six-field response, preserving `receiptReading`, `sentenceAi`, `telegram`, `push`, `appleSignIn`, `errorAlerts`. Extend the existing route; do not replace its shape.
 - `heartbeat` job: scheduled every minute; logs one JSON line. It exists to prove the queue runs.
 
 - [ ] **Step 1: Install `pg-boss` in `apps/worker` and `apps/api`; record the decision entry**
@@ -42,7 +42,7 @@
 | The same with a payload that is not JSON, and one with an unknown field type | nothing is forwarded; one warning log line; the listener keeps working |
 | Restart the database container while the API runs | the listener reconnects; a later `NOTIFY` is delivered |
 | Stop the worker | the API still answers every request |
-| `GET /api/v1/features` signed out | 200 `{ "receiptScan": false, "sentenceAi": false }` |
+| `GET /api/v1/features` signed out | 200; all six existing capabilities are false |
 
 - [ ] **Step 5: Commit** — `feat(worker): add worker process, job queue, and event bridge`
 
@@ -60,7 +60,7 @@
 - `sniffImageType(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | null` — JPEG `FF D8 FF`; PNG `89 50 4E 47 0D 0A 1A 0A`; WebP `52 49 46 46 ?? ?? ?? ?? 57 45 42 50`.
 - Table `attachments` as spec 4.3.
 - `AttachmentDto`: `{ id, contentType, byteSize, transactionId, createdAt }`.
-- `POST /groups/{groupId}/attachments` (editor): multipart, one part `file`. Order of checks: `Content-Length` over 6 MB → 413 before reading; part missing → 400; size 0 or over 5,242,880 → 400 `VALIDATION_FAILED` with `details.reason: "too_large"`; sniffed type null → 400 with `details.reason: "not_an_image"`; group quota (sum of `byte_size` + this file > 209,715,200) → 422 `STORAGE_QUOTA_EXCEEDED`; then store and insert. Limit 30 per hour per user → 429.
+- `POST /groups/{groupId}/attachments` (editor): multipart, one part `file`. Use the route-specific 6 MiB streaming bound of spec 15.2, preserving the global 100 KiB bound elsewhere. Order of checks: `Content-Length` over 6 MiB → 413 before reading; actual streamed bytes over 6 MiB → 413 regardless of header; part missing → 400; size 0 or over 5,242,880 → 400 `VALIDATION_FAILED` with `details.reason: "too_large"`; sniffed type null → 400 with `details.reason: "not_an_image"`; group quota (sum of `byte_size` + this file > 209,715,200) → 422 `STORAGE_QUOTA_EXCEEDED`; then store and insert. Limit 30 per hour per user → 429.
 - `GET /groups/{groupId}/attachments/{id}/content` (viewer): the headers of spec 4.3; the content type is the stored one, never the request's.
 - `DELETE /groups/{groupId}/attachments/{id}` (editor): row and file; 204.
 - The row is inserted after the file is written; if the insert fails the file is deleted.
@@ -72,7 +72,7 @@
 | Caller | Request | Expected |
 |---|---|---|
 | Lan (editor) | upload the JPEG | 201; `contentType` `image/jpeg` |
-| Lan | `GET …/content` | 200; bytes identical (compare SHA-256); `X-Content-Type-Options: nosniff`; `Cache-Control: private, max-age=3600` |
+| Lan | `GET …/content` | 200; bytes identical (compare SHA-256); `X-Content-Type-Options: nosniff`; `Cache-Control: private, no-store` |
 | Hùng (viewer) | `GET …/content` | 200 |
 | Hùng | upload | 403 |
 | outsider | `GET …/content` | 404, body identical to a random id |
@@ -98,8 +98,8 @@
 
 **Interfaces — produces:**
 - Transaction create and edit bodies gain `attachmentIds: uuid[]` (0–3, unique, optional). Each must belong to the group and be unattached or attached to this transaction; otherwise 400 `VALIDATION_FAILED`.
-- `TransactionDto` gains `attachments: AttachmentDto[]`; the list endpoint returns `attachmentCount` per transaction instead of the list.
-- Job `cleanup-attachments`, daily at 03:30 Vietnam time: deletes rows with `transaction_id IS NULL` older than 24 hours, and their files; deletes any file under `STORAGE_DIR` whose key has no row. Job `delete-files` (`{ keys: string[] }`): enqueued when a group is deleted, with the keys read **before** the cascade.
+- `TransactionDto` detail/create/edit gains `attachments: AttachmentDto[]`; introduce `TransactionListItemDto` for list responses with `attachmentCount` rather than attachment bodies, updating all consumers.
+- Job `cleanup-attachments`, daily at 03:30 Vietnam time: deletes rows with `transaction_id IS NULL` older than 24 hours, and their files; deletes only untracked files older than 24 hours under the coordination rules of spec 15.2. Never race an upload or fresh temporary file. Job `delete-files` (`{ keys: string[] }`): enqueued when a group is deleted, with the keys read **before** the cascade.
 
 - [ ] **Step 1: Write it**
 - [ ] **Step 2: `pnpm check`**
@@ -141,3 +141,6 @@ Behavior: thumbnails are `<img>` elements whose `src` is the content endpoint (s
 **Manual checks for the project owner**
 1. Add an expense with a photo from your phone → the thumbnail shows in the form; the photo opens full-screen from the transaction.
 2. Open the photo's address in a private window (signed out) → not found.
+
+
+**Additional required exercises (spec 15.2–15.3):** absent/understated Content-Length overflow; parallel group-quota uploads; cleanup concurrent with an upload; same storage root from API/worker; denied content after access removal. Before 3B, demonstrate same-transaction pg-boss enqueue rollback against the installed adapter. Record unsupported adapter behavior as a readiness blocker, not a passed gate.

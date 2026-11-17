@@ -1,6 +1,6 @@
 # Phase 3 — Stage 3D: AI Sentences
 
-> Part of the phase 3 plan. Read `00-overview.md` first.
+> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision 2026-11-17: pending owner review; do not execute yet.
 
 **Stage goal:** a sentence the rule reader refuses is read by the AI into the same draft, checked by the same code, and confirmed on the same card; descriptions suggest a category.
 
@@ -21,15 +21,15 @@
 **Files:**
 - Create: `packages/ai/package.json`, `packages/ai/src/anthropic-client.ts` (moved), `packages/ai/src/index.ts`, `apps/api/src/ai/sentence-ai.ts`, `apps/api/src/ai/anthropic-sentence-ai.ts`, `apps/api/src/ai/fake-sentence-ai.ts`, `apps/api/src/ai/prompts/sentence.ts`, `packages/contract/src/sentence-ai.ts`
 - Existing, from the advisor: `apps/worker/fixtures/sentences.json` — 15 entries `{ sentence, members: string[], answer }`; move it to `apps/api/fixtures/sentences.json`
-- Modify: the worker's imports, `apps/api/src/services/transactions.ts` (the parse function), `packages/contract/src/transaction.ts`, `apps/api/src/app.ts` (`deps.sentenceAi`), `apps/api/src/routes/features.ts`
+- Modify: the worker's imports, `apps/api/src/services/quick-entry.ts` (the parse function), `packages/contract/src/quick-entry.ts`, `apps/api/src/app.ts` (`deps.sentenceAi`), `apps/api/src/routes/features.ts`
 
 **Interfaces — produces:**
-- `SentenceAiAnswer` (Zod): `{ drafts: Array<{ description: string (1–200); amount: int; payerMemberId: uuid | null; split: SplitInput (equal, exact, shares or percent; never items); category: TransactionCategory | null; confident: boolean }> (0–5) }`.
-- `interface SentenceAi { read(input: { sentence: string; members: Array<{ id: string; name: string }>; writerMemberId: string | null }): Promise<{ answer: unknown; model: string; inputTokens: number; outputTokens: number }> }`.
-- The Anthropic adapter forces one tool `record_expenses` with `z.toJSONSchema(SentenceAiAnswer)`, an 8-second timeout and **no retry**. The prompt gives the member list as `id` and `name` pairs, the writer's id for "mình/tôi/tớ", the rule that amounts are đồng with `k` = thousand and `tr` = million, and the instruction to set `confident: false` and guess nothing when any number is unclear.
-- The fake adapter looks the normalised sentence up in the fixture file and maps the fixture's member **names** to the ids it was given; an unknown sentence returns `{ drafts: [] }`.
-- The parse response gains `reader: "rules" | "ai"` (always present) and `moreDrafts: Draft[]` (always present, possibly empty; each with its own `shares` when it qualifies as `ok`).
-- Parse flow after the rule reader answers `unparsed`: no adapter → return; `reserveAiCall(purpose "sentence")` not `ok` → return; call; on throw or timeout record `ok = false` and return the rule answer; parse the answer; drop any member id not in the group's people and mark that draft not confident; for each draft run `computeShares`; build the response by decision 4 with `spans: []` and `issues` = `[{ code: "TEXT_NOT_UNDERSTOOD", start: 0, end: text.length }]` when not `ok`.
+- `SentenceAiAnswer` (Zod): `{ drafts: Array<{ description: string (1–200); amount: int; payerRef: RequestMemberRef | null; split: AiSplitInput (equal, exact, shares or percent with references in every member field; never UUIDs or items); category: TransactionCategory | null; confident: boolean }> (0–5) }`.
+- `interface SentenceAi { read(input: { sentence: string; members: Array<{ ref: string; name: string }>; writerRef: string | null }): Promise<{ answer: unknown; model: string; inputTokens: number; outputTokens: number }> }`.
+- The Anthropic adapter forces one tool `record_expenses` with `z.toJSONSchema(SentenceAiAnswer)`, an 8-second timeout and **no retry**. The prompt gives the member list as request-local `ref` and `name` pairs, the writer's reference for "mình/tôi/tớ", the rule that amounts are đồng with `k` = thousand and `tr` = million, and the instruction to set `confident: false` and guess nothing when any number is unclear.
+- The fake adapter looks the normalised sentence up in the fixture file and maps the fixture's member **names** to the request-local references it was given; an unknown sentence returns `{ drafts: [] }`.
+- The parse response gains `reader: "rules" | "ai"` (always present) and `moreDrafts: ParsedDraftResult[]` (always present, possibly empty; each with its own `shares` when it qualifies as `ok`).
+- Parse flow after the rule reader answers `unparsed`: no adapter → return; reserve in a short transaction via `reserveAiCall(executor, { purpose: "sentence", … })`; a result whose `status` is not `"ok"` → return; call; on throw or timeout record `ok = false` and return the rule answer; parse the answer; map known request-local references to active group people in API memory; drop unknown references and mark that draft not confident; for each draft run `computeShares`; build the response by decision 4 with `spans: []` and `issues` = `[{ code: "TEXT_NOT_UNDERSTOOD", start: 0, end: text.length, candidates: [] }]` when not `ok`.
 - The sentence is limited to 300 characters before any of this, as today.
 
 - [ ] **Step 1: Read the documentation for forced tool use; write it**
@@ -51,7 +51,7 @@
 | viewer | 403 |
 | unset `AI_PROVIDER` | `features.sentenceAi` false; unparsed stays unparsed |
 
-All 75 phase 1 samples (and phase 2's 12, if merged) return exactly what they returned before, with `reader: "rules"`.
+With AI unset, replay all 75 Phase 1 and 12 Phase 2 samples: preserve status, issues, payer, split and shares, with `reader: "rules"` and empty `moreDrafts`; additive category suggestions are expected. With fake AI enabled, rule `ok` and `needs_input` still never call AI, while selected refused fixtures may return `reader: "ai"`.
 
 - [ ] **Step 4: Commit** — `feat(api): read refused sentences with the AI reader`
 
@@ -62,7 +62,7 @@ All 75 phase 1 samples (and phase 2's 12, if merged) return exactly what they re
 **Files:**
 - Existing, from the advisor: `packages/core/src/category-keywords.ts` — `CATEGORY_KEYWORDS: ReadonlyArray<readonly [keyword: string, category: string]>`, keywords already normalised
 - Create: `packages/core/src/suggest-category.ts`
-- Modify: `packages/core/src/index.ts`, the parse function in `apps/api/src/services/transactions.ts`
+- Modify: `packages/core/src/index.ts`, the parse function in `apps/api/src/services/quick-entry.ts`
 
 **Interfaces — produces:**
 - `suggestCategory(description: string, custom: ReadonlyArray<{ id: string; nameKey: string }>): { category: string } | { categoryId: string } | null` — normalise the description; a custom category whose `nameKey` equals the whole normalised description, or one of its words, wins; otherwise the **longest** keyword that occurs on word boundaries wins; ties go to the earlier table entry; no match → null.
@@ -118,3 +118,8 @@ Behavior: `Đang đọc…` appears when the parse request has been pending for 
 - [ ] **Step 3: Stage gate 3D** — acceptance script: 3D.1 rows 1, 3 (three sentences of your choice, recorded), 5, 6, 7. Then the full gate of the common file, replaying 3A–3C and every earlier phase.
 - [ ] **Step 4: Finish the run files.** `manual-checks.md` gains a section "After the Anthropic key exists": set `AI_PROVIDER=anthropic`, `AI_MODEL`, the key; photograph five real receipts and type five free sentences; for each, note what was read wrong; check `ai_calls` for token counts. And a section "The 30-receipt measurement" restating the roadmap's survey with a table to fill in (receipt, total right?, items right?, tokens).
 - [ ] **Step 5: Commit** — `docs(repo): document phase 3`
+
+
+**Provider boundary amendment:** use spec 5.6 and 15.1. Define `RequestMemberRef` and a separate AI split schema with references in every payer/member field. No UUID, user ID, group ID, email, reference-to-database-ID mapping, or transaction history is sent to the provider. Mappings are request-local only. Add `category`/`categoryId` and `ParsedDraftResult` to the actual quick-entry contract; preserve mutual exclusion, archived/live-category behavior, required issue candidates, and ordinary UUID validation after mapping. Reject uncertain/unknown references without `ok` or shares.
+
+**Additional exercises:** inspect stub request bytes for absence of real IDs; replay the same sentence twice and prove mappings are not reused; foreign-reference fixture cannot become `ok`; check each split method's mapping; additional drafts retain their own status/issues/shares. Both receipt and sentence attempts share the monthly quota.

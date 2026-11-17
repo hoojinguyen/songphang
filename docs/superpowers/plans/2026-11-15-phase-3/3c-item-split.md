@@ -1,6 +1,6 @@
 # Phase 3 — Stage 3C: Split by Items
 
-> Part of the phase 3 plan. Read `00-overview.md` first.
+> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision 2026-11-17: pending owner review; do not execute yet.
 
 **Stage goal:** a bill's items are assigned to people, tax and fees follow each person's part, and the scan's reading becomes a saved expense after review.
 
@@ -12,7 +12,7 @@
 2. An item's amount may be 0 (a free item); it must still have a member.
 3. When every subtotal is 0 and the net extra is positive, the extra is split equally among the members named in any item, by the same rounding function.
 4. Shares come back for every member named in any item, in position order.
-5. The review screen reaches the API only through `preview` and `create`; it holds no arithmetic beyond integer subtraction for the "Dùng {total}" difference.
+5. The review screen uses the dedicated `items/preview` calculation contract of spec 15.4 and ordinary transaction `preview`/`create`; it holds no arithmetic beyond integer subtraction for the "Dùng {total}" difference.
 
 ---
 
@@ -102,13 +102,13 @@ For the edit row, verify by hand before trusting it: subtotals 116667, 206667, 1
 Strings: spec sections 8.1 and 8.2.
 
 Behavior:
-- `useFeatures()` reads `GET /features` once per session. The camera button exists only when `receiptScan` is true and the role can write.
+- `useFeatures()` reads `GET /features` once per session. The camera button exists only when `receiptReading` is true and the role can write.
 - `CameraButton` opens a native chooser through two hidden file inputs: one with `accept="image/*" capture="environment"` (`Chụp ảnh`), one without `capture` (`Chọn từ thư viện`). The file goes through `prepareImage`, is uploaded, a scan is created, and the page navigates to `/g/{id}/tx/new?scan={scanId}`.
-- The review page polls nothing: it waits for the `receiptScans` event and refetches; as a fallback it refetches every 3 seconds while the status is `queued` or `processing`, and gives up with the failed state after 60 seconds.
+- The review page listens for the `receiptScans` event and refetches; as a fallback it refetches every 3 seconds while the status is `queued` or `processing`, and gives up with the failed state after 60 seconds.
 - `ReceiptReview` state is a list of items (`name`, `amount`, `memberIds`), extras, description, date and payer, initialised from the reading: description = `merchant` or `Hoá đơn`; date = `occurredOn` or today; payer = the user's own member; every item starts with no member.
 - Selecting an item gives it the 3-point border; tapping a member shape toggles that member on the selected item. `Chia đều các món còn lại` puts all active people on every item that has none.
-- After each change, debounced 300 ms, call `preview` with the `items` split and show each person's share under their shape. While the preview is refused for `ITEM_UNASSIGNED`, the shares row shows the save-blocked line with the count and Lưu is disabled.
-- `MismatchNotice` appears when the scan has `TOTAL_MISMATCH` and the user has not chosen. `Dùng {computed}` sets the amount to the items' computed total. `Dùng {total}` sets the amount to the printed total and appends an extra labelled `Chênh lệch`: kind `other` with `total − computed` when positive, kind `discount` with `computed − total` when negative. After any edit to items or extras the amount follows `Σ items + net extra` and the notice is gone.
+- After each change, debounced 300 ms, call `POST …/transactions/items/preview` with `{ items, extras }` and show each person's share under their shape. While the preview is refused for `ITEM_UNASSIGNED`, the shares row shows the save-blocked line with the count and Lưu is disabled.
+- `MismatchNotice` appears when the scan has `TOTAL_MISMATCH` and the user has not chosen. `Dùng {computed}` sets the amount to the items' computed total. `Dùng {total}` sets the amount to the printed total and appends an extra labelled `Chênh lệch`: kind `other` with `total − computed` when positive, kind `discount` with `computed − total` when negative. After any edit to items or extras the amount follows `computedAmount` returned by `items/preview`, and the notice is gone. The browser does not sum money.
 - Lưu sends an ordinary create with the photo's id in `attachmentIds` and one idempotency key per page instance, then returns to S4.
 - `Nhập tay` from a failed state opens the manual form with the attachment id carried in the URL.
 - The manual form's split chooser gains `Theo món`, which opens the same item editor without a scan.
@@ -132,3 +132,8 @@ Layout numbers: take the confirmation card's (S7) spacing; `ItemRow` is 56 point
 - [ ] **Step 1:** Acceptance script on a reset database: 3C.1 rows 1, 3, 7 through `preview`; 3C.2 rows 2 and 4 with the balances.
 - [ ] **Step 2:** The gate of the common file.
 - [ ] **Step 3:** Time one full run with the fake provider from tapping the camera to the saved expense, by hand with a stopwatch, and record it against the one-minute target. Record under "Not verified": the same with a real receipt and the real provider.
+
+
+**Additional task 3C.2 contract:** add the editor-only `POST …/transactions/items/preview` request/response defined in spec 15.4, with group middleware, ordinary write protections and core-only sums/allocations. Include structural invalid input, unassigned items, fund participation, and totals outside the transaction bound in its permission/acceptance matrix.
+
+**Additional task 3C.3 behavior:** use spec 15.4's total-only initialization and six-extra mismatch handling. For the named browser fixture cases, restart the isolated fake runtime with the matching `AI_FAKE_RECEIPT_FIXTURE` value; original SHA-256s alone do not survive `prepareImage`. All numerical reference tables above remain unchanged.
