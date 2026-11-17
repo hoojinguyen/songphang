@@ -152,6 +152,8 @@ public struct ExpenseFormView: View {
 
       scrollingForm(data: data, active: active, myMemberId: myMemberId, isEditing: isEditing)
     }
+    // The member grids are four columns wide and cannot reflow at accessibility sizes.
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
   }
 
   @ViewBuilder
@@ -388,6 +390,7 @@ extension ExpenseFormView {
     ) {
       Task { await model.submit() }
     }
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
     .padding(.vertical, 12)
     .background(Tokens.bg)

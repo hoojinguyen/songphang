@@ -9,6 +9,7 @@ import UIKit
 
 public struct MembersView: View {
   @Bindable private var model: MembersModel
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   private let isEmailVerified: Bool
   private let onBack: () -> Void
   private let onOpenActivity: (ExpenseGroup.ID) -> Void
@@ -252,7 +253,11 @@ public struct MembersView: View {
           ? L10n.tr("members.joined")
           : L10n.tr("members.unclaimed")
 
-    let content = HStack(spacing: 12) {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+      : AnyLayout(HStackLayout(spacing: 12))
+    let content = layout {
       MemberShapeView(
         shape: member.shape,
         color: member.color,

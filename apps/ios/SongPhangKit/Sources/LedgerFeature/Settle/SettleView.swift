@@ -95,6 +95,7 @@ public struct SettleView: View {
     ) {
       Task { await model.submit(reduceMotion: reduceMotion) }
     }
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
     .padding(.vertical, 12)
     .background(Tokens.bg)

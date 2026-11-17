@@ -5,6 +5,7 @@ import SwiftUI
 struct FeedBalanceBlockView: View {
   let balance: Money
   let onOpenBalances: () -> Void
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     let caption =
@@ -21,8 +22,12 @@ struct FeedBalanceBlockView: View {
         ? L10n.tr("feed.pay")
         : L10n.tr("feed.view")
 
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+      : AnyLayout(HStackLayout(spacing: 12))
     Button(action: onOpenBalances) {
-      HStack(spacing: 12) {
+      layout {
         VStack(alignment: .leading, spacing: 2) {
           Text(caption)
             .font(Typography.captionBold)
@@ -172,6 +177,7 @@ struct FeedTransactionRowView: View {
                 .padding(.horizontal, 6)
             }
           }
+          .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
           .padding(.top, 4)
         } else {
           let shareLine =

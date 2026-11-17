@@ -235,6 +235,7 @@ public struct NewMemberInputRow: View {
       RoundedRectangle(cornerRadius: 30, style: .continuous)
         .stroke(Tokens.ink, lineWidth: 3)
     )
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
     .onTapGesture { isFocused = true }
   }

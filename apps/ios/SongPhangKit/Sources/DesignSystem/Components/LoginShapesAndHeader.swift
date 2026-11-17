@@ -56,6 +56,7 @@ public struct SPScreenHeader<Trailing: View>: View {
   private let backIcon: BackIcon
   private let onBack: () -> Void
   private let trailing: Trailing
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   public init(
     title: String,
@@ -74,7 +75,12 @@ public struct SPScreenHeader<Trailing: View>: View {
   }
 
   public var body: some View {
-    HStack(spacing: 12) {
+    // At accessibility sizes the title needs the full width, so the parts stack.
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+      : AnyLayout(HStackLayout(spacing: 12))
+    layout {
       Button(action: onBack) {
         Image(systemName: backIcon == .back ? "chevron.left" : "xmark")
           .font(.system(size: 18, weight: .bold))

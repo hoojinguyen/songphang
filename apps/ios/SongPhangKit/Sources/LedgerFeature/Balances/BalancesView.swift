@@ -224,11 +224,16 @@ private struct SettlementCardView: View {
   let myMemberId: Member.ID?
   let canEdit: Bool
   let onSettle: () -> Void
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     if let fromMember = members.first(where: { $0.id == transfer.fromMemberId }),
       let toMember = members.first(where: { $0.id == transfer.toMemberId })
     {
+      let rowLayout =
+        dynamicTypeSize.isAccessibilitySize
+        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+        : AnyLayout(HStackLayout(spacing: 16))
       let other = transfer.fromMemberId == myMemberId ? toMember : fromMember
       let caption: String = {
         if transfer.fromMemberId == myMemberId {
@@ -244,7 +249,7 @@ private struct SettlementCardView: View {
       }()
 
       VStack(alignment: .leading, spacing: 16) {
-        HStack(spacing: 16) {
+        rowLayout {
           MemberShapeView(
             shape: other.shape,
             color: other.color,

@@ -163,6 +163,7 @@ struct TypeSwitchView: View {
     .padding(4)
     .fixedSize(horizontal: true, vertical: false)
     .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .accessibilityLabel(L10n.tr("expenseForm.typeLabel"))
   }
 }
@@ -185,6 +186,7 @@ struct AmountFieldView: View {
       .keyboardType(.numberPad)
       .focused($isFocused)
       .multilineTextAlignment(.center)
+      .minimumScaleFactor(0.5)
       .font(.system(size: 46, weight: .black))
       .foregroundStyle(Tokens.ink)
       .accessibilityLabel(L10n.tr("expenseForm.amountLabel"))
@@ -213,6 +215,7 @@ struct AmountFieldView: View {
             .strokeBorder(Tokens.ink, lineWidth: 3)
         )
     )
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
     .onTapGesture { isFocused = true }
   }

@@ -224,6 +224,7 @@ public struct QuickEntryView: View {
       .disabled(model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
       .accessibilityLabel(L10n.tr("compose.send"))
     }
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(12)
     .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
     .onTapGesture { isSentenceFocused = true }

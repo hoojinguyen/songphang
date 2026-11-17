@@ -166,6 +166,7 @@ public struct GroupFeedView: View {
     FeedBalanceBlockView(balance: myBalance) {
       onOpenBalances(model.groupId)
     }
+    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
 
     if data.group.myMemberId == nil {
@@ -223,6 +224,7 @@ public struct GroupFeedView: View {
           onOpenQuickEntry(model.groupId, nil)
         }
       )
+      .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
       .padding(.horizontal, 20)
       .padding(.bottom, 12)
     } else {
