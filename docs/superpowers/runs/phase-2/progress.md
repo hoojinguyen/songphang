@@ -26,7 +26,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2A.1 — VietQR payload and bank lookup
 - [x] 2A.2 — member payment methods
 - [x] 2A.3 — settlement requests
-- [ ] 2A.4 — payment data and pending requests on balances
+- [x] 2A.4 — payment data and pending requests on balances
 - [ ] 2A.5 — payment methods editor
 - [ ] 2A.6 — paying screen, confirmation and gate 2A
 - [ ] 2B.1 — custom categories
@@ -130,3 +130,11 @@ Add settlement schema/queries/contracts and thin viewer routes, with service pre
 Commit reference: `feat(api): add settlement requests confirmed by the receiver`. pnpm check passed (253 files, five workspace typechecks Done); migration 0005 applied. Exercise rows 1–16: pending 201, duplicate new key 409, original key 201 same ID; unauthorized other payer 403; editor for linked receiver 403; payer self-confirm 403; receiver confirm 200 with transfer; repeat 409 REQUEST_NOT_PENDING. Balances before/request pending 450000/-150000/-150000/-150000; after confirmation 300000/-150000/0/-150000; stored transfer count 1. Creator cancellation 200 vs other viewer 403. Editor for unlinked receiver create/confirm 201/200, viewer confirm 403; owner rejection 200 with unchanged balances. Zero/equal members 400 VALIDATION_FAILED; foreign member 400 MEMBER_NOT_IN_GROUP; outsider list/create 404/404; signed-out list 401. Concurrent same-key create [201,201], one ID; concurrent confirm [200,409]. Pagination request 200. Disposable group with pending request deleted 204, later list 404. pnpm db:check-balances: All groups balanced.
 
 Security review: relevant items 1–8 checked against full schema/migration/query/contract/service/route/idempotency/cascade diff. Group role and linked identity re-read after group lock, request row locked, one atomic confirmation/ledger/log write, no sensitive snapshots/events/logging, safe integer schemas and parameterized SQL. Ordinary editor-only ledger guard, session serialization, repeatable reads and terminal SSE cancellation preserved. No external call/new library; online audit remains unverified. resolveSettlement and declarative route registration exceed function guideline to keep one cohesive transaction/endpoint group; each file under 200 lines. D8/D9 record required adaptations; no unresolved defect.
+
+## Task 2A.4 — approach
+
+Extend the existing balance contract in place with payTo/purpose/pendingRequest. Read member names, methods and all pending pairs inside the existing repeatable-read snapshot; decorate already-computed transfers without touching settlement arithmetic. Pass the authenticated user ID from the thin balance route for createdByMe. Build each bank payload only in core, retaining identical account/amount/purpose in the DTO; batch queries rather than one per transfer.
+
+### Task 2A.4 results
+
+Commit reference: `feat(api): add payment data and pending requests to suggested transfers`. pnpm check passed (253 files, five typechecks Done). Fresh four-person 600000 expense plus Hùng pending report: GET balances as Hùng/Lan 200; Hùng → Minh QR equals the first fixed reference byte for byte; account in QR equals payTo account; requested amount 150000; createdByMe true for Hùng and false for Lan. Lan → Minh pendingRequest null; removing receiver methods yields payTo []. pnpm db:check-balances: All groups balanced. Security review: relevant items 1/2/3/4/5/6/8 checked against full diff; existing shared read authorization, same repeatable-read snapshot for names/methods/pending/debts, batched group-scoped reads, validated additive DTO, no sensitive log/activity/invite changes and no new dependency. getBalances remains one snapshot operation above function guideline; no money arithmetic was changed. Not verified: real banking apps.

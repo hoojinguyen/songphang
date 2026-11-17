@@ -129,3 +129,15 @@ export function deleteGroupSettlementRequests(
 		.delete(settlementRequests)
 		.where(eq(settlementRequests.groupId, groupId));
 }
+
+export function listPendingSettlements(executor: DbExecutor, groupId: string) {
+	return executor
+		.select()
+		.from(settlementRequests)
+		.where(
+			and(
+				eq(settlementRequests.groupId, groupId),
+				eq(settlementRequests.status, "pending"),
+			),
+		);
+}

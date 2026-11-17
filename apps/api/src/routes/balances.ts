@@ -27,7 +27,11 @@ export function registerBalanceRoutes(
 		},
 		async (context) =>
 			context.json(
-				await getBalances(deps, context.var.groupAccess.groupId),
+				await getBalances(
+					deps,
+					context.var.groupAccess.groupId,
+					context.var.user.id,
+				),
 				200,
 			),
 	);
