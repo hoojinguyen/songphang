@@ -277,7 +277,7 @@ Bất biến: tổng số dư của mọi thành viên trong một nhóm luôn b
 | Giai đoạn | Bổ sung dự kiến | Tác động lên bảng hiện có |
 |---|---|---|
 | 2 | `member_payment_methods`, `funds`, `budgets`, `group_categories` | Không |
-| 3 | `transaction_items`, `item_assignments`, `attachments`, bảng hàng đợi | Thêm cột tham chiếu tuỳ chọn trên `transactions` |
+| 3 | `attachments`, `receipt_scans`, `ai_calls`, queue schema | Item details stay in `split_input`; no item/assignment tables (ADR-023) |
 | 4 | `comments`, `notifications`, `chat_links` | Thêm cột trạng thái tuỳ chọn trên `transactions` |
 | 5 | `user_identities`, `push_devices` | Chuyển `google_sub` sang `user_identities` |
 | Chưa xếp | Đa tiền tệ: thêm `exchange_rate` trên `transactions` | `currency` đã có sẵn trên từng giao dịch |
@@ -315,3 +315,56 @@ This supersedes section 8's Phase 2 reservation. Exact table/column definitions 
 | transactions additions | category_id set-null category FK; CHECK category IS NULL OR category_id IS NULL; description_search NOT NULL with normalizer backfill and writes on create/edit |
 
 A deferred constraint trigger rejects fund shares for expense/income but permits a transfer's fund receiver row. A group_users trigger forbids linking a fund. Services additionally enforce same-group holder/category/member references, no payment methods on funds and no closure with nonzero cash. Existing integer balance formula remains unchanged: cash is negative fund balance; contributions are live incoming minus outgoing transfers per person.
+
+## Phase 3 database amendment — approved 2026-11-17, not implemented
+
+No migration is created during preparation. This section supersedes the old section 8 item-table proposal. Existing money columns, ledger sides, deferred sum/group/fund integrity and soft-delete rules stay intact. Item data lives only in split_input; split_method gains `items` through a future migration, never by editing a committed one. Amounts remain bounded VND integers, allocations core-only.
+
+### attachments (task 3A.2)
+
+| Column | Planned type / constraint |
+|---|---|
+| id | UUID primary key, server generated |
+| group_id | UUID NOT NULL, groups FK cascade |
+| transaction_id | nullable UUID, transactions FK cascade; at most one transaction per attachment |
+| storage_key | text NOT NULL UNIQUE; server group UUID/file UUID key |
+| content_type | text NOT NULL CHECK image/jpeg, image/png, image/webp |
+| byte_size | integer NOT NULL CHECK 1..5242880 |
+| sha256 | text NOT NULL, SHA-256 of stored image bytes |
+| uploaded_by | nullable users UUID FK set null |
+| created_at | timestamptz NOT NULL |
+
+The service checks same-group and unattached-or-this-transaction IDs, unique lists of at most three, and serialized group byte quota. File writes use temp/rename and compensation if row insertion fails. Removal on edit deletes row/file; soft deletion does not. Daily cleanup removes unattached rows older than 24 hours and old untracked files with group-lock coordination. Group deletion captures keys before cascade.
+
+### ai_calls (task 3B.2, extended in 3B.3)
+
+| Column | Planned type / constraint |
+|---|---|
+| id | UUID primary key |
+| user_id, group_id | nullable user/group UUID FKs set null |
+| purpose | text NOT NULL CHECK receipt or sentence |
+| model | text, bounded model identifier; no prompt/output |
+| input_tokens, output_tokens | nonnegative integer metadata, zero at reservation |
+| ok | boolean NOT NULL, false until successful result |
+| state | text NOT NULL CHECK reserved, started, finished |
+| created_at | timestamptz NOT NULL, reservation time |
+| started_at, finished_at | nullable timestamptz, claim/completion metadata |
+| receipt_scan_id | nullable UUID FK receipt_scans set null; add only in task 3B.3 after scans exist |
+
+Indexes: (purpose, created_at), (user_id, purpose, created_at). Monthly counts include both purposes, regardless of success. A transaction-scoped constant advisory lock serializes count/reserve. The caller executor owns the transaction. A claimed reservation cannot be claimed again; retries get separate rows. Original/retry receipt rows link to the same scan; sentence rows have no scan. No reservation is refunded for an uncertain provider outcome. Never persist sentences, raw outputs, email, request-local reference maps or images here.
+
+### receipt_scans (task 3B.3)
+
+| Column | Planned type / constraint |
+|---|---|
+| id | UUID primary key |
+| group_id | UUID NOT NULL, groups FK cascade |
+| attachment_id | UUID NOT NULL UNIQUE, attachments FK cascade |
+| status | text NOT NULL CHECK queued, processing, done, failed |
+| result | nullable jsonb, validated ReceiptReading only |
+| error_code | nullable bounded text; no provider body/stack |
+| created_by | nullable users UUID FK set null |
+| created_at | timestamptz NOT NULL |
+| finished_at | nullable timestamptz |
+
+Scan/reservation/job admission is atomic; no quota reservation for an already-existing scan. Claim linkage checks purpose, caller/group/scan and quota window. Terminal failures notify the group. Computed totals/flags in the DTO derive from the validated reading via core; do not store raw provider responses as an alternate result. The queue owns its `pgboss` schema, ignored by Drizzle; no queue tables are hand-designed here.

@@ -1,6 +1,6 @@
 # Phase 3 — Smart Entry ("Nhập liệu thông minh") — Design
 
-Date: 2026-11-15. Advisor revision: 2026-11-17. Status: revised draft, awaiting the owner's review; execution is not authorized. The owner approved request-local AI member references on 2026-11-17. All other advisor clarifications below are proposals for this review. Read `2026-11-15-roadmap-remaining-phases-overview.md` first; its sections 4 and 5 apply here.
+Date: 2026-11-15. Advisor revision: 2026-11-17. Status: revised spec/plan approved by the owner on 2026-11-17; advisor fixtures and standing-document preparation authorized; Phase 3 execution explicitly NOT authorized. Read `2026-11-15-roadmap-remaining-phases-overview.md` first; its sections 4 and 5 apply here.
 
 ## 1. Intent
 
@@ -124,7 +124,7 @@ Checked before a job is created and again before the call:
 | Sentence calls per user per day | 100 | `AI_SENTENCES_PER_USER_PER_DAY` | The rule reader's answer is returned unchanged |
 | All AI calls per calendar month | 1,000 | `AI_CALLS_PER_MONTH` | As above, per purpose |
 
-Counts come from `ai_calls`; one receipt scan can consume two permitted attempts if retried (advisor proposal pending owner approval). The ceiling is a call count, not money, because a count can be enforced exactly; the owner derives the count from the measured cost per call.
+Counts come from `ai_calls`; one receipt scan can consume two permitted attempts if retried (approved clarification). The ceiling is a call count, not money, because a count can be enforced exactly; the owner derives the count from the measured cost per call.
 
 ### 5.6 Privacy
 
@@ -259,9 +259,9 @@ Job names and retry counts; the forced tool's wording and the prompts (kept in o
 Before the run: approve this spec and `pg-boss`. Any time after: an Anthropic API key; the 30-receipt measurement of the roadmap, done with the built feature, to confirm or change the provider, the model and the monthly ceiling.
 
 
-## 15. Advisor preflight revision — 2026-11-17 (pending owner review)
+## 15. Advisor preflight revision — approved 2026-11-17
 
-This section resolves underspecified interfaces in the original draft. No product implementation is authorized by this revision. Existing acceptance money figures are unchanged. The owner-approved privacy decision is section 5.6; the remaining choices here are advisor proposals for approval with this revision.
+This section resolves underspecified interfaces in the original draft. No product implementation is authorized by this revision. Existing acceptance money figures are unchanged. The owner approved this revision, including the privacy decision in section 5.6, in the current session.
 
 ### 15.1 Existing contracts and shared packages
 
@@ -269,7 +269,7 @@ This section resolves underspecified interfaces in the original draft. No produc
 - Parse implementation is `apps/api/src/services/quick-entry.ts`, with schemas in `packages/contract/src/quick-entry.ts`. Transaction writes remain in `transactions.ts` and `transaction-changes.ts`. All ordinary post-lock editor checks, Phase 2 archived-category preservation, budget warnings, fund exclusions, and snapshots remain required.
 - `ParseDraft` gains nullable `category` and `categoryId`, mutually exclusive. Add `ParsedDraftResult = { status, draft, issues, shares? }` using the same status and validation rules as the first draft. `moreDrafts` is an array of 0–4 such results, not untyped drafts. Every issue includes `candidates: []` when no candidates exist. AI input/output schemas use request-local references rather than reusing the UUID-based ordinary `SplitInput` at the provider boundary. Only the API service maps references and validates the ordinary UUID draft. Unknown references in payer, equal members, exact members/entries, shares, or percent entries make the result non-confident and non-`ok`.
 - Keep current transaction detail semantics. Define `TransactionListItemDto` separately: existing list fields plus `attachmentCount`, without attachment bodies. Detail/create/edit responses include `attachments`; every affected client validates the appropriate schema.
-- `packages/storage` and `packages/ai` are approved workspace package proposals, not external libraries. Worker never imports from `apps/api`. Shared AI transport receives explicit timeout/retry policy: receipts 30 seconds per attempt, at most one retry; sentences 8 seconds overall, no retry. Timeout covers response body parsing as well as fetch.
+- `packages/storage` and `packages/ai` are approved workspace packages, not external libraries. Worker never imports from `apps/api`. Shared AI transport receives explicit timeout/retry policy: receipts 30 seconds per attempt, at most one retry; sentences 8 seconds overall, no retry. Timeout covers response body parsing as well as fetch.
 
 ### 15.2 Upload, storage, authorization, and cleanup
 
@@ -293,11 +293,11 @@ This section resolves underspecified interfaces in the original draft. No produc
 - The review UI consumes `computedAmount` after edits; it never sums item or extra money locally. Its only money arithmetic is the approved integer difference for the mismatch choice. Both mismatch choices must be reflected in the core preview before save.
 - A receipt with no items but a printed total initializes one editable item using merchant or the approved `Hoá đơn` fallback, amount equal to printed total, empty editor extras, and nobody assigned; the original reading and its extras remain untouched in the stored scan for inspection. This avoids counting printed tax/service twice. It keeps the AI note and requires assignment/review before save. No silently saved zero total.
 - Preserve at most six extras. If a mismatch adjustment would be the seventh, keep save blocked and require the user to edit/remove an existing extra; never silently merge unrelated taxes/discounts or exceed the schema bound. Reuse existing validation text until an owner-approved dedicated message exists.
-- Direct API fixtures still match image SHA-256. For browser exercises, which re-encode photos, add development-only `AI_FAKE_RECEIPT_FIXTURE=default|clean|tax-service|mismatch|not-a-receipt` to API and worker configuration (`default` when unset). With `fake`, a named value selects that advisor fixture independently of image bytes; restart the isolated runtime per scenario. In production, any fake provider or this variable being set refuses startup. With `anthropic`, setting this variable is invalid. No user-facing fixture control is added. Record the selected mode in exercise evidence, never in user receipt data. This is a proposed local configuration change for approval.
+- Direct API fixtures still match image SHA-256. For browser exercises, which re-encode photos, add development-only `AI_FAKE_RECEIPT_FIXTURE=default|clean|tax-service|mismatch|not-a-receipt` to API and worker configuration (`default` when unset). With `fake`, a named value selects that advisor fixture independently of image bytes; restart the isolated runtime per scenario. In production, any fake provider or this variable being set refuses startup. With `anthropic`, setting this variable is invalid. No user-facing fixture control is added. Record the selected mode in exercise evidence, never in user receipt data. This local-only configuration change is approved with this revision.
 - UI refetches on `receiptScans` events and uses a 3-second fallback while pending, ending in an explained failed state after 60 seconds; it does not claim to have no polling.
 
 ### 15.5 Regression gates and readiness
 
 - With AI unset, all 75 original and 12 fund samples preserve status, issues, payer, split, and shares; additive `reader`, `moreDrafts`, and category fields are expected. With fake AI enabled, rule `ok` and `needs_input` never call AI; selected refused fixtures may become AI results. Unknown fake sentences preserve the rule refusal.
-- Before any implementation: owner approves the revised spec/plan and pg-boss; advisor supplies all four fixture images/readings, fifteen sentence fixtures (including two-expense, foreign-reference and uncertain cases), and the category table; standing documents receive the listed amendments. These files are currently absent. Do not tick them or start Task 0 because the plan exists.
+- Before any implementation: owner approves the revised spec/plan and pg-boss; advisor supplies all four fixture images/readings, fifteen sentence fixtures (including two-expense, foreign-reference and uncertain cases), and the category table; standing documents receive the listed amendments. These advisor data files and amendments are now present; see the preparation inventory. Runtime gates remain unexecuted. Do not start Task 0 because the plan exists.
 - The Phase 2 review and any blocking findings must be resolved before Phase 3 execution. This advisor review does not create a branch, install a library, scaffold packages, or implement a Phase 3 endpoint.

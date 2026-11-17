@@ -1,0 +1,430 @@
+[
+	{
+		"id": "AI01",
+		"source": "A61",
+		"sentence": "lẩu 300k lan 100 lan 200",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": [
+				{
+					"description": "lẩu",
+					"amount": 300000,
+					"payerRef": "Minh",
+					"split": {
+						"method": "exact",
+						"members": ["Lan"],
+						"entries": [
+							{
+								"memberId": "Lan",
+								"amount": 300000
+							}
+						],
+						"remainder": "none"
+					},
+					"category": null,
+					"confident": true
+				}
+			]
+		},
+		"expected": {
+			"reader": "ai",
+			"status": "ok",
+			"draftCount": 1,
+			"shares": {
+				"Lan": 300000
+			},
+			"moreDrafts": []
+		},
+		"reason": "Repeated allocation to Lan is combined exactly (100000 + 200000), with no remainder guessed."
+	},
+	{
+		"id": "AI02",
+		"source": "A60",
+		"sentence": "cà phê 180k và bánh 50k",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": [
+				{
+					"description": "cà phê",
+					"amount": 180000,
+					"payerRef": "Minh",
+					"split": {
+						"method": "equal",
+						"members": ["Minh", "Lan", "Hùng", "Thu"]
+					},
+					"category": null,
+					"confident": true
+				},
+				{
+					"description": "bánh",
+					"amount": 50000,
+					"payerRef": "Minh",
+					"split": {
+						"method": "equal",
+						"members": ["Minh", "Lan", "Hùng", "Thu"]
+					},
+					"category": null,
+					"confident": true
+				}
+			]
+		},
+		"expected": {
+			"reader": "ai",
+			"status": "ok",
+			"draftCount": 2,
+			"shares": {
+				"Minh": 45000,
+				"Lan": 45000,
+				"Hùng": 45000,
+				"Thu": 45000
+			},
+			"moreDrafts": [
+				{
+					"status": "ok",
+					"shares": {
+						"Minh": 12500,
+						"Lan": 12500,
+						"Hùng": 12500,
+						"Thu": 12500
+					}
+				}
+			]
+		},
+		"reason": "Two independent expenses; writer pays by the documented default."
+	},
+	{
+		"id": "AI03",
+		"source": "A53",
+		"sentence": "lẩu 300k minh 80 lan 60 hùng 40",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": [
+				{
+					"description": "lẩu",
+					"amount": 300000,
+					"payerRef": "Minh",
+					"split": {
+						"method": "exact",
+						"members": ["Minh", "Lan", "Hùng"],
+						"entries": [
+							{
+								"memberId": "Minh",
+								"amount": 80000
+							},
+							{
+								"memberId": "Lan",
+								"amount": 60000
+							},
+							{
+								"memberId": "Hùng",
+								"amount": 40000
+							}
+						],
+						"remainder": "none"
+					},
+					"category": null,
+					"confident": false
+				}
+			]
+		},
+		"expected": {
+			"reader": "ai",
+			"status": "needs_input",
+			"draftCount": 1,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Personal parts total only 180000; do not repair the missing 120000."
+	},
+	{
+		"id": "AI04",
+		"source": "A54",
+		"sentence": "lẩu 300k mình 200 lan 200, còn lại chia đều",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": [
+				{
+					"description": "lẩu",
+					"amount": 300000,
+					"payerRef": "Minh",
+					"split": {
+						"method": "exact",
+						"members": ["Minh", "Lan"],
+						"entries": [
+							{
+								"memberId": "Minh",
+								"amount": 200000
+							},
+							{
+								"memberId": "Lan",
+								"amount": 200000
+							}
+						],
+						"remainder": "equal_among_all"
+					},
+					"category": null,
+					"confident": false
+				}
+			]
+		},
+		"expected": {
+			"reader": "ai",
+			"status": "needs_input",
+			"draftCount": 1,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Parts exceed total; do not trim or repair."
+	},
+	{
+		"id": "AI05",
+		"source": "A55",
+		"sentence": "lẩu 300k nam trả",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": []
+		},
+		"expected": {
+			"reader": "rules",
+			"status": "unparsed",
+			"draftCount": 0,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Unknown payer Nam; no safe draft."
+	},
+	{
+		"id": "AI06",
+		"source": "A56",
+		"sentence": "lẩu 300k nam 100 lan 200",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": []
+		},
+		"expected": {
+			"reader": "rules",
+			"status": "unparsed",
+			"draftCount": 0,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Unknown share member Nam; no safe draft."
+	},
+	{
+		"id": "AI07",
+		"source": "A57",
+		"sentence": "cà phê 180k chia 5",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": []
+		},
+		"expected": {
+			"reader": "rules",
+			"status": "unparsed",
+			"draftCount": 0,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Five participants requested but only four known."
+	},
+	{
+		"id": "AI08",
+		"source": "A58",
+		"sentence": "lẩu 300k chia 3 mình 100 lan 200",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": [
+				{
+					"description": "lẩu",
+					"amount": 300000,
+					"payerRef": "Minh",
+					"split": {
+						"method": "exact",
+						"members": ["Minh", "Lan"],
+						"entries": [
+							{
+								"memberId": "Minh",
+								"amount": 100000
+							},
+							{
+								"memberId": "Lan",
+								"amount": 200000
+							}
+						],
+						"remainder": "none"
+					},
+					"category": null,
+					"confident": false
+				}
+			]
+		},
+		"expected": {
+			"reader": "ai",
+			"status": "needs_input",
+			"draftCount": 1,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Three participants requested but only two specified; uncertain."
+	},
+	{
+		"id": "AI09",
+		"source": "A62",
+		"sentence": "lẩu 300k lan trả hùng trả",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": []
+		},
+		"expected": {
+			"reader": "rules",
+			"status": "unparsed",
+			"draftCount": 0,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Two payers are unsupported in the sentence AI draft."
+	},
+	{
+		"id": "AI10",
+		"source": "A50",
+		"sentence": "cà phê",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": []
+		},
+		"expected": {
+			"reader": "rules",
+			"status": "unparsed",
+			"draftCount": 0,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "No amount printed in the sentence."
+	},
+	{
+		"id": "AI11",
+		"source": "A51",
+		"sentence": "cà phê 180",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": []
+		},
+		"expected": {
+			"reader": "rules",
+			"status": "unparsed",
+			"draftCount": 0,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Bare 180 is outside the approved reader amount convention; do not guess units."
+	},
+	{
+		"id": "AI12",
+		"source": "A52",
+		"sentence": "cà phê 0k",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": []
+		},
+		"expected": {
+			"reader": "rules",
+			"status": "unparsed",
+			"draftCount": 0,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Zero amount cannot form a transaction."
+	},
+	{
+		"id": "AI13",
+		"source": "C04",
+		"sentence": "cà phê 180k thu trả",
+		"members": ["Minh", "Lan", "Hùng"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": []
+		},
+		"expected": {
+			"reader": "rules",
+			"status": "unparsed",
+			"draftCount": 0,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "Thu is inactive in the source fixture; only active people are offered to the AI."
+	},
+	{
+		"id": "AI14",
+		"source": "A63",
+		"sentence": "lẩu 300k chia lan, nam",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": [
+				{
+					"description": "lẩu",
+					"amount": 300000,
+					"payerRef": "Minh",
+					"split": {
+						"method": "equal",
+						"members": ["Lan", "Nam"]
+					},
+					"category": null,
+					"confident": true
+				}
+			]
+		},
+		"expected": {
+			"reader": "ai",
+			"status": "needs_input",
+			"draftCount": 1,
+			"shares": null,
+			"moreDrafts": [],
+			"foreignNames": ["Nam"],
+			"mustNotBecomeOk": true
+		},
+		"reason": "Deliberate hostile adapter output for the foreign-reference gate: Nam is absent from the offered people."
+	},
+	{
+		"id": "AI15",
+		"source": "A59",
+		"sentence": "cà phê 180k hôm qua",
+		"members": ["Minh", "Lan", "Hùng", "Thu"],
+		"writer": "Minh",
+		"answer": {
+			"drafts": [
+				{
+					"description": "cà phê",
+					"amount": 180000,
+					"payerRef": "Minh",
+					"split": {
+						"method": "equal",
+						"members": ["Minh", "Lan", "Hùng", "Thu"]
+					},
+					"category": null,
+					"confident": false
+				}
+			]
+		},
+		"expected": {
+			"reader": "ai",
+			"status": "needs_input",
+			"draftCount": 1,
+			"shares": null,
+			"moreDrafts": []
+		},
+		"reason": "The unsupported relative date must not be silently discarded; uncertain draft requires manual review."
+	}
+]

@@ -1,6 +1,6 @@
 # Phase 3 — Stage 3B: Receipt Reading
 
-> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision 2026-11-17: pending owner review; do not execute yet.
+> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision approved 2026-11-17; preparation authorized, execution withheld. Do not execute yet.
 
 **Stage goal:** a photo of a bill becomes a validated list of items, extras and a total, within a fixed budget of calls. Nothing reaches the ledger in this stage; the review screen is stage 3C.
 

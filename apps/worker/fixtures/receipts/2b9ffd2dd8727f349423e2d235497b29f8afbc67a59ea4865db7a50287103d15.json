@@ -1,0 +1,24 @@
+{
+	"merchant": "Quán mẫu",
+	"occurredOn": "2026-11-17",
+	"items": [
+		{
+			"name": "Cơm nhóm",
+			"quantity": 1,
+			"amount": 100000
+		}
+	],
+	"extras": [
+		{
+			"kind": "tax",
+			"label": "Thuế",
+			"amount": 8000
+		},
+		{
+			"kind": "service",
+			"label": "Phí dịch vụ",
+			"amount": 2000
+		}
+	],
+	"total": 110000
+}

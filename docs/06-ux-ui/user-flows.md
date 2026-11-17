@@ -419,3 +419,29 @@ Above the stream, only in state `near` or `over`; tapping opens S16.
 | `near` | `Đã chi {spent} trên hạn mức {amount}.` |
 | `over` | `Đã vượt hạn mức {over}.` |
 | In the confirmation card | `Khoản này làm nhóm vượt hạn mức.` |
+
+## Phase 2B statistics navigation correction — approved 2026-11-17
+
+All S16 category/member/time drill-down links open S4 with `spendingOnly=true`, preserving the selected period and row filter. The feed displays a removable type chip using the existing Chi/Thu labels. It survives reload/back and changes to search, people, categories or dates. Selecting a single type in the filter sheet replaces the combined scope; clearing filters removes it. Generic feed filtering of uncategorized transactions remains unchanged. Transfers are not part of S16 spending, so they must not appear through a scoped statistics link.
+
+## Phase 3 UX amendment — approved 2026-11-17, not implemented
+
+This amendment supersedes the camera's earlier Phase 1 reservation for the future Phase 3 run. Product strings remain exactly those in Phase 3 spec section 8 and will be placed in messages/vi.ts during the owning implementation task. No screen or product string is added to running main during advisor preparation.
+
+| Surface | Approved future behavior |
+|---|---|
+| S4 entry bar | Camera shown only to writers when receiptReading is enabled; native camera/library chooser; resize before private upload; queued/reading/error/quota states |
+| S8 transaction form/detail | Up to three private receipt thumbnails, add/remove controls for writers, fullscreen accessible dialog; read-only users can open images; items split chooser uses Theo món |
+| S18 /g/{id}/tx/new?scan={scanId} | Receipt review with private thumbnail, editable merchant/date/items/extras/payer, member assignment and core-computed shares; user must press save |
+| S7 sentence confirmation | After one second pending show the approved waiting line; AI note and no phrase highlighting for AI; independent status/idempotency per additional draft; safe manual fallback |
+| S4 stream | Small photo mark when attachmentCount > 0; no photo content or money derived locally |
+
+S18 starts with no assigned item members. Select an item then toggle member shapes; the shortcut assigns only unassigned items to active people. Items-preview returns computed total and shares after a 300-ms debounce; the browser never sums item/extras money. Saving is disabled for incomplete assignment or invalid totals. Core retains existing member-position rounding, and fund is never a participant. Tax/fees and discounts follow subtotals in core.
+
+A total mismatch requires an explicit choice: use computed or printed. Choosing printed adds the approved difference adjustment and must pass core preview before save. At six extras, an additional adjustment is blocked until an existing extra is edited/removed; never merge unrelated fees silently. A total-only receipt starts as one editable item equal to printed total and empty editor extras, retaining the original scan reading for inspection. Nothing is automatically repaired or saved.
+
+Pending scans refetch on receiptScans SSE and every three seconds as fallback, stopping with an explained failed state after sixty seconds. Retake/retry/manual controls use the exact approved strings. Manual fallback carries the uploaded attachment. Fullscreen images close by button, Escape and backdrop; member controls and camera have accessible names; keyboard focus remains visible and dialogs restore focus.
+
+AI01–AI15 in the advisor fixture file are deterministic scenarios, not measured model quality. Conflicting/unknown/uncertain readings require manual review; empty answers keep the rule refusal. A relative date that the draft cannot represent is not silently discarded. Suggested categories use live custom matches first, otherwise the longest whole-word built-in keyword; an explicit AI category remains selected.
+
+No physical phone camera, real provider latency/accuracy/cost, or real receipt-reading target is established by preparation. The owner performs the five-receipt/free-sentence checks and thirty-receipt survey only after implementation and separately supplying real provider configuration.

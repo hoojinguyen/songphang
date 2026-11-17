@@ -1,6 +1,6 @@
 # Phase 3 — Stage 3D: AI Sentences
 
-> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision 2026-11-17: pending owner review; do not execute yet.
+> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision approved 2026-11-17; preparation authorized, execution withheld. Do not execute yet.
 
 **Stage goal:** a sentence the rule reader refuses is read by the AI into the same draft, checked by the same code, and confirmed on the same card; descriptions suggest a category.
 
@@ -40,7 +40,7 @@
 |---|---|
 | parse `cà phê 180k chia 4` | `reader: "rules"`, `ok`; no new `ai_calls` row |
 | parse a `needs_input` sample from `docs/08-quick-entry-samples.md` | `reader: "rules"`; no new `ai_calls` row |
-| each of the 15 fixture sentences | `reader: "ai"`; the fixture's draft; `shares` equal to a `preview` of the same draft; record the table |
+| each of the 15 fixture sentences | match that fixture's `expected` reader/status/drafts/shares; empty answers preserve `reader: "rules"`; only confident valid drafts have shares equal to ordinary preview; record the table |
 | a fixture whose answer holds two expenses | `draft` is the first, `moreDrafts` has one |
 | a fixture whose answer names a member not in this group (the advisor's fixture 14) | that member is dropped; status is not `ok` |
 | a fixture with `confident: false` (fixture 15) | `needs_input`; no `shares` |

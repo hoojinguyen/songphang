@@ -2,7 +2,7 @@
 
 > **For the implementation agent:** read `AGENTS.md`, the spec, `../2026-11-15-common.md`, then this file. Work through the stage files in order without stopping between tasks.
 
-**Approval state:** advisor revision 2026-11-17, awaiting owner review. Only request-local AI references are already approved. No Phase 3 implementation is authorized. Spec section 15 defines the revised interfaces and acceptance obligations for every stage below.
+**Approval state:** revised spec/plan approved by the owner on 2026-11-17. Advisor preparation is authorized; Phase 3 implementation is explicitly withheld. Spec section 15 defines the revised interfaces and acceptance obligations for every stage below.
 
 **Goal:** A user photographs a bill, assigns items to people and saves; photos are kept with transactions; the typing box understands sentences the rule reader refuses.
 
@@ -46,10 +46,12 @@
 
 ## Pre-execution approval and prerequisites
 
-- [ ] Owner approves this revised spec/plan, pg-boss, the items preview endpoint, reservation lifecycle, no-store photo policy, and local fake-fixture variable.
-- [ ] Phase 2 advisor verification is complete and blocking findings are resolved.
-- [ ] Advisor commits four receipt images and validated readings, fifteen sentence fixtures, and category keywords (paths in the common plan).
-- [ ] Advisor updates standing ADR/SAD/database/API/UX documents before execution.
+- [x] Owner approved this revised spec/plan, pg-boss, the items preview endpoint, reservation lifecycle, no-store photo policy, and local fake-fixture variable on 2026-11-17. This is not execution approval.
+- [x] Phase 2 advisor review and its blocking code correction are complete (`257fc50`); earlier device/non-functional verification limits remain explicit.
+- [x] Advisor supplies four receipt images and validated readings, fifteen sentence fixtures, and 120 category keywords; see `01-preparation.md` and the advisor preparation commit.
+- [x] Advisor updates standing ADR/SAD/database/API/UX documents, SRS and working-state guidance before execution.
 - [ ] Advisor creates the approved phase branch and run records only after execution approval.
 
-Existing API capability is `receiptReading`; preserve all six current booleans. The parse service/schema paths are `services/quick-entry.ts` and `contract/src/quick-entry.ts`. New shared `storage` and `ai` workspace dependencies are explicitly permitted. No source files or dependencies are created during advisor review.
+Existing API capability is `receiptReading`; preserve all six current booleans. The parse service/schema paths are `services/quick-entry.ts` and `contract/src/quick-entry.ts`. New shared `storage` and `ai` workspace dependencies are explicitly permitted. Only advisor fixture data and the unexported category-keyword table are prepared; no Phase 3 runtime, exported feature, dependency or endpoint is implemented.
+
+Advisor input inventory, observed validation and remaining execution boundary: `01-preparation.md`. All implementation task checkboxes remain unticked.

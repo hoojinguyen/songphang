@@ -1,6 +1,6 @@
 # Phase 3 — Stage 3C: Split by Items
 
-> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision 2026-11-17: pending owner review; do not execute yet.
+> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision approved 2026-11-17; preparation authorized, execution withheld. Do not execute yet.
 
 **Stage goal:** a bill's items are assigned to people, tax and fees follow each person's part, and the scan's reading becomes a saved expense after review.
 

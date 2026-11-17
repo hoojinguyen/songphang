@@ -274,3 +274,23 @@ Status: approved 2026-11-17. A payment report creates only a pending request. Th
 ## Phase 2 implementation provenance amendment — 2026-11-17
 
 The owner approved VietQR.io by Casso's public bank list as the data source instead of NAPAS's inaccessible complete mapping. Snapshot source https://api.vietqr.io/v2/banks, retrieved 2026-11-17; 76 entries. It is not represented as NAPAS-certified. Reuse installed qrcode 1.5.4 and its React SVG matrix rendering instead of planned uqr; no new library. All feature implementation and exercises after preparation remain local.
+
+## ADR-023 — Store item splits in split_input
+
+Status: approved by the owner on 2026-11-17 with the revised Phase 3 spec/plan; implementation has not started.
+
+Decision: the fifth split method, `items`, stores 1–60 ordered items and at most six extras in `transactions.split_input`. Do not create the earlier proposed `transaction_items` or `item_assignments` tables: no approved feature queries items across transactions. The existing stored shares remain the authoritative ledger. Each item is divided equally in member-position order; net extras are allocated proportionally through the existing BigInt largest-remainder allocator in core. Fund members cannot bear shares. Income cannot use items.
+
+The dedicated items-preview contract returns the computed total, optional authoritative shares and incomplete-input issues; the browser does not sum item money. Ordinary preview/create/edit still validate a complete amount and split. Existing fixed Phase 3 arithmetic references remain unchanged. Normalizing items into separate tables was rejected because it adds writes, queries and constraints without an approved use. See Phase 3 spec sections 6 and 15.4.
+
+## ADR-024 — AI adapters, private member references and reserved attempts
+
+Status: approved by the owner on 2026-11-17 with the revised Phase 3 spec/plan; implementation has not started.
+
+Decision: receipt and sentence readers are replaceable deps interfaces with local fake adapters and a fetch-based real adapter. The agent never calls the real provider. Forced structured output is untrusted: validate the provider schema, resolve request-local references in API memory, validate the ordinary UUID draft, then compute shares only in core. Only user confirmation saves a transaction. Rule `ok`/`needs_input` never invokes sentence AI.
+
+Real member/user/group IDs and email never leave the server. Every request uses a fresh cryptographic nonce namespace; every payer and split reference is mapped only in request memory. Unknown references make a draft non-confident and never `ok`. Neither prompts, raw responses nor reference-to-ID maps are logged or persisted; only the validated receipt reading is stored in the scan. Raw images remain private FileStore data.
+
+The cost ceiling counts reserved provider attempts, including retry and uncertain outcomes. One group-locked transaction creates the unique scan, admission reservation and durable job. The worker atomically claims the existing reservation; redelivery cannot cause a second unreserved call. Receipts allow one separately reserved retry; sentences have an eight-second overall deadline and no retry. Claim/recovery metadata prevents indefinite processing. Database transaction integration for the installed stable pg-boss version must be demonstrated before scan implementation; otherwise an advisor outbox amendment is required. See Phase 3 spec section 15.3.
+
+Hand-writing a queue, accepting model-computed money and sending persistent database IDs were rejected. pg-boss is the only approved new external library; version/license/size are recorded at installation, not guessed during preparation. Shared storage/AI workspace packages contain reused code and are not external libraries.

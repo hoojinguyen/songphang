@@ -247,3 +247,9 @@ Payment details are visible only inside the group, never in invite previews, act
 | Confirm a request to an unlinked member | 2xx | 2xx | 403 | 404 |
 | Create, edit, archive a category; create, edit, delete the fund | 2xx | 2xx | 403 | 404 |
 | Set or remove the budget | 2xx | 403 | 403 | 404 |
+
+## Phase 3 clarification — approved 2026-11-17, not implemented
+
+The approved Phase 3 spec sections 5.6 and 15 clarify FR-3.1–FR-3.6. All image access stays group-authorized/private; every AI amount is validated; only core computes ledger shares and only a user's save writes them. AI sentence input includes active display names and request-local nonce references, never database/user/group IDs, email or history. Rule ok/needs_input stays on the rules path. Unknown/uncertain/conflicting drafts never become ok.
+
+Daily receipt and monthly AI ceilings count reserved provider attempts, including retry and uncertain outcomes; they are not guaranteed scan-success counts. One scan may consume two attempts, each separately admitted. The fake provider is a local-only fixture mechanism and proves no real-provider quality. The advisor fixture set and category keyword table are approved preparation inputs, not shipped Phase 3 functionality. Execution remains explicitly withheld by the owner.

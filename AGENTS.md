@@ -13,7 +13,7 @@ This file applies to every agent working in this repository (Claude, Codex, Anti
 
 Sòng Phẳng is a group expense-splitting application for Vietnamese users: web first, native iOS and Android later, with a shared API. It is initially for internal use and will be released publicly later, so accounts, security, and UI quality are built to public-product standards from the beginning.
 
-Current phase: **2 — Real money**, built in one phase run (section 12). Everything runs on the development machine; there is no server, domain, or external service.
+Current phase: **2 — Real money is merged on main**. The owner approved the revised Phase 3 spec/plan and advisor preparation on 2026-11-17, but has explicitly withheld Phase 3 implementation. Fixtures and planned-document amendments are preparation only; do not start Task 0 or create the phase branch until execution is authorized. Everything runs on the development machine; there is no server, domain, or external service.
 
 ## 2. Who decides what
 

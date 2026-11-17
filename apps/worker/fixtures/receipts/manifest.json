@@ -1,0 +1,45 @@
+[
+	{
+		"key": "clean",
+		"image": "clean.jpg",
+		"sha256": "bc85e8c5552a75663623313b0b39338f5f5c8f28adaa08651559d61882c29488",
+		"reading": "bc85e8c5552a75663623313b0b39338f5f5c8f28adaa08651559d61882c29488.json",
+		"expected": {
+			"status": "done",
+			"computed": 440000,
+			"flags": []
+		}
+	},
+	{
+		"key": "tax-service",
+		"image": "tax-service.jpg",
+		"sha256": "2b9ffd2dd8727f349423e2d235497b29f8afbc67a59ea4865db7a50287103d15",
+		"reading": "2b9ffd2dd8727f349423e2d235497b29f8afbc67a59ea4865db7a50287103d15.json",
+		"expected": {
+			"status": "done",
+			"computed": 110000,
+			"flags": []
+		}
+	},
+	{
+		"key": "mismatch",
+		"image": "mismatch.jpg",
+		"sha256": "c74553a4087925e1fc370de6986128aaa8adb88d986428435f631f018112a113",
+		"reading": "c74553a4087925e1fc370de6986128aaa8adb88d986428435f631f018112a113.json",
+		"expected": {
+			"status": "done",
+			"computed": 442000,
+			"flags": ["TOTAL_MISMATCH"]
+		}
+	},
+	{
+		"key": "not-a-receipt",
+		"image": "not-a-receipt.jpg",
+		"sha256": "bd894f40e6e8ecab5e4de335f166ed19774f1472d3129ffa25283e2d90715be4",
+		"reading": "bd894f40e6e8ecab5e4de335f166ed19774f1472d3129ffa25283e2d90715be4.json",
+		"expected": {
+			"status": "failed",
+			"errorCode": "NOT_A_RECEIPT"
+		}
+	}
+]

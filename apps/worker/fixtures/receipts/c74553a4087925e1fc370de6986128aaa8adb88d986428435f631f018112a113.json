@@ -1,0 +1,29 @@
+{
+	"merchant": "Bếp mẫu",
+	"occurredOn": "2026-11-17",
+	"items": [
+		{
+			"name": "Lẩu thái",
+			"quantity": 1,
+			"amount": 350000
+		},
+		{
+			"name": "Bia",
+			"quantity": 3,
+			"amount": 90000
+		}
+	],
+	"extras": [
+		{
+			"kind": "service",
+			"label": "Phí dịch vụ",
+			"amount": 22000
+		},
+		{
+			"kind": "discount",
+			"label": "Giảm giá",
+			"amount": 20000
+		}
+	],
+	"total": 450000
+}

@@ -1,6 +1,6 @@
 # Phase 3 — Stage 3A: Worker and Photos
 
-> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision 2026-11-17: pending owner review; do not execute yet.
+> Part of the phase 3 plan. Read `00-overview.md` and spec section 15 first. Advisor revision approved 2026-11-17; preparation authorized, execution withheld. Do not execute yet.
 
 **Stage goal:** background jobs run; a photo can be attached to a transaction and seen by the group, and by nobody else.
 

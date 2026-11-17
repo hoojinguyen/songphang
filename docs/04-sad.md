@@ -204,3 +204,29 @@ Không có giai đoạn nào đòi hỏi viết lại phần lõi: mọi bổ su
 | Event hub trong bộ nhớ, một tiến trình API | Đủ cho vài trăm kết nối | Trước giai đoạn 7: chuyển sang Postgres LISTEN/NOTIFY hoặc Redis để chạy nhiều bản API |
 | Không ghi được khi mất mạng | Giữ client mỏng | Khi có phản hồi thực tế rằng điều này gây cản trở |
 | Tính số dư mỗi lần đọc | Nhanh ở quy mô dưới vài nghìn giao dịch mỗi nhóm | Khi một nhóm vượt khoảng 10.000 giao dịch |
+
+## Phase 3 architecture amendment — approved 2026-11-17, not implemented
+
+This amendment supersedes earlier Phase 3 sketches where they differ. Approval authorizes preparation; the owner has explicitly withheld execution approval. Current main still has no worker application, queue, storage package or AI adapter; `apps/worker/fixtures` is advisor data only.
+
+| Planned unit | Responsibility and permitted dependencies |
+|---|---|
+| apps/worker | pg-boss jobs, scan lifecycle and orphan cleanup; imports contract/db/core and the planned storage/AI workspace packages; no API imports or HTTP server |
+| apps/api | enqueue and group-authorized endpoints; never runs queue handlers; sentence AI stays inside parse request |
+| packages/storage | shared FileStore/disk implementation used by API and worker when extracted; no client path strings |
+| packages/ai | shared single-attempt HTTP transport with per-purpose timeout policy; no money or authorization logic |
+| packages/contract | bounded request/response/job schemas, receipt reading and provider reference shapes |
+| packages/db | schema, typed queries, reservation/claim metadata and transaction-bound durable enqueue adapter |
+| packages/core | item sums/allocations/receipt check, quota calendar windows and category suggestion; no provider or clock dependency |
+
+API and worker resolve STORAGE_DIR to one repository-root-based absolute directory. Uploads use a six-MiB actual streaming body bound only on their route, preserving the existing 100-KiB bound elsewhere. Size/type checks, same-group authorization and a serialized 200-MiB group quota precede successful attachment creation. Server-generated keys are group UUID/file UUID pairs; files are served only by authorized content endpoints with nosniff and private,no-store.
+
+The API has a dedicated LISTEN connection with validated, bounded group/resource payloads and reconnect backoff. Worker NOTIFY carries only groupId/resources (receiptScans), never images, prompts, readings or account information. The existing in-memory SSE hub remains the final dispatcher; database authorization remains authoritative.
+
+Scan admission locks the group, rechecks access and returns an existing unique scan before spending quota. Reservation, scan insert and pg-boss enqueue share the caller transaction. Do not hold a transaction or advisory lock during provider I/O. The exact installed queue adapter must pass the rollback gate before 3B; no non-atomic fallback is approved. Provider attempts are atomically claimed and finished; a crashed uncertain claim is recovered to failure rather than blindly repeated.
+
+All attachment mutations/cleanup coordinate through group locking. Untracked files and temporary files have a 24-hour grace period; fresh uploads are not orphan candidates. Group deletion reads keys before cascade and schedules idempotent deletion. Soft-deleted transactions retain their photos for restoration.
+
+The sentence adapter sees only active people's display names and nonce-scoped references. The service maps references to UUIDs, validates again, calls core and returns per-draft status/issues/shares. No adapter writes the ledger. Existing Phase 2 categories, archived-category edits, budget/fund warning baselines and authorization guards remain required.
+
+Planned development configuration: STORAGE_DIR (default ./.data/uploads), AI_PROVIDER (unset/fake/anthropic), AI_MODEL, ANTHROPIC_API_KEY, AI_RECEIPTS_PER_USER_PER_DAY (20 attempts), AI_SENTENCES_PER_USER_PER_DAY (100), AI_CALLS_PER_MONTH (1000 across purposes), AI_FAKE_RECEIPT_FIXTURE (local named fixture only). Implementation must add schema/example/README entries together. No actual environment/configuration change is made in this preparation.
