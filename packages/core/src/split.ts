@@ -1,5 +1,6 @@
 import { allocateByWeights } from "./allocate.ts";
 import { parseHundredths } from "./decimal.ts";
+import { computeItemShares, type ItemsSplitInput } from "./split-items.ts";
 export type Share = { memberId: string; amount: number };
 export type SplitInput =
 	| { method: "equal"; members: readonly string[] }
@@ -16,14 +17,20 @@ export type SplitInput =
 	| {
 			method: "percent";
 			entries: readonly { memberId: string; percent: string }[];
-	  };
-type SplitResult =
+	  }
+	| ItemsSplitInput;
+export type SplitResult =
 	| { ok: true; shares: Share[] }
 	| {
 			ok: false;
 			code: "SPLIT_TOTAL_MISMATCH";
 			expected: number;
 			actual: number;
+	  }
+	| {
+			ok: false;
+			code: "ITEM_UNASSIGNED";
+			itemIndex: number;
 	  };
 function validIds(ids: readonly string[]) {
 	if (
@@ -107,6 +114,9 @@ export function computeShares(
 	split: SplitInput,
 	memberIdsByPosition: readonly string[],
 ): SplitResult {
+	if (split.method === "items") {
+		return computeItemShares(amount, split, memberIdsByPosition);
+	}
 	validAmount(amount);
 	if (amount === 0) throw new RangeError("Amount must be positive");
 	validIds(memberIdsByPosition);

@@ -44,8 +44,17 @@ export {
 	computeShares,
 	type Share,
 	type SplitInput,
+	type SplitResult,
 	splitEqually,
 } from "./split.ts";
+export {
+	computeItemShares,
+	computeItemsNetTotal,
+	type ItemExtraEntry,
+	type ItemExtraKind,
+	type ItemSplitEntry,
+	type ItemsSplitInput,
+} from "./split-items.ts";
 export {
 	buildVietQrPayload,
 	crc16CcittFalse,

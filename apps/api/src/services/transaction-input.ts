@@ -63,10 +63,19 @@ export async function calculateShares(
 		request.split,
 		members.map((m) => m.id),
 	);
-	if (!result.ok)
+	if (!result.ok) {
+		if (result.code === "ITEM_UNASSIGNED") {
+			throw new AppError(
+				400,
+				"VALIDATION_FAILED",
+				"Item has no assigned members",
+				{ itemIndex: result.itemIndex },
+			);
+		}
 		throw new AppError(400, result.code, "Split total differs from amount", {
 			expected: result.expected,
 			actual: result.actual,
 		});
+	}
 	return result.shares;
 }

@@ -14,7 +14,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3B.1 — receipt reading schema and arithmetic check
 - [x] 3B.2 — receipt reader adapters, cost ledger, quotas
 - [x] 3B.3 — receipt scans endpoint, job, stage gate 3B
-- [ ] 3C.1 — core items split
+- [x] 3C.1 — core items split
 - [ ] 3C.2 — API items split method and items preview
 - [ ] 3C.3 — web camera in entry bar and receipt review screen
 - [ ] 3C.4 — stage gate 3C
@@ -172,6 +172,19 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
 - `exercise_3b3_live.mts`: live API + worker + SSE stream verified `clean.jpg` (`201 queued` -> `receiptScans` SSE -> `done 440000 []`), duplicate attachment (`200`, 1 `ai_calls`), `mismatch.jpg` (`done TOTAL_MISMATCH computed=442000 vs total=450000`), `not-a-receipt.jpg` (`failed NOT_A_RECEIPT`), unchanged transactions/balances, viewer `403`, outsider/cross-group `404`/`400`, worker stop->queue->start recovery, daily quota `2` -> 3rd `429 AI_QUOTA_EXCEEDED (scope=user)`, and unset `AI_PROVIDER` -> `features.receiptReading=false` + `POST 404`.
 - Cumulative gate replay (`baseline_gate.mjs`, `verify_87_samples.ts`, `exercise_3a2.mts`, `exercise_3a3.mts`, `exercise_3b1.mts`, `exercise_3b2.mts`, `check-balances.ts`): all passed; `All groups balanced`.
 - Security review: checked items 1, 2, 3, 4, 6, 8; no issues found.
+
+## Task 3C.1 — approach
+
+- Files to create/modify: create `packages/core/src/split-items.ts`; modify `packages/core/src/{split,index}.ts` and update type narrowing in `apps/api/src/services/transaction-input.ts`.
+- Approach: define `ItemsSplitInput`, `computeItemsNetTotal`, and `computeItemShares` using `BigInt` largest-remainder allocation (`allocateByWeights`). Validate member uniqueness/membership first, return `{ ok: false, code: "ITEM_UNASSIGNED", itemIndex }` on the first unassigned item, allocate each item in `memberIdsByPosition` order, verify `itemsTotal + net === amount`, allocate `net` extras proportionally to member subtotals (or equally among participating members when all subtotals are 0), and reject negative resulting shares.
+- Why simplest: reuses `allocateByWeights` directly with zero floating point and no duplicate rounding logic.
+- Rejected alternative: rounding extras per item before summing, which diverges from receipt-level proportional tax/discount distribution.
+
+### Task 3C.1 results
+
+- `pnpm check`: passed (`Checked 371 files`, all 7 workspace typechecks Done).
+- `exercise_3c1.mts`: Row 1 intermediate subtotals `[206667, 116667, 116666]` and extra parts `[940, 530, 530]` verified; all 9 table rows (`[207607, 117197, 117196]`, `[206667, 116667, 116666]`, `[197273, 111364, 111363]`, `[33334, 33333, 33333]`, `[5455, 54545]`, `[15000, 15000]`, `ITEM_UNASSIGNED` index `1`, `SPLIT_TOTAL_MISMATCH` expected `450000` actual `442000`, `[55000, 55000]`) matched and summed to exact transaction totals with nonnegative shares.
+- Security review: checked items 1, 2, 8; integer-only safe checks and strict membership validation, no dependencies; no issues found.
 
 ## Not verified
 
