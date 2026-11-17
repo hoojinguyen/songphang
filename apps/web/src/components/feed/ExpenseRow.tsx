@@ -53,7 +53,9 @@ export function ExpenseRow({
 			? vi.feed.splitExact
 			: method === "shares"
 				? vi.feed.splitShares
-				: vi.feed.splitPercent;
+				: method === "items"
+					? vi.split.methodItems
+					: vi.feed.splitPercent;
 	const myShare = transaction.shares.find(
 		(share) => share.memberId === myMemberId,
 	);

@@ -7,7 +7,8 @@ import {
 	type TransactionDto,
 } from "@songphang/contract";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { useDraft } from "../../lib/draft-context";
 import { parseAmountInput } from "../../lib/money";
 import {
@@ -28,6 +29,7 @@ export type FormPrefill = {
 	type?: FormTransactionType;
 	from?: string | null;
 	to?: string | null;
+	attachmentId?: string | null;
 };
 
 export function useExpenseForm(
@@ -92,9 +94,26 @@ export function useExpenseForm(
 	const [occurredAt, setOccurredAt] = useState(() =>
 		localDateTime(transaction?.occurredAt),
 	);
-	const [attachments, setAttachments] = useState<AttachmentDto[]>(
-		transaction?.attachments ?? [],
-	);
+	const [attachments, setAttachments] = useState<AttachmentDto[]>(() => {
+		if (transaction?.attachments && transaction.attachments.length > 0) {
+			return transaction.attachments;
+		}
+		if (
+			prefill?.attachmentId &&
+			z.uuid().safeParse(prefill.attachmentId).success
+		) {
+			return [
+				{
+					id: prefill.attachmentId,
+					contentType: "image/jpeg",
+					byteSize: 1,
+					transactionId: null,
+					createdAt: new Date().toISOString(),
+				},
+			];
+		}
+		return [];
+	});
 	const [key] = useState(() => crypto.randomUUID());
 	const submitting = useRef(false);
 	const create = useCreateTransaction(groupId);
@@ -107,7 +126,17 @@ export function useExpenseForm(
 	const router = useRouter();
 	useSessionGuard(mutation.error);
 	const amount = parseAmountInput(amountText);
-	const splitState = useSplitState(active, amount ?? 0, draft?.split);
+	const splitState = useSplitState(active, amount ?? 0, draft?.split, groupId);
+	useEffect(() => {
+		if (
+			splitState.method === "items" &&
+			splitState.itemsComputedAmount !== undefined &&
+			splitState.itemsComputedAmount > 0 &&
+			String(splitState.itemsComputedAmount) !== amountText
+		) {
+			setAmountText(String(splitState.itemsComputedAmount));
+		}
+	}, [splitState.method, splitState.itemsComputedAmount, amountText]);
 	const date = new Date(occurredAt);
 	const timestamp =
 		transaction && occurredAt === localDateTime(transaction.occurredAt)
@@ -170,8 +199,10 @@ export function useExpenseForm(
 	useSessionGuard(preview.error);
 	const setType = (next: FormTransactionType) => {
 		setTransactionType(next);
-		if (next === "income")
+		if (next === "income") {
 			setPayerIds(initial ? [initial] : payerIds.slice(0, 1));
+			if (splitState.method === "items") splitState.changeMode("equal");
+		}
 	};
 	const togglePayer = (id: string) =>
 		setPayerIds(

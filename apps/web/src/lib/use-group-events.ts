@@ -20,9 +20,10 @@ const Resources = z.object({
 				"settlementRequests",
 				"categories",
 				"budget",
+				"receiptScans",
 			]),
 		)
-		.max(9),
+		.max(10),
 });
 export function useGroupEvents(groupId: string) {
 	const online = useOnline();

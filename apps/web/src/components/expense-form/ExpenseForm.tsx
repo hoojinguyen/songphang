@@ -160,6 +160,7 @@ export function ExpenseForm({
 						? []
 						: (preview.data?.shares ?? [])
 				}
+				allowItems={type === "expense"}
 				onDone={() => setSplitOpen(false)}
 			/>
 		);

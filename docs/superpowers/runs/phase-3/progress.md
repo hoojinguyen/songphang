@@ -16,7 +16,7 @@ Date: 2026-11-18. Owner explicitly authorized continuous execution of Phase 3 fr
 - [x] 3B.3 — receipt scans endpoint, job, stage gate 3B
 - [x] 3C.1 — core items split
 - [x] 3C.2 — API items split method and items preview
-- [ ] 3C.3 — web camera in entry bar and receipt review screen
+- [x] 3C.3 — web camera in entry bar and receipt review screen
 - [ ] 3C.4 — stage gate 3C
 - [ ] 3D.1 — sentence AI and parse fallback
 - [ ] 3D.2 — core category suggestion
@@ -202,6 +202,23 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - Spec 15.4 `POST .../transactions/items/preview`: valid complete state returned `200 computedAmount=442000` + shares; unassigned returned `200` with `issues=[{code:"ITEM_UNASSIGNED",itemIndex:1}]` and no shares; `0` and out-of-range `1.2e12` returned `200` with `INVALID_TOTAL`; empty items returned `400`; fund returned `422`; viewer returned `403`.
   - `check-balances.ts`: `All groups balanced`.
 - Security review: checked items 1, 2, 3, 4, 8; no issues found.
+
+## Task 3C.3 — approach
+
+- Files to create/modify: create `apps/web/src/lib/{features,receipt-scans}.ts`, `apps/web/src/components/feed/CameraButton.tsx`, `apps/web/src/components/receipt/{ItemRow,ExtrasFields,MismatchNotice,ItemsAssignmentPanel,ReceiptReview}.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/components/ui/Icon.tsx`, `apps/web/src/lib/use-group-events.ts`, `apps/web/src/components/feed/{EntryBar,ExpenseRow}.tsx`, `apps/web/src/app/g/[groupId]/tx/new/page.tsx`, `apps/web/src/components/expense-form/{SplitModeTabs,use-split-state,SplitEditor,use-expense-form,ExpenseForm}.tsx`.
+- Approach: add `useFeatures` (`GET /features` cached per session), extend `useGroupEvents` to invalidate `receiptScans`, and add `useReceiptScan` (SSE invalidation + 3s fallback while pending + 60s timeout) and 300ms-debounced `usePreviewItems` (`POST .../transactions/items/preview`). Add accessible `CameraButton` menu (`Chụp ảnh`, `Chọn từ thư viện`, `Escape` focus restore) shown only when `features.receiptReading` is true. Implement `ReceiptReview` on `/tx/new?scan=` (including total-only initialization, `MismatchNotice` choices respecting the 6-extra cap, `Chia đều các món còn lại`, inline item/extra editing, `PhotoViewer`, `Chụp lại`/`Thử lại`/`Nhập tay` error paths, `Lưu` with one idempotency key per instance) and extract `ItemsAssignmentPanel` so `ExpenseForm`'s `Theo món` tab shares the same preview-backed editor.
+- Why simplest: reuses `ItemsAssignmentPanel` and existing `prepareImage`/`uploadAttachment`/`PhotoViewer` components without duplicating item math in the browser.
+- Rejected alternative: computing item shares client-side or keeping two separate item editors for receipt review and manual `Theo món`.
+
+### Task 3C.3 results
+
+- `pnpm check` (`380 files`, 7 workspace typechecks) and `API_ORIGIN=http://127.0.0.1:4010 pnpm build` passed cleanly after final edits (`ReceiptReview` occurredAt `.toISOString()` UTC fix caught during browser verification).
+- Live Chrome DevTools verification on production Next.js `3010` + API `4010` + worker (`Quán 3C` group):
+  - `AI_FAKE_RECEIPT_FIXTURE=clean`: `Chụp hoá đơn` menu opened (`Chụp ảnh` / `Chọn từ thư viện`), `Escape` restored focus to `Chụp hoá đơn`; uploaded canvas JPEG -> `?scan=...` loaded `Lẩu thái` (`350000`) & `Bia` (`90000`) with `Đọc bằng AI. Hãy xem lại trước khi lưu.` and `Còn 2 món chưa có ai.`; `Chia đều các món còn lại` -> `146.667, 146.667, 146.666`; edited item amount & added/removed 3rd item; assigned `Bia` to Minh -> `206.667, 116.667, 116.666`; double-tapped `Lưu` -> created 1 expense (`440.000`, `Có ảnh hoá đơn`) and returned to stream.
+  - `AI_FAKE_RECEIPT_FIXTURE=mismatch`: displayed `MismatchNotice` (`442.000 đ` vs `450.000 đ`), clicking `Dùng 450.000 đ` appended `Chênh lệch` (`8000` `Khác`), preview recomputed `450.000 đ` (`150.001, 150.000, 149.999`), saved cleanly.
+  - `AI_FAKE_RECEIPT_FIXTURE=not-a-receipt`: showed `Không đọc được hoá đơn trong ảnh này.` with `Chụp lại` and `Nhập tay`; clicking `Nhập tay` carried `?attachmentId=...` into `ExpenseForm` (`Xem ảnh hoá đơn` visible) and opening `đổi cách chia` -> `Theo món` rendered `ItemsAssignmentPanel`.
+  - `AI_PROVIDER` unset: verified `Chụp hoá đơn` absent from `EntryBar`. Zero console errors.
+- Security review: checked items 1, 2, 4, 7, 8; no issues found.
 
 ## Not verified
 
