@@ -34,7 +34,7 @@ Advisor preparation remains incomplete: no bank source file, fund-sample additio
 - [x] 2B.3 — statistics
 - [x] 2B.4 — statistics screen and filters
 - [x] 2B.5 — CSV export
-- [ ] 2B.6 — categories UI and gate 2B
+- [x] 2B.6 — categories UI and gate 2B
 - [ ] 2C.1 — fund member integrity
 - [ ] 2C.2 — fund endpoints and balances
 - [ ] 2C.3 — fund sentence reader
@@ -241,3 +241,18 @@ Security review: relevant items 1/2/4/6/7/8 checked against full diff; URL filte
 Commit reference: `feat(api): add CSV export of a group`. pnpm check passed (291 files, five workspace typechecks Done). Exercised all 2B.5 December-ledger and edge cases on API 4001: BOM `EF BB BF`, CRLF endings, header `Ngày,Loại,Mô tả,Danh mục,Tổng tiền,Người trả,Minh,Lan,Hùng,Thu`, S1 `2026-12-05 12:30,Chi tiêu,Lẩu,Ăn uống,600000,Minh 600000,150000,150000,150000,150000`, S5 `Chuyển khoản` (`50000` under Minh, empty elsewhere), S6 `2026-12-31 23:30` (`33333` under Minh/Lan/Hùng, empty under Thu), S7 `2027-01-01 00:10` with `'=SUM(A1)` formula prefix, `Cơm, "gà"` → `"Cơm, ""gà"""`, member `@home` → `'@home`, 7th export within 1 minute returned `429`, outsider `404`, signed-out `401`. S16 page renders `<a download>` for `Xuất CSV`.
 
 Security review: relevant items 1/2/4/5/6/7/8 checked against full diff; formula-prefix neutralization and RFC 4180 quoting in `csvCell`, viewer auth + 6/min per-user rate limit, `Cache-Control: no-store`, repeatable-read snapshot, D3 `vi.ts` label reuse, no new dependencies. Not verified: opening the downloaded `.csv` in Excel/Google Sheets (owner manual check).
+
+
+## Task 2B.6 — approach
+
+- Files to create/modify: create `apps/web/src/components/settings/CategoryList.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/lib/categories.ts`, `apps/web/src/app/g/[groupId]/settings/page.tsx`, `apps/web/src/components/expense-form/{use-expense-form.ts,CategoryPicker.tsx,ParticipantFields.tsx}`, `apps/web/src/components/feed/{ExpenseRow.tsx,ExpenseStream.tsx}`, and `apps/web/src/app/g/[groupId]/page.tsx`.
+- Approach: add Spec 9.7 category strings to `vi.ts`, add category create/update/archive mutations in `lib/categories.ts` (invalidating categories, transactions, and stats queries), and build `CategoryList` with inline rename/color/archive and add form mapping `CATEGORY_EXISTS`/`LIMIT_REACHED` errors. Render `CategoryList` in S11 settings and inside a modal `<dialog>` triggered by `Thêm danh mục` at the end of `CategoryPicker`. Keep built-in `category` and custom `categoryId` mutually exclusive in `useExpenseForm`, retain an archived selected `categoryId` on edit until changed, and display category labels (with filled color circles for custom categories) in `ExpenseRow`.
+- Why simplest: reuses one `CategoryList` component for both S11 (owner) and S6/S7 picker modal (editors), using native `<dialog>` and existing TanStack Query/member-editor patterns without inventing a separate category-management route.
+- Rejected alternative: inline form inside `CategoryPicker` or a dedicated `/categories` route, which would add navigation friction or clutter the expense form.
+
+
+### Task 2B.6 results
+
+Commit reference: `feat(web): add custom categories`. pnpm check passed (293 files, five workspace typechecks Done) and production web built with `API_ORIGIN=http://localhost:4001`. Exercised in Chrome on `http://localhost:3001` (`Phase 2 exercise` group): S11 `Danh mục của nhóm` created `Cà phê sáng` (coral), normalized-duplicate `ca phe sang` showed alert `Nhóm đã có danh mục này.`, renamed/recolored to `Trà đá` (sky), selected `Trà đá` on new expense `Nước mía` (`40.000`) which displayed `Trà đá` with color dot in the stream, opened `+ Thêm danh mục` modal `<dialog>` on S6 to hide `Trà đá` (`Ẩn danh mục`), confirmed `Trà đá` disappeared from `CategoryPicker` for new expenses while `Nước mía` retained `Trà đá` in the stream and `Trà đá (đã ẩn)` pressed in edit mode, and confirmed 31st category creation in S11 showed `Nhóm đã có 30 danh mục.`.
+
+Security review: relevant items 1/2/4/6/7/8 checked against full diff; `CategoryName`/`MemberColorCode` bounded in UI and contract, API `CATEGORY_EXISTS`/`LIMIT_REACHED`/`403` errors mapped without exposing internal details, modal `<dialog>` uses native `showModal()`/`closedby="any"`/`overscroll-behavior: contain`, no `dangerouslySetInnerHTML`/`eval`/new libraries. `CategoryList.tsx` and `CategoryRow.tsx` kept cohesive under 150 lines each. Not verified: none for 2B.6.

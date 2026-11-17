@@ -3,6 +3,7 @@ import type { GroupDto } from "@songphang/contract";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { CategoryList } from "../../../../components/settings/CategoryList";
 import { DeleteGroupCard } from "../../../../components/settings/DeleteGroupCard";
 import { InviteLinkCard } from "../../../../components/settings/InviteLinkCard";
 import { TransferOwnershipCard } from "../../../../components/settings/TransferOwnershipCard";
@@ -81,6 +82,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					}}
 				/>
 			</section>
+			<CategoryList groupId={group.id} />
 			<InviteLinkCard groupId={group.id} />
 			<TransferOwnershipCard groupId={group.id} />
 			<DeleteGroupCard group={group} />

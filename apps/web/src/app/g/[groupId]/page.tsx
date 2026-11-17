@@ -190,6 +190,7 @@ function GroupScreen() {
 					canEdit={group.data.role !== "viewer" && me.data.emailVerified}
 					query={transactions}
 					members={members.data}
+					categories={categories.data}
 					myMemberId={group.data.myMemberId}
 					onAtTopChange={setAtTop}
 				/>

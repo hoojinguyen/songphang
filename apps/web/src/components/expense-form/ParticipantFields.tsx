@@ -1,3 +1,4 @@
+import { useCategories } from "../../lib/categories";
 import { formatAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { OnlineButton } from "../ui/OnlineButton";
@@ -16,9 +17,12 @@ export function ParticipantFields({
 	onEdit: () => void;
 }) {
 	const {
+		groupId,
 		type,
 		category,
 		setCategory,
+		categoryId,
+		setCategoryId,
 		active,
 		payerIds,
 		togglePayer,
@@ -30,9 +34,17 @@ export function ParticipantFields({
 		setSharers,
 		preview,
 	} = form;
+	const categories = useCategories(groupId);
 	return (
 		<>
-			<CategoryPicker value={category} onChange={setCategory} />
+			<CategoryPicker
+				groupId={groupId}
+				categories={categories.data ?? []}
+				value={category}
+				categoryId={categoryId}
+				onChange={setCategory}
+				onChangeCustom={setCategoryId}
+			/>
 			<section className="rounded-[30px] bg-surface p-3">
 				<h2 className="mb-2 text-sm font-extrabold">
 					{type === "income"

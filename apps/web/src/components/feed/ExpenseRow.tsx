@@ -1,20 +1,33 @@
-import type { MemberDto, TransactionDto } from "@songphang/contract";
+import type {
+	CategoryDto,
+	MemberDto,
+	TransactionDto,
+} from "@songphang/contract";
 import {
 	formatAmount,
 	formatCompactAmount,
 	formatMoney,
 } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
+import { CATEGORY_COLORS } from "../settings/CategoryRow";
 import { MemberShape } from "../ui/MemberShape";
 export function ExpenseRow({
 	transaction,
 	members,
+	categories = [],
 	myMemberId,
 }: {
 	transaction: TransactionDto;
 	members: MemberDto[];
+	categories?: CategoryDto[];
 	myMemberId: string | null;
 }) {
+	const customCategory = transaction.categoryId
+		? categories.find((category) => category.id === transaction.categoryId)
+		: undefined;
+	const categoryLabel = transaction.category
+		? vi.expenseForm.categories[transaction.category]
+		: customCategory?.name;
 	const payer = members.find(
 		(member) => member.id === transaction.payers[0]?.memberId,
 	);
@@ -70,12 +83,23 @@ export function ExpenseRow({
 						{formatAmount(transaction.amount)}
 					</p>
 				</div>
-				{transaction.version > 1 && (
-					<span
-						className={`text-[11px] font-bold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
+				{(categoryLabel || transaction.version > 1) && (
+					<div
+						className={`mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
 					>
-						{vi.feed.edited}
-					</span>
+						{categoryLabel && (
+							<span className="inline-flex items-center gap-1.5">
+								{customCategory && (
+									<span
+										aria-hidden="true"
+										className={`h-2.5 w-2.5 shrink-0 rounded-full ${CATEGORY_COLORS[customCategory.color].bg}`}
+									/>
+								)}
+								<span>{categoryLabel}</span>
+							</span>
+						)}
+						{transaction.version > 1 && <span>{vi.feed.edited}</span>}
+					</div>
 				)}
 				{isMine && (
 					<div className="mt-2 flex flex-wrap gap-1">

@@ -1,5 +1,5 @@
 "use client";
-import type { MemberDto } from "@songphang/contract";
+import type { CategoryDto, MemberDto } from "@songphang/contract";
 import Link from "next/link";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { dayLabel, type useTransactions } from "../../lib/transactions";
@@ -13,6 +13,7 @@ export function ExpenseStream({
 	canEdit = false,
 	query,
 	members,
+	categories = [],
 	myMemberId,
 	onAtTopChange,
 }: {
@@ -20,6 +21,7 @@ export function ExpenseStream({
 	canEdit?: boolean;
 	query: ReturnType<typeof useTransactions>;
 	members: MemberDto[];
+	categories?: CategoryDto[];
 	myMemberId: string | null;
 	onAtTopChange?: (atTop: boolean) => void;
 }) {
@@ -132,6 +134,7 @@ export function ExpenseStream({
 										<ExpenseRow
 											transaction={transaction}
 											members={members}
+											categories={categories}
 											myMemberId={myMemberId}
 										/>
 									) : (

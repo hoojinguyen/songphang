@@ -21,7 +21,11 @@ Pending 2A.5 and 2C.4.
 
 ## S11 — categories and budget settings
 
-Pending 2B.6 and 2D.2.
+1. On S11 (`/g/{id}/settings`), under `Danh mục của nhóm`, create a custom category with a name and color swatch → appears immediately; submit an accent/case duplicate (e.g. `ca phe sang`) → `Nhóm đã có danh mục này.`.
+2. Rename/recolor an existing custom category, create an expense picking it in `CategoryPicker`, then tap `Ẩn danh mục` (either on S11 or from `CategoryPicker`'s `+ Thêm danh mục` modal) → the old expense keeps showing the category name and color dot in the stream and stays selected (`(đã ẩn)`) when editing that expense until changed, while new-expense picker no longer offers it.
+3. On a group with 30 live custom categories, attempt adding a 31st → `Nhóm đã có 30 danh mục.`.
+
+Pending 2D.2 for budget settings.
 
 ## S14 — paying
 

@@ -42,9 +42,20 @@ export function useExpenseForm(
 		draft?.amount ? String(draft.amount) : "",
 	);
 	const [description, setDescription] = useState(draft?.description ?? "");
-	const [category, setCategory] = useState<SplitTransactionRequest["category"]>(
-		transaction?.category ?? null,
+	const [category, setBuiltInCategory] = useState<
+		SplitTransactionRequest["category"]
+	>(transaction?.category ?? null);
+	const [categoryId, setCustomCategoryId] = useState<string | null>(
+		transaction?.categoryId ?? null,
 	);
+	const setCategory = (next: SplitTransactionRequest["category"]) => {
+		setBuiltInCategory(next);
+		if (next !== null) setCustomCategoryId(null);
+	};
+	const setCategoryId = (nextId: string | null) => {
+		setCustomCategoryId(nextId);
+		if (nextId !== null) setBuiltInCategory(null);
+	};
 	const [payerIds, setPayerIds] = useState<string[]>(
 		draft ? draft.payers.map((p) => p.memberId) : initial ? [initial] : [],
 	);
@@ -118,7 +129,7 @@ export function useExpenseForm(
 					amount,
 					occurredAt: timestamp,
 					category,
-					categoryId: transaction?.categoryId ?? null,
+					categoryId,
 					payers,
 					split: splitState.split,
 				},
@@ -174,6 +185,7 @@ export function useExpenseForm(
 					CreateTransactionRequest.parse(transactionRequestOf(transaction)),
 				),
 		active,
+		groupId,
 		type,
 		setType,
 		title,
@@ -184,6 +196,8 @@ export function useExpenseForm(
 		setDescription,
 		category,
 		setCategory,
+		categoryId,
+		setCategoryId,
 		payerIds,
 		togglePayer,
 		payerAmounts,
