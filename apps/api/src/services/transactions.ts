@@ -29,7 +29,7 @@ import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { assertLiveCategory } from "./categories.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
-import { transactionWarnings } from "./warnings.js";
+import { type ReplacedTransaction, transactionWarnings } from "./warnings.js";
 
 const CURSOR_SCHEMA = z.object({ occurredAt: z.iso.datetime(), id: z.uuid() });
 function decodeCursor(cursor: string | undefined): TransactionCursor | null {
@@ -52,6 +52,7 @@ export async function previewTransaction(
 	return deps.db.transaction(
 		async (executor) => {
 			let existingCategoryId: string | null = null;
+			let replacing: ReplacedTransaction | undefined;
 			if (request.transactionId !== undefined) {
 				const existing = await findTransactionRow(
 					executor,
@@ -60,6 +61,23 @@ export async function previewTransaction(
 				);
 				if (existing === null || existing.deletedAt !== null)
 					throw new AppError(404, "NOT_FOUND", "Resource not found");
+				if (
+					existing.type === "expense" ||
+					existing.type === "income" ||
+					existing.type === "transfer"
+				) {
+					const existingPayers = await listTransactionPayers(
+						executor,
+						groupId,
+						[existing.id],
+					);
+					replacing = {
+						type: existing.type,
+						amount: existing.amount,
+						occurredAt: existing.occurredAt,
+						payers: existingPayers,
+					};
+				}
 				existingCategoryId = existing.categoryId;
 			}
 			if (
@@ -74,6 +92,7 @@ export async function previewTransaction(
 					request,
 					applied: false,
 					now: deps.now(),
+					...(replacing ? { replacing } : {}),
 				}),
 			]);
 			return PreviewTransactionResponse.parse({ shares, warnings });

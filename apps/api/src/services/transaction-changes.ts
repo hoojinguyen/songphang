@@ -149,6 +149,12 @@ export async function editTransaction(
 			request: input.request,
 			applied: true,
 			now: deps.now(),
+			replacing: {
+				type: before.type,
+				amount: before.amount,
+				occurredAt: new Date(before.occurredAt),
+				payers: before.payers,
+			},
 		});
 		await insertActivity(executor, {
 			groupId: input.groupId,

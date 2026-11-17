@@ -12,6 +12,22 @@ import {
 } from "@songphang/db";
 import { budgetRangeFor } from "./budget.js";
 
+export type ReplacedTransaction = {
+	type: "expense" | "income" | "transfer";
+	amount: number;
+	occurredAt: Date;
+	payers: Array<{ memberId: string; amount: number }>;
+};
+
+function splitFundCashDelta(
+	type: "expense" | "income",
+	payers: Array<{ memberId: string; amount: number }>,
+	fundId: string,
+): number {
+	const paid = payers.find((payer) => payer.memberId === fundId)?.amount ?? 0;
+	return type === "income" ? paid : -paid;
+}
+
 function fundCashDelta(
 	request: CreateTransactionRequest,
 	fundId: string,
@@ -21,9 +37,25 @@ function fundCashDelta(
 		const outAmount = request.fromMemberId === fundId ? request.amount : 0;
 		return inAmount - outAmount;
 	}
-	const paid =
-		request.payers.find((payer) => payer.memberId === fundId)?.amount ?? 0;
-	return request.type === "income" ? paid : -paid;
+	return splitFundCashDelta(request.type, request.payers, fundId);
+}
+
+function replacedFundCashDelta(
+	replacing: ReplacedTransaction,
+	fundId: string,
+): number {
+	if (replacing.type === "transfer") return 0;
+	return splitFundCashDelta(replacing.type, replacing.payers, fundId);
+}
+
+function inPeriod(
+	date: Date,
+	periodStart: string | null,
+	periodEnd: string | null,
+): boolean {
+	if (periodStart === null || periodEnd === null) return true;
+	const local = toVietnamDate(date);
+	return local >= periodStart && local <= periodEnd;
 }
 
 async function fundOverdrawWarning(
@@ -32,6 +64,7 @@ async function fundOverdrawWarning(
 		groupId: string;
 		request: CreateTransactionRequest;
 		applied: boolean;
+		replacing?: ReplacedTransaction;
 	},
 ): Promise<TransactionWarning | null> {
 	const fund = await findFund(executor, input.groupId);
@@ -42,7 +75,12 @@ async function fundOverdrawWarning(
 	const fundBalance =
 		balances.find((row) => row.memberId === fund.id)?.balance ?? 0;
 	const currentCash = -fundBalance;
-	const afterCash = input.applied ? currentCash : currentCash + deltaCash;
+	const oldDelta = input.replacing
+		? replacedFundCashDelta(input.replacing, fund.id)
+		: 0;
+	const afterCash = input.applied
+		? currentCash
+		: currentCash - oldDelta + deltaCash;
 	return afterCash < 0 ? "FUND_OVERDRAWN" : null;
 }
 
@@ -53,6 +91,7 @@ async function budgetLimitWarning(
 		request: CreateTransactionRequest;
 		applied: boolean;
 		now: Date;
+		replacing?: ReplacedTransaction;
 	},
 ): Promise<TransactionWarning | null> {
 	if (input.request.type === "transfer") return null;
@@ -63,17 +102,27 @@ async function budgetLimitWarning(
 		period,
 		input.now,
 	);
-	if (periodStart !== null && periodEnd !== null) {
-		const txDate = toVietnamDate(new Date(input.request.occurredAt));
-		if (txDate < periodStart || txDate > periodEnd) return null;
-	}
+	if (!inPeriod(new Date(input.request.occurredAt), periodStart, periodEnd))
+		return null;
 	const spentNow = await sumSpent(executor, input.groupId, utcRange);
 	const signedAmount =
 		input.request.type === "income"
 			? -input.request.amount
 			: input.request.amount;
-	const afterSpent = input.applied ? spentNow : spentNow + signedAmount;
-	const beforeSpent = input.applied ? spentNow - signedAmount : spentNow;
+	const oldSigned =
+		input.replacing &&
+		input.replacing.type !== "transfer" &&
+		inPeriod(input.replacing.occurredAt, periodStart, periodEnd)
+			? input.replacing.type === "income"
+				? -input.replacing.amount
+				: input.replacing.amount
+			: 0;
+	const afterSpent = input.applied
+		? spentNow
+		: spentNow - oldSigned + signedAmount;
+	const beforeSpent = input.applied
+		? spentNow - signedAmount + oldSigned
+		: spentNow;
 	const beforeState = budgetState(beforeSpent, row.amount);
 	const afterState = budgetState(afterSpent, row.amount);
 	if (afterState === "over" && beforeState !== "over") return "BUDGET_OVER";
@@ -88,6 +137,7 @@ export async function transactionWarnings(
 		request: CreateTransactionRequest;
 		applied: boolean;
 		now: Date;
+		replacing?: ReplacedTransaction;
 	},
 ): Promise<TransactionWarning[]> {
 	const [fundWarning, budgetWarning] = await Promise.all([
