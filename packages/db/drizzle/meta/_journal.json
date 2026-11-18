@@ -127,6 +127,13 @@
 			"when": 1795016191905,
 			"tag": "0017_flimsy_vargas",
 			"breakpoints": true
+		},
+		{
+			"idx": 18,
+			"version": "7",
+			"when": 1795016750511,
+			"tag": "0018_wise_cerebro",
+			"breakpoints": true
 		}
 	]
 }

@@ -32,6 +32,7 @@ import { registerMeRoute } from "./routes/me.js";
 import { registerMemberRoutes } from "./routes/members.js";
 import { registerNotificationRoutes } from "./routes/notifications.js";
 import { registerReceiptScanRoutes } from "./routes/receipt-scans.js";
+import { registerReminderRoutes } from "./routes/reminders.js";
 import { registerSettlementRoutes } from "./routes/settlement-requests.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
@@ -106,6 +107,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerAttachmentRoutes(app, deps);
 	registerReceiptScanRoutes(app, deps);
 	registerBalanceRoutes(app, deps);
+	registerReminderRoutes(app, deps);
 	registerBudgetRoutes(app, deps);
 	registerStatsRoutes(app, deps);
 	registerExportRoutes(app, deps);

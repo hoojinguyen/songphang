@@ -147,6 +147,9 @@ export async function editGroup(
 				...(input.changes.minimizeDebts === undefined
 					? {}
 					: { minimizeDebts: input.changes.minimizeDebts }),
+				...(input.changes.reminderIntervalDays === undefined
+					? {}
+					: { reminderIntervalDays: input.changes.reminderIntervalDays }),
 			},
 			now: deps.now(),
 		});

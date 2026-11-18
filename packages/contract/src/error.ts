@@ -33,6 +33,8 @@ export const ErrorCode = z
 		"ITEM_UNASSIGNED",
 		"DISPUTE_ALREADY_OPEN",
 		"DISPUTE_NOT_OPEN",
+		"REMINDER_TOO_SOON",
+		"MEMBER_NOT_LINKED",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

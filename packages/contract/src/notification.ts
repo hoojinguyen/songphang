@@ -168,3 +168,33 @@ export const UnsubscribeRequest = z
 	.object({ token: z.string().min(1).max(256) })
 	.openapi("UnsubscribeRequest");
 export type UnsubscribeRequest = z.infer<typeof UnsubscribeRequest>;
+
+export const SendReminderRequest = z
+	.union([
+		z.object({ fromMemberId: z.uuid(), toMemberId: z.uuid() }),
+		z.object({ all: z.literal(true) }),
+	])
+	.openapi("SendReminderRequest");
+export type SendReminderRequest = z.infer<typeof SendReminderRequest>;
+
+export const ReminderPairDto = z
+	.object({ fromMemberId: z.uuid(), toMemberId: z.uuid() })
+	.openapi("ReminderPairDto");
+export type ReminderPairDto = z.infer<typeof ReminderPairDto>;
+
+export const SkippedReminderDto = z
+	.object({
+		fromMemberId: z.uuid(),
+		toMemberId: z.uuid(),
+		reason: z.enum(["REMINDER_TOO_SOON", "MEMBER_NOT_LINKED"]),
+	})
+	.openapi("SkippedReminderDto");
+export type SkippedReminderDto = z.infer<typeof SkippedReminderDto>;
+
+export const SendReminderResponse = z
+	.object({
+		reminded: z.array(ReminderPairDto),
+		skipped: z.array(SkippedReminderDto),
+	})
+	.openapi("SendReminderResponse");
+export type SendReminderResponse = z.infer<typeof SendReminderResponse>;

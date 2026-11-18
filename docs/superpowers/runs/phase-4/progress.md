@@ -13,7 +13,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4B.1 — Notification core
 - [x] 4B.2 — Web: bell and notification list
 - [x] 4B.3 — Mail: immediate, digest, unsubscribe
-- [ ] 4B.4 — Debt reminders
+- [x] 4B.4 — Debt reminders
 - [ ] 4B.5 — Web: reminders and settings; stage gate
 - [ ] 4C.1 — Webhook, sender, identities and links
 - [ ] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
@@ -156,3 +156,15 @@ None.
 - `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 12 groups).
 - Security review: clean (only SHA-256 hash stored in `notification_settings.unsubscribe_token_hash`, public unsubscribe route answers uniform 404 on invalid/missing token and limits 30/min/IP, audit log `mail.sent` contains only `template` and `userId`).
 - Added real SMTP mail rendering / mail-client one-click header execution to `## Not verified` (local run uses console mailer only).
+
+## Task 4B.4 — approach
+- Approach: add `debt_reminders` table (`schema-reminders.ts`) + `groups.reminder_interval_days` (migration `0018`), extend `ErrorCode` (`REMINDER_TOO_SOON`, `MEMBER_NOT_LINKED`) and `GroupDto`/`UpdateGroupRequest`, extract shared `computeGroupTransfers` (reusing `suggestMinimizedSettlements` / `netPairwiseDebts` from `@songphang/core`), implement `POST /api/v1/groups/{groupId}/reminders` supporting `{ fromMemberId, toMemberId }` (429/422/403/400 on cooldown/unlinked/unauthorized/invalid-pair) and `{ all: true }` (`reminded` + `skipped`), and register daily `auto-reminders` cron (`0 9 * * *` `Asia/Ho_Chi_Minh`).
+- Why simplest: reuses `notify(..., enqueue)` for `debt_reminder` immediate mails, `getGroupAccess` + `listGroupMembers` for role/linked checks, and shares one `core`-backed transfer calculation between `balances`, `reminders`, and `auto-reminders`.
+- Rejected alternative: recomputing or duplicating settlement minimization logic inside `apps/worker`, which risks drift between displayed S5 transfers and reminder amounts.
+
+### Task 4B.4 — results
+- `pnpm check`: 445 files, 0 errors (3 pre-existing `noImgElement` warnings; fixed `auto-reminders.ts` optional chain suggestion cleanly), 8/9 workspace typechecks Done.
+- Generated & applied `packages/db/drizzle/0018_wise_cerebro.sql` (`debt_reminders`, `groups.reminder_interval_days` CHECK `(3, 7, 14)`).
+- `exercise_4b4.mts`: `EXERCISE_4B4_PASSED {"outsiderStatus":404,"row1Reminded":1,"row2Code":"REMINDER_TOO_SOON","row3Status":429,"row4Code":"MEMBER_NOT_LINKED","row5Status":403,"row6Reminded":1,"row6SkippedReasons":["MEMBER_NOT_LINKED","REMINDER_TOO_SOON"],"row7Status":400,"row8AutoRun1":2,"row8AutoRun2":0,"row9Status":403}` — verified all 9 rows, `nextAt` ~24h cooldown, automatic `auto-reminders` worker run sending to linked members (`sent_by = NULL`) with immediate email headers and 0 on immediate repeat, and `PATCH /groups/{groupId}` owner-only check (`403` for editor).
+- `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 13 groups).
+- Security review: clean (`requireGroupRole` + pair permission check `access.role !== "viewer" || access.memberId === toMemberId`, outsider 404, server-derived transfer amounts from `suggestGroupTransfers`, unlinked member check 422).

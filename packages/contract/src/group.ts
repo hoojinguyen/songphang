@@ -3,6 +3,12 @@ import { MemberColorCode, MemberName, MemberShapeCode } from "./member.ts";
 export const GroupName = z.string().trim().min(1).max(80);
 export const GroupRole = z.enum(["owner", "editor", "viewer"]);
 export type GroupRole = z.infer<typeof GroupRole>;
+export const ReminderIntervalDays = z.union([
+	z.literal(3),
+	z.literal(7),
+	z.literal(14),
+]);
+export type ReminderIntervalDays = z.infer<typeof ReminderIntervalDays>;
 export const GroupDto = z
 	.object({
 		id: z.uuid(),
@@ -10,6 +16,7 @@ export const GroupDto = z
 		currency: z.literal("VND"),
 		minimizeDebts: z.boolean(),
 		defaultRole: z.enum(["editor", "viewer"]),
+		reminderIntervalDays: ReminderIntervalDays.nullable(),
 		role: GroupRole,
 		myMemberId: z.uuid().nullable(),
 		muted: z.boolean(),
@@ -55,6 +62,7 @@ export const UpdateGroupRequest = z
 		name: GroupName.optional(),
 		minimizeDebts: z.boolean().optional(),
 		defaultRole: z.enum(["editor", "viewer"]).optional(),
+		reminderIntervalDays: ReminderIntervalDays.nullable().optional(),
 	})
 	.refine((value) => Object.keys(value).length > 0)
 	.openapi("UpdateGroupRequest");

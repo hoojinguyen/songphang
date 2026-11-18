@@ -1,6 +1,7 @@
 import { createDb, runMigrations } from "@songphang/db";
 import { diskFileStore } from "@songphang/storage";
 import { loadWorkerConfig, type WorkerConfig } from "./config.js";
+import { registerAutoRemindersJob } from "./jobs/auto-reminders.js";
 import { registerCleanupAttachmentsJob } from "./jobs/cleanup-attachments.js";
 import { registerDeleteFilesJob } from "./jobs/delete-files.js";
 import { registerHeartbeatJob } from "./jobs/heartbeat.js";
@@ -48,6 +49,7 @@ try {
 	await registerSendNotificationMailJob(boss, deps);
 	await registerSendDigestJob(boss, deps);
 	await registerPruneNotificationsJob(boss, deps);
+	await registerAutoRemindersJob(boss, deps);
 	await recoverStaleScans(deps);
 	const recoveryTimer = setInterval(() => {
 		void recoverStaleScans(deps).catch(() => {

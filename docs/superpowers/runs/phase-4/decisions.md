@@ -68,3 +68,10 @@ Each entry: problem, options, choice, reason; for a library also license, mainte
 - Options: create a new `packages/mail` workspace package, or share pure formatting (`formatAmount`, `formatMoney`, `formatNotificationLine`) in `@songphang/core` while keeping mail rendering inside `apps/worker/src/{mailer,mail-templates}.ts`.
 - Choice: place shared formatting in `@songphang/core` and keep notification mailers/templates in `apps/worker/src/`.
 - Reason: avoids adding a new workspace package while guaranteeing zero duplicated Spec 7.2 copy between web and worker.
+
+### D4B.4 — `debt_reminders` table for reminder cooldowns and automatic intervals (Task 4B.4)
+
+- Problem: the collaboration spec defines a 24-hour cooldown per ordered `(from_member_id, to_member_id)` pair for manual reminders and a configurable `(3, 7, 14)` day interval for automatic reminders without specifying the storage table.
+- Options: overload `notifications` rows with JSON queries, or add a dedicated `debt_reminders` table indexed by `(group_id, from_member_id, to_member_id, created_at DESC)`.
+- Choice: add `debt_reminders` (`id`, `group_id`, `from_member_id`, `to_member_id`, `amount`, `sent_by` nullable for automatic reminders, `created_at`) plus `groups.reminder_interval_days` (`NULL | 3 | 7 | 14`).
+- Reason: querying the latest reminder per ordered pair uses the composite B-tree index directly, avoids scanning JSONB notification payloads (which users could also lose if notifications are pruned after 90 days or if unlinked/muted), and records `sent_by = NULL` cleanly for daily automatic runs.

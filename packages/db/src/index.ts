@@ -26,6 +26,7 @@ export { runMigrations } from "./migrate.js";
 export * from "./notifications.js";
 export * from "./payment-methods.js";
 export * from "./receipt-scans.js";
+export * from "./reminders.js";
 export { sessions, users } from "./schema.js";
 export { authTokens, userIdentities } from "./schema-accounts.js";
 export { aiCalls } from "./schema-ai.js";
@@ -42,6 +43,7 @@ export {
 } from "./schema-notifications.js";
 export * from "./schema-payments.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";
+export { debtReminders } from "./schema-reminders.js";
 export { receiptScans } from "./schema-scans.js";
 export * from "./schema-settlements.js";
 export {

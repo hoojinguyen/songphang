@@ -29,6 +29,7 @@ export async function findGroup(executor: DbExecutor, groupId: string) {
 			currency: groups.currency,
 			minimizeDebts: groups.minimizeDebts,
 			defaultRole: groups.defaultRole,
+			reminderIntervalDays: groups.reminderIntervalDays,
 			createdAt: groups.createdAt,
 		})
 		.from(groups)
@@ -74,6 +75,7 @@ export function updateGroup(
 			name?: string;
 			minimizeDebts?: boolean;
 			defaultRole?: "editor" | "viewer";
+			reminderIntervalDays?: 3 | 7 | 14 | null;
 		};
 		now: Date;
 	},

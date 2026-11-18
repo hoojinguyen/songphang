@@ -26,6 +26,7 @@ export const groups = pgTable(
 		inviteToken: text("invite_token").notNull().unique(),
 		inviteActive: boolean("invite_active").notNull().default(true),
 		defaultRole: text("default_role").notNull().default("editor"),
+		reminderIntervalDays: integer("reminder_interval_days"),
 		createdBy: uuid("created_by").references(() => users.id, {
 			onDelete: "set null",
 		}),
@@ -44,6 +45,10 @@ export const groups = pgTable(
 		check(
 			"groups_default_role_check",
 			sql`${table.defaultRole} in ('editor', 'viewer')`,
+		),
+		check(
+			"groups_reminder_interval_days_check",
+			sql`${table.reminderIntervalDays} is null or ${table.reminderIntervalDays} in (3, 7, 14)`,
 		),
 	],
 );
