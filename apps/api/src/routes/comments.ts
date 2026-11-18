@@ -4,7 +4,9 @@ import {
 	CommentsQuery,
 	CommentsResponse,
 	CreateCommentRequest,
+	DisputeResponse,
 	IdempotencyKeyHeader,
+	OpenDisputeRequest,
 } from "@songphang/contract";
 import type { AppDeps, AppEnv } from "../app.js";
 import { requireGroupRole } from "../auth/group-access.js";
@@ -20,6 +22,7 @@ import {
 	deleteComment,
 	listComments,
 } from "../services/comments.js";
+import { openDispute, resolveDispute } from "../services/disputes.js";
 
 const transactionParams = z.object({
 	groupId: z.uuid(),
@@ -134,5 +137,60 @@ export function registerCommentRoutes(
 			});
 			return context.body(null, 204);
 		},
+	);
+
+	app.openapi(
+		createRoute({
+			method: "post",
+			path: "/api/v1/groups/{groupId}/transactions/{id}/dispute",
+			middleware: write,
+			request: {
+				params: transactionParams,
+				body: {
+					required: true,
+					content: { "application/json": { schema: OpenDisputeRequest } },
+				},
+			},
+			responses: {
+				201: {
+					description: "Dispute opened",
+					content: { "application/json": { schema: DisputeResponse } },
+				},
+			},
+		}),
+		async (context) =>
+			context.json(
+				await openDispute(deps, {
+					groupId: context.var.groupAccess.groupId,
+					transactionId: context.req.valid("param").id,
+					user: context.var.user,
+					request: context.req.valid("json"),
+				}),
+				201,
+			),
+	);
+
+	app.openapi(
+		createRoute({
+			method: "post",
+			path: "/api/v1/groups/{groupId}/transactions/{id}/dispute/resolve",
+			middleware: write,
+			request: { params: transactionParams },
+			responses: {
+				200: {
+					description: "Dispute resolved",
+					content: { "application/json": { schema: DisputeResponse } },
+				},
+			},
+		}),
+		async (context) =>
+			context.json(
+				await resolveDispute(deps, {
+					groupId: context.var.groupAccess.groupId,
+					transactionId: context.req.valid("param").id,
+					userId: context.var.user.id,
+				}),
+				200,
+			),
 	);
 }

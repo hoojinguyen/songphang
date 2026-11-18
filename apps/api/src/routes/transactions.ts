@@ -157,6 +157,7 @@ export function registerTransactionRoutes(
 				deps,
 				context.var.groupAccess.groupId,
 				context.req.valid("query"),
+				context.var.user.id,
 			),
 			200,
 		),

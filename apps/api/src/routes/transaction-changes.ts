@@ -47,6 +47,7 @@ export function registerTransactionChangeRoutes(
 					deps,
 					c.var.groupAccess.groupId,
 					c.req.valid("param").id,
+					c.var.user.id,
 				),
 				200,
 			),

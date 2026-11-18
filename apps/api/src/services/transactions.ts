@@ -32,6 +32,7 @@ import {
 	insertTransactionShares,
 	listAttachmentsForTransactions,
 	listGroupMembers,
+	listOpenDisputesForTransactions,
 	listTransactionPayers,
 	listTransactionRows,
 	listTransactionShares,
@@ -123,56 +124,82 @@ export async function mapTransactions(
 	executor: DbExecutor,
 	groupId: string,
 	rows: Awaited<ReturnType<typeof listTransactionRows>>,
+	viewerUserId: string | null = null,
 ) {
 	const ids = rows.map((row) => row.id);
-	const [payers, shares, attachmentRows, commentCounts] = await Promise.all([
-		listTransactionPayers(executor, groupId, ids),
-		listTransactionShares(executor, groupId, ids),
-		listAttachmentsForTransactions(executor, groupId, ids),
-		countCommentsForTransactions(executor, groupId, ids),
-	]);
-	return rows.map((row) =>
-		TransactionDto.parse({
+	const [payers, shares, attachmentRows, commentCounts, disputes] =
+		await Promise.all([
+			listTransactionPayers(executor, groupId, ids),
+			listTransactionShares(executor, groupId, ids),
+			listAttachmentsForTransactions(executor, groupId, ids),
+			countCommentsForTransactions(executor, groupId, ids),
+			listOpenDisputesForTransactions(executor, groupId, ids),
+		]);
+	return rows.map((row) => {
+		const dispute = disputes.get(row.id);
+		return TransactionDto.parse({
 			...row,
 			occurredAt: row.occurredAt.toISOString(),
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			deletedAt: row.deletedAt?.toISOString() ?? null,
 			commentCount: commentCounts.get(row.id) ?? 0,
+			dispute: dispute
+				? {
+						id: dispute.id,
+						reason: dispute.reason,
+						openedByName: dispute.openedByName,
+						openedAt: dispute.openedAt.toISOString(),
+						mine: viewerUserId !== null && dispute.openedBy === viewerUserId,
+					}
+				: null,
 			payers: payers.filter((payer) => payer.transactionId === row.id),
 			shares: shares.filter((share) => share.transactionId === row.id),
 			attachments: attachmentRows
 				.filter((attachment) => attachment.transactionId === row.id)
 				.map(toAttachmentDto),
-		}),
-	);
+		});
+	});
 }
 
 async function mapTransactionListItems(
 	executor: DbExecutor,
 	groupId: string,
 	rows: Awaited<ReturnType<typeof listTransactionRows>>,
+	viewerUserId: string | null = null,
 ) {
 	const ids = rows.map((row) => row.id);
-	const [payers, shares, attachmentCounts, commentCounts] = await Promise.all([
-		listTransactionPayers(executor, groupId, ids),
-		listTransactionShares(executor, groupId, ids),
-		countAttachmentsForTransactions(executor, groupId, ids),
-		countCommentsForTransactions(executor, groupId, ids),
-	]);
-	return rows.map((row) =>
-		TransactionListItemDto.parse({
+	const [payers, shares, attachmentCounts, commentCounts, disputes] =
+		await Promise.all([
+			listTransactionPayers(executor, groupId, ids),
+			listTransactionShares(executor, groupId, ids),
+			countAttachmentsForTransactions(executor, groupId, ids),
+			countCommentsForTransactions(executor, groupId, ids),
+			listOpenDisputesForTransactions(executor, groupId, ids),
+		]);
+	return rows.map((row) => {
+		const dispute = disputes.get(row.id);
+		return TransactionListItemDto.parse({
 			...row,
 			occurredAt: row.occurredAt.toISOString(),
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			deletedAt: row.deletedAt?.toISOString() ?? null,
 			commentCount: commentCounts.get(row.id) ?? 0,
+			dispute: dispute
+				? {
+						id: dispute.id,
+						reason: dispute.reason,
+						openedByName: dispute.openedByName,
+						openedAt: dispute.openedAt.toISOString(),
+						mine: viewerUserId !== null && dispute.openedBy === viewerUserId,
+					}
+				: null,
 			payers: payers.filter((payer) => payer.transactionId === row.id),
 			shares: shares.filter((share) => share.transactionId === row.id),
 			attachmentCount: attachmentCounts.get(row.id) ?? 0,
-		}),
-	);
+		});
+	});
 }
 export async function createTransaction(
 	executor: DbExecutor,
@@ -248,9 +275,12 @@ export async function createTransactionIn(
 	});
 	const stored = await findTransactionRow(executor, input.groupId, row.id);
 	if (stored === null) throw new Error("Inserted transaction not found");
-	const [transaction] = await mapTransactions(executor, input.groupId, [
-		stored,
-	]);
+	const [transaction] = await mapTransactions(
+		executor,
+		input.groupId,
+		[stored],
+		input.userId,
+	);
 	const warnings = await transactionWarnings(executor, {
 		groupId: input.groupId,
 		request: input.request,
@@ -283,6 +313,7 @@ export async function listTransactions(
 	deps: AppDeps,
 	groupId: string,
 	query: TransactionsQuery,
+	viewerUserId: string | null = null,
 ) {
 	const filters = buildFilters(query);
 	return deps.db.transaction(
@@ -305,7 +336,12 @@ export async function listTransactions(
 						).toString("base64url")
 					: null;
 			return TransactionsResponse.parse({
-				transactions: await mapTransactionListItems(executor, groupId, page),
+				transactions: await mapTransactionListItems(
+					executor,
+					groupId,
+					page,
+					viewerUserId,
+				),
 				nextCursor,
 			});
 		},

@@ -163,6 +163,28 @@ export const ShareDto = z.object({
 	memberId: z.uuid(),
 	amount: z.int().nonnegative(),
 });
+export const TransactionDisputeDto = z
+	.object({
+		id: z.uuid(),
+		reason: z.string(),
+		openedByName: z.string(),
+		openedAt: z.iso.datetime(),
+		mine: z.boolean(),
+	})
+	.openapi("TransactionDisputeDto");
+export type TransactionDisputeDto = z.infer<typeof TransactionDisputeDto>;
+export const OpenDisputeRequest = z
+	.object({
+		reason: z.string().trim().min(1).max(500),
+	})
+	.openapi("OpenDisputeRequest");
+export type OpenDisputeRequest = z.infer<typeof OpenDisputeRequest>;
+export const DisputeResponse = z
+	.object({
+		dispute: TransactionDisputeDto.nullable(),
+	})
+	.openapi("DisputeResponse");
+export type DisputeResponse = z.infer<typeof DisputeResponse>;
 const BaseTransactionFields = {
 	type: z.enum(["expense", "income", "transfer"]),
 	...LedgerFields,
@@ -173,6 +195,7 @@ const BaseTransactionFields = {
 	updatedBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
 	createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
 	commentCount: z.int().nonnegative(),
+	dispute: TransactionDisputeDto.nullable(),
 	createdAt: z.iso.datetime(),
 	updatedAt: z.iso.datetime(),
 	deletedAt: z.iso.datetime().nullable(),

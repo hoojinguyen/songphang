@@ -8,7 +8,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 
 - [x] Task 0 — re-baseline (`docs(run): re-baseline phase 4`)
 - [x] 4A.1 — API: comments
-- [ ] 4A.2 — API: disputes
+- [x] 4A.2 — API: disputes
 - [ ] 4A.3 — Web: the transaction view; stage gate
 - [ ] 4B.1 — Notification core
 - [ ] 4B.2 — Web: bell and notification list
@@ -63,5 +63,20 @@ None.
 - `pnpm check`: passed (`Checked 406 files`, all 8 workspace typechecks Done). Migration `0014_funny_beast.sql` generated and applied to `songphang_phase4_gate`.
 - `exercise_4a1.mts` against `songphang_phase4_gate` (API on port 4010):
   - `EXERCISE_4A1_PASSED`: Hùng (viewer) commented `201` (`authorName: "Hùng"`, `mine: true`), idempotent replay returned same comment ID, Lan listed (`mine: false`), Lan delete Hùng's comment -> `403`, Minh (owner) delete -> `204` (`commentCount: 0`), 1001 chars / `""` / whitespace -> `400` each, `<script>alert(1)</script>` -> `201` stored verbatim, comment on soft-deleted transaction -> `201`, outsider list & post -> `404`/`404`, Lan 21st comment in 1 min -> `429`, balances identical before and after.
+  - `pnpm db:check-balances` -> `All groups balanced`.
+- Security review: checked relevant items 1, 2, 3, 4, 5, 6, 8; no issues found.
+
+## Task 4A.2 — approach
+
+- Files to create/modify: create `packages/db/src/schema-disputes.ts`, `packages/db/src/disputes.ts`, migration, `apps/api/src/services/disputes.ts`; modify `packages/db/{drizzle.config.ts,src/index.ts}`, `packages/contract/src/{transaction,error}.ts`, `apps/api/src/services/{transactions,transaction-changes}.ts`, `apps/api/src/routes/{transactions,transaction-changes,comments}.ts`.
+- Approach: add `transaction_disputes` with partial unique index `(transaction_id) WHERE resolved_at IS NULL`, expose `dispute: TransactionDisputeDto | null` on `TransactionDto` and `TransactionListItemDto` (computing `mine` from `viewerUserId`), implement `openDispute` (`409 DISPUTE_ALREADY_OPEN`) and `resolveDispute` (`409 DISPUTE_NOT_OPEN`, `403 FORBIDDEN` unless opener or owner) inside `lockGroup`, log `dispute_open`/`dispute_resolve` activity entries, and publish `["transactions", "activity"]`.
+- Why simplest: enforces single-open-dispute invariant at both service lock and DB partial unique index without modifying balance/split paths.
+- Rejected alternative: storing dispute state as columns on `transactions`, which would lose multi-round dispute history and conflict with optimistic locking `version` bumps.
+
+### Task 4A.2 results
+
+- `pnpm check`: passed (`Checked 410 files`, all 8 workspace typechecks Done). Migration `0015_colossal_ezekiel_stane.sql` generated and applied to `songphang_phase4_gate`.
+- `exercise_4a2.mts` against `songphang_phase4_gate` (API on port 4010):
+  - `EXERCISE_4A2_PASSED`: Hùng (viewer) opened dispute `201` (`openedByName: "Hùng"`, `mine: true`, `mine: false` for Minh), balances unchanged, duplicate open by Lan -> `409 DISPUTE_ALREADY_OPEN`, Lan resolve -> `403`, Lan edit amount -> `200` with dispute still open, Hùng resolve -> `200` (`dispute: null`), repeat resolve -> `409 DISPUTE_NOT_OPEN`, reopen by Hùng + resolve by Minh (owner) -> `201`/`200`, outsider open -> `404`, `GET .../activity` recorded all 4 dispute entries with actor names, invalid reasons (`""`, 501 chars) -> `400`.
   - `pnpm db:check-balances` -> `All groups balanced`.
 - Security review: checked relevant items 1, 2, 3, 4, 5, 6, 8; no issues found.

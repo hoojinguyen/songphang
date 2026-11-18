@@ -32,21 +32,28 @@ async function readTransaction(
 	executor: DbExecutor,
 	groupId: string,
 	id: string,
+	viewerUserId: string | null = null,
 ) {
 	if (!z.uuid().safeParse(id).success)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	const row = await findTransactionRow(executor, groupId, id);
 	if (!row) throw new AppError(404, "NOT_FOUND", "Resource not found");
-	const [transaction] = await mapTransactions(executor, groupId, [row]);
+	const [transaction] = await mapTransactions(
+		executor,
+		groupId,
+		[row],
+		viewerUserId,
+	);
 	return TransactionResponse.parse({ transaction });
 }
 export async function getTransaction(
 	deps: AppDeps,
 	groupId: string,
 	id: string,
+	viewerUserId: string | null = null,
 ) {
 	return deps.db.transaction(
-		(executor) => readTransaction(executor, groupId, id),
+		(executor) => readTransaction(executor, groupId, id, viewerUserId),
 		{ isolationLevel: "repeatable read", accessMode: "read only" },
 	);
 }
@@ -59,7 +66,9 @@ async function lockedTransaction(executor: DbExecutor, input: Operation) {
 		!(await lockTransaction(executor, input.groupId, input.id))
 	)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
-	return (await readTransaction(executor, input.groupId, input.id)).transaction;
+	return (
+		await readTransaction(executor, input.groupId, input.id, input.userId)
+	).transaction;
 }
 const fields = [
 	"description",
@@ -176,8 +185,9 @@ export async function editTransaction(
 				nextAttachmentIds,
 			);
 		}
-		const after = (await readTransaction(executor, input.groupId, input.id))
-			.transaction;
+		const after = (
+			await readTransaction(executor, input.groupId, input.id, input.userId)
+		).transaction;
 		const warnings = await transactionWarnings(executor, {
 			groupId: input.groupId,
 			request: input.request,
@@ -239,8 +249,9 @@ export async function setTransactionDeleted(
 				updatedAt: deps.now(),
 			},
 		});
-		const after = (await readTransaction(executor, input.groupId, input.id))
-			.transaction;
+		const after = (
+			await readTransaction(executor, input.groupId, input.id, input.userId)
+		).transaction;
 		await insertActivity(executor, {
 			groupId: input.groupId,
 			actorUserId: input.userId,

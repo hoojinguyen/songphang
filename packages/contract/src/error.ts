@@ -31,6 +31,8 @@ export const ErrorCode = z
 		"STORAGE_QUOTA_EXCEEDED",
 		"AI_QUOTA_EXCEEDED",
 		"ITEM_UNASSIGNED",
+		"DISPUTE_ALREADY_OPEN",
+		"DISPUTE_NOT_OPEN",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

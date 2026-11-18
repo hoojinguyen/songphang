@@ -17,6 +17,7 @@ export default defineConfig({
 		"./src/schema-scans.ts",
 		"./src/schema-ai.ts",
 		"./src/schema-comments.ts",
+		"./src/schema-disputes.ts",
 	],
 	out: "./drizzle",
 });
