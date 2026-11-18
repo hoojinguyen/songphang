@@ -11,7 +11,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4A.2 — API: disputes
 - [x] 4A.3 — Web: the transaction view; stage gate
 - [x] 4B.1 — Notification core
-- [ ] 4B.2 — Web: bell and notification list
+- [x] 4B.2 — Web: bell and notification list
 - [ ] 4B.3 — Mail: immediate, digest, unsubscribe
 - [ ] 4B.4 — Debt reminders
 - [ ] 4B.5 — Web: reminders and settings; stage gate
@@ -122,3 +122,20 @@ None.
 - Forced rollback test (temporary throw right after `notifyBudgetWarnings` inside `createTransactionIn`): `FORCED_ROLLBACK_4B1_PASSED {"status":500,"txBefore":4,"txAfter":4,"notifBefore":5,"notifAfter":5}`, then reverted and verified clean.
 - `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 8 groups).
 - Security review: clean (strict Zod schemas on queries/bodies, inner join `group_users` enforces access on list & unread-count, `read` filtered by caller `userId`, outsider mute 404, parameterized Drizzle queries only).
+
+## Task 4B.2 — approach
+- Approach: add `notificationText(dto)` in `apps/web/src/lib/notification-text.ts` formatting all 12 kinds per Spec 7.2 (with `Có cập nhật trong nhóm {group}` fallback), add `Bell` (44px accessible button, `9+` cap above 9, window focus refetch + SSE refetch in `use-group-events.ts`) to S2 (`/`) and S4 (`/g/[groupId]`), add S19 `/notifications` with cursor loading & `Đánh dấu đã đọc`, and add `Tắt thông báo nhóm này` on `/g/[groupId]/members` (decision 4).
+- Why simplest: reuses `useInfiniteQuery` / `useMutation` patterns and triggers `unread-count` invalidation directly from the existing `useGroupEvents` handler without opening a second SSE stream.
+- Rejected alternative: creating a separate user-level `/me/events` SSE endpoint just for the bell, which violates Spec 4.3 ("No new stream").
+
+### Task 4B.2 — results
+- `pnpm check`: 428 files, 0 errors (3 pre-existing `noImgElement` warnings), 8/9 workspace typechecks Done.
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`/notifications` built cleanly).
+- Live Chrome two-context browser exercise (`minh-4b2`, `hung-4b2` against disposable `songphang_phase4_gate`):
+  1. Bell visible on S2 (`/`) and S4 (`/g/[groupId]`) as a 48×48px accessible link (`aria-label="Thông báo, 3 chưa đọc"`).
+  2. While Minh had S4 open, Hùng commented on `Lẩu gà lá é 4B2` -> Minh's Bell updated live over SSE to `Thông báo, 4 chưa đọc` without reload.
+  3. On S19 (`/notifications`), verified exact Spec 7.2 lines (`expense_added` with `phần bạn 50.000 đ`, `expense_changed`, `comment_added`, `dispute_opened`, `settlement_requested`, `budget_state`) and deep links (`/tx/.../view`, `/balances`, `/stats`).
+  4. Tapping an unread row marked only that row read (`3 chưa đọc` -> `2 chưa đọc`) and navigated to S20; clicking `Đánh dấu đã đọc` cleared Minh's unread rows and reset Bell to `Thông báo`.
+  5. With 10 unread notifications, Bell rendered `"9+"` badge and `aria-label="Thông báo, 10 chưa đọc"`, size `48x48`.
+  6. On `/g/[groupId]/members`, toggled `Tắt thông báo nhóm này` on and off; zero console errors in both windows.
+- Security review: clean (plain React text rendering, Zod-validated `NotificationPayload` with safe generic fallback on unknown kinds, no `dangerouslySetInnerHTML`/`eval`).

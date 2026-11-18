@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { FeaturedGroupCard } from "../components/groups/FeaturedGroupCard";
 import { GroupCard } from "../components/groups/GroupCard";
+import { Bell } from "../components/notifications/Bell";
 import { Button } from "../components/ui/Button";
 import { Icon } from "../components/ui/Icon";
 import { LoadError } from "../components/ui/LoadError";
@@ -34,13 +35,16 @@ function GroupsHeader({ name }: { name: string }) {
 				<p className="text-sm text-muted">{t(vi.groups.greeting, { name })}</p>
 				<h1 className="text-title font-black">{vi.groups.title}</h1>
 			</div>
-			<Link
-				href="/account"
-				aria-label={vi.account.title}
-				className="shrink-0 rounded-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
-			>
-				<MemberShape shape="circle" color="mint" size={52} name={name} />
-			</Link>
+			<div className="flex items-center gap-2">
+				<Bell />
+				<Link
+					href="/account"
+					aria-label={vi.account.title}
+					className="shrink-0 rounded-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+				>
+					<MemberShape shape="circle" color="mint" size={52} name={name} />
+				</Link>
+			</div>
 		</header>
 	);
 }

@@ -44,6 +44,7 @@ export function useGroupEvents(groupId: string) {
 			if (failed) {
 				void client.invalidateQueries({ queryKey: ["group", groupId] });
 				void client.invalidateQueries({ queryKey: ["groups"] });
+				void client.invalidateQueries({ queryKey: ["notifications"] });
 				failed = false;
 			}
 		};
@@ -73,6 +74,7 @@ export function useGroupEvents(groupId: string) {
 					queryKey: ["group", groupId, "invite"],
 				});
 				void client.invalidateQueries({ queryKey: ["groups"] });
+				void client.invalidateQueries({ queryKey: ["notifications"] });
 			} catch {
 				return;
 			}
