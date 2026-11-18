@@ -26,3 +26,11 @@ Checks are appended by screen and flow as tasks complete, plus a section **After
 1. Open `/account` (`S13`) -> card `Thông báo qua email` shows `Việc cần bạn làm ngay` and `Tổng hợp cuối ngày` toggles; turn one off, refresh -> state persists.
 2. With both worker and API running (`TELEGRAM_PROVIDER` unset, console mailer), have another member open a dispute -> worker console prints one mail with `List-Unsubscribe` / `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, subject matching the notification line, `Mở Sòng Phẳng`, and footer `Không muốn nhận thư nữa? Bỏ đăng ký`.
 3. Copy the `/notifications/unsubscribe?token=...` URL from the printed mail and open it in an unauthenticated/private browser window -> confirms `Bạn sẽ không nhận thư thông báo nữa.` with link `Bật lại trong Tài khoản`. Opening `/account` shows both email switches off; alter 1 character of `token` -> renders `Link này không còn dùng được.`.
+
+## S5 & S11 — Debt reminders and auto-reminder settings (Stage 4B)
+
+1. In a group with >= 2 linked debtor transfers and 1 unlinked debtor (`Thu`), open `/g/{id}/balances` as a linked member -> verify `Nhắc` is shown next to `Đã trả` for linked debtors, hidden for `Thu`, and `Nhắc cả nhóm một lần` appears.
+2. Click `Nhắc` on `Hùng` -> snackbar shows `Đã nhắc Hùng.` and `Hùng`'s `/notifications` displays `Nhắc nhẹ: bạn cần trả Minh ...`.
+3. Click `Nhắc` on `Hùng` again immediately -> snackbar shows `Bạn vừa nhắc Hùng rồi. Nhắc lại được sau {giờ} ngày {ngày}.`.
+4. Click `Nhắc cả nhóm một lần` -> snackbar shows `Đã nhắc 1 người.` (or `Chưa đến lúc nhắc lại ai.` when all pairs are within 24 hours).
+5. As owner, open `/g/{id}/settings` under `Tự nhắc nợ`, select `Mỗi tuần`, reload the page -> `Mỗi tuần` stays pressed (`PATCH /groups/{id}` persisted `reminderIntervalDays: 7`).

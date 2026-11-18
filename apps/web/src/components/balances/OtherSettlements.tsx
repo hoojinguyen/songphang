@@ -10,6 +10,7 @@ export function OtherSettlements({
 	myMemberId,
 	role,
 	verified,
+	onRemindNotice,
 }: {
 	groupId: string;
 	transfers: BalancesResponse["transfers"];
@@ -17,6 +18,7 @@ export function OtherSettlements({
 	myMemberId: string | null;
 	role: "owner" | "editor" | "viewer";
 	verified: boolean;
+	onRemindNotice?: (message: string) => void;
 }) {
 	if (transfers.length === 0) return null;
 	return (
@@ -54,6 +56,7 @@ export function OtherSettlements({
 							role={role}
 							verified={verified}
 							compact
+							{...(onRemindNotice ? { onRemindNotice } : {})}
 						/>
 					</div>
 				);

@@ -1,8 +1,15 @@
 "use client";
 import type { BalancesResponse, MemberDto } from "@songphang/contract";
+import { ApiError } from "../../lib/api";
 import { payHref, settlementHref } from "../../lib/balances";
 import { formatMoney } from "../../lib/money";
+import {
+	canRemindTransfer,
+	formatReminderNextAt,
+	useSendReminder,
+} from "../../lib/reminders";
 import { t, vi } from "../../messages/vi";
+import { OnlineButton } from "../ui/OnlineButton";
 import { OnlineLink } from "../ui/OnlineLink";
 import { PendingRequestRow } from "./PendingRequestRow";
 
@@ -33,6 +40,7 @@ export function TransferAction({
 	role,
 	verified,
 	compact = false,
+	onRemindNotice,
 }: {
 	groupId: string;
 	transfer: BalancesResponse["transfers"][number];
@@ -42,7 +50,9 @@ export function TransferAction({
 	role: "owner" | "editor" | "viewer";
 	verified: boolean;
 	compact?: boolean;
+	onRemindNotice?: (message: string) => void;
 }) {
+	const sendReminder = useSendReminder(groupId);
 	if (transfer.pendingRequest) {
 		const canResolve =
 			role === "owner" ||
@@ -83,16 +93,66 @@ export function TransferAction({
 			: role !== "viewer"
 				? vi.balances.record
 				: vi.feed.view;
-	return (
-		<OnlineLink
-			href={payHref(groupId, transfer)}
-			className={
-				compact
-					? "flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold"
-					: "flex min-h-[60px] w-full items-center justify-center rounded-[30px] bg-accent font-extrabold"
+	const showRemind = canRemindTransfer({
+		transfer,
+		from,
+		to,
+		myMemberId,
+		role,
+		verified,
+	});
+	const handleRemind = async () => {
+		try {
+			await sendReminder.mutateAsync({
+				fromMemberId: from.id,
+				toMemberId: to.id,
+			});
+			onRemindNotice?.(t(vi.reminders.remindedOne, { name: from.name }));
+		} catch (error) {
+			if (
+				error instanceof ApiError &&
+				error.code === "REMINDER_TOO_SOON" &&
+				typeof error.details?.nextAt === "string"
+			) {
+				onRemindNotice?.(
+					t(vi.reminders.tooSoon, {
+						name: from.name,
+						time: formatReminderNextAt(error.details.nextAt),
+					}),
+				);
+			} else {
+				onRemindNotice?.(vi.common.saveError);
 			}
-		>
-			{label}
-		</OnlineLink>
+		}
+	};
+	return (
+		<div className={compact ? "flex items-center gap-2" : "flex gap-2"}>
+			<OnlineLink
+				href={payHref(groupId, transfer)}
+				className={
+					compact
+						? "flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold"
+						: "flex min-h-[60px] flex-1 items-center justify-center rounded-[30px] bg-accent font-extrabold"
+				}
+			>
+				{label}
+			</OnlineLink>
+			{showRemind && (
+				<OnlineButton
+					type="button"
+					disabled={sendReminder.isPending}
+					onClick={() => {
+						void handleRemind();
+					}}
+					className={
+						compact
+							? "flex min-h-11 shrink-0 items-center rounded-pill bg-sunken px-3 text-xs font-bold text-ink disabled:opacity-60"
+							: "flex min-h-[60px] shrink-0 items-center justify-center rounded-[30px] bg-sunken px-5 font-bold text-ink disabled:opacity-60"
+					}
+				>
+					{vi.reminders.remind}
+				</OnlineButton>
+			)}
+		</div>
 	);
 }

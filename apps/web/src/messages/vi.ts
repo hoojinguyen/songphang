@@ -700,6 +700,18 @@ export const vi = {
 		unsubscribeReenable: "Bật lại trong Tài khoản",
 		unsubscribeInvalid: "Link này không còn dùng được.",
 	},
+	reminders: {
+		remind: "Nhắc",
+		remindAll: "Nhắc cả nhóm một lần",
+		remindedOne: "Đã nhắc {name}.",
+		tooSoon: "Bạn vừa nhắc {name} rồi. Nhắc lại được sau {time}.",
+		remindedMany: "Đã nhắc {count} người.",
+		settingTitle: "Tự nhắc nợ",
+		intervalOff: "Tắt",
+		interval3: "Mỗi 3 ngày",
+		interval7: "Mỗi tuần",
+		interval14: "Mỗi 2 tuần",
+	},
 	showcase: { members: { minh: "Minh", lan: "Lan", hung: "Hùng", thu: "Thu" } },
 } as const;
 

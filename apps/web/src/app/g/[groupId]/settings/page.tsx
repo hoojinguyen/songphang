@@ -83,6 +83,35 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					}}
 				/>
 			</section>
+			<section className="grid gap-3 rounded-[28px] bg-surface p-5">
+				<h2 className="font-extrabold">{vi.reminders.settingTitle}</h2>
+				<SegmentedControl
+					label={vi.reminders.settingTitle}
+					value={
+						group.reminderIntervalDays === null
+							? "off"
+							: String(group.reminderIntervalDays)
+					}
+					options={[
+						{ value: "off", label: vi.reminders.intervalOff },
+						{ value: "3", label: vi.reminders.interval3 },
+						{ value: "7", label: vi.reminders.interval7 },
+						{ value: "14", label: vi.reminders.interval14 },
+					]}
+					disabled={update.isPending}
+					onChange={(value) => {
+						const reminderIntervalDays =
+							value === "3"
+								? 3
+								: value === "7"
+									? 7
+									: value === "14"
+										? 14
+										: null;
+						update.mutate({ reminderIntervalDays });
+					}}
+				/>
+			</section>
 			<BudgetCard groupId={group.id} />
 			<CategoryList groupId={group.id} />
 			<InviteLinkCard groupId={group.id} />

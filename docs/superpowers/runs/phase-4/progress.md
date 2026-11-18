@@ -14,7 +14,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4B.2 — Web: bell and notification list
 - [x] 4B.3 — Mail: immediate, digest, unsubscribe
 - [x] 4B.4 — Debt reminders
-- [ ] 4B.5 — Web: reminders and settings; stage gate
+- [x] 4B.5 — Web: reminders and settings; stage gate
 - [ ] 4C.1 — Webhook, sender, identities and links
 - [ ] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
 - [ ] 4C.3 — Web: linking screens
@@ -168,3 +168,23 @@ None.
 - `exercise_4b4.mts`: `EXERCISE_4B4_PASSED {"outsiderStatus":404,"row1Reminded":1,"row2Code":"REMINDER_TOO_SOON","row3Status":429,"row4Code":"MEMBER_NOT_LINKED","row5Status":403,"row6Reminded":1,"row6SkippedReasons":["MEMBER_NOT_LINKED","REMINDER_TOO_SOON"],"row7Status":400,"row8AutoRun1":2,"row8AutoRun2":0,"row9Status":403}` — verified all 9 rows, `nextAt` ~24h cooldown, automatic `auto-reminders` worker run sending to linked members (`sent_by = NULL`) with immediate email headers and 0 on immediate repeat, and `PATCH /groups/{groupId}` owner-only check (`403` for editor).
 - `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 13 groups).
 - Security review: clean (`requireGroupRole` + pair permission check `access.role !== "viewer" || access.memberId === toMemberId`, outsider 404, server-derived transfer amounts from `suggestGroupTransfers`, unlinked member check 422).
+
+## Task 4B.5 — approach
+
+- Approach: add Spec 7.3 (`Tự nhắc nợ`) and 7.4 reminder strings in `vi.ts`, create `apps/web/src/lib/reminders.ts` (`useSendReminder`, `canRemindTransfer`, and Vietnam-time `formatReminderNextAt`), add `Nhắc` to eligible `TransferAction` rows (`SettlementCard` and `OtherSettlements`) and `Nhắc cả nhóm một lần` (when >= 2 pairs qualify) with `Snackbar` feedback on S5 (`balances/page.tsx`), and add the `Tự nhắc nợ` segmented control (`Tắt`, `Mỗi 3 ngày`, `Mỗi tuần`, `Mỗi 2 tuần`) on S11 (`settings/page.tsx`).
+- Why simplest: reuses `Switch`/`SegmentedControl`, `Snackbar`, `useUpdateGroup`, and shared `canRemindTransfer` predicate so per-row eligibility and the >=2 group-remind threshold stay in sync.
+- Rejected alternative: rendering `Nhắc` unconditionally and letting users hit 422 on unlinked members, which violates Plan 4B.5 ("hidden for them").
+
+### Task 4B.5 results
+
+- `pnpm check`: passed (`Checked 446 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed.
+- Security review on diff: clean (plain React text rendering, Zod-validated client/API boundary, zero `dangerouslySetInnerHTML`/`eval`/unchecked redirects/`any`).
+- Live Chrome two-context exercise against disposable `songphang_phase4_gate` (`4B5 Live cf05ba93`, `01a1ef5a-d235-7018-ac98-717fc75a3c36`):
+  - S5 (`/balances`): `Nhắc` hidden for unlinked debtor `Thu`, rendered on `Lan` and `Hùng` rows, and `Nhắc cả nhóm một lần` rendered (2 linked pairs).
+  - Clicked `Nhắc` on Hùng -> snackbar `"Đã nhắc Hùng."`; clicked again immediately -> `"Bạn vừa nhắc Hùng rồi. Nhắc lại được sau 22:51 ngày 19/11."`
+  - Hùng's `/notifications` received `"Nhắc nhẹ: bạn cần trả Minh 100.000 đ trong nhóm 4B5 Live cf05ba93"`.
+  - Clicked `Nhắc cả nhóm một lần` -> snackbar `"Đã nhắc 1 người."`
+  - S5 viewport `485x812`: `scrollWidth === clientWidth === 485`, 0 console errors/warnings.
+  - S11 (`/settings`): clicked `"Mỗi tuần"` under `"Tự nhắc nợ"` -> pressed state active and persisted across page reload; `"Tự nhắc nợ"` section width `390` (`scrollWidth: 390`), 0 console errors/warnings.
+  - Out of scope: pre-existing `"Hạn mức"` `<MoneyInput>` section on `/settings` overflows (`scrollWidth: 818` inside `390` container at `485x812`); left untouched per `AGENTS.md` §5.
