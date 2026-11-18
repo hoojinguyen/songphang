@@ -370,3 +370,50 @@ None.
 
 - Renamed `apps/api/src/bot/commands/{chi,sodu,huy,trogiup,lienket}.ts` to `{expense,balances,undo,help,link}.ts` and updated exported handlers and imports in `apps/api/src/bot/dispatch.ts` per project owner request (user-facing Telegram commands `/chi`, `/sodu`, `/huy`, `/trogiup`, `/start`, `/lienket` unchanged).
 - Re-verified: `pnpm check` passed (`Checked 478 files`, 0 errors), `exercise_4c1.mts` (`EXERCISE_4C1_PASSED`), `exercise_4c2.mts` (`EXERCISE_4C2_PASSED`), and `pnpm db:check-balances` (`All groups balanced`).
+
+---
+
+## Advisor Review Correction Run (2026-11-19)
+
+- **Baseline:** Branch `phase-4`, reviewed HEAD `7f99fc6` against `main` (`b3cf730`). Untracked baseline files: `docs/superpowers/runs/phase-4/review.md` (preserved unchanged) and `docs/superpowers/plans/2026-11-19-phase-4-review-fixes-PROMPT.md` (kept untracked).
+- **Disposable DB & Isolated Ports:** `songphang_phase4_fix_20261119` (`postgres://songphang:songphang@localhost:54329/songphang_phase4_fix_20261119`), API port `4020`, Web port `3020`, isolated `STORAGE_DIR`.
+
+### Correction checklist
+
+- [x] **R1 [P1]** — Replace public bearer identity linking with two-sided web+Telegram pairing (`fix(api,web): require two-sided confirmation for Telegram identity pairing`)
+- [ ] **R2 [P2]** — Server-side one-click `List-Unsubscribe-Post` handling at `/notifications/unsubscribe`
+- [ ] **R3 [P2]** — Durable hash-only unsubscribe token storage preserving previously emailed links across restarts and concurrent sends
+- [ ] **R4 [P2]** — Enqueue automatic reminder `send-notification-mail` jobs transactionally inside the reminder/notification transaction
+- [ ] **R5 [P2]** — Publish group SSE resource events (`["balances"]`) for manual and automatic debt reminders so open notification bells update live
+- [ ] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
+- [ ] **R7 [P2]** — Persist stable `occurredAt` in bot draft and make transaction creation, idempotency state, and `markBotDraftSaved` atomic with save/drop serialization
+- [ ] **R8 [P3]** — Store decision-time amount in approval/rejection activity snapshots
+- [ ] **README & Runbook** — Fix unsupported 5s delay / 7-day bot retention claims and update operational docs for R1/R2/R3/R4/R5
+- [ ] **Gate 1: Static & Build** — `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `git diff --check main..phase-4`
+- [ ] **Gate 2: 87 Quick-Entry Samples** — Full 87 rows of `docs/08-quick-entry-samples.md` over HTTP `/transactions/parse`
+- [ ] **Gate 3: Earlier-Phase Acceptance Replay** — Representative per-stage replay across Stages 1A–1E, 2A–2D, 3A–3D (with `AI_PROVIDER=fake` and unset)
+- [ ] **Gate 4: Full Permission Matrix** — Every endpoint across Phases 1–4 for Owner, Editor, Viewer, Outsider, Cross-group ID, Unauthenticated, Unverified, and Token-public routes
+- [ ] **Gate 5: Phase 4 Stage Gates & 4D Money Variants** — Stages 4A, 4B, 4C (R1/R7), 4D.1 all money variants + `rg` inventory, 4D.2 13-row table + `pnpm db:check-balances`
+- [ ] **Gate 6: Capability-Off & Production Config Guards** — All 6 feature flags `false` + 404 on disabled endpoints; production startup refusals
+- [ ] **Gate 7: Browser, Keyboard/A11y, Contrast, & 1,000-Notification Perf** — Two-context Chrome checks, keyboard-only S20/S19/S11/pairing, contrast/overflow/44px targets, and `< 300ms` + `EXPLAIN (ANALYZE, BUFFERS)`
+- [ ] **Gate 8: Security Review & Final Clean Checks** — `security-review` on final diff, fresh `pnpm check`, `pnpm build`, `pnpm db:check-balances`
+
+### R1 [P1] — approach
+
+- Files to modify: `packages/db/src/{schema-chat,chat,index}.ts`, migration `0021_*.sql`, `packages/contract/src/chat-link.ts`, `apps/api/src/{rate-limit,bot-messages}.ts`, `apps/api/src/bot/{link-codes,resolve-actor,dispatch}.ts`, `apps/api/src/services/chat-links.ts`, `apps/api/src/routes/chat-links.ts`, `apps/web/src/{messages/vi,lib/chat-links}.ts`, `apps/web/src/app/link/telegram/page.tsx`.
+- Approach: replace public bearer `purpose='user'` codes with `chat_identity_pairings` bound to `(userId, sessionId)` and a SHA-256 hashed 192-bit `pair_...` secret (10-minute TTL, single-use, 10/min/user rate limit). Unknown group senders receive a generic `{WEB_ORIGIN}/link/telegram` button with no secret or email. On `/link/telegram`, the signed-in verified user starts a pairing, sends `/start <secret>` in a private chat with the bot (group/supergroup `/start <secret>` immediately cancels the leaked pairing and refuses without echoing/logging), confirms via private-chat inline button (`pc:{id}` / `px:{id}` locked to `from.id === stagedPlatformUserId`), and completes activation via final confirmation in the initiating web session (re-checking active initiating session, verified email, expiry, Telegram confirmation, and identity uniqueness under row + advisory locks).
+- Why simplest: keeps existing `chat_identities`, group `/lienket` flow, and cookie/bearer session auth while storing all pairing state durably in one table and disabling legacy `/me/chat-identities/claim` + migrating out old `purpose='user'` codes and legacy `chat_identities`.
+- Rejected alternative: signing a JWT challenge token or using Telegram Login Widget (`widget.js`), which would add external widget dependencies or omit DB-backed initiating-session revocation checks.
+- Reproduction on `7f99fc6` (`songphang_phase4_fix_20261119`): `R1_REPRO {"groupReplyUrl":"http://localhost:3020/link/telegram?code=<REDACTED_CODE>","thuClaimStatus":204,"thuChatIdentities":[{"platform":"telegram","linkedAt":"2026-11-18T17:54:17.020Z"}]}` — outsider `Thu` hijacked Telegram ID `111` using the group-posted link.
+
+### R1 [P1] — results
+
+- `pnpm check`: passed (`Checked 483 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4020 pnpm build`: passed cleanly (`/link/telegram` built).
+- Migration `0021_mighty_songbird.sql` applied on `songphang_phase4_fix_20261119` containing legacy rows: `chat_link_codes` `purpose='user'` cleared (`1 -> 0`), legacy `chat_identities` cleared (`1 -> 0`, requiring secure re-linking without logging private identifiers), `purpose='group'` link codes (`1 -> 1`) and `chat_links` (`1 -> 1`) preserved intact.
+- `exercise_r1.mts` (all 16 R1 scenarios against live HTTP server on port 4020):
+  - `R1_DISABLED_PROVIDER_PASSED {"telegram":false,"start":404,"claim":404,"webhook":404}`
+  - `R1_ALL_16_SCENARIOS_PASSED {"groupBtnUrl":"http://localhost:3020/link/telegram","legacyClaimStatus":400,"dbBlockedLegacyCode":true,"concStatuses":[204,400],"unvStartStatus":403,"rateLimited429":true}`
+  - Verified: Thu/Lan public-link attack blocked; attacker-generated pairing shows attacker's masked email (`t***u@dev.songphang.local`) and cannot bind Lan's account even after Telegram confirmation; happy path proves both identities; 0 `chat_identities` rows exist after staging or single-side confirmation; wrong sender (`222`) & group-forwarded callbacks ignored; cross-session access returns `404`; group `/start <secret>` cancels pairing and replies without echoing/logging secret; expired/replayed/cancelled/revoked-session attempts rejected; concurrent `POST .../confirm` yields `[204, 400]` with single `chat_identities` row; already-taken identity returns `409 CHAT_IDENTITY_TAKEN` without reassigning; unverified account returns `403 EMAIL_NOT_VERIFIED`; missing/wrong webhook secret returns `404`; legacy `purpose='user'` DB insert blocked and `/claim` returns `400 TOKEN_INVALID`; pairing start rate limit triggers `429` at 10/min/user.
+- Security review: checked items 1–7 on R1 diff; secrets hashed with SHA-256 and never logged/echoed, session binding checked inside write transactions, `FOR UPDATE` + advisory lock prevent races, `rel="noopener noreferrer"` on Telegram external deep link, zero `localStorage`/`sessionStorage`/`dangerouslySetInnerHTML`/`any`/`!`.
+

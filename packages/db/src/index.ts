@@ -7,6 +7,7 @@ export * from "./balances.js";
 export * from "./budgets.js";
 export * from "./categories.js";
 export * from "./chat.js";
+export * from "./chat-pairings.js";
 export {
 	checkDatabaseHealth,
 	createDb,
@@ -38,6 +39,7 @@ export {
 	botDrafts,
 	botUpdates,
 	chatIdentities,
+	chatIdentityPairings,
 	chatLinkCodes,
 	chatLinks,
 } from "./schema-chat.js";

@@ -5,6 +5,8 @@ import {
 	ChatPlatform,
 	ClaimChatIdentityRequest,
 	CreateChatLinkCodeResponse,
+	StartTelegramPairingResponse,
+	TelegramPairingResponse,
 } from "@songphang/contract";
 import type { AppDeps, AppEnv } from "../app.js";
 import { requireGroupRole } from "../auth/group-access.js";
@@ -13,6 +15,7 @@ import {
 	requireVerifiedEmail,
 	requireWriteLimit,
 } from "../auth/verified-email.js";
+import { requirePairingLimit } from "../rate-limit.js";
 import {
 	claimUserChatIdentity,
 	createGroupChatLinkCode,
@@ -21,6 +24,12 @@ import {
 	unlinkGroupChat,
 	unlinkUserChatIdentity,
 } from "../services/chat-links.js";
+import {
+	cancelTelegramPairingFromWeb,
+	confirmTelegramPairingFromWeb,
+	getTelegramPairingAttempt,
+	startTelegramPairingAttempt,
+} from "../services/telegram-pairing.js";
 
 export function registerChatLinkRoutes(
 	app: OpenAPIHono<AppEnv>,
@@ -148,6 +157,112 @@ export function registerChatLinkRoutes(
 			await claimUserChatIdentity(deps, {
 				userId: context.var.user.id,
 				code: context.req.valid("json").code,
+			});
+			return context.body(null, 204);
+		},
+	);
+
+	app.openapi(
+		createRoute({
+			method: "post",
+			path: "/api/v1/me/chat-identities/telegram/pairings",
+			middleware: [
+				requireUser(deps),
+				requireVerifiedEmail(deps),
+				requireWriteLimit(deps),
+				requirePairingLimit(deps),
+				requireSameOrigin(deps.config),
+			],
+			responses: {
+				201: {
+					description: "Started short-lived Telegram pairing attempt",
+					content: {
+						"application/json": { schema: StartTelegramPairingResponse },
+					},
+				},
+			},
+		}),
+		async (context) =>
+			context.json(
+				await startTelegramPairingAttempt(deps, {
+					userId: context.var.user.id,
+					sessionToken: context.var.sessionToken,
+				}),
+				201,
+			),
+	);
+
+	app.openapi(
+		createRoute({
+			method: "get",
+			path: "/api/v1/me/chat-identities/telegram/pairings/{pairingId}",
+			middleware: [requireUser(deps), requireVerifiedEmail(deps)],
+			request: { params: z.object({ pairingId: z.uuid() }) },
+			responses: {
+				200: {
+					description: "Telegram pairing attempt state",
+					content: {
+						"application/json": { schema: TelegramPairingResponse },
+					},
+				},
+			},
+		}),
+		async (context) =>
+			context.json(
+				await getTelegramPairingAttempt(deps, {
+					pairingId: context.req.valid("param").pairingId,
+					userId: context.var.user.id,
+					sessionToken: context.var.sessionToken,
+				}),
+				200,
+			),
+	);
+
+	app.openapi(
+		createRoute({
+			method: "post",
+			path: "/api/v1/me/chat-identities/telegram/pairings/{pairingId}/confirm",
+			middleware: [
+				requireUser(deps),
+				requireVerifiedEmail(deps),
+				requireWriteLimit(deps),
+				requireSameOrigin(deps.config),
+			],
+			request: { params: z.object({ pairingId: z.uuid() }) },
+			responses: {
+				204: { description: "Telegram pairing completed" },
+			},
+		}),
+		async (context) => {
+			await confirmTelegramPairingFromWeb(deps, {
+				pairingId: context.req.valid("param").pairingId,
+				userId: context.var.user.id,
+				sessionToken: context.var.sessionToken,
+			});
+			return context.body(null, 204);
+		},
+	);
+
+	app.openapi(
+		createRoute({
+			method: "post",
+			path: "/api/v1/me/chat-identities/telegram/pairings/{pairingId}/cancel",
+			middleware: [
+				requireUser(deps),
+				requireVerifiedEmail(deps),
+				requireWriteLimit(deps),
+				requireSameOrigin(deps.config),
+			],
+			request: { params: z.object({ pairingId: z.uuid() }) },
+			responses: {
+				204: { description: "Telegram pairing cancelled" },
+			},
+		}),
+		async (context) => {
+			await cancelTelegramPairingFromWeb(deps, {
+				pairingId: context.req.valid("param").pairingId,
+				userId: context.var.user.id,
+				sessionToken: context.var.sessionToken,
 			});
 			return context.body(null, 204);
 		},

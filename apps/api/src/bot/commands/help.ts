@@ -6,8 +6,12 @@ import type { ChatSender } from "../chat-sender.js";
 export async function handleHelpCommand(
 	deps: AppDeps,
 	sender: ChatSender,
-	input: { chatId: string },
+	input: { chatId: string; chatType: string },
 ): Promise<void> {
+	if (input.chatType === "private") {
+		await sender.send(input.chatId, BOT_MESSAGES.privateStartHelp);
+		return;
+	}
 	const link = await findChatLinkByChat(deps.db, {
 		platform: "telegram",
 		chatId: input.chatId,

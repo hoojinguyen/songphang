@@ -729,6 +729,26 @@ export const vi = {
 		linkButton: "Liên kết",
 		linkDone: "Đã liên kết. Quay lại Telegram để tiếp tục.",
 		linkInvalid: "Link này không còn dùng được.",
+		startPairingHint:
+			"Tạo mã xác nhận một lần (hiệu lực 10 phút) rồi gửi trong tin nhắn riêng cho bot Telegram.",
+		startPairingButton: "Bắt đầu liên kết",
+		privateStepTitle: "Xác nhận trên Telegram",
+		privateStepHint:
+			"Mở cuộc trò chuyện riêng với @{bot} trên Telegram và gửi lệnh dưới đây. Không gửi lệnh này vào nhóm chat.",
+		privateStepHintNoBot:
+			"Mở cuộc trò chuyện riêng với bot trên Telegram và gửi lệnh dưới đây. Không gửi lệnh này vào nhóm chat.",
+		openTelegramButton: "Mở Telegram @{bot}",
+		waitingForTelegram: "Đang chờ bạn xác nhận trong Telegram…",
+		stagedWaitingConfirm:
+			"Bot đã nhận lệnh từ {telegramIdentity}. Hãy bấm Xác nhận liên kết trong Telegram.",
+		confirmStepTitle: "Hoàn tất liên kết Telegram",
+		confirmStepBody:
+			"Tài khoản Telegram {telegramIdentity} đã xác nhận liên kết với {email}. Bấm Hoàn tất liên kết để kích hoạt.",
+		finalConfirmButton: "Hoàn tất liên kết",
+		cancelPairingButton: "Huỷ liên kết",
+		startNewPairingButton: "Tạo mã liên kết mới",
+		identityTaken:
+			"Tài khoản Telegram này đã liên kết với một tài khoản Sòng Phẳng khác.",
 	},
 	approval: {
 		settingsTitle: "Duyệt khoản chi lớn",

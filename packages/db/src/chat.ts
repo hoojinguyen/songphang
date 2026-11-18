@@ -4,6 +4,7 @@ import {
 	botDrafts,
 	botUpdates,
 	chatIdentities,
+	chatIdentityPairings,
 	chatLinkCodes,
 	chatLinks,
 } from "./schema-chat.js";
@@ -53,29 +54,6 @@ export async function consumeGroupLinkCode(
 		.returning({
 			groupId: chatLinkCodes.groupId,
 			createdBy: chatLinkCodes.createdBy,
-		});
-	return row ?? null;
-}
-
-export async function consumeUserLinkCode(
-	executor: DbExecutor,
-	input: { codeHash: string; platform: ChatPlatform; now: Date },
-) {
-	const [row] = await executor
-		.update(chatLinkCodes)
-		.set({ usedAt: input.now })
-		.where(
-			and(
-				eq(chatLinkCodes.codeHash, input.codeHash),
-				eq(chatLinkCodes.purpose, "user"),
-				eq(chatLinkCodes.platform, input.platform),
-				isNull(chatLinkCodes.usedAt),
-				gt(chatLinkCodes.expiresAt, input.now),
-			),
-		)
-		.returning({
-			platform: chatLinkCodes.platform,
-			platformUserId: chatLinkCodes.platformUserId,
 		});
 	return row ?? null;
 }
@@ -314,7 +292,12 @@ export async function clearBotDraftSaved(
 export async function pruneBotRecords(
 	executor: DbExecutor,
 	now: Date,
-): Promise<{ drafts: number; codes: number; updates: number }> {
+): Promise<{
+	drafts: number;
+	codes: number;
+	updates: number;
+	pairings: number;
+}> {
 	const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 	const deletedDrafts = await executor
 		.delete(botDrafts)
@@ -341,9 +324,22 @@ export async function pruneBotRecords(
 		.delete(botUpdates)
 		.where(lt(botUpdates.createdAt, oneDayAgo))
 		.returning({ updateId: botUpdates.updateId });
+	const deletedPairings = await executor
+		.delete(chatIdentityPairings)
+		.where(
+			or(
+				lt(chatIdentityPairings.expiresAt, oneDayAgo),
+				and(
+					isNotNull(chatIdentityPairings.consumedAt),
+					lt(chatIdentityPairings.consumedAt, oneDayAgo),
+				),
+			),
+		)
+		.returning({ id: chatIdentityPairings.id });
 	return {
 		drafts: deletedDrafts.length,
 		codes: deletedCodes.length,
 		updates: deletedUpdates.length,
+		pairings: deletedPairings.length,
 	};
 }

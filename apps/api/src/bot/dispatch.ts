@@ -6,6 +6,10 @@ import { handleExpenseCommand } from "./commands/expense.js";
 import { handleHelpCommand } from "./commands/help.js";
 import { handleLinkCommand } from "./commands/link.js";
 import { handleUndoCommand } from "./commands/undo.js";
+import {
+	handleTelegramPairingCallback,
+	handleTelegramPairingStartCommand,
+} from "./pairing.js";
 import { parseBotCommand, type TelegramUpdate } from "./telegram-update.js";
 
 export async function dispatchWebhookUpdate(
@@ -14,6 +18,12 @@ export async function dispatchWebhookUpdate(
 	update: TelegramUpdate,
 ): Promise<void> {
 	if (update.callback_query) {
+		const handledPairing = await handleTelegramPairingCallback(
+			deps,
+			sender,
+			update.callback_query,
+		);
+		if (handledPairing) return;
 		await handleBotCallback(deps, sender, update.callback_query);
 		return;
 	}
@@ -26,11 +36,17 @@ export async function dispatchWebhookUpdate(
 	if (parsed === null) return;
 
 	const chatId = update.message.chat.id;
+	const chatType = update.message.chat.type;
 	const platformUserId = update.message.from.id;
+	const platformUserName = update.message.from.first_name?.trim() || null;
 
 	switch (parsed.command) {
 		case "lienket":
-			await handleLinkCommand(deps, sender, { chatId, arg: parsed.arg });
+			await handleLinkCommand(deps, sender, {
+				chatId,
+				chatType,
+				arg: parsed.arg,
+			});
 			return;
 		case "chi":
 			await handleExpenseCommand(deps, sender, {
@@ -45,9 +61,21 @@ export async function dispatchWebhookUpdate(
 		case "huy":
 			await handleUndoCommand(deps, sender, { chatId, platformUserId });
 			return;
-		case "trogiup":
 		case "start":
-			await handleHelpCommand(deps, sender, { chatId });
+			if (parsed.arg.length > 0) {
+				await handleTelegramPairingStartCommand(deps, sender, {
+					chatId,
+					chatType,
+					platformUserId,
+					platformUserName,
+					rawSecret: parsed.arg,
+				});
+				return;
+			}
+			await handleHelpCommand(deps, sender, { chatId, chatType });
+			return;
+		case "trogiup":
+			await handleHelpCommand(deps, sender, { chatId, chatType });
 			return;
 		default:
 			return;

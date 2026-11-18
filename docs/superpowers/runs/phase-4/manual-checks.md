@@ -38,7 +38,7 @@ Checks are appended by screen and flow as tasks complete, plus a section **After
 ## S11, S13, `/link/telegram`, and `?form&text=` — Telegram linking web flows (Stage 4C)
 
 1. When `TELEGRAM_PROVIDER` is enabled, open `/g/{id}/settings` as owner -> `Liên kết nhóm Telegram` appears with `Tạo mã liên kết`; click to generate a monospace `/lienket XXXXXXXX` command and copy with `Sao chép`.
-2. Open a `/link/telegram?code=...` URL while signed out -> redirects through `/login?next=...`. After signing in, `/link/telegram` asks `Liên kết Telegram với tài khoản {email}?`; clicking `Liên kết` shows `Đã liên kết. Quay lại Telegram để tiếp tục.`. Reusing the same code shows `Link này không còn dùng được.`.
+2. Open `/link/telegram` while signed out -> redirects through `/login?next=%2Flink%2Ftelegram`. After signing in with a verified account, `/link/telegram` asks `Liên kết Telegram với tài khoản {email}?` and clicking `Bắt đầu liên kết` produces a deep link `Mở Telegram @{bot}` and a one-time `/start pair_...` command (10-minute TTL). Open a private chat with the bot (not a group chat), send `/start pair_...` -> bot replies with your display name and masked email plus `Xác nhận liên kết` / `Huỷ`; tapping `Xác nhận liên kết` updates the browser to show your staged Telegram name/ID and `Hoàn tất liên kết`; clicking `Hoàn tất liên kết` completes the link (`Đã liên kết. Quay lại Telegram để tiếp tục.`). Also check invalid cases: opening an old `/link/telegram?code=TEST` link immediately shows `Link này không còn dùng được.`; sending `/start pair_...` in a group chat is refused without echoing the secret and invalidates that pairing attempt.
 3. Open `/account` -> `Telegram` card shows `Đã liên kết với Telegram`; clicking `Bỏ liên kết` removes it. Returning to `/g/{id}/settings` shows linked chat IDs and clicking `Bỏ liên kết` unlinks them.
 4. Open `/g/{id}/tx/new?form&text=abc%20xyz` -> `Mô tả` input is prefilled with `abc xyz`.
 
@@ -54,5 +54,5 @@ Checks are appended by screen and flow as tasks complete, plus a section **After
 ## After the Telegram bot exists
 
 1. In a real Telegram group linked via `/lienket <code>`: send `/chi cà phê 180k chia 4` -> bot replies with split breakdown and `Lưu` / `Bỏ` buttons -> tap `Lưu` -> web app expense list updates within 2 seconds.
-2. A friend who has not linked their Sòng Phẳng account runs `/chi ...` -> receives `Mình chưa biết bạn là ai trên Sòng Phẳng.` with `Liên kết tài khoản` button opening `/link/telegram?code=...`, and nothing is saved.
+2. A friend who has not linked their Sòng Phẳng account runs `/chi ...` -> receives `Mình chưa biết bạn là ai trên Sòng Phẳng.` with `Liên kết tài khoản` button opening `/link/telegram` (containing no code/secret), and nothing is saved. Following the private `/start pair_...` -> Telegram `Xác nhận liên kết` -> browser `Hoàn tất liên kết` flow activates their identity without allowing any other user or group chat to hijack it.
 3. Another person taps your `Lưu` button -> rejected with `Chỉ {tên bạn} lưu được khoản này.` and nothing is saved.

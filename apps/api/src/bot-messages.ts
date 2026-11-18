@@ -29,7 +29,32 @@ export const BOT_MESSAGES = {
 	huyNothing: "Không có khoản nào của bạn trong 10 phút qua.",
 	help: "/chi <khoản chi> — thêm khoản chi\n/sodu — xem ai nợ ai\n/huy — xoá khoản bạn vừa thêm",
 	tooManyMessages: "Chậm lại một chút nhé.",
+	pairingPrivateOnly:
+		"Vì lý do bảo mật, chỉ gửi mã liên kết tài khoản trong tin nhắn riêng với bot. Hãy tạo mã mới trên Sòng Phẳng.",
+	pairingInvalidOrExpired:
+		"Mã liên kết tài khoản không đúng hoặc đã hết hạn. Hãy bắt đầu lại trên Sòng Phẳng.",
+	pairingIdentityTaken:
+		"Tài khoản Telegram này đã liên kết với một tài khoản Sòng Phẳng khác.",
+	pairingPrompt: (name: string, maskedEmail: string) =>
+		`Liên kết Telegram này với tài khoản Sòng Phẳng "${name}" (${maskedEmail})?`,
+	pairingConfirmButton: "Xác nhận liên kết",
+	pairingCancelButton: "Huỷ",
+	pairingTelegramConfirmed:
+		"Đã xác nhận trên Telegram. Hãy quay lại trình duyệt Sòng Phẳng để hoàn tất liên kết.",
+	pairingCancelled: "Đã huỷ liên kết tài khoản.",
+	privateStartHelp:
+		"Để liên kết tài khoản Telegram, hãy mở Sòng Phẳng trên trình duyệt và bắt đầu liên kết tài khoản.",
 };
+
+export function maskEmail(email: string): string {
+	const atIndex = email.indexOf("@");
+	if (atIndex <= 0) return "***";
+	const local = email.slice(0, atIndex);
+	const domain = email.slice(atIndex + 1);
+	if (local.length === 1) return `*@${domain}`;
+	if (local.length === 2) return `${local[0]}*@${domain}`;
+	return `${local[0]}***${local[local.length - 1]}@${domain}`;
+}
 
 export function formatParseIssue(input: {
 	code: string;

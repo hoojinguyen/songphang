@@ -107,3 +107,16 @@ Each entry: problem, options, choice, reason; for a library also license, mainte
 - Options: leave the planned filenames in place or rename them and their handlers to English (`expense.ts`, `balances.ts`, `undo.ts`, `help.ts`, `link.ts`) while keeping the Telegram slash commands (`/chi`, `/sodu`, `/huy`, `/trogiup`, `/start`, `/lienket`) unchanged.
 - Choice: renamed all five command files and handlers to English per project owner approval.
 - Reason: aligns all Phase 4 TypeScript source filenames and identifiers with `AGENTS.md` English engineering policy without altering user-facing bot commands.
+
+## Advisor Review Corrections Decisions (2026-11-19)
+
+### DR1 — Two-sided Telegram identity pairing (`chat_identity_pairings`, R1)
+
+- Problem: Review R1 [P1] showed that group-posted `/link/telegram?code=...` bearer codes could be claimed by any signed-in user without proving ownership of the Telegram sender ID (and an attacker could trick a signed-in user into claiming the attacker's code).
+- Options: (a) keep `/link/telegram?code=` with an extra dialog; (b) replace bearer codes with a web-initiated two-sided pairing flow (`chat_identity_pairings`) bound to `(userId, sessionId)` with a private `/start <secret>` step, inline Telegram confirm/cancel (`pc:` / `px:`), and final initiating-session web confirmation.
+- Choice: option (b) per the advisor's correction authorization. Group linking (`/lienket <code>`) stays unchanged.
+- Standing doc amendments needed (advisor-owned):
+  - `docs/05-database-design.md`: document `chat_identity_pairings` table (`id`, `platform`, `user_id`, `session_id`, `secret_hash`, `status`, `platform_user_id`, `platform_user_name`, `telegram_confirmed_at`, `expires_at`, `consumed_at`, `created_at`) and `chat_link_codes` `CHECK (purpose in ('group'))`.
+  - `docs/05-api-spec.md`: document `POST /me/chat-identities/telegram/pairings`, `GET /me/chat-identities/telegram/pairings/{pairingId}`, `POST .../confirm`, `POST .../cancel`, and deprecation/rejection (`400 TOKEN_INVALID`) of `POST /me/chat-identities/claim`.
+  - `docs/superpowers/specs/2026-11-15-phase-4-collaboration-design.md` (sections 5.2, 5.3, 5.5, 7.3) & `docs/06-ux-ui/user-flows.md`: replace the bearer-link user identity flow with two-sided pairing and new `/link/telegram` strings.
+  - `docs/04-adr.md`: record ADR for two-sided web+Telegram pairing proving both account session and Telegram sender ownership before activating `chat_identities`.

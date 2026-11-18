@@ -5,17 +5,15 @@ import {
 	CreateChatLinkCodeResponse,
 } from "@songphang/contract";
 import {
+	cancelUnconsumedPairingsForUser,
 	consumeGroupLinkCode,
-	consumeUserLinkCode,
 	deleteGroupChatLink,
 	deleteUserChatIdentity,
-	findChatIdentity,
 	findGroup,
 	insertChatLinkCode,
 	listGroupChatLinks,
 	listUserChatIdentities,
 	upsertChatLink,
-	upsertUserChatIdentity,
 } from "@songphang/db";
 import { uuidv7 } from "uuidv7";
 import type { AppDeps } from "../app.js";
@@ -98,44 +96,26 @@ export async function getUserChatIdentities(
 
 export async function claimUserChatIdentity(
 	deps: AppDeps,
-	input: { userId: string; code: string },
+	_input: { userId: string; code: string },
 ): Promise<void> {
 	requireTelegramEnabled(deps);
-	const now = deps.now();
-	await deps.db.transaction(async (tx) => {
-		const consumed = await consumeUserLinkCode(tx, {
-			codeHash: hashLinkCode(input.code),
-			platform: "telegram",
-			now,
-		});
-		if (!consumed?.platformUserId) {
-			throw new AppError(400, "TOKEN_INVALID", "Invalid or expired link code");
-		}
-		const existing = await findChatIdentity(tx, {
-			platform: "telegram",
-			platformUserId: consumed.platformUserId,
-		});
-		if (existing && existing.userId !== input.userId) {
-			throw new AppError(
-				409,
-				"CHAT_IDENTITY_TAKEN",
-				"Telegram account is already linked to another user",
-			);
-		}
-		await upsertUserChatIdentity(tx, {
-			platform: "telegram",
-			platformUserId: consumed.platformUserId,
-			userId: input.userId,
-			now,
-		});
-	});
+	// Legacy public bearer claim codes are permanently disabled (R1 security fix).
+	throw new AppError(400, "TOKEN_INVALID", "Invalid or expired link code");
 }
 
 export async function unlinkUserChatIdentity(
 	deps: AppDeps,
 	input: { userId: string; platform: ChatPlatform },
 ): Promise<void> {
-	await deleteUserChatIdentity(deps.db, input);
+	const now = deps.now();
+	await deps.db.transaction(async (tx) => {
+		await deleteUserChatIdentity(tx, input);
+		await cancelUnconsumedPairingsForUser(tx, {
+			userId: input.userId,
+			platform: input.platform,
+			now,
+		});
+	});
 }
 
 export async function redeemGroupChatLinkCode(

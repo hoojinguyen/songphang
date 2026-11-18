@@ -10,7 +10,7 @@ import {
 	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
-import { users } from "./schema.js";
+import { sessions, users } from "./schema.js";
 import { groups } from "./schema-groups.js";
 import { transactions } from "./schema-transactions.js";
 
@@ -81,11 +81,52 @@ export const chatLinkCodes = pgTable(
 	},
 	(table) => [
 		index("chat_link_codes_expires_idx").on(table.expiresAt),
-		check("chat_link_codes_purpose_check", sql`purpose in ('group', 'user')`),
+		check("chat_link_codes_purpose_check", sql`purpose in ('group')`),
 		check("chat_link_codes_platform_check", sql`platform in ('telegram')`),
 		check(
 			"chat_link_codes_target_check",
-			sql`(purpose = 'group' and group_id is not null and platform_user_id is null) or (purpose = 'user' and platform_user_id is not null and group_id is null)`,
+			sql`purpose = 'group' and group_id is not null and platform_user_id is null`,
+		),
+	],
+);
+
+export const chatIdentityPairings = pgTable(
+	"chat_identity_pairings",
+	{
+		id: uuid("id").primaryKey(),
+		platform: text("platform").notNull().default("telegram"),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		sessionId: uuid("session_id")
+			.notNull()
+			.references(() => sessions.id, { onDelete: "cascade" }),
+		secretHash: text("secret_hash").notNull().unique(),
+		status: text("status").notNull().default("pending_telegram"),
+		platformUserId: text("platform_user_id"),
+		platformUserName: text("platform_user_name"),
+		telegramConfirmedAt: timestamp("telegram_confirmed_at", {
+			withTimezone: true,
+		}),
+		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+		consumedAt: timestamp("consumed_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("chat_identity_pairings_user_idx").on(
+			table.userId,
+			table.createdAt.desc(),
+		),
+		index("chat_identity_pairings_expires_idx").on(table.expiresAt),
+		check(
+			"chat_identity_pairings_platform_check",
+			sql`platform in ('telegram')`,
+		),
+		check(
+			"chat_identity_pairings_status_check",
+			sql`status in ('pending_telegram', 'telegram_confirmed', 'completed', 'cancelled')`,
 		),
 	],
 );

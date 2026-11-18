@@ -1,22 +1,49 @@
 "use client";
+import type { StartTelegramPairingResponse } from "@songphang/contract";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
+import { TelegramPairingStepView } from "../../../components/account/TelegramPairingStepView";
 import { Button } from "../../../components/ui/Button";
 import { LoadError } from "../../../components/ui/LoadError";
 import { VerifyEmailBanner } from "../../../components/ui/VerifyEmailBanner";
-import { useClaimChatIdentity } from "../../../lib/chat-links";
+import {
+	useCancelTelegramPairing,
+	useConfirmTelegramPairing,
+	useStartTelegramPairing,
+	useTelegramPairing,
+} from "../../../lib/chat-links";
+import { useFeatures } from "../../../lib/features";
 import { useMe } from "../../../lib/session";
 import { useSessionGuard } from "../../../lib/use-session-guard";
 import { t, vi } from "../../../messages/vi";
 
 function LinkTelegramScreen() {
-	const code = useSearchParams().get("code")?.trim() ?? "";
+	const legacyCode = useSearchParams().get("code")?.trim() ?? "";
+	const features = useFeatures();
 	const me = useMe();
-	const claim = useClaimChatIdentity();
-	useSessionGuard(me.error ?? claim.error);
+	const startPairing = useStartTelegramPairing();
+	const confirmPairing = useConfirmTelegramPairing();
+	const cancelPairing = useCancelTelegramPairing();
+	const [started, setStarted] = useState<StartTelegramPairingResponse | null>(
+		null,
+	);
 
-	if (me.isPending || me.error?.status === 401) {
+	const polling = useTelegramPairing(
+		started?.pairing.id ?? null,
+		Boolean(started) && !confirmPairing.isSuccess && !cancelPairing.isSuccess,
+	);
+
+	useSessionGuard(
+		me.error ??
+			startPairing.error ??
+			polling.error ??
+			confirmPairing.error ??
+			cancelPairing.error ??
+			null,
+	);
+
+	if (me.isPending || me.error?.status === 401 || features.isPending) {
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5 py-6">
 				<div aria-busy="true" className="h-36 rounded-card bg-sunken" />
@@ -36,52 +63,136 @@ function LinkTelegramScreen() {
 		);
 	}
 
-	const invalidCode =
-		!code || claim.error?.status === 400 || claim.error?.status === 409;
+	const pairing = polling.data?.pairing ?? started?.pairing ?? null;
+	const telegramDisabled =
+		features.data?.telegram === false || startPairing.error?.status === 404;
+
+	function resetFlow() {
+		setStarted(null);
+		startPairing.reset();
+		confirmPairing.reset();
+		cancelPairing.reset();
+	}
+
+	async function handleStart() {
+		confirmPairing.reset();
+		cancelPairing.reset();
+		const created = await startPairing.mutateAsync().catch(() => null);
+		if (created) setStarted(created);
+	}
+
+	if (!me.data.emailVerified) {
+		return (
+			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-5 px-5 py-6">
+				<VerifyEmailBanner />
+			</main>
+		);
+	}
+
+	if (legacyCode.length > 0 || telegramDisabled) {
+		return (
+			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-5 px-5 py-6">
+				<h1 className="text-[24px] font-black">{vi.telegram.linkInvalid}</h1>
+				{!telegramDisabled && (
+					<Link
+						href="/link/telegram"
+						className="flex min-h-12 items-center justify-center rounded-pill bg-ink px-6 font-bold text-surface"
+					>
+						{vi.telegram.startNewPairingButton}
+					</Link>
+				)}
+				<Link
+					href="/"
+					className="flex min-h-12 items-center justify-center rounded-pill bg-surface px-6 font-bold text-ink"
+				>
+					{vi.common.backToGroups}
+				</Link>
+			</main>
+		);
+	}
+
+	if (confirmPairing.isSuccess || pairing?.status === "completed") {
+		return (
+			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-5 px-5 py-6">
+				<h1 className="text-[24px] font-black">{vi.telegram.linkDone}</h1>
+				<Link
+					href="/"
+					className="flex min-h-12 items-center justify-center rounded-pill bg-surface px-6 font-bold text-ink"
+				>
+					{vi.common.backToGroups}
+				</Link>
+			</main>
+		);
+	}
+
+	const isInvalidTerminal =
+		cancelPairing.isSuccess ||
+		pairing?.status === "cancelled" ||
+		pairing?.status === "expired" ||
+		polling.error?.status === 404 ||
+		confirmPairing.error?.status === 400 ||
+		confirmPairing.error?.status === 404 ||
+		confirmPairing.error?.status === 409;
+
+	if (isInvalidTerminal) {
+		const isTaken = confirmPairing.error?.status === 409;
+		return (
+			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-5 px-5 py-6">
+				<h1 className="text-[24px] font-black">
+					{isTaken ? vi.telegram.identityTaken : vi.telegram.linkInvalid}
+				</h1>
+				<Button variant="primary" size="lg" onClick={resetFlow}>
+					{vi.telegram.startNewPairingButton}
+				</Button>
+				<Link
+					href="/"
+					className="flex min-h-12 items-center justify-center rounded-pill bg-surface px-6 font-bold text-ink"
+				>
+					{vi.common.backToGroups}
+				</Link>
+			</main>
+		);
+	}
+
+	if (started && pairing) {
+		return (
+			<TelegramPairingStepView
+				started={started}
+				pairing={pairing}
+				email={me.data.email}
+				isConfirmPending={confirmPairing.isPending}
+				isCancelPending={cancelPairing.isPending}
+				errorMessage={
+					confirmPairing.isError || cancelPairing.isError
+						? vi.common.saveError
+						: null
+				}
+				onConfirm={() => confirmPairing.mutate(pairing.id)}
+				onCancel={() => cancelPairing.mutate(pairing.id)}
+			/>
+		);
+	}
 
 	return (
 		<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-5 px-5 py-6">
-			{!me.data.emailVerified ? (
-				<VerifyEmailBanner />
-			) : claim.isSuccess ? (
-				<>
-					<h1 className="text-[24px] font-black">{vi.telegram.linkDone}</h1>
-					<Link
-						href="/"
-						className="flex h-control-md items-center justify-center rounded-pill bg-surface px-6 font-bold"
-					>
-						{vi.common.backToGroups}
-					</Link>
-				</>
-			) : invalidCode ? (
-				<>
-					<h1 className="text-[24px] font-black">{vi.telegram.linkInvalid}</h1>
-					<Link
-						href="/"
-						className="flex h-control-md items-center justify-center rounded-pill bg-surface px-6 font-bold"
-					>
-						{vi.common.backToGroups}
-					</Link>
-				</>
-			) : (
-				<>
-					<h1 className="break-words text-[24px] font-black">
-						{t(vi.telegram.linkConfirm, { email: me.data.email })}
-					</h1>
-					<Button
-						variant="primary"
-						size="lg"
-						disabled={claim.isPending}
-						onClick={() => claim.mutate(code)}
-					>
-						{vi.telegram.linkButton}
-					</Button>
-					{claim.isError && (
-						<p role="alert" className="text-sm text-coral">
-							{vi.common.saveError}
-						</p>
-					)}
-				</>
+			<h1 className="break-words text-[24px] font-black">
+				{t(vi.telegram.linkConfirm, { email: me.data.email })}
+			</h1>
+			<p className="text-sm text-muted">{vi.telegram.startPairingHint}</p>
+			<Button
+				variant="primary"
+				size="lg"
+				disabled={startPairing.isPending}
+				onClick={() => void handleStart()}
+			>
+				{vi.telegram.startPairingButton}
+			</Button>
+			{startPairing.isError && (
+				<p role="alert" className="text-sm font-semibold text-ink">
+					{startPairing.error.status === 429
+						? vi.login.tooMany
+						: vi.common.saveError}
+				</p>
 			)}
 		</main>
 	);

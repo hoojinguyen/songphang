@@ -93,3 +93,12 @@ export function requireCommentLimit(deps: AppDeps) {
 		key: (context) => context.var.user.id,
 	});
 }
+
+export function requirePairingLimit(deps: AppDeps) {
+	return deps.rateLimiter.limit({
+		name: "telegram_pairing_start",
+		max: 10,
+		windowMs: 60 * 1000,
+		key: (context) => context.var.user.id,
+	});
+}

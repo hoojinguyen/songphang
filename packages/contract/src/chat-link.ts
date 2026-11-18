@@ -53,3 +53,44 @@ export const ClaimChatIdentityRequest = z
 	})
 	.openapi("ClaimChatIdentityRequest");
 export type ClaimChatIdentityRequest = z.infer<typeof ClaimChatIdentityRequest>;
+
+export const TelegramPairingStatus = z
+	.enum([
+		"pending_telegram",
+		"telegram_confirmed",
+		"completed",
+		"cancelled",
+		"expired",
+	])
+	.openapi("TelegramPairingStatus");
+export type TelegramPairingStatus = z.infer<typeof TelegramPairingStatus>;
+
+export const TelegramPairingDto = z
+	.object({
+		id: z.uuid(),
+		status: TelegramPairingStatus,
+		botUsername: z.string().nullable(),
+		stagedPlatformUserId: z.string().nullable(),
+		stagedPlatformName: z.string().nullable(),
+		expiresAt: z.iso.datetime(),
+	})
+	.openapi("TelegramPairingDto");
+export type TelegramPairingDto = z.infer<typeof TelegramPairingDto>;
+
+export const StartTelegramPairingResponse = z
+	.object({
+		pairing: TelegramPairingDto,
+		startCommand: z.string(),
+		deepLinkUrl: z.string().nullable(),
+	})
+	.openapi("StartTelegramPairingResponse");
+export type StartTelegramPairingResponse = z.infer<
+	typeof StartTelegramPairingResponse
+>;
+
+export const TelegramPairingResponse = z
+	.object({
+		pairing: TelegramPairingDto,
+	})
+	.openapi("TelegramPairingResponse");
+export type TelegramPairingResponse = z.infer<typeof TelegramPairingResponse>;

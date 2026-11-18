@@ -6,8 +6,12 @@ import type { ChatSender } from "../chat-sender.js";
 export async function handleLinkCommand(
 	deps: AppDeps,
 	sender: ChatSender,
-	input: { chatId: string; arg: string },
+	input: { chatId: string; chatType: string; arg: string },
 ): Promise<void> {
+	if (input.chatType !== "group" && input.chatType !== "supergroup") {
+		await sender.send(input.chatId, BOT_MESSAGES.badOrExpiredCode);
+		return;
+	}
 	const linked = await redeemGroupChatLinkCode(deps, {
 		chatId: input.chatId,
 		rawCode: input.arg,

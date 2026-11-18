@@ -1,19 +1,14 @@
 import { GroupRole } from "@songphang/contract";
 import {
+	type DbExecutor,
 	findChatIdentity,
 	findChatLinkByChat,
 	findGroupAccess,
 	findUserById,
-	insertChatLinkCode,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { BOT_MESSAGES } from "../bot-messages.js";
 import type { ChatSender } from "./chat-sender.js";
-import {
-	generateLinkCode,
-	hashLinkCode,
-	LINK_CODE_TTL_MS,
-} from "./link-codes.js";
 
 export type ResolvedUser = NonNullable<
 	Awaited<ReturnType<typeof findUserById>>
@@ -42,7 +37,7 @@ export type ActorResolution =
 	  };
 
 export async function resolveActor(
-	deps: Pick<AppDeps, "db">,
+	deps: { db: DbExecutor },
 	input: { chatId: string; platformUserId: string },
 ): Promise<ActorResolution> {
 	const chatLink = await findChatLinkByChat(deps.db, {
@@ -88,19 +83,7 @@ export async function replySenderNotLinked(
 	sender: ChatSender,
 	input: { chatId: string; platformUserId: string },
 ): Promise<void> {
-	const now = deps.now();
-	const code = generateLinkCode();
-	await insertChatLinkCode(deps.db, {
-		codeHash: hashLinkCode(code),
-		purpose: "user",
-		groupId: null,
-		platform: "telegram",
-		platformUserId: input.platformUserId,
-		createdBy: null,
-		expiresAt: new Date(now.getTime() + LINK_CODE_TTL_MS),
-		usedAt: null,
-	});
-	const url = `${deps.config.webOrigin}/link/telegram?code=${encodeURIComponent(code)}`;
+	const url = `${deps.config.webOrigin}/link/telegram`;
 	await sender.send(input.chatId, BOT_MESSAGES.senderNotLinked, [
 		{ text: BOT_MESSAGES.linkAccountButton, url },
 	]);
