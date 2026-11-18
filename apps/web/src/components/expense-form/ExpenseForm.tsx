@@ -47,6 +47,7 @@ export function ExpenseForm({
 	const balances = useBalances(groupId);
 	const deletion = useDeleteTransaction(groupId);
 	const restore = useRestoreTransaction(groupId);
+	const [photoUploading, setPhotoUploading] = useState(false);
 	const [splitOpen, setSplitOpen] = useState(
 		(!transaction &&
 			memory.draft?.issues.some((i) => i.code === "SUM_MISMATCH")) ??
@@ -223,6 +224,7 @@ export function ExpenseForm({
 				attachments={attachments}
 				onAdd={addAttachment}
 				onRemove={removeAttachment}
+				onUploadingChange={setPhotoUploading}
 			/>
 			{mutation.isError && (
 				<p role="alert">
@@ -286,8 +288,11 @@ export function ExpenseForm({
 			<Button
 				variant="accent"
 				size="lg"
-				onClick={submit}
+				onClick={() => {
+					if (!photoUploading) submit();
+				}}
 				disabled={
+					photoUploading ||
 					!!conflict ||
 					!form.changed ||
 					request === null ||

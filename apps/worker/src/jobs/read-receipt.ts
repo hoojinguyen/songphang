@@ -33,7 +33,11 @@ async function failAndNotify(
 	deps: WorkerDeps,
 	groupId: string,
 	scanId: string,
-	errorCode: "NOT_A_RECEIPT" | "READER_UNAVAILABLE" | "READ_FAILED",
+	errorCode:
+		| "NOT_A_RECEIPT"
+		| "READER_UNAVAILABLE"
+		| "READER_INVALID"
+		| "READ_FAILED",
 ): Promise<void> {
 	await finishReceiptScanFailed(deps.db, {
 		scanId,
@@ -80,7 +84,10 @@ async function applyReadingOutcome(
 
 function failureCodeForError(
 	error: unknown,
-): "READER_UNAVAILABLE" | "READ_FAILED" {
+): "READER_UNAVAILABLE" | "READER_INVALID" | "READ_FAILED" {
+	if (error instanceof z.ZodError) {
+		return "READER_INVALID";
+	}
 	if (error instanceof AnthropicTransportError) {
 		if (error.retryable || error.status === 401 || error.status === 403) {
 			return "READER_UNAVAILABLE";

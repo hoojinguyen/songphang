@@ -310,6 +310,13 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   3. Blocked `ReceiptReview` save while `showMismatch` is unresolved (including when 6 extras prevent adding a mismatch adjustment), and stopped `onRemoveExtra` from auto-dismissing `MismatchNotice` when freeing an extra slot.
 - Verified live on production Next.js `3010` + API `4010` + worker (`AI_PROVIDER=fake`, `AI_FAKE_RECEIPT_FIXTURE=mismatch`, `Nhóm 3D3`), followed by `pnpm db:check-balances` (`All groups balanced`) and `pnpm check` (`0` errors).
 
+## Post-review fixes (Codex review round 2)
+
+- Findings addressed:
+  1. Propagated `PhotoRow` uploading state to `ExpenseForm` (`onUploadingChange`) so `Lưu khoản chi` stays disabled and refuses clicks until photo upload finishes or fails.
+  2. Mapped `z.ZodError` in `apps/worker/src/jobs/read-receipt.ts` (`failureCodeForError`) to the documented `READER_INVALID` scan terminal `errorCode` across both initial and retry attempts.
+- Verified `Invalid ReceiptReading ZodError -> READER_INVALID` via `exercise_review2_reader.mts` + `exercise_3b3_spec15.mts`, live `PhotoRow` upload submit lock in Chrome DevTools (`3010`/`4010`), and `pnpm check` (`0` errors).
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).

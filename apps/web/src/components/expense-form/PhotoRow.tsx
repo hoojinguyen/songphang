@@ -34,12 +34,14 @@ export function PhotoRow({
 	attachments,
 	onAdd,
 	onRemove,
+	onUploadingChange,
 	readOnly = false,
 }: {
 	groupId: string;
 	attachments: AttachmentDto[];
 	onAdd?: (attachment: AttachmentDto) => void;
 	onRemove?: (id: string) => void;
+	onUploadingChange?: (uploading: boolean) => void;
 	readOnly?: boolean;
 }) {
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +57,7 @@ export function PhotoRow({
 		}
 		setErrorText(null);
 		setUploading(true);
+		onUploadingChange?.(true);
 		try {
 			const prepared = await prepareImage(file);
 			const attachment = await uploadAttachment(groupId, prepared);
@@ -63,6 +66,7 @@ export function PhotoRow({
 			setErrorText(mapUploadError(error));
 		} finally {
 			setUploading(false);
+			onUploadingChange?.(false);
 			if (inputRef.current) inputRef.current.value = "";
 		}
 	};
