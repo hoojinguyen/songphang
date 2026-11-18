@@ -1,4 +1,8 @@
-import { type AnthropicDeps, anthropicMessages } from "@songphang/ai";
+import {
+	type AnthropicDeps,
+	AnthropicTransportError,
+	anthropicMessages,
+} from "@songphang/ai";
 import { ReceiptReading } from "@songphang/contract";
 import { z } from "zod";
 import {
@@ -59,13 +63,17 @@ export function createAnthropicReceiptReader(
 				RECEIPT_TIMEOUT_MS,
 			);
 
-			const reading = ReceiptReading.parse(response.toolInput);
-			return {
-				reading,
-				model: response.model,
-				inputTokens: response.inputTokens,
-				outputTokens: response.outputTokens,
-			};
+			const { toolInput, ...usage } = response;
+			const reading = ReceiptReading.safeParse(toolInput);
+			if (!reading.success) {
+				throw new AnthropicTransportError({
+					status: 200,
+					retryable: false,
+					errorType: "invalid_reading",
+					usage,
+				});
+			}
+			return { reading: reading.data, ...usage };
 		},
 	};
 }

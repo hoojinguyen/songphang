@@ -22,9 +22,9 @@ const CONTENT_BLOCK_SCHEMA = z.union([
 	z.object({ type: z.string() }).passthrough(),
 ]);
 
-const MESSAGES_RESPONSE_SCHEMA = z.object({
+// Usage is read on its own so a billed response with an unusable body still reaches the cost ledger.
+const USAGE_RESPONSE_SCHEMA = z.object({
 	model: z.string().optional(),
-	content: z.array(CONTENT_BLOCK_SCHEMA),
 	usage: z
 		.object({
 			input_tokens: z.number().int().nonnegative().default(0),
@@ -33,22 +33,48 @@ const MESSAGES_RESPONSE_SCHEMA = z.object({
 		.optional(),
 });
 
+const MESSAGES_RESPONSE_SCHEMA = z.object({
+	content: z.array(CONTENT_BLOCK_SCHEMA),
+});
+
+export interface AnthropicUsage {
+	model: string;
+	inputTokens: number;
+	outputTokens: number;
+}
+
 export class AnthropicTransportError extends Error {
 	readonly status: number;
 	readonly retryable: boolean;
 	readonly errorType: string | undefined;
+	readonly usage: AnthropicUsage | null;
 
-	constructor(status: number, retryable: boolean, errorType?: string) {
+	constructor(input: {
+		status: number;
+		retryable: boolean;
+		errorType?: string;
+		usage?: AnthropicUsage;
+	}) {
 		super(
-			errorType
-				? `Anthropic API request failed (status=${status}, type=${errorType})`
-				: `Anthropic API request failed (status=${status})`,
+			input.errorType
+				? `Anthropic API request failed (status=${input.status}, type=${input.errorType})`
+				: `Anthropic API request failed (status=${input.status})`,
 		);
 		this.name = "AnthropicTransportError";
-		this.status = status;
-		this.retryable = retryable;
-		this.errorType = errorType;
+		this.status = input.status;
+		this.retryable = input.retryable;
+		this.errorType = input.errorType;
+		this.usage = input.usage ?? null;
 	}
+}
+
+function readUsage(json: unknown, fallbackModel: string): AnthropicUsage {
+	const parsed = USAGE_RESPONSE_SCHEMA.safeParse(json);
+	return {
+		model: (parsed.success ? parsed.data.model : undefined) ?? fallbackModel,
+		inputTokens: parsed.success ? (parsed.data.usage?.input_tokens ?? 0) : 0,
+		outputTokens: parsed.success ? (parsed.data.usage?.output_tokens ?? 0) : 0,
+	};
 }
 
 export interface AnthropicDeps {
@@ -101,17 +127,23 @@ export async function anthropicMessages(
 				errorType = undefined;
 			}
 			const retryable = response.status === 429 || response.status >= 500;
-			throw new AnthropicTransportError(response.status, retryable, errorType);
+			throw new AnthropicTransportError({
+				status: response.status,
+				retryable,
+				...(errorType === undefined ? {} : { errorType }),
+			});
 		}
 
-		const json = await response.json();
+		const json: unknown = await response.json();
+		const usage = readUsage(json, deps.model);
 		const parsed = MESSAGES_RESPONSE_SCHEMA.safeParse(json);
 		if (!parsed.success) {
-			throw new AnthropicTransportError(
-				response.status,
-				false,
-				"invalid_shape",
-			);
+			throw new AnthropicTransportError({
+				status: response.status,
+				retryable: false,
+				errorType: "invalid_shape",
+				usage,
+			});
 		}
 
 		const toolBlock = parsed.data.content.find(
@@ -119,19 +151,15 @@ export async function anthropicMessages(
 				block.type === "tool_use" && "name" in block && block.name === toolName,
 		);
 		if (!toolBlock) {
-			throw new AnthropicTransportError(
-				response.status,
-				false,
-				"missing_tool_use",
-			);
+			throw new AnthropicTransportError({
+				status: response.status,
+				retryable: false,
+				errorType: "missing_tool_use",
+				usage,
+			});
 		}
 
-		return {
-			model: parsed.data.model ?? deps.model,
-			toolInput: toolBlock.input,
-			inputTokens: parsed.data.usage?.input_tokens ?? 0,
-			outputTokens: parsed.data.usage?.output_tokens ?? 0,
-		};
+		return { ...usage, toolInput: toolBlock.input };
 	} catch (error) {
 		if (error instanceof AnthropicTransportError) {
 			throw error;
@@ -142,9 +170,17 @@ export async function anthropicMessages(
 					error instanceof DOMException)) &&
 			error.name === "AbortError"
 		) {
-			throw new AnthropicTransportError(0, true, "timeout");
+			throw new AnthropicTransportError({
+				status: 0,
+				retryable: true,
+				errorType: "timeout",
+			});
 		}
-		throw new AnthropicTransportError(0, true, "network");
+		throw new AnthropicTransportError({
+			status: 0,
+			retryable: true,
+			errorType: "network",
+		});
 	} finally {
 		clearTimeout(timer);
 	}
