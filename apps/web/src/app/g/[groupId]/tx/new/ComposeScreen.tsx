@@ -5,6 +5,7 @@ import {
 	type ParseDraft,
 	type ParseResponse,
 } from "@songphang/contract";
+import { toVietnamDate } from "@songphang/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -49,8 +50,7 @@ export function ComposeScreen({
 	const [collapsing, setCollapsing] = useState(false);
 	const [slowPending, setSlowPending] = useState(false);
 	const [previewAt] = useState(
-		() =>
-			`${new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)}T05:00:00.000Z`,
+		() => `${toVietnamDate(new Date())}T05:00:00.000Z`,
 	);
 	const result = sentence.trim() ? query.data : undefined;
 	useEffect(() => {

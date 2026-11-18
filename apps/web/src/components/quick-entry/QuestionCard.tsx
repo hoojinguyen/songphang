@@ -6,7 +6,7 @@ import {
 	type ParseDraft,
 	ParseResponse,
 } from "@songphang/contract";
-import { readSentence } from "@songphang/core";
+import { readSentence, toVietnamDate } from "@songphang/core";
 import { useState } from "react";
 import { usePreviewShares } from "../../lib/transactions";
 import { t, vi } from "../../messages/vi";
@@ -107,7 +107,7 @@ export function QuestionCard({
 		(!missing || !!description.trim());
 	const parsed = CreateTransactionRequest.safeParse({
 		...draft,
-		occurredAt: `${new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)}T05:00:00.000Z`,
+		occurredAt: `${toVietnamDate(new Date())}T05:00:00.000Z`,
 	});
 	const preview = usePreviewShares(
 		groupId,
