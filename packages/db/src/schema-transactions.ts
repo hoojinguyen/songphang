@@ -73,7 +73,7 @@ export const transactions = pgTable(
 		),
 		check(
 			"transactions_split_method_check",
-			sql`${table.splitMethod} in ('equal', 'exact', 'shares', 'percent')`,
+			sql`${table.splitMethod} in ('equal', 'exact', 'shares', 'percent', 'items')`,
 		),
 		index("transactions_group_feed_index")
 			.on(table.groupId, table.occurredAt.desc(), table.id.desc())

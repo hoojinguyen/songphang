@@ -1,5 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { isValidCalendarDate, isWithinFiveYears } from "@songphang/core";
+import { AttachmentDto } from "./attachment.ts";
 export const MoneyAmount = z.int().min(1).max(999_999_999_999);
 export const CalendarDate = z
 	.string()
@@ -77,12 +78,35 @@ const PercentSplitInput = z
 			new Set(split.entries.map((e) => e.memberId)).size ===
 			split.entries.length,
 	);
+export const NonnegativeMoneyAmount = z.int().min(0).max(999_999_999_999);
+export const ItemsSplitItem = z.object({
+	name: z.string().trim().min(1).max(80),
+	amount: NonnegativeMoneyAmount,
+	memberIds: z
+		.array(z.uuid())
+		.max(20)
+		.refine((ids) => new Set(ids).size === ids.length),
+});
+export type ItemsSplitItem = z.infer<typeof ItemsSplitItem>;
+export const ItemsSplitExtra = z.object({
+	kind: z.enum(["tax", "service", "discount", "other"]),
+	label: z.string().trim().max(40),
+	amount: NonnegativeMoneyAmount,
+});
+export type ItemsSplitExtra = z.infer<typeof ItemsSplitExtra>;
+export const ItemsSplitInput = z.object({
+	method: z.literal("items"),
+	items: z.array(ItemsSplitItem).min(1).max(60),
+	extras: z.array(ItemsSplitExtra).max(6),
+});
+export type ItemsSplitInput = z.infer<typeof ItemsSplitInput>;
 export const SplitInput = z
 	.discriminatedUnion("method", [
 		EqualSplitInput,
 		ExactSplitInput,
 		SharesSplitInput,
 		PercentSplitInput,
+		ItemsSplitInput,
 	])
 	.openapi("SplitInput");
 export type SplitInput = z.infer<typeof SplitInput>;
@@ -93,6 +117,10 @@ const Payers = z
 	.refine(
 		(payers) => new Set(payers.map((p) => p.memberId)).size === payers.length,
 	);
+const AttachmentIds = z
+	.array(z.uuid())
+	.max(3)
+	.refine((ids) => new Set(ids).size === ids.length);
 const LedgerFields = {
 	description: z.string().trim().min(1).max(200),
 	amount: MoneyAmount,
@@ -103,9 +131,15 @@ const LedgerFields = {
 	split: SplitInput,
 };
 export const SplitTransactionRequest = z
-	.object({ type: z.enum(["expense", "income"]), ...LedgerFields })
+	.object({
+		type: z.enum(["expense", "income"]),
+		...LedgerFields,
+		attachmentIds: AttachmentIds.optional(),
+	})
 	.refine(
-		(request) => !(request.category !== null && request.categoryId !== null),
+		(request) =>
+			!(request.category !== null && request.categoryId !== null) &&
+			!(request.type === "income" && request.split.method === "items"),
 	)
 	.openapi("SplitTransactionRequest");
 export type SplitTransactionRequest = z.infer<typeof SplitTransactionRequest>;
@@ -117,6 +151,7 @@ export const TransferRequest = z
 		fromMemberId: z.uuid(),
 		toMemberId: z.uuid(),
 		description: z.string().trim().min(1).max(200).optional(),
+		attachmentIds: AttachmentIds.optional(),
 	})
 	.refine((request) => request.fromMemberId !== request.toMemberId)
 	.openapi("TransferRequest");
@@ -128,22 +163,33 @@ export const ShareDto = z.object({
 	memberId: z.uuid(),
 	amount: z.int().nonnegative(),
 });
+const BaseTransactionFields = {
+	type: z.enum(["expense", "income", "transfer"]),
+	...LedgerFields,
+	id: z.uuid(),
+	currency: z.literal("VND"),
+	shares: z.array(ShareDto),
+	version: z.int().positive(),
+	updatedBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+	createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+	createdAt: z.iso.datetime(),
+	updatedAt: z.iso.datetime(),
+	deletedAt: z.iso.datetime().nullable(),
+};
 export const TransactionDto = z
 	.object({
-		type: z.enum(["expense", "income", "transfer"]),
-		...LedgerFields,
-		id: z.uuid(),
-		currency: z.literal("VND"),
-		shares: z.array(ShareDto),
-		version: z.int().positive(),
-		updatedBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-		createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
-		createdAt: z.iso.datetime(),
-		updatedAt: z.iso.datetime(),
-		deletedAt: z.iso.datetime().nullable(),
+		...BaseTransactionFields,
+		attachments: z.array(AttachmentDto).max(3),
 	})
 	.openapi("TransactionDto");
 export type TransactionDto = z.infer<typeof TransactionDto>;
+export const TransactionListItemDto = z
+	.object({
+		...BaseTransactionFields,
+		attachmentCount: z.int().nonnegative(),
+	})
+	.openapi("TransactionListItemDto");
+export type TransactionListItemDto = z.infer<typeof TransactionListItemDto>;
 export const TransactionWarning = z.enum([
 	"FUND_OVERDRAWN",
 	"BUDGET_NEAR",
@@ -171,6 +217,26 @@ export const PreviewTransactionResponse = z
 		warnings: z.array(TransactionWarning).default([]),
 	})
 	.openapi("PreviewTransactionResponse");
+export const PreviewItemsRequest = z
+	.object({
+		items: ItemsSplitInput.shape.items,
+		extras: ItemsSplitInput.shape.extras,
+	})
+	.openapi("PreviewItemsRequest");
+export type PreviewItemsRequest = z.infer<typeof PreviewItemsRequest>;
+export const ItemsPreviewIssue = z.object({
+	code: z.enum(["ITEM_UNASSIGNED", "INVALID_TOTAL"]),
+	itemIndex: z.int().nonnegative().optional(),
+});
+export type ItemsPreviewIssue = z.infer<typeof ItemsPreviewIssue>;
+export const PreviewItemsResponse = z
+	.object({
+		computedAmount: z.int(),
+		shares: z.array(ShareDto).optional(),
+		issues: z.array(ItemsPreviewIssue),
+	})
+	.openapi("PreviewItemsResponse");
+export type PreviewItemsResponse = z.infer<typeof PreviewItemsResponse>;
 export const TransactionsQuery = z
 	.object({
 		cursor: z.string().max(512).optional(),
@@ -199,7 +265,7 @@ export const TransactionsQuery = z
 export type TransactionsQuery = z.infer<typeof TransactionsQuery>;
 export const TransactionsResponse = z
 	.object({
-		transactions: z.array(TransactionDto),
+		transactions: z.array(TransactionListItemDto),
 		nextCursor: z.string().nullable(),
 	})
 	.openapi("TransactionsResponse");

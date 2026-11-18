@@ -4,6 +4,7 @@ import {
 	type DeleteGroupRequest,
 	GroupResponse,
 	GroupsResponse,
+	JOB_NAMES,
 	nextMemberAppearance,
 	type UpdateGroupRequest,
 	type UserDto,
@@ -18,6 +19,7 @@ import {
 	insertGroupUser,
 	insertMember,
 	listBalancesForGroups,
+	listGroupAttachmentKeys,
 	listMembersForGroups,
 	listUserGroups,
 	lockGroup,
@@ -179,7 +181,13 @@ export async function deleteGroup(
 			throw new AppError(403, "FORBIDDEN", "Insufficient group role");
 		if (input.request.name !== current.group.name)
 			throw new AppError(400, "VALIDATION_FAILED", "Group name does not match");
+		const keys = await listGroupAttachmentKeys(tx, input.groupId);
 		await deleteGroupRow(tx, input.groupId);
+		for (let offset = 0; offset < keys.length; offset += 10_000) {
+			await deps.enqueue(tx, JOB_NAMES.deleteFiles, {
+				keys: keys.slice(offset, offset + 10_000),
+			});
+		}
 	});
 	deps.events.publishRemoved(input.groupId, null);
 }

@@ -6,8 +6,11 @@ import {
 } from "@songphang/contract";
 import { foldVietnamese } from "@songphang/core";
 import {
+	type AttachmentRow,
+	attachToTransaction,
 	clearTransactionSides,
 	type DbExecutor,
+	deleteRemovedTransactionAttachments,
 	findTransactionRow,
 	insertActivity,
 	insertTransactionPayers,
@@ -19,6 +22,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { validateTransactionAttachmentIds } from "./attachments.js";
 import { assertLiveCategory } from "./categories.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { mapTransactions } from "./transactions.js";
@@ -85,6 +89,7 @@ export async function editTransaction(
 	input: Operation & { request: UpdateTransactionRequest },
 ) {
 	let changed = false;
+	let removedFiles: AttachmentRow[] = [];
 	const result = await deps.db.transaction(async (executor) => {
 		const before = await lockedTransaction(executor, input);
 		if (before.deletedAt)
@@ -99,6 +104,15 @@ export async function editTransaction(
 			throw new AppError(409, "VERSION_CONFLICT", "Transaction has changed", {
 				current: before,
 			});
+		const nextAttachmentIds = input.request.attachmentIds;
+		if (nextAttachmentIds !== undefined) {
+			await validateTransactionAttachmentIds(
+				executor,
+				input.groupId,
+				nextAttachmentIds,
+				input.id,
+			);
+		}
 		const shares = await calculateShares(
 			executor,
 			input.groupId,
@@ -114,7 +128,13 @@ export async function editTransaction(
 		const altered = fields.filter(
 			(field) => JSON.stringify(before[field]) !== JSON.stringify(next[field]),
 		);
-		if (altered.length === 0) return { transaction: before, warnings: [] };
+		const beforeAttachmentIds = before.attachments.map((a) => a.id);
+		const attachmentsChanged =
+			nextAttachmentIds !== undefined &&
+			JSON.stringify(beforeAttachmentIds) !== JSON.stringify(nextAttachmentIds);
+		if (altered.length === 0 && !attachmentsChanged) {
+			return { transaction: before, warnings: [] };
+		}
 		changed = true;
 		await clearTransactionSides(executor, input.id);
 		await updateTransactionRow(executor, {
@@ -142,6 +162,20 @@ export async function editTransaction(
 			executor,
 			shares.map((s) => ({ ...s, transactionId: input.id })),
 		);
+		if (nextAttachmentIds !== undefined) {
+			removedFiles = await deleteRemovedTransactionAttachments(
+				executor,
+				input.groupId,
+				input.id,
+				nextAttachmentIds,
+			);
+			await attachToTransaction(
+				executor,
+				input.groupId,
+				input.id,
+				nextAttachmentIds,
+			);
+		}
 		const after = (await readTransaction(executor, input.groupId, input.id))
 			.transaction;
 		const warnings = await transactionWarnings(executor, {
@@ -163,12 +197,27 @@ export async function editTransaction(
 			entityType: "transaction",
 			entityId: input.id,
 			summary: after.description,
-			before: Object.fromEntries(altered.map((k) => [k, before[k]])),
-			after: Object.fromEntries(altered.map((k) => [k, after[k]])),
+			before: {
+				...Object.fromEntries(altered.map((k) => [k, before[k]])),
+				...(attachmentsChanged
+					? { attachmentCount: before.attachments.length }
+					: {}),
+			},
+			after: {
+				...Object.fromEntries(altered.map((k) => [k, after[k]])),
+				...(attachmentsChanged
+					? { attachmentCount: after.attachments.length }
+					: {}),
+			},
 			createdAt: deps.now(),
 		});
 		return { transaction: after, warnings };
 	});
+	if (removedFiles.length > 0) {
+		await Promise.allSettled(
+			removedFiles.map((row) => deps.fileStore.delete(row.storageKey)),
+		);
+	}
 	if (changed) publish(deps, input.groupId);
 	return TransactionResponse.parse(result);
 }

@@ -125,7 +125,7 @@ export function ExpenseStream({
 								<FeedLink
 									newest={transaction.id === newest}
 									href={`/g/${groupId}/tx/${transaction.id}`}
-									enabled={canEdit}
+									enabled={canEdit || transaction.attachmentCount > 0}
 									label={t(vi.feed.editRow, {
 										description: transaction.description,
 									})}

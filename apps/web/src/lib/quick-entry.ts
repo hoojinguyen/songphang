@@ -20,6 +20,8 @@ export function useParseSentence(groupId: string, text: string) {
 				jsonRequest("POST", { text: debounced }),
 			),
 		placeholderData: keepPreviousData,
+		refetchOnWindowFocus: false,
+		refetchOnReconnect: false,
 	});
 	return {
 		...query,

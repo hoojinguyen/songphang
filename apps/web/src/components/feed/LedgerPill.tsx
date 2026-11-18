@@ -1,4 +1,4 @@
-import type { MemberDto, TransactionDto } from "@songphang/contract";
+import type { MemberDto, TransactionListItemDto } from "@songphang/contract";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
@@ -7,7 +7,7 @@ export function LedgerPill({
 	members,
 	myMemberId,
 }: {
-	transaction: TransactionDto;
+	transaction: TransactionListItemDto;
 	members: MemberDto[];
 	myMemberId: string | null;
 }) {

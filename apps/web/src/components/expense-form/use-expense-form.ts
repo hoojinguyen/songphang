@@ -1,12 +1,14 @@
 "use client";
 import {
+	type AttachmentDto,
 	CreateTransactionRequest,
 	type MemberDto,
 	type SplitTransactionRequest,
 	type TransactionDto,
 } from "@songphang/contract";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { useDraft } from "../../lib/draft-context";
 import { parseAmountInput } from "../../lib/money";
 import {
@@ -15,7 +17,7 @@ import {
 } from "../../lib/transaction-changes";
 import { useCreateTransaction, usePreviewShares } from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import type { FormTransactionType } from "./TypeSwitch";
 import { useSplitState } from "./use-split-state";
 
@@ -27,6 +29,7 @@ export type FormPrefill = {
 	type?: FormTransactionType;
 	from?: string | null;
 	to?: string | null;
+	attachmentId?: string | null;
 };
 
 export function useExpenseForm(
@@ -38,6 +41,26 @@ export function useExpenseForm(
 ) {
 	const memory = useDraft();
 	const draft = transaction ?? memory.draft?.draft;
+	const activeQueue =
+		!transaction &&
+		memory.draft &&
+		memory.queue &&
+		memory.queue.sentence === memory.draft.sentence
+			? memory.queue
+			: null;
+	const queuedItem = activeQueue?.items[activeQueue.index];
+	const hasMoreQueued = Boolean(
+		activeQueue && activeQueue.index + 1 < activeQueue.items.length,
+	);
+	const isMultiQueued = Boolean(activeQueue && activeQueue.items.length > 1);
+	const queueIndexLabel =
+		activeQueue && isMultiQueued
+			? t(vi.compose.draftIndex, {
+					index: String(activeQueue.index + 1),
+					count: String(activeQueue.items.length),
+				})
+			: undefined;
+	const baseOccurredAt = transaction?.occurredAt ?? queuedItem?.occurredAt;
 	const active = members.filter(
 		(member) => member.kind === "person" && (transaction || member.active),
 	);
@@ -59,9 +82,9 @@ export function useExpenseForm(
 	const [description, setDescription] = useState(draft?.description ?? "");
 	const [category, setBuiltInCategory] = useState<
 		SplitTransactionRequest["category"]
-	>(transaction?.category ?? null);
+	>(draft?.category ?? null);
 	const [categoryId, setCustomCategoryId] = useState<string | null>(
-		transaction?.categoryId ?? null,
+		draft?.categoryId ?? null,
 	);
 	const setCategory = (next: SplitTransactionRequest["category"]) => {
 		setBuiltInCategory(next);
@@ -89,9 +112,32 @@ export function useExpenseForm(
 		transaction?.shares[0]?.memberId ?? prefill?.to ?? null,
 	);
 	const [occurredAt, setOccurredAt] = useState(() =>
-		localDateTime(transaction?.occurredAt),
+		localDateTime(baseOccurredAt),
 	);
-	const [key] = useState(() => crypto.randomUUID());
+	const [attachments, setAttachments] = useState<AttachmentDto[]>(() => {
+		if (transaction?.attachments && transaction.attachments.length > 0) {
+			return transaction.attachments;
+		}
+		if (
+			prefill?.attachmentId &&
+			z.uuid().safeParse(prefill.attachmentId).success
+		) {
+			return [
+				{
+					id: prefill.attachmentId,
+					contentType: "image/jpeg",
+					byteSize: 1,
+					transactionId: null,
+					createdAt: new Date().toISOString(),
+				},
+			];
+		}
+		return [];
+	});
+	const [key] = useState(
+		() => queuedItem?.idempotencyKey ?? crypto.randomUUID(),
+	);
+	const initialRequestSnapshot = useRef<string | undefined>(undefined);
 	const submitting = useRef(false);
 	const create = useCreateTransaction(groupId);
 	const update = useUpdateTransaction(
@@ -103,11 +149,21 @@ export function useExpenseForm(
 	const router = useRouter();
 	useSessionGuard(mutation.error);
 	const amount = parseAmountInput(amountText);
-	const splitState = useSplitState(active, amount ?? 0, draft?.split);
+	const splitState = useSplitState(active, amount ?? 0, draft?.split, groupId);
+	useEffect(() => {
+		if (
+			splitState.method === "items" &&
+			splitState.itemsComputedAmount !== undefined &&
+			splitState.itemsComputedAmount > 0 &&
+			String(splitState.itemsComputedAmount) !== amountText
+		) {
+			setAmountText(String(splitState.itemsComputedAmount));
+		}
+	}, [splitState.method, splitState.itemsComputedAmount, amountText]);
 	const date = new Date(occurredAt);
 	const timestamp =
-		transaction && occurredAt === localDateTime(transaction.occurredAt)
-			? transaction.occurredAt
+		baseOccurredAt && occurredAt === localDateTime(baseOccurredAt)
+			? baseOccurredAt
 			: Number.isNaN(date.getTime())
 				? ""
 				: date.toISOString();
@@ -130,6 +186,9 @@ export function useExpenseForm(
 				: parseAmountInput(payerAmounts[memberId] ?? ""),
 	}));
 	const paid = payers.reduce((sum, payer) => sum + (payer.amount ?? 0), 0);
+	const attachmentIds = attachments.map((attachment) => attachment.id);
+	const optionalAttachments =
+		transaction || attachmentIds.length > 0 ? { attachmentIds } : {};
 	const parsed = CreateTransactionRequest.safeParse(
 		type === "transfer"
 			? {
@@ -139,6 +198,7 @@ export function useExpenseForm(
 					fromMemberId: transferFrom,
 					toMemberId: transferTo,
 					...(description.trim() ? { description: description.trim() } : {}),
+					...optionalAttachments,
 				}
 			: {
 					type,
@@ -149,12 +209,16 @@ export function useExpenseForm(
 					categoryId,
 					payers,
 					split: splitState.split,
+					...optionalAttachments,
 				},
 	);
 	const request =
 		parsed.success && (type === "transfer" || paid === amount)
 			? parsed.data
 			: null;
+	if (initialRequestSnapshot.current === undefined && request && !transaction) {
+		initialRequestSnapshot.current = JSON.stringify(request);
+	}
 	const preview = usePreviewShares(
 		groupId,
 		request?.type === "transfer" ? null : request,
@@ -163,8 +227,10 @@ export function useExpenseForm(
 	useSessionGuard(preview.error);
 	const setType = (next: FormTransactionType) => {
 		setTransactionType(next);
-		if (next === "income")
+		if (next === "income") {
 			setPayerIds(initial ? [initial] : payerIds.slice(0, 1));
+			if (splitState.method === "items") splitState.changeMode("equal");
+		}
 	};
 	const togglePayer = (id: string) =>
 		setPayerIds(
@@ -181,11 +247,27 @@ export function useExpenseForm(
 			submitting.current
 		)
 			return;
+		const payload =
+			!transaction &&
+			queuedItem?.submittedRequest &&
+			initialRequestSnapshot.current !== undefined &&
+			JSON.stringify(request) === initialRequestSnapshot.current
+				? queuedItem.submittedRequest
+				: request;
 		submitting.current = true;
 		mutation.mutate(
-			{ request, key },
+			{ request: payload, key },
 			{
 				onSuccess: () => {
+					if (activeQueue && activeQueue.index + 1 < activeQueue.items.length) {
+						memory.setQueue({
+							...activeQueue,
+							index: activeQueue.index + 1,
+						});
+						memory.setDraft(null);
+						router.replace(`/g/${groupId}/tx/new`);
+						return;
+					}
 					memory.clear();
 					router.replace(`/g/${groupId}`);
 				},
@@ -195,7 +277,25 @@ export function useExpenseForm(
 			},
 		);
 	};
+	const skipQueued = () => {
+		if (!activeQueue || submitting.current || mutation.isPending) return;
+		if (activeQueue.index + 1 < activeQueue.items.length) {
+			memory.setQueue({
+				...activeQueue,
+				index: activeQueue.index + 1,
+			});
+			memory.setDraft(null);
+			router.replace(`/g/${groupId}/tx/new`);
+			return;
+		}
+		memory.clear();
+		router.replace(`/g/${groupId}`);
+	};
 	return {
+		hasMoreQueued,
+		isMultiQueued,
+		queueIndexLabel,
+		skipQueued,
 		changed:
 			!transaction ||
 			JSON.stringify(request) !==
@@ -240,6 +340,15 @@ export function useExpenseForm(
 		setTransferTo,
 		occurredAt,
 		setOccurredAt,
+		attachments,
+		addAttachment: (attachment: AttachmentDto) =>
+			setAttachments((current) =>
+				current.some((item) => item.id === attachment.id) || current.length >= 3
+					? current
+					: [...current, attachment],
+			),
+		removeAttachment: (id: string) =>
+			setAttachments((current) => current.filter((item) => item.id !== id)),
 		preview,
 		mutation,
 		request,

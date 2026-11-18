@@ -1,3 +1,4 @@
+export { quotaWindowStarts } from "./ai-quota.ts";
 export { allocateByWeights } from "./allocate.ts";
 export { BANKS } from "./banks.ts";
 export {
@@ -27,6 +28,12 @@ export {
 	type SpanKind,
 } from "./quick-entry/read-sentence.ts";
 export {
+	checkReceipt,
+	type ReceiptCheckFlag,
+	type ReceiptCheckInput,
+	type ReceiptCheckResult,
+} from "./receipt.ts";
+export {
 	type MemberBalance,
 	netPairwiseDebts,
 	type PairDebt,
@@ -37,8 +44,21 @@ export {
 	computeShares,
 	type Share,
 	type SplitInput,
+	type SplitResult,
 	splitEqually,
 } from "./split.ts";
+export {
+	computeItemShares,
+	computeItemsNetTotal,
+	type ItemExtraEntry,
+	type ItemExtraKind,
+	type ItemSplitEntry,
+	type ItemsSplitInput,
+} from "./split-items.ts";
+export {
+	type CategorySuggestion,
+	suggestCategory,
+} from "./suggest-category.ts";
 export {
 	buildVietQrPayload,
 	crc16CcittFalse,

@@ -4,10 +4,13 @@ import {
 	deleteExpiredIdempotencyKeys,
 	runMigrations,
 } from "@songphang/db";
+import { diskFileStore } from "@songphang/storage";
 import { createApp } from "./app.js";
 import { type Config, loadConfig } from "./config.js";
 import { createEventHub } from "./events/hub.js";
+import { listenForGroupEvents } from "./events/listen.js";
 import { createConsoleMailer } from "./mailer.js";
+import { createApiQueue } from "./queue.js";
 import { createRateLimiter } from "./rate-limit.js";
 
 let config: Config;
@@ -27,6 +30,10 @@ try {
 try {
 	await runMigrations(config.databaseUrl);
 	const { db, close } = createDb(config.databaseUrl);
+	const events = createEventHub();
+	const queue = createApiQueue(config.databaseUrl);
+	await queue.start();
+	const eventListener = listenForGroupEvents(config.databaseUrl, events);
 	const cleanIdempotencyKeys = () =>
 		deleteExpiredIdempotencyKeys(
 			db,
@@ -43,12 +50,14 @@ try {
 	);
 	cleanupTimer.unref();
 	const app = createApp({
-		events: createEventHub(),
+		events,
 		config,
 		db,
 		now: () => new Date(),
 		mailer: createConsoleMailer(),
 		rateLimiter: createRateLimiter(() => new Date()),
+		enqueue: queue.enqueue,
+		fileStore: diskFileStore(config.storageDir),
 	});
 	const server = serve(
 		{ fetch: app.fetch, port: config.apiPort, hostname: "127.0.0.1" },
@@ -57,10 +66,12 @@ try {
 		},
 	);
 	const closeDatabase = () =>
-		close().catch(() => {
-			console.error("Failed to close database connections");
-			process.exitCode = 1;
-		});
+		Promise.allSettled([eventListener.stop(), queue.stop()])
+			.then(() => close())
+			.catch(() => {
+				console.error("Failed to close database connections");
+				process.exitCode = 1;
+			});
 	server.on("error", () => {
 		console.error("API server failed");
 		server.close(closeDatabase);

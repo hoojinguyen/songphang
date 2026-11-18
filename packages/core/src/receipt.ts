@@ -1,0 +1,57 @@
+export type ReceiptCheckFlag = "TOTAL_MISMATCH" | "TOTAL_MISSING" | "NO_ITEMS";
+
+export type ReceiptCheckInput = {
+	items: ReadonlyArray<{ amount: number }>;
+	extras: ReadonlyArray<{
+		kind: "tax" | "service" | "discount" | "other";
+		amount: number;
+	}>;
+	total: number | null;
+};
+
+export type ReceiptCheckResult =
+	| { status: "done"; computed: number; flags: ReceiptCheckFlag[] }
+	| { status: "failed"; errorCode: "NOT_A_RECEIPT" };
+
+function assertSafeNonnegativeInt(value: number) {
+	if (!Number.isSafeInteger(value) || value < 0) {
+		throw new RangeError("Receipt amount must be a nonnegative safe integer");
+	}
+}
+
+export function checkReceipt(reading: ReceiptCheckInput): ReceiptCheckResult {
+	if (reading.items.length === 0 && reading.total === null) {
+		return { status: "failed", errorCode: "NOT_A_RECEIPT" };
+	}
+	let itemsSum = 0;
+	for (const item of reading.items) {
+		assertSafeNonnegativeInt(item.amount);
+		itemsSum += item.amount;
+	}
+	let extrasNet = 0;
+	for (const extra of reading.extras) {
+		assertSafeNonnegativeInt(extra.amount);
+		if (extra.kind === "discount") {
+			extrasNet -= extra.amount;
+		} else {
+			extrasNet += extra.amount;
+		}
+	}
+	const computed = itemsSum + extrasNet;
+	if (!Number.isSafeInteger(computed)) {
+		throw new RangeError("Receipt computed total exceeds safe integer");
+	}
+	const flags: ReceiptCheckFlag[] = [];
+	if (reading.items.length === 0) {
+		flags.push("NO_ITEMS");
+	}
+	if (reading.total === null) {
+		flags.push("TOTAL_MISSING");
+	} else {
+		assertSafeNonnegativeInt(reading.total);
+		if (reading.total !== computed) {
+			flags.push("TOTAL_MISMATCH");
+		}
+	}
+	return { status: "done", computed, flags };
+}

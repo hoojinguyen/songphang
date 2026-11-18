@@ -17,6 +17,7 @@ import { useSnackbar } from "../ui/Snackbar";
 import { AmountField } from "./AmountField";
 import { ConflictNotice } from "./ConflictNotice";
 import { ParticipantFields } from "./ParticipantFields";
+import { PhotoRow } from "./PhotoRow";
 import { SplitEditor } from "./SplitEditor";
 import { SplitStatus } from "./SplitStatus";
 import { TransferFields } from "./TransferFields";
@@ -46,6 +47,7 @@ export function ExpenseForm({
 	const balances = useBalances(groupId);
 	const deletion = useDeleteTransaction(groupId);
 	const restore = useRestoreTransaction(groupId);
+	const [photoUploading, setPhotoUploading] = useState(false);
 	const [splitOpen, setSplitOpen] = useState(
 		(!transaction &&
 			memory.draft?.issues.some((i) => i.code === "SUM_MISMATCH")) ??
@@ -79,6 +81,9 @@ export function ExpenseForm({
 		splitState,
 		occurredAt,
 		setOccurredAt,
+		attachments,
+		addAttachment,
+		removeAttachment,
 		preview,
 		mutation,
 		request,
@@ -156,6 +161,7 @@ export function ExpenseForm({
 						? []
 						: (preview.data?.shares ?? [])
 				}
+				allowItems={type === "expense"}
 				onDone={() => setSplitOpen(false)}
 			/>
 		);
@@ -165,6 +171,7 @@ export function ExpenseForm({
 			<UnparsedBanner activeCount={active.length} />
 			<ScreenHeader
 				title={title}
+				{...(form.queueIndexLabel ? { subtitle: form.queueIndexLabel } : {})}
 				backHref={memory.draft ? `/g/${groupId}/tx/new` : `/g/${groupId}`}
 				backLabel={vi.common.cancel}
 				backIcon="close"
@@ -212,6 +219,13 @@ export function ExpenseForm({
 					className="h-16 min-w-0 w-full rounded-[32px] bg-surface px-4 text-base text-ink"
 				/>
 			</label>
+			<PhotoRow
+				groupId={groupId}
+				attachments={attachments}
+				onAdd={addAttachment}
+				onRemove={removeAttachment}
+				onUploadingChange={setPhotoUploading}
+			/>
 			{mutation.isError && (
 				<p role="alert">
 					{mutation.error.status === 403
@@ -274,8 +288,11 @@ export function ExpenseForm({
 			<Button
 				variant="accent"
 				size="lg"
-				onClick={submit}
+				onClick={() => {
+					if (!photoUploading) submit();
+				}}
 				disabled={
+					photoUploading ||
 					!!conflict ||
 					!form.changed ||
 					request === null ||
@@ -286,12 +303,24 @@ export function ExpenseForm({
 			>
 				{transaction
 					? vi.expenseForm.saveChanges
-					: type === "transfer"
-						? vi.expenseForm.saveTransfer
-						: type === "income"
-							? vi.expenseForm.saveIncome
-							: vi.expenseForm.save}
+					: form.hasMoreQueued
+						? vi.compose.saveAndNext
+						: type === "transfer"
+							? vi.expenseForm.saveTransfer
+							: type === "income"
+								? vi.expenseForm.saveIncome
+								: vi.expenseForm.save}
 			</Button>
+			{form.isMultiQueued && (
+				<Button
+					variant="surface"
+					onClick={form.skipQueued}
+					disabled={mutation.isPending}
+					className="w-full"
+				>
+					{vi.compose.skipDraft}
+				</Button>
+			)}
 			{transaction && (
 				<Button
 					variant="surface"

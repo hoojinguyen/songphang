@@ -8,6 +8,10 @@ const PATHS = {
 	plus: "M12 5v14M5 12h14",
 	back: "M15 18l-6-6 6-6",
 	close: "M6 6l12 12M18 6L6 18",
+	image:
+		"M4 5h16v14H4zM8.5 10.5a1 1 0 100-2 1 1 0 000 2zM20 15l-5-5-6 6-3-3-2 2",
+	camera: "M4 7h3l2-2h6l2 2h3v12H4zM12 16a3 3 0 100-6 3 3 0 000 6z",
+	trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
 };
 export function Icon({
 	name,

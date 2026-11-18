@@ -71,6 +71,34 @@
 			"when": 1794898451042,
 			"tag": "0009_curly_ender_wiggin",
 			"breakpoints": true
+		},
+		{
+			"idx": 10,
+			"version": "7",
+			"when": 1794935506315,
+			"tag": "0010_mean_ben_grimm",
+			"breakpoints": true
+		},
+		{
+			"idx": 11,
+			"version": "7",
+			"when": 1794936677083,
+			"tag": "0011_fancy_maginty",
+			"breakpoints": true
+		},
+		{
+			"idx": 12,
+			"version": "7",
+			"when": 1794937070970,
+			"tag": "0012_clumsy_ravenous",
+			"breakpoints": true
+		},
+		{
+			"idx": 13,
+			"version": "7",
+			"when": 1794937780728,
+			"tag": "0013_lively_random",
+			"breakpoints": true
 		}
 	]
 }

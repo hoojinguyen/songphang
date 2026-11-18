@@ -1,4 +1,5 @@
 export * from "./activity.ts";
+export * from "./attachment.ts";
 export * from "./auth.ts";
 export * from "./balance.ts";
 export * from "./budget.ts";
@@ -10,9 +11,12 @@ export * from "./group.ts";
 export * from "./group-user.ts";
 export { HealthResponse } from "./health.ts";
 export * from "./invite.ts";
+export * from "./jobs.ts";
 export * from "./member.ts";
 export * from "./payment.ts";
 export * from "./quick-entry.ts";
+export * from "./receipt.ts";
+export * from "./sentence-ai.ts";
 export * from "./settlement-request.ts";
 export * from "./stats.ts";
 export * from "./transaction.ts";

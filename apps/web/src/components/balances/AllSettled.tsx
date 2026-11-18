@@ -1,4 +1,4 @@
-import type { MemberDto, TransactionDto } from "@songphang/contract";
+import type { MemberDto, TransactionListItemDto } from "@songphang/contract";
 import Link from "next/link";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
@@ -9,7 +9,7 @@ export function AllSettled({
 	members,
 	myMemberId,
 }: {
-	recorded: TransactionDto[];
+	recorded: TransactionListItemDto[];
 	groupId: string;
 	members: MemberDto[];
 	myMemberId: string | null;

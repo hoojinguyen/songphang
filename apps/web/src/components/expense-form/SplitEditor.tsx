@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { ShareShapes } from "../quick-entry/ShareShapes";
+import { ItemsAssignmentPanel } from "../receipt/ItemsAssignmentPanel";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
@@ -19,6 +20,7 @@ export function SplitEditor({
 	description,
 	payerLine,
 	shares,
+	allowItems = true,
 	onDone,
 }: {
 	banner?: ReactNode;
@@ -28,8 +30,13 @@ export function SplitEditor({
 	description: string;
 	payerLine: string;
 	shares: readonly { memberId: string; amount: number }[];
+	allowItems?: boolean;
 	onDone: () => void;
 }) {
+	const displayedAmount =
+		state.method === "items" && state.itemsComputedAmount !== undefined
+			? state.itemsComputedAmount
+			: amount;
 	return (
 		<section
 			aria-label={vi.split.changeLabel}
@@ -52,66 +59,99 @@ export function SplitEditor({
 					</h1>
 					<p className="text-xs text-muted">{payerLine}</p>
 				</div>
-				<p className="text-[22px] font-black">{formatMoney(amount)}</p>
+				<p className="text-[22px] font-black">{formatMoney(displayedAmount)}</p>
 			</header>
-			<SplitModeTabs value={state.method} onChange={state.changeMode} />
-			{shares.length > 0 ? (
-				<ShareShapes
-					shares={state.selected.map((member) => ({
-						member,
-						amount: shares.find((s) => s.memberId === member.id)?.amount ?? 0,
-					}))}
+			<SplitModeTabs
+				value={state.method}
+				onChange={state.changeMode}
+				allowItems={allowItems}
+			/>
+			{state.method === "items" ? (
+				<ItemsAssignmentPanel
+					items={state.items}
+					extras={state.extras}
+					selectedItemId={state.selectedItemId}
+					activePeople={members}
+					previewData={state.itemsPreview.data}
+					previewCurrent={state.itemsPreview.current}
+					previewError={state.itemsPreview.isError}
+					onSelectItem={state.setSelectedItemId}
+					onChangeItem={state.onChangeItem}
+					onRemoveItem={state.onRemoveItem}
+					onAddItem={state.onAddItem}
+					onToggleMemberOnSelected={state.onToggleMemberOnSelected}
+					onSplitRemainingEqual={state.onSplitRemainingEqual}
+					onAddExtra={state.onAddExtra}
+					onChangeExtra={state.onChangeExtra}
+					onRemoveExtra={state.onRemoveExtra}
 				/>
 			) : (
-				<div className="flex flex-wrap justify-center gap-3 rounded-[30px] bg-bg p-4">
-					{state.selected.map((member) => (
-						<div key={member.id} className="grid justify-items-center gap-2">
-							<MemberShape {...member} size={56} />
-							<span>{member.name}</span>
-							<span>{vi.common.pendingValue}</span>
+				<>
+					{shares.length > 0 ? (
+						<ShareShapes
+							shares={state.selected.map((member) => ({
+								member,
+								amount:
+									shares.find((s) => s.memberId === member.id)?.amount ?? 0,
+							}))}
+						/>
+					) : (
+						<div className="flex flex-wrap justify-center gap-3 rounded-[30px] bg-bg p-4">
+							{state.selected.map((member) => (
+								<div
+									key={member.id}
+									className="grid justify-items-center gap-2"
+								>
+									<MemberShape {...member} size={56} />
+									<span>{member.name}</span>
+									<span>{vi.common.pendingValue}</span>
+								</div>
+							))}
 						</div>
-					))}
-				</div>
-			)}
+					)}
 
-			{state.selected.map((member) => (
-				<SplitMemberRow
-					key={member.id}
-					member={member}
-					method={state.method}
-					value={
-						state.values[member.id] ??
-						(state.method === "shares" ? member.defaultWeight : "")
-					}
-					onChange={(value) => state.setValue(member.id, value)}
-					onRemove={() => state.toggle(member.id)}
-				/>
-			))}
-			{members
-				.filter((member) => !state.ids.includes(member.id))
-				.map((member) => (
-					<OnlineButton
-						key={member.id}
-						type="button"
-						className="min-h-14 rounded-[26px] border-2 border-dashed border-muted p-3 text-sm font-bold"
-						onClick={() => state.toggle(member.id)}
-					>
-						{t(vi.split.addMember, { name: member.name })}
-					</OnlineButton>
-				))}
-			{state.method === "exact" && state.blankCount === 0 && state.rest > 0 && (
-				<Button
-					variant="surface"
-					className="min-h-14 rounded-[28px] bg-phrase-rest"
-					onClick={() => state.setSpread(!state.spread)}
-				>
-					{state.spread
-						? vi.split.undoSpread
-						: t(vi.split.spreadRest, {
-								amount: formatMoney(state.rest),
-								count: String(state.selected.length),
-							})}
-				</Button>
+					{state.selected.map((member) => (
+						<SplitMemberRow
+							key={member.id}
+							member={member}
+							method={state.method}
+							value={
+								state.values[member.id] ??
+								(state.method === "shares" ? member.defaultWeight : "")
+							}
+							onChange={(value) => state.setValue(member.id, value)}
+							onRemove={() => state.toggle(member.id)}
+						/>
+					))}
+					{members
+						.filter((member) => !state.ids.includes(member.id))
+						.map((member) => (
+							<OnlineButton
+								key={member.id}
+								type="button"
+								className="min-h-14 rounded-[26px] border-2 border-dashed border-muted p-3 text-sm font-bold"
+								onClick={() => state.toggle(member.id)}
+							>
+								{t(vi.split.addMember, { name: member.name })}
+							</OnlineButton>
+						))}
+					{state.method === "exact" &&
+						state.blankCount === 0 &&
+						state.rest > 0 && (
+							<Button
+								variant="surface"
+								className="min-h-14 rounded-[28px] bg-phrase-rest"
+								onClick={() => state.setSpread(!state.spread)}
+							>
+								{state.spread
+									? vi.split.undoSpread
+									: t(vi.split.spreadRest, {
+											amount: formatMoney(state.rest),
+											count: String(state.selected.length),
+										})}
+							</Button>
+						)}
+				</>
 			)}
 			<div className="mt-auto grid gap-3">
 				<SplitStatus {...state.status} />
