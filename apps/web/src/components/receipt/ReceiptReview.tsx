@@ -377,16 +377,18 @@ export function ReceiptReview({
 		);
 	}
 
-	const showMismatch =
-		!mismatchDismissed &&
-		scan.flags.includes("TOTAL_MISMATCH") &&
-		scan.computed !== null &&
-		scan.reading?.total !== null &&
-		scan.reading?.total !== undefined;
-
 	const computedAmount = preview.current
 		? preview.data?.computedAmount
 		: undefined;
+	const hasMismatch =
+		scan.flags.includes("TOTAL_MISMATCH") &&
+		!scan.flags.includes("NO_ITEMS") &&
+		scan.computed !== null &&
+		scan.reading?.total !== null &&
+		scan.reading?.total !== undefined &&
+		(computedAmount === undefined || computedAmount !== scan.reading.total);
+	const showMismatch = !mismatchDismissed && hasMismatch;
+
 	const hasPreviewShares =
 		preview.current &&
 		preview.data &&
@@ -493,22 +495,23 @@ export function ReceiptReview({
 				scan.reading?.total !== null &&
 				scan.reading?.total !== undefined && (
 					<MismatchNotice
-						computed={scan.computed}
+						computed={computedAmount ?? scan.computed}
 						printedTotal={scan.reading.total}
 						extrasFull={extras.length >= 6}
+						printedPending={computedAmount === undefined}
 						onUseComputed={() => {
 							setMismatchDismissed(true);
 						}}
 						onUsePrintedTotal={() => {
 							if (
 								extras.length >= 6 ||
-								scan.computed === null ||
+								computedAmount === undefined ||
 								scan.reading?.total === null ||
 								scan.reading?.total === undefined
 							) {
 								return;
 							}
-							const diff = scan.reading.total - scan.computed;
+							const diff = scan.reading.total - computedAmount;
 							if (diff !== 0) {
 								setExtras((current) => [
 									...current,
@@ -535,7 +538,6 @@ export function ReceiptReview({
 				previewError={preview.isError}
 				onSelectItem={setSelectedItemId}
 				onChangeItem={(id, patch) => {
-					setMismatchDismissed(true);
 					setItems((current) =>
 						current.map((item) =>
 							item.id === id ? { ...item, ...patch } : item,
@@ -543,7 +545,6 @@ export function ReceiptReview({
 					);
 				}}
 				onRemoveItem={(id) => {
-					setMismatchDismissed(true);
 					setItems((current) => {
 						if (current.length <= 1) return current;
 						const next = current.filter((item) => item.id !== id);
@@ -555,7 +556,6 @@ export function ReceiptReview({
 				}}
 				onAddItem={() => {
 					if (items.length >= 60) return;
-					setMismatchDismissed(true);
 					const nextId = crypto.randomUUID();
 					setItems((current) => [
 						...current,
@@ -592,7 +592,6 @@ export function ReceiptReview({
 				}}
 				onAddExtra={() => {
 					if (extras.length >= 6) return;
-					setMismatchDismissed(true);
 					setExtras((current) => [
 						...current,
 						{
@@ -604,7 +603,6 @@ export function ReceiptReview({
 					]);
 				}}
 				onChangeExtra={(id, patch) => {
-					setMismatchDismissed(true);
 					setExtras((current) =>
 						current.map((extra) =>
 							extra.id === id ? { ...extra, ...patch } : extra,

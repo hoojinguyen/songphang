@@ -7,12 +7,14 @@ export function MismatchNotice({
 	computed,
 	printedTotal,
 	extrasFull,
+	printedPending = false,
 	onUseComputed,
 	onUsePrintedTotal,
 }: {
 	computed: number;
 	printedTotal: number;
 	extrasFull: boolean;
+	printedPending?: boolean;
 	onUseComputed: () => void;
 	onUsePrintedTotal: () => void;
 }) {
@@ -39,7 +41,7 @@ export function MismatchNotice({
 				<Button
 					type="button"
 					variant="primary"
-					disabled={extrasFull}
+					disabled={extrasFull || printedPending}
 					onClick={onUsePrintedTotal}
 				>
 					{t(vi.receipts.useAmount, { amount: formatMoney(printedTotal) })}

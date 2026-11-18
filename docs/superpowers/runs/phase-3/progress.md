@@ -317,6 +317,13 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   2. Mapped `z.ZodError` in `apps/worker/src/jobs/read-receipt.ts` (`failureCodeForError`) to the documented `READER_INVALID` scan terminal `errorCode` across both initial and retry attempts.
 - Verified `Invalid ReceiptReading ZodError -> READER_INVALID` via `exercise_review2_reader.mts` + `exercise_3b3_spec15.mts`, live `PhotoRow` upload submit lock in Chrome DevTools (`3010`/`4010`), and `pnpm check` (`0` errors).
 
+## Post-review fixes (Codex review round 3)
+
+- Findings addressed:
+  1. Excluded `NO_ITEMS` synthetic total-only scans from `TOTAL_MISMATCH` prompt/doubling and computed printed-total adjustments in `ReceiptReview` (`onUsePrintedTotal`) from the current preview `computedAmount` rather than the original `scan.computed`.
+  2. Stopped non-monetary edits (`name`, `label`, member selection, adding items/extras) from dismissing `MismatchNotice`, keeping `canSave` blocked until an explicit total choice or a verified monetary edit bringing `computedAmount === scan.reading.total`.
+- Verified live on Next.js `3010` + API `4010` + worker (`Nhóm 3D3`): `NO_ITEMS` scan (`100.000 đ`) showed zero mismatch banner and stayed `100.000 đ`; `mismatch` scan kept `Lưu` disabled after renaming `"Bia"` -> `"Bia tươi"`, updated `Dùng 447.000 đ` / `Dùng 450.000 đ` after raising `Lẩu thái` to `355000`, and computed `Chênh lệch = 3000` (`450.000 đ`).
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).
