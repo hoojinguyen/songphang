@@ -55,3 +55,21 @@ export function checkReceipt(reading: ReceiptCheckInput): ReceiptCheckResult {
 	}
 	return { status: "done", computed, flags };
 }
+
+export type ReceiptAdjustment = { kind: "other" | "discount"; amount: number };
+
+export function receiptAdjustment(
+	printedTotal: number,
+	computed: number,
+): ReceiptAdjustment | null {
+	assertSafeNonnegativeInt(printedTotal);
+	if (!Number.isSafeInteger(computed)) {
+		throw new RangeError("Receipt computed total must be a safe integer");
+	}
+	const difference = printedTotal - computed;
+	if (difference === 0) return null;
+	return {
+		kind: difference > 0 ? "other" : "discount",
+		amount: Math.abs(difference),
+	};
+}

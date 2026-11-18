@@ -221,6 +221,8 @@ export const PreviewItemsRequest = z
 	.object({
 		items: ItemsSplitInput.shape.items,
 		extras: ItemsSplitInput.shape.extras,
+		// The printed receipt total; when sent, the response carries the extra that would reach it.
+		targetTotal: NonnegativeMoneyAmount.optional(),
 	})
 	.openapi("PreviewItemsRequest");
 export type PreviewItemsRequest = z.infer<typeof PreviewItemsRequest>;
@@ -234,6 +236,13 @@ export const PreviewItemsResponse = z
 		computedAmount: z.int(),
 		shares: z.array(ShareDto).optional(),
 		issues: z.array(ItemsPreviewIssue),
+		targetAdjustment: z
+			.object({
+				kind: z.enum(["other", "discount"]),
+				amount: z.int().positive(),
+			})
+			.nullable()
+			.optional(),
 	})
 	.openapi("PreviewItemsResponse");
 export type PreviewItemsResponse = z.infer<typeof PreviewItemsResponse>;

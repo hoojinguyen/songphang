@@ -17,6 +17,7 @@ import {
 	computeItemsNetTotal,
 	foldVietnamese,
 	localDateRangeToUtc,
+	receiptAdjustment,
 } from "@songphang/core";
 import {
 	attachToTransaction,
@@ -343,6 +344,15 @@ export async function previewItemsSplit(
 				request.items,
 				request.extras,
 			);
+			const target =
+				request.targetTotal === undefined
+					? {}
+					: {
+							targetAdjustment: receiptAdjustment(
+								request.targetTotal,
+								computedAmount,
+							),
+						};
 			const issues: ItemsPreviewIssue[] = [];
 			const unassignedIndex = request.items.findIndex(
 				(item) => item.memberIds.length === 0,
@@ -354,7 +364,11 @@ export async function previewItemsSplit(
 				issues.push({ code: "INVALID_TOTAL" });
 			}
 			if (issues.length > 0) {
-				return PreviewItemsResponse.parse({ computedAmount, issues });
+				return PreviewItemsResponse.parse({
+					computedAmount,
+					issues,
+					...target,
+				});
 			}
 
 			const result = computeItemShares(
@@ -371,11 +385,13 @@ export async function previewItemsSplit(
 					return PreviewItemsResponse.parse({
 						computedAmount,
 						issues: [{ code: "ITEM_UNASSIGNED", itemIndex: result.itemIndex }],
+						...target,
 					});
 				}
 				return PreviewItemsResponse.parse({
 					computedAmount,
 					issues: [{ code: "INVALID_TOTAL" }],
+					...target,
 				});
 			}
 
@@ -383,6 +399,7 @@ export async function previewItemsSplit(
 				computedAmount,
 				shares: result.shares,
 				issues: [],
+				...target,
 			});
 		},
 		{ isolationLevel: "repeatable read", accessMode: "read only" },

@@ -29,9 +29,11 @@ export {
 } from "./quick-entry/read-sentence.ts";
 export {
 	checkReceipt,
+	type ReceiptAdjustment,
 	type ReceiptCheckFlag,
 	type ReceiptCheckInput,
 	type ReceiptCheckResult,
+	receiptAdjustment,
 } from "./receipt.ts";
 export {
 	type MemberBalance,
