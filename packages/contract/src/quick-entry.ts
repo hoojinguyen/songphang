@@ -6,7 +6,11 @@ import {
 	TransactionCategory,
 } from "./transaction.ts";
 
-export const ParseRequest = z.object({ text: z.string().min(1).max(300) });
+// The AI reader runs only when the user explicitly sends, never on the debounced live reading.
+export const ParseRequest = z.object({
+	text: z.string().min(1).max(300),
+	ai: z.boolean().default(false),
+});
 export type ParseRequest = z.infer<typeof ParseRequest>;
 
 export const ParseDraft = z

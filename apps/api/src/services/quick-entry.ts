@@ -288,7 +288,7 @@ export async function parseSentence(
 		moreDrafts: [],
 	});
 
-	if (rulesResponse.status !== "unparsed") {
+	if (rulesResponse.status !== "unparsed" || !input.request.ai) {
 		return rulesResponse;
 	}
 

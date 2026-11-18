@@ -19,6 +19,7 @@ import {
 	isRuleInteractiveQuestion,
 	useDraft,
 } from "../../../../../lib/draft-context";
+import { useFeatures } from "../../../../../lib/features";
 import { useParseSentence } from "../../../../../lib/quick-entry";
 import {
 	useCreateTransaction,
@@ -39,6 +40,7 @@ export function ComposeScreen({
 	const memory = useDraft();
 	const { sentence, setSentence } = memory;
 	const query = useParseSentence(groupId, sentence);
+	const sentenceAiOn = useFeatures().data?.sentenceAi === true;
 	const categoriesQuery = useCategories(groupId);
 	const categories = categoriesQuery.data ?? [];
 	const mutation = useCreateTransaction(groupId);
@@ -110,6 +112,12 @@ export function ComposeScreen({
 		groupId,
 		okPreview?.success ? okPreview.data : null,
 	);
+	// A refused live reading waits for an explicit send, which is the only moment the AI may read it.
+	const awaitingSendForAi =
+		sentenceAiOn &&
+		activeQueue?.reader === "rules" &&
+		activeItem?.status === "unparsed" &&
+		!query.sent;
 	useEffect(() => {
 		if (
 			activeQueue &&
@@ -117,6 +125,7 @@ export function ComposeScreen({
 			activeDraft &&
 			activeItem.status !== "ok" &&
 			!isRuleInteractiveQuestion(activeItem, activeQueue.reader) &&
+			!awaitingSendForAi &&
 			(memory.draft?.sentence !== activeQueue.sentence ||
 				memory.draft?.itemIndex !== activeIndex)
 		) {
@@ -134,6 +143,7 @@ export function ComposeScreen({
 		activeItem,
 		activeDraft,
 		activeIndex,
+		awaitingSendForAi,
 		memory,
 		router,
 		groupId,
