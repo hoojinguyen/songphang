@@ -90,6 +90,37 @@ Offline fake fixtures used when `AI_PROVIDER=fake`:
 - Receipt JPEGs and SHA-256 readings: `apps/worker/fixtures/receipts/` (`manifest.json`, `clean.jpg`, `tax-service.jpg`, `mismatch.jpg`, `not-a-receipt.jpg`)
 - Sentence fixtures (`AI01`–`AI15`): `apps/api/fixtures/sentences.json`
 
+## Phase 4 features
+
+- **Transaction view (`S20`), comments, and disputes:** Tapping any stream row opens `/g/{id}/tx/{txId}/view` with breakdown, comments (`20/min/user` rate limit, author/admin/owner deletion, live SSE `comments`), and disputes (`Khoản này chưa đúng` -> `đang hỏi lại` -> `Đã giải quyết`).
+- **Notifications, mail delivery, and debt reminders:** Live unread header bell (`{count} thông báo chưa đọc`), notifications list (`/notifications`), per-group mute (`Tắt thông báo nhóm này` on `/g/{id}/members`), immediate & daily digest emails (`Thông báo qua email` on `/account`), RFC 8058 one-click unsubscribe (`/notifications/unsubscribe?token=...`), manual debt reminders (`Nhắc` / `Nhắc cả nhóm một lần` on `/g/{id}/balances` with a 24-hour per-pair cooldown), and automatic reminders (`Tự nhắc nợ` on `/g/{id}/settings`: `Tắt`, `Mỗi 3 ngày`, `Mỗi tuần`, `Mỗi 2 tuần`).
+- **Expense approval above a threshold:** Owners can enable `Duyệt khoản chi lớn` (`Từ số tiền`) on `/g/{id}/settings`. Non-owner expenses at or above the threshold enter `pending` (`chờ duyệt`), trigger `approval_requested` notifications, and stay excluded from balances, stats, budgets, fund cash, and CSV exports (`countedTransaction` SQL invariant) until approved (`Duyệt`) or rejected (`Không duyệt`) by the group owner on S20.
+
+### Worker jobs and schedules
+
+`apps/worker` runs these Phase 4 jobs in `pg-boss` (`Asia/Ho_Chi_Minh` timezone):
+
+| Job                      | Schedule / trigger                                 | Purpose                                                                              |
+| ------------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `send-notification-mail` | Enqueued on event (`5s` start delay, rate-limited) | Sends immediate notification emails using hashed one-click unsubscribe tokens        |
+| `send-digest`            | `0 20 * * *` (daily 20:00)                         | Sends unread digest emails created since the `job_checkpoints` cursor                |
+| `auto-reminders`         | `0 9 * * *` (daily 09:00)                          | Sends scheduled debt reminders when the group interval has elapsed                   |
+| `prune-notifications`    | `15 3 * * *` (daily 03:15)                         | Deletes notifications older than 90 days                                             |
+| `prune-bot-data`         | `0 * * * *` (hourly)                               | Deletes expired `bot_drafts`, `chat_link_codes`, and `bot_updates` older than 7 days |
+
+### Telegram bot configuration
+
+Leave `TELEGRAM_PROVIDER` unset to keep bot routes and linking cards disabled (`GET /api/v1/features` -> `telegram: false`). See [docs/runbooks/telegram.md](docs/runbooks/telegram.md) for BotFather setup, webhook registration, and token rotation.
+
+| Variable                  | Purpose                                                                                              | Default in `.env.example` |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------- |
+| `TELEGRAM_PROVIDER`       | Leave empty to disable, `console` for local logging (`ConsoleChatSender`), or `telegram` for Bot API | _(unset)_                 |
+| `TELEGRAM_BOT_TOKEN`      | Token from `@BotFather` (required when `TELEGRAM_PROVIDER=telegram`)                                 | _(unset)_                 |
+| `TELEGRAM_WEBHOOK_SECRET` | Random secret (`>= 32` chars, `[A-Za-z0-9_-]`) checked via `X-Telegram-Bot-Api-Secret-Token`         | _(unset)_                 |
+| `TELEGRAM_BOT_USERNAME`   | Bot handle without `@`, shown on `/g/{id}/settings` (`/lienket <code>` -> `@bot`)                    | _(unset)_                 |
+
+When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to API logs instead of calling `api.telegram.org` (refused in production). Supported bot commands: `/chi`, `/sodu`, `/huy`, `/trogiup`, and `/start`.
+
 ## Development mail and optional Google sign-in
 
 Mail is printed by the API process to its development console. Read the verification/reset link there and open it locally; no mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration without a real mailer is refused.

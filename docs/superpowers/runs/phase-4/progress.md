@@ -22,7 +22,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4D.1 — Database and money path: the approval filter
 - [x] 4D.2 — API: threshold, pending, approve, reject
 - [x] 4D.3 — Web: approval
-- [ ] 4D.4 — README, non-functional checks, final gate
+- [x] 4D.4 — README, non-functional checks, final gate
 
 ## Baseline failures
 
@@ -342,3 +342,26 @@ None.
   - Zero console errors (`list_console_messages`) in both contexts, `horizontalOverflow: 0`; closed Chrome pages and verified ports `3010`/`4010` free.
 - Recorded `D4D.1` (`opacity-85` WCAG AA fix) and `D4D.2` (`bellUnreadLabel`) in [decisions.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/decisions.md).
 - Security review: no `dangerouslySetInnerHTML`, `eval(`, `any`, or bypass annotations; owner-only actions gated behind `role === "owner" && verified` and API `ownerWrite`; note bounded `maxLength={300}`.
+
+## Task 4D.4 — approach
+
+- Files to create/modify: modify `README.md`, `docs/superpowers/runs/phase-4/progress.md`, and `docs/superpowers/runs/phase-4/manual-checks.md`.
+- Approach: update `README.md` with Phase 4 collaboration features (comments, disputes, in-app & email notifications, reminders, Telegram bot, expense approval, worker schedules, and `TELEGRAM_*` configuration); benchmark `GET /api/v1/me/notifications?limit=30` against 1,000 rows (`< 300 ms`) with `EXPLAIN (ANALYZE, BUFFERS)`; verify keyboard navigation across S20/S19/S11 and Bell badge `aria-label` in Chrome; run Final Stage Gate 4D across all tasks from Task 0 through 4D.2 on reset `songphang_phase4_gate` + `pnpm db:check-balances`.
+- Why simplest: reuses existing gate scripts (`task0_samples.mts`..`exercise_4d2.mts`) on a freshly reset database and consolidates all verified documentation and owner checks in one commit.
+- Rejected alternative: modifying production Compose (`infra/compose.prod.yml`), which is absent on branch `phase-4` because server provisioning has not run yet.
+
+### Task 4D.4 & Final Stage Gate 4D results
+
+- Updated [README.md](file:///Users/hoojinguyen/Projects/songphang/README.md) with `## Phase 4 features` (S20 comments/disputes, notifications, debt reminders, expense approval), `### Worker jobs and schedules` (`send-notification-mail`, `send-digest` `0 20 * * *`, `auto-reminders` `0 9 * * *`, `prune-notifications` `15 3 * * *`, `prune-bot-data` `0 * * * *` in `Asia/Ho_Chi_Minh`), and `### Telegram bot configuration` (`TELEGRAM_PROVIDER`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_BOT_USERNAME`, console mode, commands, and runbook link). (`infra/compose.prod.yml` does not exist yet on this branch.)
+- **Performance check (1,000 notifications seeded for Lan in `songphang_phase4_gate`, `ANALYZE notifications`):**
+  - `GET /api/v1/me/notifications?limit=30` cold: `5.56 ms`, warm: `4.14 ms`, cursor page 2: `3.92 ms` (all `< 300 ms`; `count: 30`, `nextCursor: true`).
+  - `EXPLAIN (ANALYZE, BUFFERS)` execution time: `0.310 ms` (`top-N heapsort Memory: 27kB`, `shared hit=45`), and index verification with `enable_seqscan = off`: `Bitmap Index Scan on notifications_user_created_index` (`Execution Time: 1.045 ms`, `Buffers: shared hit=53`).
+- **Keyboard & Bell accessibility walk (`minh-a11y` Chrome `390x844`):**
+  - Header Bell link exposed accessible name `"3 thông báo chưa đọc"` with `outlineStyle: "solid"`, `outlineWidth: "2px"` on `Tab` focus; `Enter` opened `/notifications`.
+  - On S19 (`/notifications`), `Tab` reached `Đánh dấu đã đọc` (`BUTTON`, `2px solid` outline) and notification links, and `Enter` navigated to S20.
+  - On S20 (`/g/{id}/tx/{txId}/view`), `Tab` reached `Khoản này chưa đúng` (`2px solid` outline), `Enter` opened the modal dialog, and `Escape` closed it (`openDialogs: 0`) returning focus cleanly to the trigger button.
+  - On S11 (`/g/{id}/settings`), all Phase 4 controls (`Tắt`/`Mỗi 3 ngày`/`Mỗi tuần`/`Mỗi 2 tuần`, `switch "Duyệt khoản chi lớn"`, `Từ số tiền`, `Tạo mã liên kết`) exposed accessible labels/roles with `tabIndex >= 0` (`switch "Gộp nợ"` `2px solid` outline verified); 0 console errors.
+- **Final Stage Gate 4D (`songphang_phase4_gate` freshly reset, migrated, seeded):**
+  - `pnpm check`: passed (`Checked 478 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+  - `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`2.1s`).
+  - Acceptance replay: `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`, `DISABLED_FEATURES_CHECK_PASSED` (`telegram: false`, `receiptReading: false`, `sentenceAi: false`), `PHASE_1_2_3_BASELINE_REPLAY_PASSED`, `EXERCISE_4A1_PASSED`, `EXERCISE_4A2_PASSED`, `EXERCISE_4B1_PASSED`, `EXERCISE_4B3_PASSED`, `EXERCISE_4B4_PASSED`, `EXERCISE_4C1_PASSED`, `EXERCISE_4C2_PASSED`, `EXERCISE_4D1_PASSED`, `EXERCISE_4D2_PASSED`, and `pnpm db:check-balances` -> `All groups balanced` across 12 groups (`sum 0; mismatches 0`).
