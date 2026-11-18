@@ -303,3 +303,14 @@ Job names and schedules' implementation; payload field names; how the comment th
 ## 13. Owner's prerequisites
 
 Approve this spec, in particular three product rules the advisor chose: viewers may comment and dispute (3.2); a disputed expense still counts (3.2); a pending expense does not count (6). Any time after the server step: create the bot with BotFather.
+
+## 14. Amendment 2026-11-18 (advisor, before the run)
+
+Written after Phases 2 and 3 were merged (`d12f622`, `905cdf2`) and the Phase 3 review corrections (`5c27dea`, `ed086fa`). Product behavior of sections 1–13 is unchanged except where stated.
+
+1. **`/chi` reads with the AI only as an explicit send.** Since `5c27dea`, `POST …/transactions/parse` calls the sentence AI only when the request carries `ai: true` (API spec, "Phase 3 review corrections — 2026-11-18"). A `/chi` command is the sender's explicit action, so the bot calls the parse service with `ai: true`. The AI reservation is charged to the linked application user, under the same per-user daily and monthly limits as the web; when the limit is reached the rule answer is used, as on the web. An AI reading is prefixed with `Đọc bằng AI.` on its own line (plan 4C, unchanged). Nothing from the chat other than the `/chi` sentence is sent to the AI provider.
+2. **Phases 2 and 3 are present.** Every notification kind of section 4.2 is built, including `settlement_requested`, `settlement_confirmed`, `settlement_rejected` and `budget_state`; the "phase 3 absent" task 4B.0 does not apply because the worker exists. Mail and reminder jobs register in `apps/worker` beside the Phase 3 jobs.
+3. **Approval and Phase 2/3 money.** The approval rule of section 6 applies to every expense, including the `items` split and expenses saved from a receipt scan; the threshold compares the expense `amount`. Transfers created by confirming a settlement request and fund contributions are never pending. The approval filter covers, in addition to section 6's list, the fund cash and contributions, the budget warnings returned by create, edit and edit preview, and the suggested transfers used by the paying screen and settlement requests; plan 4D.1's `rg` listing is the check.
+4. **Re-baseline replay.** The acceptance scripts of earlier runs were never committed and are no longer on the machine. Task 0 reconstructs, from each merged phase's plan gate tables, a representative replay per stage (as the Phase 3 Task 0 did) and records exactly which cases ran and their real output. A case it cannot reconstruct is listed under "Not verified", not described as passed.
+5. **Deferred owner checks.** On 2026-11-18 the owner deferred all checks with a real AI provider (Anthropic key, the 30-receipt measurement) until every phase, including the iOS app, is done. Phase 4 runs and gates with `AI_PROVIDER=fake` where the AI path is exercised and with it unset for the capability checks; the real Telegram bot remains "Not verified" (section 10).
+
