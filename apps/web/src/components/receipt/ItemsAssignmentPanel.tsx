@@ -1,15 +1,18 @@
 "use client";
-import type {
-	ItemsSplitExtra,
-	ItemsSplitItem,
-	MemberDto,
-	PreviewItemsResponse,
+import {
+	type ItemsSplitExtra,
+	type ItemsSplitItem,
+	type MemberDto,
+	PreviewItemsRequest,
+	type PreviewItemsResponse,
 } from "@songphang/contract";
 import { formatAmount, parseAmountInput } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
 import { type EditableReceiptExtra, ExtrasFields } from "./ExtrasFields";
 import { type EditableReceiptItem, ItemRow } from "./ItemRow";
+
+export const MAX_ITEM_MEMBERS = 20;
 
 export function toItemsPayload(
 	items: EditableReceiptItem[],
@@ -22,7 +25,9 @@ export function toItemsPayload(
 	for (const item of items) {
 		const name = item.name.trim();
 		const amount = parseAmountInput(item.amountText);
-		if (!name || amount === null) return null;
+		if (!name || amount === null || item.memberIds.length > MAX_ITEM_MEMBERS) {
+			return null;
+		}
 		builtItems.push({ name, amount, memberIds: item.memberIds });
 	}
 	const builtExtras: ItemsSplitExtra[] = [];
@@ -35,7 +40,11 @@ export function toItemsPayload(
 			amount,
 		});
 	}
-	return { items: builtItems, extras: builtExtras };
+	const checked = PreviewItemsRequest.safeParse({
+		items: builtItems,
+		extras: builtExtras,
+	});
+	return checked.success ? checked.data : null;
 }
 
 export function ItemsAssignmentPanel({
@@ -92,12 +101,20 @@ export function ItemsAssignmentPanel({
 		(previewCurrent &&
 			previewData?.issues.some((issue) => issue.code === "ITEM_UNASSIGNED"));
 
+	const selectedMemberCount = selectedItem?.memberIds.length ?? 0;
+	const itemMembersFull = selectedMemberCount >= MAX_ITEM_MEMBERS;
+	const groupExceedsItemCap = activePeople.length > MAX_ITEM_MEMBERS;
+
 	return (
 		<div className="grid gap-3">
 			<div className="flex items-center justify-between gap-2">
 				<button
 					type="button"
-					disabled={unassignedCount === 0 || activePeople.length === 0}
+					disabled={
+						unassignedCount === 0 ||
+						activePeople.length === 0 ||
+						groupExceedsItemCap
+					}
 					onClick={onSplitRemainingEqual}
 					className="min-h-11 rounded-pill bg-phrase-split px-4 text-xs font-extrabold text-ink disabled:opacity-40"
 				>
@@ -150,8 +167,9 @@ export function ItemsAssignmentPanel({
 								key={member.id}
 								type="button"
 								aria-pressed={assigned}
+								disabled={!assigned && itemMembersFull}
 								onClick={() => onToggleMemberOnSelected(member.id)}
-								className={`flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-[20px] p-2 text-xs font-bold transition-colors ${
+								className={`flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-[20px] p-2 text-xs font-bold transition-colors disabled:opacity-40 ${
 									assigned ? "bg-sunken ring-2 ring-ink" : "bg-bg opacity-70"
 								}`}
 							>
@@ -168,6 +186,11 @@ export function ItemsAssignmentPanel({
 						);
 					})}
 				</div>
+				{(groupExceedsItemCap || itemMembersFull) && (
+					<p role="status" className="text-xs font-extrabold text-muted">
+						{vi.receipts.maxItemMembers}
+					</p>
+				)}
 				{previewError && (
 					<p role="alert" className="text-xs font-bold text-ink">
 						{vi.common.loadError}

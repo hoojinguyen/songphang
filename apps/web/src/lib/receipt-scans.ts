@@ -73,11 +73,12 @@ export function usePreviewItems(
 
 	useEffect(() => {
 		const timer = setTimeout(() => {
-			setDebounced(
-				serialized === null
-					? null
-					: PreviewItemsRequest.parse(JSON.parse(serialized)),
-			);
+			if (serialized === null) {
+				setDebounced(null);
+				return;
+			}
+			const parsed = PreviewItemsRequest.safeParse(JSON.parse(serialized));
+			setDebounced(parsed.success ? parsed.data : null);
 		}, PREVIEW_DEBOUNCE_MS);
 		return () => clearTimeout(timer);
 	}, [serialized]);

@@ -641,6 +641,7 @@ export const vi = {
 		useAmount: "Dùng {amount}",
 		mismatchExtraLabel: "Chênh lệch",
 		maxExtras: "Tối đa 6 khoản phụ.",
+		maxItemMembers: "Mỗi món chọn tối đa 20 người.",
 		saveBlocked: "Còn {count} món chưa có ai.",
 		invalidTotal: "Tổng số tiền phải lớn hơn 0.",
 		paidBy: "Ai trả?",

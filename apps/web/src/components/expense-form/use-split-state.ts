@@ -6,7 +6,10 @@ import { usePreviewItems } from "../../lib/receipt-scans";
 import { t, vi } from "../../messages/vi";
 import type { EditableReceiptExtra } from "../receipt/ExtrasFields";
 import type { EditableReceiptItem } from "../receipt/ItemRow";
-import { toItemsPayload } from "../receipt/ItemsAssignmentPanel";
+import {
+	MAX_ITEM_MEMBERS,
+	toItemsPayload,
+} from "../receipt/ItemsAssignmentPanel";
 
 export type SplitMethod = "equal" | "exact" | "shares" | "percent" | "items";
 function hundredths(value: string): number | null {
@@ -64,7 +67,10 @@ export function useSplitState(
 						id: crypto.randomUUID(),
 						name: vi.receipts.title,
 						amountText: amount > 0 ? String(amount) : "0",
-						memberIds: members.map((member) => member.id),
+						memberIds:
+							members.length <= MAX_ITEM_MEMBERS
+								? members.map((member) => member.id)
+								: [],
 					},
 				],
 	);
@@ -244,6 +250,9 @@ export function useSplitState(
 				current.map((item) => {
 					if (item.id !== targetId) return item;
 					const exists = item.memberIds.includes(memberId);
+					if (!exists && item.memberIds.length >= MAX_ITEM_MEMBERS) {
+						return item;
+					}
 					return {
 						...item,
 						memberIds: exists
@@ -255,7 +264,7 @@ export function useSplitState(
 		},
 		onSplitRemainingEqual: () => {
 			const allIds = members.map((m) => m.id);
-			if (allIds.length === 0) return;
+			if (allIds.length === 0 || allIds.length > MAX_ITEM_MEMBERS) return;
 			setItems((current) =>
 				current.map((item) =>
 					item.memberIds.length === 0 ? { ...item, memberIds: allIds } : item,

@@ -324,6 +324,13 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   2. Stopped non-monetary edits (`name`, `label`, member selection, adding items/extras) from dismissing `MismatchNotice`, keeping `canSave` blocked until an explicit total choice or a verified monetary edit bringing `computedAmount === scan.reading.total`.
 - Verified live on Next.js `3010` + API `4010` + worker (`Nhóm 3D3`): `NO_ITEMS` scan (`100.000 đ`) showed zero mismatch banner and stayed `100.000 đ`; `mismatch` scan kept `Lưu` disabled after renaming `"Bia"` -> `"Bia tươi"`, updated `Dùng 447.000 đ` / `Dùng 450.000 đ` after raising `Lẩu thái` to `355000`, and computed `Chênh lệch = 3000` (`450.000 đ`).
 
+## Post-review fixes (Codex review round 4) & full Final Gate re-run
+
+- Findings addressed:
+  1. Switched `usePreviewItems` (`apps/web/src/lib/receipt-scans.ts`) and `toItemsPayload` (`ItemsAssignmentPanel.tsx`) to `PreviewItemsRequest.safeParse` (never throwing inside debounce timeout) and enforced `MAX_ITEM_MEMBERS = 20` across `ReceiptReview`, `use-split-state`, and `ItemsAssignmentPanel` (disabling `Chia đều các món còn lại` & excess member toggles with `Mỗi món chọn tối đa 20 người.`).
+- Verified live on `Nhóm 21` (21 active members) in Chrome DevTools (`3010`/`4010`) across both `ReceiptReview` and `ExpenseForm` `Theo món` tab (`0` console errors).
+- Full **Final Cumulative Gate 3D** re-executed on freshly dropped/recreated + migrated + seeded `songphang_phase3_gate`: `pnpm check` (`389 files`, 8 typechecks), `pnpm build`, `baseline_gate.mjs`, `exercise_3a2.mts`, `exercise_3a3.mts`, `verify_87_samples.ts`, `test_pgboss_tx.mts`, `exercise_3b1.mts`, `exercise_3b2.mts`, `exercise_3b3_spec15.mts`, `exercise_review2_reader.mts`, `exercise_3b3_live.mts`, `exercise_3c1.mts`, `exercise_3c2.mts`, `exercise_3d1.mts`, `exercise_3d2.mts`, and `pnpm db:check-balances` (`All groups balanced`) all passed.
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).

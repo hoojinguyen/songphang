@@ -24,7 +24,11 @@ import { PhotoViewer } from "../ui/PhotoViewer";
 import { ScreenHeader } from "../ui/ScreenHeader";
 import type { EditableReceiptExtra } from "./ExtrasFields";
 import type { EditableReceiptItem } from "./ItemRow";
-import { ItemsAssignmentPanel, toItemsPayload } from "./ItemsAssignmentPanel";
+import {
+	ItemsAssignmentPanel,
+	MAX_ITEM_MEMBERS,
+	toItemsPayload,
+} from "./ItemsAssignmentPanel";
 import { MismatchNotice } from "./MismatchNotice";
 
 function todayVietnamDate(): string {
@@ -570,6 +574,9 @@ export function ReceiptReview({
 						current.map((item) => {
 							if (item.id !== targetId) return item;
 							const exists = item.memberIds.includes(memberId);
+							if (!exists && item.memberIds.length >= MAX_ITEM_MEMBERS) {
+								return item;
+							}
 							return {
 								...item,
 								memberIds: exists
@@ -581,7 +588,7 @@ export function ReceiptReview({
 				}}
 				onSplitRemainingEqual={() => {
 					const allIds = activePeople.map((m) => m.id);
-					if (allIds.length === 0) return;
+					if (allIds.length === 0 || allIds.length > MAX_ITEM_MEMBERS) return;
 					setItems((current) =>
 						current.map((item) =>
 							item.memberIds.length === 0
