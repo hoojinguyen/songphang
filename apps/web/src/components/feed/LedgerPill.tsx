@@ -30,10 +30,25 @@ export function LedgerPill({
 						? t(vi.feed.transferToYou, { name: from.name, amount })
 						: t(vi.feed.transferOther, { from: from.name, to: to.name, amount })
 				: "";
+	const approvalStatus = transaction.approval.status;
+	const uncounted =
+		approvalStatus === "pending" || approvalStatus === "rejected";
 	return (
-		<div className="mx-auto flex max-w-full flex-wrap items-center gap-2 rounded-[18px] bg-sunken py-1.5 pl-2 pr-3 text-xs font-semibold">
+		<div
+			className={`mx-auto flex max-w-full flex-wrap items-center gap-2 rounded-[18px] bg-sunken py-1.5 pl-2 pr-3 text-xs font-semibold ${uncounted ? "opacity-85" : ""}`}
+		>
 			<MemberShape {...from} size={18} />
 			<span>{text}</span>
+			{approvalStatus === "pending" && (
+				<span className="rounded-[10px] bg-accent px-2 py-0.5 text-[11px] font-bold text-ink">
+					{vi.approval.pendingTag}
+				</span>
+			)}
+			{approvalStatus === "rejected" && (
+				<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
+					{vi.approval.rejectedTag}
+				</span>
+			)}
 			{transaction.dispute !== null && (
 				<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
 					{vi.transactionView.disputeTag}

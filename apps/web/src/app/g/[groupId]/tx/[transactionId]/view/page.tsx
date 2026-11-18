@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { ApprovalBlock } from "../../../../../../components/transaction/ApprovalBlock";
 import { CommentField } from "../../../../../../components/transaction/CommentField";
 import { CommentThread } from "../../../../../../components/transaction/CommentThread";
 import { DisputeBlock } from "../../../../../../components/transaction/DisputeBlock";
@@ -126,6 +127,15 @@ export default function TransactionViewPage() {
 				transaction={transaction}
 				members={members.data}
 				categories={categories.data}
+			/>
+			<ApprovalBlock
+				groupId={groupId}
+				transactionId={transactionId}
+				approval={transaction.approval}
+				ownerName={group.data.ownerName}
+				role={group.data.role}
+				verified={me.data.emailVerified}
+				deleted={transaction.deletedAt !== null}
 			/>
 			<DisputeBlock
 				groupId={groupId}

@@ -59,9 +59,12 @@ export function ExpenseRow({
 	const myShare = transaction.shares.find(
 		(share) => share.memberId === myMemberId,
 	);
+	const approvalStatus = transaction.approval.status;
+	const uncounted =
+		approvalStatus === "pending" || approvalStatus === "rejected";
 	return (
 		<div
-			className={`flex items-end gap-2 ${isMine ? "justify-end" : "justify-start"}`}
+			className={`flex items-end gap-2 ${isMine ? "justify-end" : "justify-start"} ${uncounted ? "opacity-85" : ""}`}
 		>
 			{!isMine && payer && <MemberShape {...payer} size={36} />}
 			<div
@@ -90,10 +93,21 @@ export function ExpenseRow({
 					transaction.version > 1 ||
 					transaction.attachmentCount > 0 ||
 					transaction.commentCount > 0 ||
-					transaction.dispute !== null) && (
+					transaction.dispute !== null ||
+					uncounted) && (
 					<div
 						className={`mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
 					>
+						{approvalStatus === "pending" && (
+							<span className="rounded-[10px] bg-accent px-2 py-0.5 text-ink">
+								{vi.approval.pendingTag}
+							</span>
+						)}
+						{approvalStatus === "rejected" && (
+							<span className="rounded-[10px] bg-coral px-2 py-0.5 text-ink">
+								{vi.approval.rejectedTag}
+							</span>
+						)}
 						{transaction.dispute !== null && (
 							<span className="rounded-[10px] bg-coral px-2 py-0.5 text-ink">
 								{vi.transactionView.disputeTag}

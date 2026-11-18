@@ -168,7 +168,11 @@ export function describeActivity(
 							? vi.activity.disputeOpen
 							: entry.action === "dispute_resolve"
 								? vi.activity.disputeResolve
-								: vi.activity.restore,
+								: entry.action === "approve"
+									? vi.activity.approve
+									: entry.action === "reject"
+										? vi.activity.reject
+										: vi.activity.restore,
 		];
 	else if (entry.entityType === "group") {
 		if (entry.action === "create") templates = [vi.activity.groupCreate];

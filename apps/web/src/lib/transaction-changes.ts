@@ -94,3 +94,29 @@ export function useRestoreTransaction(groupId: string) {
 		onSuccess: refresh,
 	});
 }
+export function useApproveTransaction(groupId: string, id: string) {
+	const refresh = useRefresh(groupId);
+	return useMutation<{ transaction: TransactionDto }, ApiError, void>({
+		mutationFn: () =>
+			apiFetch(
+				`/groups/${groupId}/transactions/${id}/approve`,
+				TransactionResponse,
+				jsonRequest("POST"),
+			),
+		onSuccess: refresh,
+	});
+}
+export function useRejectTransaction(groupId: string, id: string) {
+	const refresh = useRefresh(groupId);
+	return useMutation<{ transaction: TransactionDto }, ApiError, string>({
+		mutationFn: (note) => {
+			const trimmed = note.trim();
+			return apiFetch(
+				`/groups/${groupId}/transactions/${id}/reject`,
+				TransactionResponse,
+				jsonRequest("POST", trimmed ? { note: trimmed } : {}),
+			);
+		},
+		onSuccess: refresh,
+	});
+}

@@ -15,12 +15,14 @@ import { SentenceInput } from "../../../../../components/quick-entry/SentenceInp
 import { Icon } from "../../../../../components/ui/Icon";
 import { OnlineButton } from "../../../../../components/ui/OnlineButton";
 import { ScreenHeader } from "../../../../../components/ui/ScreenHeader";
+import { useSnackbar } from "../../../../../components/ui/Snackbar";
 import { useCategories } from "../../../../../lib/categories";
 import {
 	isRuleInteractiveQuestion,
 	useDraft,
 } from "../../../../../lib/draft-context";
 import { useFeatures } from "../../../../../lib/features";
+import { useGroup } from "../../../../../lib/groups";
 import { useParseSentence } from "../../../../../lib/quick-entry";
 import {
 	useCreateTransaction,
@@ -45,6 +47,8 @@ export function ComposeScreen({
 	const categoriesQuery = useCategories(groupId);
 	const categories = categoriesQuery.data ?? [];
 	const mutation = useCreateTransaction(groupId);
+	const group = useGroup(groupId);
+	const snackbar = useSnackbar();
 	const router = useRouter();
 	const saving = useRef(false);
 	const [collapsing, setCollapsing] = useState(false);
@@ -226,7 +230,14 @@ export function ComposeScreen({
 		mutation.mutate(
 			{ request: parsed.data, key: activeItem.idempotencyKey },
 			{
-				onSuccess: () => {
+				onSuccess: (data) => {
+					if (data.transaction.approval.status === "pending") {
+						snackbar({
+							text: t(vi.approval.savedPending, {
+								owner: group.data?.ownerName ?? "",
+							}),
+						});
+					}
 					if (activeIndex < items.length - 1) {
 						saving.current = false;
 						memory.setQueue({ ...nextQueue, index: activeIndex + 1 });

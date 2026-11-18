@@ -84,3 +84,19 @@ Each entry: problem, options, choice, reason; for a library also license, mainte
 - Options: (a) extend `FeaturesResponse` with `telegramBotUsername` or return `botUsername` on `GET /groups/{groupId}/chat-links` and `POST /groups/{groupId}/chat-links/code`; (b) add Telegram PII (`first_name`) to `chat_identities` or keep Spec 5.2's column list and display platform label (`"Telegram"`); (c) validate JSON via OpenAPI vs read raw text and `TelegramUpdate.safeParse` inside the webhook handler after secret verification.
 - Choice: return `{ botUsername, chatLinks }` on `GET /groups/{groupId}/chat-links` (and `{ botUsername, command, expiresAt }` on code creation), keep `chat_identities` strictly matching Spec 5.2 columns (`{ chatIdentities: [{ platform, linkedAt }] }`, rendering `"Telegram"` for `{name}`), and verify `X-Telegram-Bot-Api-Secret-Token` first via `timingSafeEqual` before parsing raw text + `TelegramUpdate.safeParse` (invalid JSON or Zod failure returns `200 {}` with no side effects).
 - Reason: keeps `FeaturesResponse` backwards-compatible, avoids storing unnecessary Telegram user PII, and prevents malformed webhook payloads from triggering 400 retries. Verified Bot API request shapes: `POST https://api.telegram.org/bot{token}/sendMessage` (`{ chat_id, text, reply_markup?: { inline_keyboard } }`, plain text without `parse_mode`), `POST .../answerCallbackQuery` (`{ callback_query_id, text? }`), and `setWebhook` (`url`, `secret_token` -> `X-Telegram-Bot-Api-Secret-Token` header, `allowed_updates: ["message", "callback_query"]`).
+
+## Stage 4D decisions
+
+### D4D.1 — Uncounted stream row opacity raised for WCAG AA contrast (Task 4D.3)
+
+- Problem: Spec/Plan 4D.3 describes pending and rejected rows as dimmed (`opacity: 0.60`) with `chờ duyệt` (`bg-accent text-ink`) or `không được duyệt` (`bg-coral text-ink`) tags and instructs checking contrast on the live row and raising opacity if below WCAG AA (`4.5:1`). Over the page background `--color-bg` (`#f6f2fb`), applying `opacity-60` to the whole row yields `3.76:1` for `chờ duyệt`, `2.79:1` for `không được duyệt`, and `2.82:1` for `text-muted` on `bg-surface`, all below `4.5:1`.
+- Options: (a) keep `opacity-60` and fail AA on tags/meta; (b) raise uncounted row/pill opacity to `0.85` (`opacity-85`).
+- Choice: apply `opacity-85` on pending/rejected `ExpenseRow` bubbles and `LedgerPill` pills while rendering the explicit `chờ duyệt` / `không được duyệt` tag pill inside.
+- Reason: at `0.85` over `#f6f2fb`, every contrast pair exceeds WCAG AA: `chờ duyệt` (`#1c1b22` on `#ffd84d`) = `8.21:1`, `không được duyệt` (`#1c1b22` on `#ff8a73`) = `5.35:1`, `text-muted` (`#5a5766` on `#ffffff`) = `4.90:1`, `on-ink-muted` (`#c9c5d6` on `#1c1b22`) = `7.01:1`, and primary text (`#1c1b22` on `#ffffff` / `#ffffff` on `#1c1b22`) = `10.86:1`.
+
+### D4D.2 — Bell unread accessible name (Task 4D.3 / 4D.4)
+
+- Problem: Plan 4B.2 used `"Thông báo, {count} chưa đọc"`, while Plan 4D.4 accessibility verification specifies `"{count} thông báo chưa đọc"`.
+- Options: leave the older format or align `vi.notifications.bellUnreadLabel` to `"{count} thông báo chưa đọc"`.
+- Choice: update `vi.notifications.bellUnreadLabel` to `"{count} thông báo chưa đọc"`.
+- Reason: matches Plan 4D.4's accessibility check character for character while staying natural Vietnamese for screen readers.

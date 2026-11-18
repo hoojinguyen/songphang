@@ -3,12 +3,14 @@ import type { MemberDto } from "@songphang/contract";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { attachmentContentUrl } from "../../lib/attachments";
+import { useGroup } from "../../lib/groups";
 import { formatMoney } from "../../lib/money";
 import { usePreviewItems, useReceiptScan } from "../../lib/receipt-scans";
 import { useCreateTransaction } from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
+import { useSnackbar } from "../ui/Snackbar";
 import { ItemsAssignmentPanel, toItemsPayload } from "./ItemsAssignmentPanel";
 import { MismatchNotice } from "./MismatchNotice";
 import { ReceiptDetailsFields } from "./ReceiptDetailsFields";
@@ -34,6 +36,8 @@ export function ReceiptReview({
 	myMemberId: string | null;
 }) {
 	const router = useRouter();
+	const group = useGroup(groupId);
+	const snackbar = useSnackbar();
 	const scanQuery = useReceiptScan(groupId, scanId);
 	useSessionGuard(scanQuery.error);
 	const createMutation = useCreateTransaction(groupId);
@@ -124,7 +128,16 @@ export function ReceiptReview({
 		createMutation.mutate(
 			{ request, key: idempotencyKey },
 			{
-				onSuccess: () => router.replace(`/g/${groupId}`),
+				onSuccess: (data) => {
+					if (data.transaction.approval.status === "pending") {
+						snackbar({
+							text: t(vi.approval.savedPending, {
+								owner: group.data?.ownerName ?? "",
+							}),
+						});
+					}
+					router.replace(`/g/${groupId}`);
+				},
 				onSettled: () => {
 					submittingRef.current = false;
 				},

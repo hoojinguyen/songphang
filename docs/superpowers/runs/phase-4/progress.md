@@ -21,7 +21,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4C.4 — Stage gate 4C and the bot runbook
 - [x] 4D.1 — Database and money path: the approval filter
 - [x] 4D.2 — API: threshold, pending, approve, reject
-- [ ] 4D.3 — Web: approval
+- [x] 4D.3 — Web: approval
 - [ ] 4D.4 — README, non-functional checks, final gate
 
 ## Baseline failures
@@ -322,3 +322,23 @@ None.
   - `EXERCISE_4D2_PASSED`: verified all 13 rows (`r1Status: "pending"` with balances 0 & `approval_requested` notification for Minh; `r2Balances` Lan +666,666 / Minh -333,333 / Hùng -333,333; Lan approve -> 403, outsider -> 404; Minh approve -> `r4Balances` Lan +1,466,666 / Minh -733,333 / Hùng -733,333 & `approval_decided` for Lan; repeat approve -> 409 `APPROVAL_NOT_PENDING`; Lan edit to 1,500,000 -> `pending` & balances back to Row 2; Minh reject with `"Chưa có hoá đơn"` -> rejected with note, balances unchanged; Lan edit to 900,000 -> `none` & balances Lan +1,266,666 / Minh -633,333 / Hùng -633,333; owner 5,000,000 -> `none`; transfer 2,000,000 -> `none`; threshold `null` then Lan 3,000,000 -> `none`; Lan threshold PATCH -> 403; reject 301-char note -> 400; Telegram bot pending save reply -> `"Đã lưu: máy in · 1.500.000 đ. Khoản này chờ Minh duyệt."`).
   - `pnpm db:check-balances` after rows 1, 4, 7 and at end -> `All groups balanced` (13 groups).
 - Security review: `requireGroupRole("owner")` + `requireVerifiedEmail` + `requireWriteLimit` + `requireSameOrigin` on `/approve`, `/reject`, and threshold `PATCH`; outsider 404; Zod bounds note 0..300 and positive integer `approvalThreshold`.
+
+## Task 4D.3 — approach
+
+- Files to create/modify: create `apps/web/src/components/transaction/ApprovalBlock.tsx` and `apps/web/src/components/settings/ApprovalCard.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/lib/activity-sentences.ts`, `apps/web/src/lib/transaction-changes.ts`, `apps/web/src/components/feed/ExpenseRow.tsx`, `apps/web/src/components/feed/LedgerPill.tsx`, `apps/web/src/app/g/[groupId]/tx/[transactionId]/view/page.tsx`, `apps/web/src/app/g/[groupId]/settings/page.tsx`, `apps/web/src/components/expense-form/use-expense-form.ts`, `apps/web/src/app/g/[groupId]/tx/new/ComposeScreen.tsx`, `apps/web/src/components/receipt/ReceiptReview.tsx`.
+- Approach: add Spec 7.3/7.5 strings and approval hooks (`useApproveTransaction`, `useRejectTransaction`) following `DisputeBlock` and `BudgetCard`; render `opacity-85` + `chờ duyệt`/`không được duyệt` tags on `ExpenseRow`/`LedgerPill` so all elements clear WCAG AA; mount `ApprovalBlock` on S20 and `ApprovalCard` on S11; surface `Đã lưu. Khoản này chờ {owner} duyệt.` via the group layout `SnackbarProvider` on every pending save (manual form, edit, quick-entry compose, receipt review).
+- Why simplest: reuses `ConfirmDialog`, `AmountField`, `Switch`, `SnackbarProvider` (already wrapping `/g/[groupId]/*`), and React Query group invalidation without adding extra routes or state stores.
+- Rejected alternative: passing query params (`?saved=pending`) across router redirects to render a separate banner on S4, which would linger across refreshes and browser history.
+
+### Task 4D.3 results
+
+- `pnpm check`: passed (`Checked 478 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`4.2s`, all web routes built).
+- Live two-context Chrome check (`minh-4d3` and `lan-4d3` at `390x844` on `songphang_phase4_gate`):
+  - Minh enabled `Duyệt khoản chi lớn` -> `1.000.000` on `/g/{id}/settings` (`Từ số tiền` + `Khoản chi từ mức này chỉ được tính sau khi bạn duyệt.`).
+  - Lan saved `1.200.000` (`khách sạn`): snackbar displayed `Đã lưu. Khoản này chờ Minh duyệt.`, stream row dimmed (`opacity: 0.85`) with `chờ duyệt` (`rgb(255, 216, 77)` / `rgb(28, 27, 34)` over `#f6f2fb`, WCAG AA contrast `8.21:1`), and both balances stayed `0 đ`.
+  - Minh clicked Bell (`1 thông báo chưa đọc`) -> navigated via `/notifications` (`Lan thêm khách sạn · 1.200.000 đ, cần bạn duyệt`) -> S20 displayed `Khoản này chờ Minh duyệt. Chưa tính vào số dư.` with `Duyệt` / `Không duyệt` -> clicked `Duyệt`: banner cleared, Minh's balance updated to `Bạn cần trả 400.000 đ`, and Lan's open window updated live via SSE to `Bạn được nhận 800.000 đ` without refreshing.
+  - Lan edited `khách sạn` to `1.500.000` -> saw `Đã lưu. Khoản này chờ Minh duyệt.` and `chờ duyệt`; Minh opened S20 -> clicked `Không duyệt` -> entered `"Chưa có hoá đơn"` -> submitted `Không duyệt`: S20 displayed `Minh không duyệt khoản này.` + `Chưa có hoá đơn`, and both open S4 streams updated live to `không được duyệt` (`rgb(255, 138, 115)` / `rgb(28, 27, 34)` at `0.85` opacity = `5.35:1` WCAG AA) with balances back at `0 đ`.
+  - Zero console errors (`list_console_messages`) in both contexts, `horizontalOverflow: 0`; closed Chrome pages and verified ports `3010`/`4010` free.
+- Recorded `D4D.1` (`opacity-85` WCAG AA fix) and `D4D.2` (`bellUnreadLabel`) in [decisions.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/decisions.md).
+- Security review: no `dangerouslySetInnerHTML`, `eval(`, `any`, or bypass annotations; owner-only actions gated behind `role === "owner" && verified` and API `ownerWrite`; note bounded `maxLength={300}`.

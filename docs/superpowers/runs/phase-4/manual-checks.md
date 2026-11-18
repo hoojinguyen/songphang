@@ -42,6 +42,15 @@ Checks are appended by screen and flow as tasks complete, plus a section **After
 3. Open `/account` -> `Telegram` card shows `Đã liên kết với Telegram`; clicking `Bỏ liên kết` removes it. Returning to `/g/{id}/settings` shows linked chat IDs and clicking `Bỏ liên kết` unlinks them.
 4. Open `/g/{id}/tx/new?form&text=abc%20xyz` -> `Mô tả` input is prefilled with `abc xyz`.
 
+## S11 & S20 — Expense approval above a threshold (Stage 4D)
+
+1. Open `/g/{id}/settings` as group owner -> enable `Duyệt khoản chi lớn`, enter `1.000.000` in `Từ số tiền`, confirm hint `Khoản chi từ mức này chỉ được tính sau khi bạn duyệt.`, and tap `Lưu`.
+2. Switch to a linked editor (`Lan`) and save an expense for `1.200.000 đ` -> snackbar shows `Đã lưu. Khoản này chờ Minh duyệt.`, stream row is dimmed with `chờ duyệt`, and group balances remain unchanged.
+3. As owner (`Minh`), tap the notification bell -> tap `{Actor} thêm {desc} · 1.200.000 đ, cần bạn duyệt` -> lands on S20 showing `Khoản này chờ Minh duyệt. Chưa tính vào số dư.` with `Duyệt` and `Không duyệt` (hidden for non-owners).
+4. Tap `Duyệt` -> approval block and `chờ duyệt` tag clear immediately and balances/SSE streams update across open windows; confirm approving again is rejected cleanly if triggered concurrently.
+5. As editor (`Lan`), edit the approved expense on S20 (`Sửa`) to `1.500.000 đ` -> returns to `chờ duyệt` and clears balances until re-approved.
+6. As owner (`Minh`), tap `Không duyệt` on S20 -> dialog `Vì sao không duyệt?` opens with optional `Ghi chú` -> submit with or without a note -> S20 shows `Minh không duyệt khoản này.` (+ note if entered) and stream rows show `không được duyệt`.
+
 ## After the Telegram bot exists
 
 1. In a real Telegram group linked via `/lienket <code>`: send `/chi cà phê 180k chia 4` -> bot replies with split breakdown and `Lưu` / `Bỏ` buttons -> tap `Lưu` -> web app expense list updates within 2 seconds.

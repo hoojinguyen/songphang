@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useDraft } from "../../lib/draft-context";
+import { useGroup } from "../../lib/groups";
 import { parseAmountInput } from "../../lib/money";
 import {
 	transactionRequestOf,
@@ -19,6 +20,7 @@ import {
 import { useCreateTransaction, usePreviewShares } from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
 import { t, vi } from "../../messages/vi";
+import { useSnackbar } from "../ui/Snackbar";
 import type { FormTransactionType } from "./TypeSwitch";
 import { useSplitState } from "./use-split-state";
 
@@ -188,6 +190,8 @@ export function useExpenseForm(
 		transaction?.version ?? 1,
 	);
 	const mutation = transaction ? update : create;
+	const group = useGroup(groupId);
+	const snackbar = useSnackbar();
 	const router = useRouter();
 	useSessionGuard(mutation.error);
 	const amount = parseAmountInput(amountText);
@@ -300,7 +304,14 @@ export function useExpenseForm(
 		mutation.mutate(
 			{ request: payload, key },
 			{
-				onSuccess: () => {
+				onSuccess: (data) => {
+					if (data.transaction.approval.status === "pending") {
+						snackbar({
+							text: t(vi.approval.savedPending, {
+								owner: group.data?.ownerName ?? "",
+							}),
+						});
+					}
 					if (activeQueue && activeQueue.index + 1 < activeQueue.items.length) {
 						memory.setQueue({
 							...activeQueue,
