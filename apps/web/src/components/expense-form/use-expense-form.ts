@@ -41,6 +41,26 @@ export function useExpenseForm(
 ) {
 	const memory = useDraft();
 	const draft = transaction ?? memory.draft?.draft;
+	const activeQueue =
+		!transaction &&
+		memory.draft &&
+		memory.queue &&
+		memory.queue.sentence === memory.draft.sentence
+			? memory.queue
+			: null;
+	const queuedItem = activeQueue?.items[activeQueue.index];
+	const hasMoreQueued = Boolean(
+		activeQueue && activeQueue.index + 1 < activeQueue.items.length,
+	);
+	const isMultiQueued = Boolean(activeQueue && activeQueue.items.length > 1);
+	const queueIndexLabel =
+		activeQueue && isMultiQueued
+			? t(vi.compose.draftIndex, {
+					index: String(activeQueue.index + 1),
+					count: String(activeQueue.items.length),
+				})
+			: undefined;
+	const baseOccurredAt = transaction?.occurredAt ?? queuedItem?.occurredAt;
 	const active = members.filter(
 		(member) => member.kind === "person" && (transaction || member.active),
 	);
@@ -92,7 +112,7 @@ export function useExpenseForm(
 		transaction?.shares[0]?.memberId ?? prefill?.to ?? null,
 	);
 	const [occurredAt, setOccurredAt] = useState(() =>
-		localDateTime(transaction?.occurredAt),
+		localDateTime(baseOccurredAt),
 	);
 	const [attachments, setAttachments] = useState<AttachmentDto[]>(() => {
 		if (transaction?.attachments && transaction.attachments.length > 0) {
@@ -114,28 +134,10 @@ export function useExpenseForm(
 		}
 		return [];
 	});
-	const activeQueue =
-		!transaction &&
-		memory.draft &&
-		memory.queue &&
-		memory.queue.sentence === memory.draft.sentence
-			? memory.queue
-			: null;
-	const queuedItem = activeQueue?.items[activeQueue.index];
-	const hasMoreQueued = Boolean(
-		activeQueue && activeQueue.index + 1 < activeQueue.items.length,
-	);
-	const isMultiQueued = Boolean(activeQueue && activeQueue.items.length > 1);
-	const queueIndexLabel =
-		activeQueue && isMultiQueued
-			? t(vi.compose.draftIndex, {
-					index: String(activeQueue.index + 1),
-					count: String(activeQueue.items.length),
-				})
-			: undefined;
 	const [key] = useState(
 		() => queuedItem?.idempotencyKey ?? crypto.randomUUID(),
 	);
+	const initialRequestSnapshot = useRef<string | undefined>(undefined);
 	const submitting = useRef(false);
 	const create = useCreateTransaction(groupId);
 	const update = useUpdateTransaction(
@@ -160,8 +162,8 @@ export function useExpenseForm(
 	}, [splitState.method, splitState.itemsComputedAmount, amountText]);
 	const date = new Date(occurredAt);
 	const timestamp =
-		transaction && occurredAt === localDateTime(transaction.occurredAt)
-			? transaction.occurredAt
+		baseOccurredAt && occurredAt === localDateTime(baseOccurredAt)
+			? baseOccurredAt
 			: Number.isNaN(date.getTime())
 				? ""
 				: date.toISOString();
@@ -185,6 +187,8 @@ export function useExpenseForm(
 	}));
 	const paid = payers.reduce((sum, payer) => sum + (payer.amount ?? 0), 0);
 	const attachmentIds = attachments.map((attachment) => attachment.id);
+	const optionalAttachments =
+		transaction || attachmentIds.length > 0 ? { attachmentIds } : {};
 	const parsed = CreateTransactionRequest.safeParse(
 		type === "transfer"
 			? {
@@ -194,7 +198,7 @@ export function useExpenseForm(
 					fromMemberId: transferFrom,
 					toMemberId: transferTo,
 					...(description.trim() ? { description: description.trim() } : {}),
-					attachmentIds,
+					...optionalAttachments,
 				}
 			: {
 					type,
@@ -205,13 +209,16 @@ export function useExpenseForm(
 					categoryId,
 					payers,
 					split: splitState.split,
-					attachmentIds,
+					...optionalAttachments,
 				},
 	);
 	const request =
 		parsed.success && (type === "transfer" || paid === amount)
 			? parsed.data
 			: null;
+	if (initialRequestSnapshot.current === undefined && request && !transaction) {
+		initialRequestSnapshot.current = JSON.stringify(request);
+	}
 	const preview = usePreviewShares(
 		groupId,
 		request?.type === "transfer" ? null : request,
@@ -240,9 +247,16 @@ export function useExpenseForm(
 			submitting.current
 		)
 			return;
+		const payload =
+			!transaction &&
+			queuedItem?.submittedRequest &&
+			initialRequestSnapshot.current !== undefined &&
+			JSON.stringify(request) === initialRequestSnapshot.current
+				? queuedItem.submittedRequest
+				: request;
 		submitting.current = true;
 		mutation.mutate(
-			{ request, key },
+			{ request: payload, key },
 			{
 				onSuccess: () => {
 					if (activeQueue && activeQueue.index + 1 < activeQueue.items.length) {

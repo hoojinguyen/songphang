@@ -206,13 +206,20 @@ export function ComposeScreen({
 		});
 		if (!parsed.success) return;
 		saving.current = true;
+		const nextQueue = {
+			...activeQueue,
+			items: activeQueue.items.map((item, idx) =>
+				idx === activeIndex ? { ...item, submittedRequest: parsed.data } : item,
+			),
+		};
+		memory.setQueue(nextQueue);
 		mutation.mutate(
 			{ request: parsed.data, key: activeItem.idempotencyKey },
 			{
 				onSuccess: () => {
 					if (activeIndex < items.length - 1) {
 						saving.current = false;
-						memory.setQueue({ ...activeQueue, index: activeIndex + 1 });
+						memory.setQueue({ ...nextQueue, index: activeIndex + 1 });
 						memory.setDraft(null);
 						return;
 					}

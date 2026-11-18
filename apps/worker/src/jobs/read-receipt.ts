@@ -89,6 +89,12 @@ function failureCodeForError(
 		return "READER_INVALID";
 	}
 	if (error instanceof AnthropicTransportError) {
+		if (
+			error.errorType === "invalid_shape" ||
+			error.errorType === "missing_tool_use"
+		) {
+			return "READER_INVALID";
+		}
 		if (error.retryable || error.status === 401 || error.status === 403) {
 			return "READER_UNAVAILABLE";
 		}

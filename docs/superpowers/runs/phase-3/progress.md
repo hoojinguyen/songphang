@@ -350,6 +350,13 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   2. Updated `ConfirmationCard` payer label to display `t(vi.compose.payer, { name: payer.name })` whenever `result.reader === "ai"` rather than inferring writer-default from empty AI spans.
 - Verified via `pnpm check` (`389 files`, 8 typechecks) and `API_ORIGIN=http://127.0.0.1:4010 pnpm build`.
 
+## Post-review fixes (Codex review round 8)
+
+- Findings addressed:
+  1. Preserved `queuedItem.occurredAt` (including seconds/ms while displayed as minute-precision local datetime), omitted empty `attachmentIds` on create requests to match `ComposeScreen`, and recorded `submittedRequest` on `QueuedDraft` so retrying an unedited quick-entry save across the `/tx/new?form` manual handoff replays cleanly under the original idempotency key without `409 IDEMPOTENCY_KEY_REUSED`.
+  2. Mapped `AnthropicTransportError` `invalid_shape` and `missing_tool_use` transport errors in `apps/worker/src/jobs/read-receipt.ts` (`failureCodeForError`) to `READER_INVALID`.
+- Verified via `exercise_review2_reader.mts` (`ZodError`, `invalid_shape`, and `missing_tool_use` -> `READER_INVALID`), Chrome DevTools (`3010`/`4010`) ambiguous-save + cross-minute `Chỉnh tay` retry returning idempotent `201` replay (same transaction ID, no `409`, no duplicate transaction), `pnpm check` (`389 files`, 8 typechecks), and `API_ORIGIN=http://localhost:4010 pnpm build`.
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).

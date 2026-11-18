@@ -1,5 +1,6 @@
 "use client";
 import type {
+	CreateTransactionRequest,
 	ParseDraft,
 	ParsedDraftResult,
 	ParseResponse,
@@ -34,6 +35,7 @@ export type SentenceDraft = {
 export type QueuedDraft = ParsedDraftResult & {
 	idempotencyKey: string;
 	occurredAt: string;
+	submittedRequest?: CreateTransactionRequest | undefined;
 	categoryOverride?:
 		| {
 				category: ParseDraft["category"];
