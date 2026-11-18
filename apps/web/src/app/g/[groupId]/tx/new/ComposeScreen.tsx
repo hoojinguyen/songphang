@@ -161,7 +161,9 @@ export function ComposeScreen({
 					text: activeQueue.sentence,
 					draft: activeDraft,
 					issues: activeItem.issues,
-					shares: preview.data?.shares ?? activeItem.shares,
+					shares:
+						(preview.current ? preview.data?.shares : undefined) ??
+						activeItem.shares,
 					spans: activeQueue.reader === "ai" ? [] : activeQueue.spans,
 					reader: activeQueue.reader,
 					moreDrafts: [],

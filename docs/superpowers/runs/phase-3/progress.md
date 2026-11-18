@@ -343,6 +343,13 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   1. Updated `deleteAttachment` (`apps/api/src/services/attachments.ts`) so deleting an attachment linked to a transaction locks that transaction, increments `version`, records an `"update"` (`attachmentCount`) activity row, and publishes `["transactions", "activity"]` so stale editors receive `409 VERSION_CONFLICT`.
 - Verified via `exercise_review6_attachment_version.mts` (version `1` -> `2`, `attachmentCount: 1 -> 0` activity logged, stale `PATCH` returns `409 VERSION_CONFLICT`), `pnpm db:check-balances` (`All groups balanced`), and `pnpm check` (`0` errors).
 
+## Post-review fixes (Codex review round 7)
+
+- Findings addressed:
+  1. Gated `ComposeScreen` `preview.data?.shares` on `preview.current` (falling back to `activeItem.shares`) so transitioning between drafts in a multi-expense queue never flashes the previous draft's shares.
+  2. Updated `ConfirmationCard` payer label to display `t(vi.compose.payer, { name: payer.name })` whenever `result.reader === "ai"` rather than inferring writer-default from empty AI spans.
+- Verified via `pnpm check` (`389 files`, 8 typechecks) and `API_ORIGIN=http://127.0.0.1:4010 pnpm build`.
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).

@@ -106,7 +106,8 @@ export function ConfirmationCard({
 			<div className="flex flex-wrap gap-2 text-[13px] font-bold">
 				{payer && (
 					<span className="rounded-[14px] bg-phrase-payer px-3 py-[6px]">
-						{result.spans.some((s) => s.kind === "payer")
+						{result.reader === "ai" ||
+						result.spans.some((s) => s.kind === "payer")
 							? t(vi.compose.payer, { name: payer.name })
 							: vi.compose.payerDefault}
 					</span>
