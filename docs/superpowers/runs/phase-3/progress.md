@@ -331,6 +331,12 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
 - Verified live on `Nhóm 21` (21 active members) in Chrome DevTools (`3010`/`4010`) across both `ReceiptReview` and `ExpenseForm` `Theo món` tab (`0` console errors).
 - Full **Final Cumulative Gate 3D** re-executed on freshly dropped/recreated + migrated + seeded `songphang_phase3_gate`: `pnpm check` (`389 files`, 8 typechecks), `pnpm build`, `baseline_gate.mjs`, `exercise_3a2.mts`, `exercise_3a3.mts`, `verify_87_samples.ts`, `test_pgboss_tx.mts`, `exercise_3b1.mts`, `exercise_3b2.mts`, `exercise_3b3_spec15.mts`, `exercise_review2_reader.mts`, `exercise_3b3_live.mts`, `exercise_3c1.mts`, `exercise_3c2.mts`, `exercise_3d1.mts`, `exercise_3d2.mts`, and `pnpm db:check-balances` (`All groups balanced`) all passed.
 
+## Post-review fixes (Codex review round 5)
+
+- Findings addressed:
+  1. Seeded the default item amount in `useSplitState.changeMode("items")` from the current `amount` on first entry into item-split mode while keeping `itemsCustomized` changes intact across subsequent tab switches.
+- Verified live on Next.js `3010` + API `4010` (`Nhóm 3D3`): entering `200000` and switching to `Theo món` initialized `Số tiền món` = `200000` (`50.000` x 4, `Khớp 200.000 đ`).
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).

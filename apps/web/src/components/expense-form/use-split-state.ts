@@ -1,6 +1,6 @@
 "use client";
 import { type MemberDto, SplitInput } from "@songphang/contract";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { formatMoney, parseAmountInput } from "../../lib/money";
 import { usePreviewItems } from "../../lib/receipt-scans";
 import { t, vi } from "../../messages/vi";
@@ -87,6 +87,7 @@ export function useSplitState(
 	const [selectedItemId, setSelectedItemId] = useState(
 		() => items[0]?.id ?? "",
 	);
+	const itemsCustomized = useRef(initial?.method === "items");
 
 	const itemsPayload =
 		method === "items" ? toItemsPayload(items, extras) : null;
@@ -223,19 +224,24 @@ export function useSplitState(
 		onChangeItem: (
 			id: string,
 			patch: Partial<Pick<EditableReceiptItem, "name" | "amountText">>,
-		) =>
+		) => {
+			itemsCustomized.current = true;
 			setItems((current) =>
 				current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-			),
-		onRemoveItem: (id: string) =>
+			);
+		},
+		onRemoveItem: (id: string) => {
+			itemsCustomized.current = true;
 			setItems((current) => {
 				if (current.length <= 1) return current;
 				const next = current.filter((item) => item.id !== id);
 				if (selectedItemId === id) setSelectedItemId(next[0]?.id ?? "");
 				return next;
-			}),
+			});
+		},
 		onAddItem: () => {
 			if (items.length >= 60) return;
+			itemsCustomized.current = true;
 			const nextId = crypto.randomUUID();
 			setItems((current) => [
 				...current,
@@ -246,6 +252,7 @@ export function useSplitState(
 		onToggleMemberOnSelected: (memberId: string) => {
 			const targetId = selectedItemId || items[0]?.id;
 			if (!targetId) return;
+			itemsCustomized.current = true;
 			setItems((current) =>
 				current.map((item) => {
 					if (item.id !== targetId) return item;
@@ -265,6 +272,7 @@ export function useSplitState(
 		onSplitRemainingEqual: () => {
 			const allIds = members.map((m) => m.id);
 			if (allIds.length === 0 || allIds.length > MAX_ITEM_MEMBERS) return;
+			itemsCustomized.current = true;
 			setItems((current) =>
 				current.map((item) =>
 					item.memberIds.length === 0 ? { ...item, memberIds: allIds } : item,
@@ -273,6 +281,7 @@ export function useSplitState(
 		},
 		onAddExtra: () => {
 			if (extras.length >= 6) return;
+			itemsCustomized.current = true;
 			setExtras((current) => [
 				...current,
 				{ id: crypto.randomUUID(), kind: "other", label: "", amountText: "0" },
@@ -283,15 +292,32 @@ export function useSplitState(
 			patch: Partial<
 				Pick<EditableReceiptExtra, "kind" | "label" | "amountText">
 			>,
-		) =>
+		) => {
+			itemsCustomized.current = true;
 			setExtras((current) =>
 				current.map((extra) =>
 					extra.id === id ? { ...extra, ...patch } : extra,
 				),
-			),
-		onRemoveExtra: (id: string) =>
-			setExtras((current) => current.filter((extra) => extra.id !== id)),
+			);
+		},
+		onRemoveExtra: (id: string) => {
+			itemsCustomized.current = true;
+			setExtras((current) => current.filter((extra) => extra.id !== id));
+		},
 		changeMode: (next: SplitMethod) => {
+			if (next === "items" && !itemsCustomized.current) {
+				setItems((current) => [
+					{
+						id: current[0]?.id ?? crypto.randomUUID(),
+						name: current[0]?.name || vi.receipts.title,
+						amountText: amount > 0 ? String(amount) : "0",
+						memberIds:
+							members.length <= MAX_ITEM_MEMBERS
+								? members.map((member) => member.id)
+								: [],
+					},
+				]);
+			}
 			setMethod(next);
 			setSpread(false);
 			setValues(
