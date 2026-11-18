@@ -13,7 +13,7 @@ This file applies to every agent working in this repository (Claude, Codex, Anti
 
 Sòng Phẳng is a group expense-splitting application for Vietnamese users: web first, native iOS and Android later, with a shared API. It is initially for internal use and will be released publicly later, so accounts, security, and UI quality are built to public-product standards from the beginning.
 
-Current phase: **3 — Smart entry is merged on main** (`905cdf2`), together with its advisor review and corrections (2026-11-18). Next is **Phase 4 — Collaboration**: its spec (including the amendment of section 14) and plan await the owner's approval. Do not start Task 0 or create the `phase-4` branch until the owner authorizes execution. The owner has deferred every check with a real AI provider until all phases, including the iOS app, are done. Everything runs on the development machine; there is no server, domain, or external service.
+Current phase: **3 — Smart entry is merged on main** (`905cdf2`), together with its advisor review and corrections (2026-11-18). **Phase 4 — Collaboration** is approved (spec including the amendment of section 14, and plan) and its execution was authorized on 2026-11-18. It runs as a phase run on branch `phase-4`; the implementation agent is Antigravity and the advisor reviews the finished branch before the owner merges it. The owner has deferred every check with a real AI provider until all phases, including the iOS app, are done. Everything runs on the development machine; there is no server, domain, or external service.
 
 ## 2. Who decides what
 

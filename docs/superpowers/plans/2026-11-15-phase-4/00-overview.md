@@ -49,6 +49,6 @@ Spec section 14 (amendment 2026-11-18) applies: Phases 2 and 3 are merged, so th
 
 ## Pre-execution approval
 
-- [ ] Owner approves the spec (including the three product rules of its section 13 and the amendment of section 14) and this plan.
-- [ ] Owner authorizes execution; the advisor then creates branch `phase-4` from `main` and the run files `docs/superpowers/runs/phase-4/` with their headings.
+- [x] Owner approves the spec (including the three product rules of its section 13 and the amendment of section 14) and this plan.
+- [x] Owner authorizes execution; the advisor then creates branch `phase-4` from `main` and the run files `docs/superpowers/runs/phase-4/` with their headings. Approved and authorized by the owner on 2026-11-18; the implementation agent is Antigravity, and the advisor (Claude) reviews the finished branch.
 

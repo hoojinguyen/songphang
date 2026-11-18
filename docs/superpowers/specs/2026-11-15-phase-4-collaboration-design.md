@@ -1,6 +1,6 @@
 # Phase 4 — Collaboration ("Cộng tác") — Design
 
-Date: 2026-11-15. Status: draft, waiting for the project owner's approval. Read `2026-11-15-roadmap-remaining-phases-overview.md` first; its sections 4, 5 and 6 apply here.
+Date: 2026-11-15. Status: approved by the owner on 2026-11-18, including the three product rules of section 13 and the amendment of section 14; execution authorized the same day. Read `2026-11-15-roadmap-remaining-phases-overview.md` first; its sections 4, 5 and 6 apply here.
 
 ## 1. Intent
 
