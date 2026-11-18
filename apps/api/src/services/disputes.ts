@@ -7,8 +7,11 @@ import {
 } from "@songphang/contract";
 import {
 	type DisputeRow,
+	findGroup,
+	findGroupOwnerUserId,
 	findOpenDisputeForTransaction,
 	findTransactionRow,
+	findUserById,
 	insertActivity,
 	insertDisputeRow,
 	lockGroup,
@@ -17,6 +20,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { notify } from "./notify.js";
 
 function toDisputeDto(
 	row: DisputeRow,
@@ -86,6 +90,29 @@ export async function openDispute(
 			after: { reason: input.request.reason },
 			createdAt: now,
 		});
+		const [group, ownerUserId] = await Promise.all([
+			findGroup(executor, input.groupId),
+			findGroupOwnerUserId(executor, input.groupId),
+		]);
+		await notify(executor, {
+			groupId: input.groupId,
+			actorUserId: input.user.id,
+			kind: "dispute_opened",
+			payload: {
+				kind: "dispute_opened",
+				actorName: input.user.name,
+				groupName: group?.name ?? "",
+				transactionId: transaction.id,
+				description: transaction.description,
+				reason: input.request.reason,
+			},
+			toUserIds: [
+				...(transaction.createdBy ? [transaction.createdBy.id] : []),
+				...(ownerUserId ? [ownerUserId] : []),
+				input.user.id,
+			],
+			now,
+		});
 		return DisputeResponse.parse({
 			dispute: toDisputeDto(row, input.user.id),
 		});
@@ -147,6 +174,29 @@ export async function resolveDispute(
 			summary: transaction.description,
 			before: { reason: open.reason },
 			createdAt: now,
+		});
+		const [group, ownerUserId, actor] = await Promise.all([
+			findGroup(executor, input.groupId),
+			findGroupOwnerUserId(executor, input.groupId),
+			findUserById(executor, input.userId),
+		]);
+		await notify(executor, {
+			groupId: input.groupId,
+			actorUserId: input.userId,
+			kind: "dispute_resolved",
+			payload: {
+				kind: "dispute_resolved",
+				actorName: actor?.name ?? "",
+				groupName: group?.name ?? "",
+				transactionId: transaction.id,
+				description: transaction.description,
+			},
+			toUserIds: [
+				...(transaction.createdBy ? [transaction.createdBy.id] : []),
+				...(ownerUserId ? [ownerUserId] : []),
+				...(open.openedBy ? [open.openedBy] : []),
+			],
+			now,
 		});
 		return DisputeResponse.parse({ dispute: null });
 	});

@@ -12,6 +12,7 @@ export const GroupDto = z
 		defaultRole: z.enum(["editor", "viewer"]),
 		role: GroupRole,
 		myMemberId: z.uuid().nullable(),
+		muted: z.boolean(),
 		createdAt: z.iso.datetime(),
 	})
 	.openapi("GroupDto");

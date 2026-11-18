@@ -2,9 +2,11 @@ import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import {
 	CreateGroupRequest,
 	DeleteGroupRequest,
+	GroupMuteResponse,
 	GroupResponse,
 	GroupsResponse,
 	IdempotencyKeyHeader,
+	UpdateGroupMuteRequest,
 	UpdateGroupRequest,
 } from "@songphang/contract";
 import type { AppDeps, AppEnv } from "../app.js";
@@ -22,6 +24,7 @@ import {
 	getGroup,
 	listGroups,
 } from "../services/groups.js";
+import { setGroupMuted } from "../services/notifications.js";
 
 const groupParams = z.object({ groupId: z.uuid() });
 const listRoute = createRoute({
@@ -188,6 +191,40 @@ export function registerGroupRoutes(
 					groupId: context.var.groupAccess.groupId,
 					userId: context.var.user.id,
 					changes: context.req.valid("json"),
+				}),
+				200,
+			),
+	);
+	app.openapi(
+		createRoute({
+			method: "put",
+			path: "/api/v1/groups/{groupId}/me/muted",
+			middleware: [
+				requireUser(deps),
+				requireGroupRole(deps, "viewer"),
+				requireWriteLimit(deps),
+				requireSameOrigin(deps.config),
+			],
+			request: {
+				params: groupParams,
+				body: {
+					required: true,
+					content: { "application/json": { schema: UpdateGroupMuteRequest } },
+				},
+			},
+			responses: {
+				200: {
+					description: "Group mute updated",
+					content: { "application/json": { schema: GroupMuteResponse } },
+				},
+			},
+		}),
+		async (context) =>
+			context.json(
+				await setGroupMuted(deps, {
+					groupId: context.var.groupAccess.groupId,
+					userId: context.var.user.id,
+					muted: context.req.valid("json").muted,
 				}),
 				200,
 			),

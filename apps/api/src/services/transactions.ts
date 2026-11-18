@@ -26,6 +26,7 @@ import {
 	type DbExecutor,
 	findGroup,
 	findTransactionRow,
+	findUserById,
 	insertActivity,
 	insertTransaction,
 	insertTransactionPayers,
@@ -48,6 +49,7 @@ import {
 	validateTransactionAttachmentIds,
 } from "./attachments.js";
 import { assertLiveCategory } from "./categories.js";
+import { notify, notifyBudgetWarnings } from "./notify.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { type ReplacedTransaction, transactionWarnings } from "./warnings.js";
 
@@ -214,6 +216,42 @@ export async function createTransaction(
 	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
 	return createTransactionIn(executor, input);
 }
+async function notifyExpenseAdded(
+	executor: DbExecutor,
+	input: {
+		groupId: string;
+		groupName: string;
+		actorUserId: string;
+		actorName: string;
+		transactionId: string;
+		description: string;
+		payers: Array<{ memberId: string }>;
+		shares: Array<{ memberId: string; amount: number }>;
+		now: Date;
+	},
+) {
+	const shareByMember = new Map<string, number>();
+	for (const payer of input.payers) shareByMember.set(payer.memberId, 0);
+	for (const share of input.shares)
+		shareByMember.set(share.memberId, share.amount);
+	for (const [memberId, share] of shareByMember) {
+		await notify(executor, {
+			groupId: input.groupId,
+			actorUserId: input.actorUserId,
+			kind: "expense_added",
+			payload: {
+				kind: "expense_added",
+				actorName: input.actorName,
+				groupName: input.groupName,
+				transactionId: input.transactionId,
+				description: input.description,
+				share,
+			},
+			toMemberIds: [memberId],
+			now: input.now,
+		});
+	}
+}
 // Settlement confirmation supplies its own post-lock authorization; ordinary writes use createTransaction.
 export async function createTransactionIn(
 	executor: DbExecutor,
@@ -285,6 +323,29 @@ export async function createTransactionIn(
 		groupId: input.groupId,
 		request: input.request,
 		applied: true,
+		now: input.now,
+	});
+	const actor = await findUserById(executor, input.userId);
+	const actorName = actor?.name ?? "";
+	if (request.type === "expense") {
+		await notifyExpenseAdded(executor, {
+			groupId: input.groupId,
+			groupName: group.name,
+			actorUserId: input.userId,
+			actorName,
+			transactionId: row.id,
+			description: request.description,
+			payers: request.payers,
+			shares,
+			now: input.now,
+		});
+	}
+	await notifyBudgetWarnings(executor, {
+		groupId: input.groupId,
+		actorUserId: input.userId,
+		actorName,
+		groupName: group.name,
+		warnings,
 		now: input.now,
 	});
 	return TransactionResponse.parse({ transaction, warnings });

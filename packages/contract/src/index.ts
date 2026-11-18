@@ -14,6 +14,7 @@ export { HealthResponse } from "./health.ts";
 export * from "./invite.ts";
 export * from "./jobs.ts";
 export * from "./member.ts";
+export * from "./notification.ts";
 export * from "./payment.ts";
 export * from "./quick-entry.ts";
 export * from "./receipt.ts";

@@ -114,6 +114,7 @@ export const groupUsers = pgTable(
 		memberId: uuid("member_id").references(() => members.id, {
 			onDelete: "set null",
 		}),
+		muted: boolean("muted").notNull().default(false),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),

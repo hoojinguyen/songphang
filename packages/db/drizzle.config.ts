@@ -18,6 +18,7 @@ export default defineConfig({
 		"./src/schema-ai.ts",
 		"./src/schema-comments.ts",
 		"./src/schema-disputes.ts",
+		"./src/schema-notifications.ts",
 	],
 	out: "./drizzle",
 });

@@ -14,6 +14,7 @@ export async function findGroupAccess(
 			groupId: groupUsers.groupId,
 			role: groupUsers.role,
 			memberId: groupUsers.memberId,
+			muted: groupUsers.muted,
 		})
 		.from(groupUsers)
 		.where(and(eq(groupUsers.groupId, groupId), eq(groupUsers.userId, userId)))

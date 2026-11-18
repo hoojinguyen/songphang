@@ -41,6 +41,7 @@ export async function getGroup(
 			...group,
 			role: access.role,
 			myMemberId: access.memberId,
+			muted: access.muted,
 			createdAt: group.createdAt.toISOString(),
 		},
 	});

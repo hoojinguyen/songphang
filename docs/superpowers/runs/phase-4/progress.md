@@ -10,7 +10,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4A.1 — API: comments
 - [x] 4A.2 — API: disputes
 - [x] 4A.3 — Web: the transaction view; stage gate
-- [ ] 4B.1 — Notification core
+- [x] 4B.1 — Notification core
 - [ ] 4B.2 — Web: bell and notification list
 - [ ] 4B.3 — Mail: immediate, digest, unsubscribe
 - [ ] 4B.4 — Debt reminders
@@ -99,3 +99,26 @@ None.
   4. Hùng opened `Khoản này chưa đúng`, submitted `Mình không đi hôm đó` -> `DisputeBlock` (`Hùng cho rằng khoản này chưa đúng`) appeared live in Minh's window via SSE; group feed in Hùng's window showed `đang hỏi lại` and `2 bình luận`.
   5. Minh clicked `Đã giải quyết` -> snackbar `Đã giải quyết.` displayed, button reset to `Khoản này chưa đúng`, and `đang hỏi lại` disappeared live from Hùng's group feed via SSE without reload.
   6. Keyboard `Tab` traversed `Khoản này chưa đúng` -> `Xoá bình luận`; zero console errors in either window.
+
+### Stage Gate 4A — results
+- `pnpm check`: 416 files, 0 errors (3 pre-existing `noImgElement` warnings), 8/9 workspace typechecks Done.
+- `API_ORIGIN=http://localhost:4010 pnpm build`: `next build` passed (`/g/[groupId]/tx/[transactionId]/view` built).
+- Disposable database `songphang_phase4_gate` reset (`DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE;`), migrated (`0000`–`0015`), seeded (`Development users seeded`).
+- `task0_samples.mts`: `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`
+- `task0_replay.mts`: `DISABLED_FEATURES_CHECK_PASSED {"receiptReading":false,"sentenceAi":false,"telegram":false,"push":false,"appleSignIn":false,"errorAlerts":false}` and `PHASE_1_2_3_BASELINE_REPLAY_PASSED {"groupId":"01a1ef39-d4f4-7ae9-a2f8-d1cc3ff0718c","tx1VersionAfterEdit":2,"vietqrPresent":true,"settlementConfirmed":"confirmed","budgetState":"near","statsTotal":200000,"scanStatus":"done","targetAdjustment":{"kind":"other","amount":8000},"parseAiReader":"ai"}`
+- `exercise_4a1.mts`: `EXERCISE_4A1_PASSED {"c1Author":"Hùng","lanViewMine":false,"delLanStatus":403,"delMinhStatus":204,"scriptBody":"<script>alert(1)</script>","commentOnDeletedTxStatus":201,"outsiderStatuses":[404,404],"rateLimit429OnRequestNumber":21,"finalCommentCount":22,"balancesIdentical":true}`
+- `exercise_4a2.mts`: `EXERCISE_4A2_PASSED {"openedBy":"Hùng","balancesIdenticalDuringDispute":true,"dupStatus":409,"lanResolveStatus":403,"stillOpenAfterEdit":true,"hungResolveStatus":200,"resolveAgainCode":"DISPUTE_NOT_OPEN","ownerResolveStatus":200,"outsiderStatus":404,"disputeActivityActions":["dispute_resolve:Minh","dispute_open:Hùng","dispute_resolve:Hùng","dispute_open:Hùng"]}`
+- `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 4 groups).
+
+## Task 4B.1 — approach
+- Approach: add `group_users.muted` and create `notifications` + `notification_settings` tables in Drizzle (`schema-notifications.ts`, migration `0016`), add discriminated-union `NotificationPayload` for all 12 kinds in `@songphang/contract`, implement `notify(tx, ...)` resolving non-muted non-actor `group_users` inside callers' existing DB transactions (`transactions`, `transaction-changes`, `comments`, `disputes`, `settlement-requests`, budget warnings), and expose `/me/notifications*` (inner-joining `group_users`) plus `PUT /groups/{groupId}/me/muted`.
+- Why simplest: inserting notifications directly through the service's open `DbExecutor` avoids an outbox table or post-commit race condition and guarantees rollback atomicity.
+- Rejected alternative: publishing internal domain events post-commit to create notification rows asynchronously, which breaks transactional atomicity when a write fails after queueing.
+
+### Task 4B.1 — results
+- `pnpm check`: 423 files, 0 errors (3 pre-existing `noImgElement` warnings), 8/9 workspace typechecks Done.
+- Generated & applied `packages/db/drizzle/0016_illegal_cloak.sql` (`notifications`, `notification_settings`, `group_users.muted`, `notifications_user_created_index`).
+- `exercise_4b1.mts`: `EXERCISE_4B1_PASSED {"unauthStatuses":[401,401,401],"row1Share":50000,"minhDisputeCount":1,"minhBudgetOver":true,"mutedHungDelta":0,"removedGroupHiddenFromList":true,"hungUnreadChange":"5->1","crossReadStatus":204,"lanUnreadCleared":"4->0"}` — verified all 9 table rows plus `dispute_resolved`, `settlement_requested`, `settlement_confirmed`, `budget_state` (`over`), outsider mute 404, and cross-user read 204 leaving Lan's row unread.
+- Forced rollback test (temporary throw right after `notifyBudgetWarnings` inside `createTransactionIn`): `FORCED_ROLLBACK_4B1_PASSED {"status":500,"txBefore":4,"txAfter":4,"notifBefore":5,"notifAfter":5}`, then reverted and verified clean.
+- `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 8 groups).
+- Security review: clean (strict Zod schemas on queries/bodies, inner join `group_users` enforces access on list & unread-count, `read` filtered by caller `userId`, outsider mute 404, parameterized Drizzle queries only).

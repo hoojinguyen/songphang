@@ -11,7 +11,9 @@ import {
 	clearTransactionSides,
 	type DbExecutor,
 	deleteRemovedTransactionAttachments,
+	findGroup,
 	findTransactionRow,
+	findUserById,
 	insertActivity,
 	insertTransactionPayers,
 	insertTransactionShares,
@@ -24,6 +26,7 @@ import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { validateTransactionAttachmentIds } from "./attachments.js";
 import { assertLiveCategory } from "./categories.js";
+import { notify, notifyBudgetWarnings } from "./notify.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { mapTransactions } from "./transactions.js";
 import { transactionWarnings } from "./warnings.js";
@@ -221,6 +224,43 @@ export async function editTransaction(
 			},
 			createdAt: deps.now(),
 		});
+		const [group, actor] = await Promise.all([
+			findGroup(executor, input.groupId),
+			findUserById(executor, input.userId),
+		]);
+		const actorName = actor?.name ?? "";
+		const groupName = group?.name ?? "";
+		const now = deps.now();
+		if (after.type === "expense") {
+			await notify(executor, {
+				groupId: input.groupId,
+				actorUserId: input.userId,
+				kind: "expense_changed",
+				payload: {
+					kind: "expense_changed",
+					actorName,
+					groupName,
+					transactionId: after.id,
+					description: after.description,
+					action: "edited",
+				},
+				toMemberIds: [
+					...before.payers.map((payer) => payer.memberId),
+					...before.shares.map((share) => share.memberId),
+					...after.payers.map((payer) => payer.memberId),
+					...after.shares.map((share) => share.memberId),
+				],
+				now,
+			});
+		}
+		await notifyBudgetWarnings(executor, {
+			groupId: input.groupId,
+			actorUserId: input.userId,
+			actorName,
+			groupName,
+			warnings,
+			now,
+		});
 		return { transaction: after, warnings };
 	});
 	if (removedFiles.length > 0) {
@@ -263,6 +303,30 @@ export async function setTransactionDeleted(
 			after: input.restore ? snapshot(after) : null,
 			createdAt: deps.now(),
 		});
+		if (!input.restore && before.type === "expense") {
+			const [group, actor] = await Promise.all([
+				findGroup(executor, input.groupId),
+				findUserById(executor, input.userId),
+			]);
+			await notify(executor, {
+				groupId: input.groupId,
+				actorUserId: input.userId,
+				kind: "expense_changed",
+				payload: {
+					kind: "expense_changed",
+					actorName: actor?.name ?? "",
+					groupName: group?.name ?? "",
+					transactionId: before.id,
+					description: before.description,
+					action: "deleted",
+				},
+				toMemberIds: [
+					...before.payers.map((payer) => payer.memberId),
+					...before.shares.map((share) => share.memberId),
+				],
+				now: deps.now(),
+			});
+		}
 		return { transaction: after };
 	});
 	publish(deps, input.groupId);

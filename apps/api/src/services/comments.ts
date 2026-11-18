@@ -12,15 +12,20 @@ import {
 	type CommentRow,
 	type DbExecutor,
 	findCommentRow,
+	findGroup,
 	findTransactionRow,
 	insertCommentRow,
+	listCommenterUserIds,
 	listCommentRows,
+	listTransactionPayers,
+	listTransactionShares,
 	lockGroup,
 	softDeleteCommentRow,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { notify } from "./notify.js";
 
 const CURSOR_SCHEMA = z.object({ createdAt: z.iso.datetime(), id: z.uuid() });
 
@@ -124,7 +129,20 @@ export async function createComment(
 		userId: input.user.id,
 		minimumRole: "viewer",
 	});
-	await assertTransactionInGroup(executor, input.groupId, input.transactionId);
+	const transaction = await assertTransactionInGroup(
+		executor,
+		input.groupId,
+		input.transactionId,
+	);
+	const [group, earlierCommenters, payers, shares] = await Promise.all([
+		findGroup(executor, input.groupId),
+		listCommenterUserIds(executor, {
+			groupId: input.groupId,
+			transactionId: input.transactionId,
+		}),
+		listTransactionPayers(executor, input.groupId, [input.transactionId]),
+		listTransactionShares(executor, input.groupId, [input.transactionId]),
+	]);
 	const row = await insertCommentRow(executor, {
 		groupId: input.groupId,
 		transactionId: input.transactionId,
@@ -132,6 +150,27 @@ export async function createComment(
 		authorName: input.user.name,
 		body: input.request.body,
 		createdAt: input.now,
+	});
+	await notify(executor, {
+		groupId: input.groupId,
+		actorUserId: input.user.id,
+		kind: "comment_added",
+		payload: {
+			kind: "comment_added",
+			actorName: input.user.name,
+			groupName: group?.name ?? "",
+			transactionId: transaction.id,
+			description: transaction.description,
+		},
+		toUserIds: [
+			...earlierCommenters,
+			...(transaction.createdBy ? [transaction.createdBy.id] : []),
+		],
+		toMemberIds: [
+			...payers.map((payer) => payer.memberId),
+			...shares.map((share) => share.memberId),
+		],
+		now: input.now,
 	});
 	return CommentResponse.parse({ comment: toCommentDto(row, input.user.id) });
 }
