@@ -9,7 +9,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] Task 0 — re-baseline (`docs(run): re-baseline phase 4`)
 - [x] 4A.1 — API: comments
 - [x] 4A.2 — API: disputes
-- [ ] 4A.3 — Web: the transaction view; stage gate
+- [x] 4A.3 — Web: the transaction view; stage gate
 - [ ] 4B.1 — Notification core
 - [ ] 4B.2 — Web: bell and notification list
 - [ ] 4B.3 — Mail: immediate, digest, unsubscribe
@@ -80,3 +80,22 @@ None.
   - `EXERCISE_4A2_PASSED`: Hùng (viewer) opened dispute `201` (`openedByName: "Hùng"`, `mine: true`, `mine: false` for Minh), balances unchanged, duplicate open by Lan -> `409 DISPUTE_ALREADY_OPEN`, Lan resolve -> `403`, Lan edit amount -> `200` with dispute still open, Hùng resolve -> `200` (`dispute: null`), repeat resolve -> `409 DISPUTE_NOT_OPEN`, reopen by Hùng + resolve by Minh (owner) -> `201`/`200`, outsider open -> `404`, `GET .../activity` recorded all 4 dispute entries with actor names, invalid reasons (`""`, 501 chars) -> `400`.
   - `pnpm db:check-balances` -> `All groups balanced`.
 - Security review: checked relevant items 1, 2, 3, 4, 5, 6, 8; no issues found.
+
+## Task 4A.3 — approach
+
+- Files to create/modify: create `apps/web/src/lib/comments.ts`, `apps/web/src/components/transaction/{TransactionSummary,CommentThread,CommentField,DisputeBlock}.tsx`, `apps/web/src/app/g/[groupId]/tx/[transactionId]/view/page.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/components/ui/Icon.tsx`, `apps/web/src/lib/{use-group-events,activity-sentences}.ts`, `apps/web/src/components/feed/{ExpenseRow,LedgerPill,ExpenseStream}.tsx`, `apps/web/src/app/g/[groupId]/tx/[transactionId]/page.tsx`, `apps/web/src/components/expense-form/ExpenseForm.tsx`.
+- Approach: route all stream row taps to `/g/${groupId}/tx/${transaction.id}/view` (S20) showing `TransactionSummary` (reusing `ConfirmationCard` card styling and `PhotoRow readOnly`), `DisputeBlock` (`bg-coral text-ink`, contrast 7.43:1, with `ConfirmDialog` for reason), `CommentThread` (plain text nodes with `whitespace-pre-wrap`), and fixed-bottom `CommentField` (`Enter` sends, `Shift+Enter` newline); link `Sửa` in the header to the existing edit page and update edit's back href to the view.
+- Why simplest: reuses `ScreenHeader`, `ShareShapes`, `PhotoRow`, `ConfirmDialog`, `useTransaction`, and `useGroupEvents` without adding client state stores or extra routes.
+- Rejected alternative: putting comments and disputes inside a modal drawer on the stream, which would diverge from S20's deep-linkable `/g/{id}/tx/{txId}/view` URL needed by Phase 4 notifications.
+
+### Task 4A.3 — results
+- `pnpm check` passed (416 files, 0 errors; 8 workspace typechecks Done) and `API_ORIGIN=http://localhost:4010 pnpm build` passed (S20 `/g/[groupId]/tx/[transactionId]/view` built).
+- Contrast ratio check for `DisputeBlock` (`bg-coral` `#ff8a73` + `text-ink` `#1c1b22`): relative luminances 0.40675 and 0.01146 -> **7.43:1** (passes WCAG AA and AAA).
+- Security review on diff: clean (plain React text rendering with `whitespace-pre-wrap`, zero `dangerouslySetInnerHTML`/`eval`/raw HTML, server-derived viewer vs editor visibility of `Sửa`).
+- Live Chrome two-context browser exercise against disposable `songphang_phase4_gate` (Minh owner in `isolatedContext=minh-4a3`, Hùng viewer in `isolatedContext=hung-4a3`):
+  1. Tapped `Bún chả 4A3` in both windows -> navigated to `/g/01a1ef33-65d4-76c6-8490-8539fc3c45d9/tx/01a1ef33-6612-7e9e-9e26-6108c9a60d0a/view`.
+  2. Minh saw `Sửa` (click -> edit screen `/tx/...` loaded, `Quay lại` returned to `/view`); Hùng saw no `Sửa` link and had active comment box and `Khoản này chưa đúng`.
+  3. Hùng sent `Hôm đó mình không ăn` via keyboard `Enter` and `<script>alert(1)</script>` via `Gửi` -> both appeared immediately in Minh's window via SSE without reload; `mainScriptTags: 0`, rendered as literal text.
+  4. Hùng opened `Khoản này chưa đúng`, submitted `Mình không đi hôm đó` -> `DisputeBlock` (`Hùng cho rằng khoản này chưa đúng`) appeared live in Minh's window via SSE; group feed in Hùng's window showed `đang hỏi lại` and `2 bình luận`.
+  5. Minh clicked `Đã giải quyết` -> snackbar `Đã giải quyết.` displayed, button reset to `Khoản này chưa đúng`, and `đang hỏi lại` disappeared live from Hùng's group feed via SSE without reload.
+  6. Keyboard `Tab` traversed `Khoản này chưa đúng` -> `Xoá bình luận`; zero console errors in either window.

@@ -1,6 +1,7 @@
 import type { MemberDto, TransactionListItemDto } from "@songphang/contract";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
+import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
 export function LedgerPill({
 	transaction,
@@ -30,9 +31,25 @@ export function LedgerPill({
 						: t(vi.feed.transferOther, { from: from.name, to: to.name, amount })
 				: "";
 	return (
-		<div className="mx-auto flex max-w-full items-center gap-2 rounded-[18px] bg-sunken py-1.5 pl-2 pr-3 text-xs font-semibold">
+		<div className="mx-auto flex max-w-full flex-wrap items-center gap-2 rounded-[18px] bg-sunken py-1.5 pl-2 pr-3 text-xs font-semibold">
 			<MemberShape {...from} size={18} />
 			<span>{text}</span>
+			{transaction.dispute !== null && (
+				<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
+					{vi.transactionView.disputeTag}
+				</span>
+			)}
+			{transaction.commentCount > 0 && (
+				<span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted">
+					<Icon name="comment" size={13} />
+					<span aria-hidden="true">{transaction.commentCount}</span>
+					<span className="sr-only">
+						{t(vi.transactionView.commentCount, {
+							count: String(transaction.commentCount),
+						})}
+					</span>
+				</span>
+			)}
 			{transaction.version > 1 && (
 				<span className="text-[11px] font-bold text-muted">
 					{vi.feed.edited}

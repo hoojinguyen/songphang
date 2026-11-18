@@ -88,10 +88,17 @@ export function ExpenseRow({
 				</div>
 				{(categoryLabel ||
 					transaction.version > 1 ||
-					transaction.attachmentCount > 0) && (
+					transaction.attachmentCount > 0 ||
+					transaction.commentCount > 0 ||
+					transaction.dispute !== null) && (
 					<div
 						className={`mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
 					>
+						{transaction.dispute !== null && (
+							<span className="rounded-[10px] bg-coral px-2 py-0.5 text-ink">
+								{vi.transactionView.disputeTag}
+							</span>
+						)}
 						{categoryLabel && (
 							<span className="inline-flex items-center gap-1.5">
 								{customCategory && (
@@ -110,6 +117,17 @@ export function ExpenseRow({
 								{transaction.attachmentCount > 1 && (
 									<span>{transaction.attachmentCount}</span>
 								)}
+							</span>
+						)}
+						{transaction.commentCount > 0 && (
+							<span className="inline-flex items-center gap-1">
+								<Icon name="comment" size={14} />
+								<span aria-hidden="true">{transaction.commentCount}</span>
+								<span className="sr-only">
+									{t(vi.transactionView.commentCount, {
+										count: String(transaction.commentCount),
+									})}
+								</span>
 							</span>
 						)}
 						{transaction.version > 1 && <span>{vi.feed.edited}</span>}

@@ -10,7 +10,6 @@ import { LedgerPill } from "./LedgerPill";
 import { NewItemsPill } from "./NewItemsPill";
 export function ExpenseStream({
 	groupId,
-	canEdit = false,
 	query,
 	members,
 	categories = [],
@@ -18,7 +17,6 @@ export function ExpenseStream({
 	onAtTopChange,
 }: {
 	groupId: string;
-	canEdit?: boolean;
 	query: ReturnType<typeof useTransactions>;
 	members: MemberDto[];
 	categories?: CategoryDto[];
@@ -124,9 +122,9 @@ export function ExpenseStream({
 								)}
 								<FeedLink
 									newest={transaction.id === newest}
-									href={`/g/${groupId}/tx/${transaction.id}`}
-									enabled={canEdit || transaction.attachmentCount > 0}
-									label={t(vi.feed.editRow, {
+									href={`/g/${groupId}/tx/${transaction.id}/view`}
+									enabled={true}
+									label={t(vi.feed.viewRow, {
 										description: transaction.description,
 									})}
 								>

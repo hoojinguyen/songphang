@@ -21,6 +21,7 @@ const Resources = z.object({
 				"categories",
 				"budget",
 				"receiptScans",
+				"comments",
 			]),
 		)
 		.max(10),

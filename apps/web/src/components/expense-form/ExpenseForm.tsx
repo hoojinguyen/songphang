@@ -172,7 +172,13 @@ export function ExpenseForm({
 			<ScreenHeader
 				title={title}
 				{...(form.queueIndexLabel ? { subtitle: form.queueIndexLabel } : {})}
-				backHref={memory.draft ? `/g/${groupId}/tx/new` : `/g/${groupId}`}
+				backHref={
+					transaction
+						? `/g/${groupId}/tx/${transaction.id}/view`
+						: memory.draft
+							? `/g/${groupId}/tx/new`
+							: `/g/${groupId}`
+				}
 				backLabel={vi.common.cancel}
 				backIcon="close"
 				trailing={

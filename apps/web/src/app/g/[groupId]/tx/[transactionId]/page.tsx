@@ -62,7 +62,7 @@ export default function EditPage() {
 						<ScreenHeader
 							title={query.data.description}
 							subtitle={formatMoney(query.data.amount)}
-							backHref={`/g/${groupId}`}
+							backHref={`/g/${groupId}/tx/${transactionId}/view`}
 							backLabel={vi.common.back}
 						/>
 						<PhotoRow
@@ -88,7 +88,10 @@ export default function EditPage() {
 					{error && loadError}
 				</>
 			)}
-			<Link className="min-h-11 text-center" href={`/g/${groupId}`}>
+			<Link
+				className="min-h-11 text-center"
+				href={`/g/${groupId}/tx/${transactionId}/view`}
+			>
 				{vi.common.back}
 			</Link>
 		</main>
