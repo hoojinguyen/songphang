@@ -302,6 +302,14 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   - Stage 3D (`exercise_3d1.mts`, `exercise_3d2.mts`): all 15 sentence fixtures (`AI01`–`AI15`), privacy nonces, 8s timeout + 0 retries, daily cap silent fallback, `features.sentenceAi`, and category keyword/custom matching passed.
   - `DATABASE_URL=.../songphang_phase3_gate pnpm db:check-balances`: all 11 groups summed to `0` with `0` mismatches -> `All groups balanced`.
 
+## Post-review fixes (Codex review round 1)
+
+- Findings addressed:
+  1. Preserved multi-draft AI queue across `/tx/new?form` manual handoff (`DraftProvider.queue`, `useExpenseForm`, `ExpenseForm` showing `Khoản {index}/{count}`, `Lưu và sang khoản sau`, and `Bỏ khoản này`, resuming remaining drafts back at `/tx/new`).
+  2. Snapshotted the accepted queue in `DraftProvider` per user-submitted sentence (plus `refetchOnWindowFocus: false` / `refetchOnReconnect: false` on `useParseSentence`) so background query refetches never reset `index`, category overrides, or idempotency keys.
+  3. Blocked `ReceiptReview` save while `showMismatch` is unresolved (including when 6 extras prevent adding a mismatch adjustment), and stopped `onRemoveExtra` from auto-dismissing `MismatchNotice` when freeing an extra slot.
+- Verified live on production Next.js `3010` + API `4010` + worker (`AI_PROVIDER=fake`, `AI_FAKE_RECEIPT_FIXTURE=mismatch`, `Nhóm 3D3`), followed by `pnpm db:check-balances` (`All groups balanced`) and `pnpm check` (`0` errors).
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).

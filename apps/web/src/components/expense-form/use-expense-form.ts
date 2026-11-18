@@ -17,7 +17,7 @@ import {
 } from "../../lib/transaction-changes";
 import { useCreateTransaction, usePreviewShares } from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import type { FormTransactionType } from "./TypeSwitch";
 import { useSplitState } from "./use-split-state";
 
@@ -114,7 +114,28 @@ export function useExpenseForm(
 		}
 		return [];
 	});
-	const [key] = useState(() => crypto.randomUUID());
+	const activeQueue =
+		!transaction &&
+		memory.draft &&
+		memory.queue &&
+		memory.queue.sentence === memory.draft.sentence
+			? memory.queue
+			: null;
+	const queuedItem = activeQueue?.items[activeQueue.index];
+	const hasMoreQueued = Boolean(
+		activeQueue && activeQueue.index + 1 < activeQueue.items.length,
+	);
+	const isMultiQueued = Boolean(activeQueue && activeQueue.items.length > 1);
+	const queueIndexLabel =
+		activeQueue && isMultiQueued
+			? t(vi.compose.draftIndex, {
+					index: String(activeQueue.index + 1),
+					count: String(activeQueue.items.length),
+				})
+			: undefined;
+	const [key] = useState(
+		() => queuedItem?.idempotencyKey ?? crypto.randomUUID(),
+	);
 	const submitting = useRef(false);
 	const create = useCreateTransaction(groupId);
 	const update = useUpdateTransaction(
@@ -224,6 +245,15 @@ export function useExpenseForm(
 			{ request, key },
 			{
 				onSuccess: () => {
+					if (activeQueue && activeQueue.index + 1 < activeQueue.items.length) {
+						memory.setQueue({
+							...activeQueue,
+							index: activeQueue.index + 1,
+						});
+						memory.setDraft(null);
+						router.replace(`/g/${groupId}/tx/new`);
+						return;
+					}
 					memory.clear();
 					router.replace(`/g/${groupId}`);
 				},
@@ -233,7 +263,25 @@ export function useExpenseForm(
 			},
 		);
 	};
+	const skipQueued = () => {
+		if (!activeQueue || submitting.current || mutation.isPending) return;
+		if (activeQueue.index + 1 < activeQueue.items.length) {
+			memory.setQueue({
+				...activeQueue,
+				index: activeQueue.index + 1,
+			});
+			memory.setDraft(null);
+			router.replace(`/g/${groupId}/tx/new`);
+			return;
+		}
+		memory.clear();
+		router.replace(`/g/${groupId}`);
+	};
 	return {
+		hasMoreQueued,
+		isMultiQueued,
+		queueIndexLabel,
+		skipQueued,
 		changed:
 			!transaction ||
 			JSON.stringify(request) !==

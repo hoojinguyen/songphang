@@ -377,6 +377,13 @@ export function ReceiptReview({
 		);
 	}
 
+	const showMismatch =
+		!mismatchDismissed &&
+		scan.flags.includes("TOTAL_MISMATCH") &&
+		scan.computed !== null &&
+		scan.reading?.total !== null &&
+		scan.reading?.total !== undefined;
+
 	const computedAmount = preview.current
 		? preview.data?.computedAmount
 		: undefined;
@@ -388,6 +395,7 @@ export function ReceiptReview({
 	const canSave =
 		!submittingRef.current &&
 		!createMutation.isPending &&
+		!showMismatch &&
 		itemsPayload !== null &&
 		hasPreviewShares &&
 		computedAmount !== undefined &&
@@ -395,13 +403,6 @@ export function ReceiptReview({
 		payerId !== null &&
 		description.trim().length > 0 &&
 		/^\d{4}-\d{2}-\d{2}$/.test(occurredOn);
-
-	const showMismatch =
-		!mismatchDismissed &&
-		scan.flags.includes("TOTAL_MISMATCH") &&
-		scan.computed !== null &&
-		scan.reading?.total !== null &&
-		scan.reading?.total !== undefined;
 
 	const save = () => {
 		if (
@@ -611,7 +612,6 @@ export function ReceiptReview({
 					);
 				}}
 				onRemoveExtra={(id) => {
-					setMismatchDismissed(true);
 					setExtras((current) => current.filter((extra) => extra.id !== id));
 				}}
 			/>

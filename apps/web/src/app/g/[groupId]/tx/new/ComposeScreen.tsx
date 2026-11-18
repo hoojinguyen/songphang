@@ -3,7 +3,6 @@ import {
 	CreateTransactionRequest,
 	type MemberDto,
 	type ParseDraft,
-	type ParsedDraftResult,
 	type ParseResponse,
 } from "@songphang/contract";
 import Link from "next/link";
@@ -16,30 +15,16 @@ import { Icon } from "../../../../../components/ui/Icon";
 import { OnlineButton } from "../../../../../components/ui/OnlineButton";
 import { ScreenHeader } from "../../../../../components/ui/ScreenHeader";
 import { useCategories } from "../../../../../lib/categories";
-import { useDraft } from "../../../../../lib/draft-context";
+import {
+	isRuleInteractiveQuestion,
+	useDraft,
+} from "../../../../../lib/draft-context";
 import { useParseSentence } from "../../../../../lib/quick-entry";
 import {
 	useCreateTransaction,
 	usePreviewShares,
 } from "../../../../../lib/transactions";
 import { t, vi } from "../../../../../messages/vi";
-
-const INTERACTIVE_ISSUES = new Set([
-	"MEMBER_AMBIGUOUS",
-	"COUNT_MISMATCH",
-	"DESCRIPTION_MISSING",
-]);
-
-function isRuleInteractiveQuestion(
-	item: ParsedDraftResult,
-	reader: ParseResponse["reader"],
-) {
-	return (
-		reader !== "ai" &&
-		item.status === "needs_input" &&
-		item.issues.some((issue) => INTERACTIVE_ISSUES.has(issue.code))
-	);
-}
 export function ComposeScreen({
 	writerMemberId,
 	groupId,
@@ -58,7 +43,6 @@ export function ComposeScreen({
 	const categories = categoriesQuery.data ?? [];
 	const mutation = useCreateTransaction(groupId);
 	const router = useRouter();
-	const keys = useRef(new Map<string, { key: string; occurredAt: string }>());
 	const saving = useRef(false);
 	const [collapsing, setCollapsing] = useState(false);
 	const [slowPending, setSlowPending] = useState(false);
@@ -76,37 +60,47 @@ export function ComposeScreen({
 		return () => clearTimeout(timer);
 	}, [query.isFetching, sentence]);
 
-	const [queueState, setQueueState] = useState<{
-		forResult: ParseResponse | undefined;
-		index: number;
-		overrides: Record<
-			number,
-			{ category: ParseDraft["category"]; categoryId: string | null }
-		>;
-	}>({ forResult: undefined, index: 0, overrides: {} });
-	const activeIndex = queueState.forResult === result ? queueState.index : 0;
-	const overrides = queueState.forResult === result ? queueState.overrides : {};
-	const items: ParsedDraftResult[] = result
-		? [
+	useEffect(() => {
+		if (!query.current || !result || result.text !== sentence) return;
+		if (memory.queue?.sentence === result.text) return;
+		memory.setQueue({
+			sentence: result.text,
+			reader: result.reader,
+			spans: result.spans,
+			index: 0,
+			items: [
 				{
 					status: result.status,
 					draft: result.draft,
 					issues: result.issues,
 					shares: result.shares,
+					idempotencyKey: crypto.randomUUID(),
+					occurredAt: new Date().toISOString(),
 				},
-				...result.moreDrafts,
-			]
-		: [];
+				...result.moreDrafts.map((item) => ({
+					...item,
+					idempotencyKey: crypto.randomUUID(),
+					occurredAt: new Date().toISOString(),
+				})),
+			],
+		});
+	}, [query.current, result, sentence, memory]);
+
+	const activeQueue =
+		sentence.trim() && memory.queue?.sentence === sentence
+			? memory.queue
+			: null;
+	const activeIndex = activeQueue?.index ?? 0;
+	const items = activeQueue?.items ?? [];
 	const activeItem = items[activeIndex];
-	const activeOverride = overrides[activeIndex];
 	const activeDraft: ParseDraft | null = activeItem
-		? activeOverride
-			? { ...activeItem.draft, ...activeOverride }
+		? activeItem.categoryOverride
+			? { ...activeItem.draft, ...activeItem.categoryOverride }
 			: activeItem.draft
 		: null;
 
 	const okPreview =
-		query.current && activeItem?.status === "ok" && activeDraft
+		activeQueue && activeItem?.status === "ok" && activeDraft
 			? CreateTransactionRequest.safeParse({
 					...activeDraft,
 					occurredAt: previewAt,
@@ -118,29 +112,29 @@ export function ComposeScreen({
 	);
 	useEffect(() => {
 		if (
-			query.current &&
-			result &&
+			activeQueue &&
 			activeItem &&
 			activeDraft &&
 			activeItem.status !== "ok" &&
-			!isRuleInteractiveQuestion(activeItem, result.reader) &&
-			memory.draft?.sentence !== sentence
+			!isRuleInteractiveQuestion(activeItem, activeQueue.reader) &&
+			(memory.draft?.sentence !== activeQueue.sentence ||
+				memory.draft?.itemIndex !== activeIndex)
 		) {
 			memory.setDraft({
-				sentence,
+				sentence: activeQueue.sentence,
+				itemIndex: activeIndex,
 				draft: activeDraft,
 				issues: activeItem.issues,
-				spans: result.reader === "ai" ? [] : result.spans,
+				spans: activeQueue.reader === "ai" ? [] : activeQueue.spans,
 			});
 			router.replace(`/g/${groupId}/tx/new?form`);
 		}
 	}, [
-		query.current,
-		result,
+		activeQueue,
 		activeItem,
 		activeDraft,
+		activeIndex,
 		memory,
-		sentence,
 		router,
 		groupId,
 	]);
@@ -149,47 +143,47 @@ export function ComposeScreen({
 		category: ParseDraft["category"],
 		categoryId: string | null,
 	) => {
-		if (!result) return;
-		setQueueState({
-			forResult: result,
-			index: activeIndex,
-			overrides: {
-				...overrides,
-				[activeIndex]: { category, categoryId },
-			},
+		if (!activeQueue) return;
+		memory.setQueue({
+			...activeQueue,
+			items: activeQueue.items.map((item, idx) =>
+				idx === activeIndex
+					? { ...item, categoryOverride: { category, categoryId } }
+					: item,
+			),
 		});
 	};
 
 	const activeCardResult: ParseResponse | undefined =
-		result && activeItem && activeDraft
+		activeQueue && activeItem && activeDraft
 			? {
-					...result,
 					status: activeItem.status,
+					text: activeQueue.sentence,
 					draft: activeDraft,
 					issues: activeItem.issues,
 					shares: preview.data?.shares ?? activeItem.shares,
-					spans: result.reader === "ai" ? [] : result.spans,
+					spans: activeQueue.reader === "ai" ? [] : activeQueue.spans,
+					reader: activeQueue.reader,
+					moreDrafts: [],
 				}
 			: undefined;
 
 	const edit = (chosen?: ParseResponse) => {
-		if (result?.text !== sentence || !activeItem || !activeDraft) return;
+		if (!activeQueue || !activeItem || !activeDraft) return;
 		memory.setDraft({
-			sentence,
+			sentence: activeQueue.sentence,
+			itemIndex: activeIndex,
 			draft: chosen?.draft ?? activeDraft,
 			issues: activeItem.issues,
-			spans: result.reader === "ai" ? [] : result.spans,
+			spans: activeQueue.reader === "ai" ? [] : activeQueue.spans,
 		});
 		router.push(`/g/${groupId}/tx/new?form`);
 	};
 	const skip = () => {
-		if (saving.current || mutation.isPending || !result) return;
+		if (saving.current || mutation.isPending || !activeQueue) return;
 		if (activeIndex < items.length - 1) {
-			setQueueState({
-				forResult: result,
-				index: activeIndex + 1,
-				overrides,
-			});
+			memory.setQueue({ ...activeQueue, index: activeIndex + 1 });
+			memory.setDraft(null);
 			return;
 		}
 		memory.clear();
@@ -199,37 +193,25 @@ export function ComposeScreen({
 		const savingResult = chosen ?? activeCardResult;
 		if (
 			savingResult?.status !== "ok" ||
-			!query.current ||
-			saving.current ||
-			!result
+			!activeQueue ||
+			!activeItem ||
+			saving.current
 		)
 			return;
-		const keySlot = `${sentence}:${activeIndex}`;
-		let identity = keys.current.get(keySlot);
-		if (!identity) {
-			identity = {
-				key: crypto.randomUUID(),
-				occurredAt: new Date().toISOString(),
-			};
-			keys.current.set(keySlot, identity);
-		}
 		const parsed = CreateTransactionRequest.safeParse({
 			...savingResult.draft,
-			occurredAt: identity.occurredAt,
+			occurredAt: activeItem.occurredAt,
 		});
 		if (!parsed.success) return;
 		saving.current = true;
 		mutation.mutate(
-			{ request: parsed.data, key: identity.key },
+			{ request: parsed.data, key: activeItem.idempotencyKey },
 			{
 				onSuccess: () => {
 					if (activeIndex < items.length - 1) {
 						saving.current = false;
-						setQueueState({
-							forResult: result,
-							index: activeIndex + 1,
-							overrides,
-						});
+						memory.setQueue({ ...activeQueue, index: activeIndex + 1 });
+						memory.setDraft(null);
 						return;
 					}
 					setCollapsing(true);
@@ -250,6 +232,19 @@ export function ComposeScreen({
 			},
 		);
 	};
+	const handleSentenceChange = (next: string) => {
+		if (next === sentence) return;
+		if (next !== memory.queue?.sentence) {
+			memory.setQueue(null);
+			memory.setDraft(null);
+		}
+		setSentence(next);
+	};
+	const handleSend = () => {
+		memory.setQueue(null);
+		memory.setDraft(null);
+		query.send();
+	};
 	const isMultiDraft = items.length > 1;
 	const indexLabel = isMultiDraft
 		? t(vi.compose.draftIndex, {
@@ -261,6 +256,8 @@ export function ComposeScreen({
 		isMultiDraft && activeIndex < items.length - 1
 			? vi.compose.saveAndNext
 			: vi.compose.save;
+	const isStaleQuery =
+		query.isFetching && (!activeQueue || activeQueue.sentence !== sentence);
 	return (
 		<div className="flex flex-1 flex-col gap-5">
 			<ScreenHeader
@@ -275,11 +272,11 @@ export function ComposeScreen({
 			>
 				{activeCardResult &&
 				activeItem &&
-				result &&
-				isRuleInteractiveQuestion(activeItem, result.reader) ? (
+				activeQueue &&
+				isRuleInteractiveQuestion(activeItem, activeQueue.reader) ? (
 					<QuestionCard
 						writerMemberId={writerMemberId}
-						key={`${result.text}:${activeIndex}`}
+						key={`${activeQueue.sentence}:${activeIndex}`}
 						result={activeCardResult}
 						members={members}
 						categories={categories}
@@ -287,11 +284,11 @@ export function ComposeScreen({
 						onChangeCategory={setActiveCategory}
 						onEdit={edit}
 						onSave={save}
-						disabled={!query.current || mutation.isPending}
+						disabled={isStaleQuery || mutation.isPending}
 					/>
-				) : activeCardResult?.status === "ok" && result ? (
+				) : activeCardResult?.status === "ok" && activeQueue ? (
 					<ConfirmationCard
-						key={`${result.text}:${activeIndex}`}
+						key={`${activeQueue.sentence}:${activeIndex}`}
 						result={activeCardResult}
 						members={members}
 						groupId={groupId}
@@ -303,7 +300,7 @@ export function ComposeScreen({
 						saveLabel={saveLabel}
 						skipLabel={isMultiDraft ? vi.compose.skipDraft : undefined}
 						indexLabel={indexLabel}
-						disabled={!query.current || mutation.isPending}
+						disabled={isStaleQuery || mutation.isPending}
 						overBudget={Boolean(
 							preview.current && preview.data?.warnings.includes("BUDGET_OVER"),
 						)}
@@ -320,14 +317,18 @@ export function ComposeScreen({
 			<Link
 				href={`/g/${groupId}/tx/new?form`}
 				onClick={() => {
-					if (result?.text === sentence && activeItem && activeDraft)
+					if (activeQueue && activeItem && activeDraft)
 						memory.setDraft({
-							sentence,
+							sentence: activeQueue.sentence,
+							itemIndex: activeIndex,
 							draft: activeDraft,
 							issues: activeItem.issues,
-							spans: result.reader === "ai" ? [] : result.spans,
+							spans: activeQueue.reader === "ai" ? [] : activeQueue.spans,
 						});
-					else memory.setDraft(null);
+					else {
+						memory.setQueue(null);
+						memory.setDraft(null);
+					}
 				}}
 				className="min-h-11 text-center font-bold"
 			>
@@ -337,17 +338,15 @@ export function ComposeScreen({
 				<SentenceInput
 					text={sentence}
 					spans={
-						result?.text === sentence && result.reader !== "ai"
-							? result.spans
-							: []
+						activeQueue && activeQueue.reader !== "ai" ? activeQueue.spans : []
 					}
-					onChange={setSentence}
-					onSend={query.send}
+					onChange={handleSentenceChange}
+					onSend={handleSend}
 				/>
 				<OnlineButton
 					type="button"
 					aria-label={vi.compose.send}
-					onClick={query.send}
+					onClick={handleSend}
 					disabled={!sentence.trim()}
 					className="flex size-[52px] shrink-0 items-center justify-center rounded-[20px] bg-ink text-surface"
 				>

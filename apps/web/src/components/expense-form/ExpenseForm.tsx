@@ -170,6 +170,7 @@ export function ExpenseForm({
 			<UnparsedBanner activeCount={active.length} />
 			<ScreenHeader
 				title={title}
+				{...(form.queueIndexLabel ? { subtitle: form.queueIndexLabel } : {})}
 				backHref={memory.draft ? `/g/${groupId}/tx/new` : `/g/${groupId}`}
 				backLabel={vi.common.cancel}
 				backIcon="close"
@@ -297,12 +298,24 @@ export function ExpenseForm({
 			>
 				{transaction
 					? vi.expenseForm.saveChanges
-					: type === "transfer"
-						? vi.expenseForm.saveTransfer
-						: type === "income"
-							? vi.expenseForm.saveIncome
-							: vi.expenseForm.save}
+					: form.hasMoreQueued
+						? vi.compose.saveAndNext
+						: type === "transfer"
+							? vi.expenseForm.saveTransfer
+							: type === "income"
+								? vi.expenseForm.saveIncome
+								: vi.expenseForm.save}
 			</Button>
+			{form.isMultiQueued && (
+				<Button
+					variant="surface"
+					onClick={form.skipQueued}
+					disabled={mutation.isPending}
+					className="w-full"
+				>
+					{vi.compose.skipDraft}
+				</Button>
+			)}
 			{transaction && (
 				<Button
 					variant="surface"
