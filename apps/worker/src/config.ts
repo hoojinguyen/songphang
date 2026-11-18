@@ -22,6 +22,13 @@ const WORKER_CONFIG_SCHEMA = z
 		DATABASE_URL: z
 			.url({ protocol: /^postgres(ql)?$/, hostname: /.+/ })
 			.max(8192),
+		WEB_ORIGIN: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.url({ protocol: /^https?$/, hostname: /.+/ })
+				.max(2048)
+				.default("http://localhost:3000"),
+		),
 		STORAGE_DIR: z.string().min(1).max(1024).default("./.data/uploads"),
 		AI_PROVIDER: z.preprocess(
 			EMPTY_TO_UNDEFINED,
@@ -94,6 +101,7 @@ const WORKER_CONFIG_SCHEMA = z
 	.transform((env) => ({
 		appEnv: env.APP_ENV,
 		databaseUrl: env.DATABASE_URL,
+		webOrigin: env.WEB_ORIGIN,
 		storageDir: path.resolve(REPO_ROOT, env.STORAGE_DIR),
 		aiProvider: env.AI_PROVIDER,
 		anthropicApiKey: env.ANTHROPIC_API_KEY,

@@ -45,3 +45,26 @@ Each entry: problem, options, choice, reason; for a library also license, mainte
 - Options: return bare `CommentDto` / `TransactionDisputeDto`, or wrap as `{ comment: CommentDto }` and `{ dispute: TransactionDisputeDto | null }`.
 - Choice: wrap as `CommentResponse = { comment: CommentDto }` for `POST .../comments` and `DisputeResponse = { dispute: TransactionDisputeDto | null }` for `POST .../dispute` and `POST .../dispute/resolve`.
 - Reason: keeps every API endpoint consistent with the existing contract style and lets both `dispute` and `dispute/resolve` share one `DisputeResponse` schema.
+
+## Stage 4B decisions
+
+### D4B.1 — Unsubscribe token rotation with hash-only storage (Task 4B.3)
+
+- Problem: Spec 4.3 requires storing only the SHA-256 hash of the unsubscribe token in Postgres (`notification_settings.unsubscribe_token_hash`), while Plan 4B.3 mentions creating on first mail and reusing it. Because SHA-256 is one-way, Postgres alone cannot reconstruct the raw token across worker restarts.
+- Options: (a) store encrypted token or add a secret key not in `.env.example`; (b) use single-use rows in `auth_tokens`; (c) cache `userId -> rawToken` in memory in the worker so repeated mails in the same process reuse the same token and hash, generating a fresh 32-byte base64url token and updating `unsubscribe_token_hash` only when `unsubscribe_token_hash` is null or missing from cache, and keep the hash active across repeated `POST /notifications/unsubscribe` calls.
+- Choice: option (c).
+- Reason: guarantees only `sha256` ever touches the database, reuses the token within a worker process without extra env secrets, ensures links remain valid across process restarts, and handles link pre-fetches idempotently.
+
+### D4B.2 — Digest incremental checkpoint table (`job_checkpoints`, Task 4B.3)
+
+- Problem: `send-digest` must select unread digest-kind notifications created since the previous run and print nothing on an immediate second run, both via daily cron and when invoked manually.
+- Options: query internal `pgboss.job` history (fails for direct manual runs), add a `digest_sent_at` column on `notifications`, or add a 2-column `job_checkpoints (name text PK, last_run_at timestamptz)` table.
+- Choice: add `job_checkpoints`.
+- Reason: keeps `notifications` schema identical to Spec 4.1 and makes manual invocations and scheduled 20:00 runs behave identically.
+
+### D4B.3 — Worker mailer and shared notification line formatting (Task 4B.3)
+
+- Problem: Plan 4B.3 notes creating `apps/worker/src/mailer.ts` or moving mailer/templates to `packages/mail` if both apps need them. Only `apps/worker` sends notification/digest emails while `apps/api` sends auth emails, whereas both `apps/web` and `apps/worker` render Spec 7.2 notification lines.
+- Options: create a new `packages/mail` workspace package, or share pure formatting (`formatAmount`, `formatMoney`, `formatNotificationLine`) in `@songphang/core` while keeping mail rendering inside `apps/worker/src/{mailer,mail-templates}.ts`.
+- Choice: place shared formatting in `@songphang/core` and keep notification mailers/templates in `apps/worker/src/`.
+- Reason: avoids adding a new workspace package while guaranteeing zero duplicated Spec 7.2 copy between web and worker.

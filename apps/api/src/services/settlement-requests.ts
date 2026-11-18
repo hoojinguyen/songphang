@@ -20,6 +20,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import type { EnqueueFn } from "../queue.js";
 import { notify } from "./notify.js";
 import { createTransactionIn } from "./transactions.js";
 
@@ -80,7 +81,11 @@ export async function getSettlementRequests(
 }
 export async function createSettlementRequest(
 	executor: DbExecutor,
-	input: Actor & { request: CreateSettlementRequest; now: Date },
+	input: Actor & {
+		request: CreateSettlementRequest;
+		now: Date;
+		enqueue?: EnqueueFn;
+	},
 ) {
 	await lockGroup(executor, input.groupId);
 	const access = await getGroupAccess(executor, {
@@ -129,6 +134,7 @@ export async function createSettlementRequest(
 		},
 		toMemberIds: [input.request.toMemberId],
 		now: input.now,
+		...(input.enqueue ? { enqueue: input.enqueue } : {}),
 	});
 	return { request: dto };
 }
@@ -205,6 +211,7 @@ export async function resolveSettlement(
 				},
 				toMemberIds: [row.fromMemberId],
 				now,
+				enqueue: deps.enqueue,
 			});
 		}
 		return {

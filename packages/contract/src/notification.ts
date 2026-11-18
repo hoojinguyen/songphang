@@ -144,3 +144,27 @@ export const GroupMuteResponse = z
 	.object({ muted: z.boolean() })
 	.openapi("GroupMuteResponse");
 export type GroupMuteResponse = z.infer<typeof GroupMuteResponse>;
+
+export const NotificationSettingsDto = z
+	.object({
+		emailImmediate: z.boolean(),
+		emailDigest: z.boolean(),
+	})
+	.openapi("NotificationSettingsDto");
+export type NotificationSettingsDto = z.infer<typeof NotificationSettingsDto>;
+
+export const UpdateNotificationSettingsRequest = z
+	.object({
+		emailImmediate: z.boolean().optional(),
+		emailDigest: z.boolean().optional(),
+	})
+	.refine((value) => Object.keys(value).length > 0)
+	.openapi("UpdateNotificationSettingsRequest");
+export type UpdateNotificationSettingsRequest = z.infer<
+	typeof UpdateNotificationSettingsRequest
+>;
+
+export const UnsubscribeRequest = z
+	.object({ token: z.string().min(1).max(256) })
+	.openapi("UnsubscribeRequest");
+export type UnsubscribeRequest = z.infer<typeof UnsubscribeRequest>;

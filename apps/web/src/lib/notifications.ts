@@ -2,8 +2,10 @@
 import {
 	GroupMuteResponse,
 	type MarkNotificationsReadRequest,
+	NotificationSettingsDto,
 	NotificationsListResponse,
 	UnreadCountResponse,
+	type UpdateNotificationSettingsRequest,
 } from "@songphang/contract";
 import {
 	useInfiniteQuery,
@@ -64,4 +66,35 @@ export function useSetGroupMuted(groupId: string) {
 			await client.invalidateQueries({ queryKey: ["group", groupId] });
 		},
 	});
+}
+
+export function useNotificationSettings() {
+	return useQuery<NotificationSettingsDto, ApiError>({
+		queryKey: ["notifications", "settings"],
+		queryFn: () =>
+			apiFetch("/me/notification-settings", NotificationSettingsDto),
+	});
+}
+
+export function useUpdateNotificationSettings() {
+	const client = useQueryClient();
+	return useMutation<
+		NotificationSettingsDto,
+		ApiError,
+		UpdateNotificationSettingsRequest
+	>({
+		mutationFn: (request) =>
+			apiFetch(
+				"/me/notification-settings",
+				NotificationSettingsDto,
+				jsonRequest("PUT", request),
+			),
+		onSuccess: (data) => {
+			client.setQueryData(["notifications", "settings"], data);
+		},
+	});
+}
+
+export async function postUnsubscribe(token: string): Promise<void> {
+	return apiSend("/notifications/unsubscribe", jsonRequest("POST", { token }));
 }

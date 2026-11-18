@@ -18,6 +18,8 @@ export {
 	toVietnamDate,
 } from "./dates.ts";
 export { parseHundredths } from "./decimal.ts";
+export { formatAmount, formatMoney } from "./money.ts";
+export { formatNotificationText } from "./notification-text.ts";
 export { type LedgerEntry, pairDebtsOf } from "./pair-debts.ts";
 export { foldVietnamese } from "./quick-entry/normalize.ts";
 export {

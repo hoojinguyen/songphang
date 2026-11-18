@@ -693,6 +693,12 @@ export const vi = {
 		approvalRejected: "{actor} không duyệt {description}",
 		budgetNear: "Nhóm {group} sắp chạm hạn mức",
 		budgetOver: "Nhóm {group} đã vượt hạn mức",
+		emailSettingsTitle: "Thông báo qua email",
+		emailImmediate: "Việc cần bạn làm ngay",
+		emailDigest: "Tổng hợp cuối ngày",
+		unsubscribeSuccess: "Bạn sẽ không nhận thư thông báo nữa.",
+		unsubscribeReenable: "Bật lại trong Tài khoản",
+		unsubscribeInvalid: "Link này không còn dùng được.",
 	},
 	showcase: { members: { minh: "Minh", lan: "Lan", hung: "Hùng", thu: "Thu" } },
 } as const;

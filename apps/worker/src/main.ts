@@ -4,10 +4,14 @@ import { loadWorkerConfig, type WorkerConfig } from "./config.js";
 import { registerCleanupAttachmentsJob } from "./jobs/cleanup-attachments.js";
 import { registerDeleteFilesJob } from "./jobs/delete-files.js";
 import { registerHeartbeatJob } from "./jobs/heartbeat.js";
+import { registerPruneNotificationsJob } from "./jobs/prune-notifications.js";
 import {
 	recoverStaleScans,
 	registerReadReceiptJob,
 } from "./jobs/read-receipt.js";
+import { registerSendDigestJob } from "./jobs/send-digest.js";
+import { registerSendNotificationMailJob } from "./jobs/send-notification-mail.js";
+import { createConsoleMailer } from "./mailer.js";
 import { createWorkerQueue, type WorkerDeps } from "./queue.js";
 
 let config: WorkerConfig;
@@ -35,11 +39,15 @@ try {
 		db,
 		fileStore: diskFileStore(config.storageDir),
 		now: () => new Date(),
+		mailer: createConsoleMailer(),
 	};
 	await registerHeartbeatJob(boss, deps);
 	await registerCleanupAttachmentsJob(boss, deps);
 	await registerDeleteFilesJob(boss, deps);
 	await registerReadReceiptJob(boss, deps);
+	await registerSendNotificationMailJob(boss, deps);
+	await registerSendDigestJob(boss, deps);
+	await registerPruneNotificationsJob(boss, deps);
 	await recoverStaleScans(deps);
 	const recoveryTimer = setInterval(() => {
 		void recoverStaleScans(deps).catch(() => {

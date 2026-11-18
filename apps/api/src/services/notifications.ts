@@ -1,19 +1,25 @@
+import { createHash } from "node:crypto";
 import { z } from "@hono/zod-openapi";
 import {
 	GroupMuteResponse,
 	type MarkNotificationsReadRequest,
 	NotificationDto,
+	NotificationSettingsDto,
 	type NotificationsListQuery,
 	NotificationsListResponse,
 	UnreadCountResponse,
+	type UpdateNotificationSettingsRequest,
 } from "@songphang/contract";
 import {
 	countUnreadNotifications,
+	getNotificationSettings,
 	listUserNotifications,
 	markNotificationsRead,
 	type NotificationCursor,
 	type NotificationRow,
+	unsubscribeByTokenHash,
 	updateGroupUserMuted,
+	upsertNotificationSettings,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
@@ -112,4 +118,43 @@ export async function setGroupMuted(
 		await updateGroupUserMuted(executor, input);
 		return GroupMuteResponse.parse({ muted: input.muted });
 	});
+}
+
+export async function getMyNotificationSettings(
+	deps: AppDeps,
+	userId: string,
+): Promise<NotificationSettingsDto> {
+	const row = await getNotificationSettings(deps.db, userId);
+	return NotificationSettingsDto.parse({
+		emailImmediate: row.emailImmediate,
+		emailDigest: row.emailDigest,
+	});
+}
+
+export async function updateMyNotificationSettings(
+	deps: AppDeps,
+	input: { userId: string; request: UpdateNotificationSettingsRequest },
+): Promise<NotificationSettingsDto> {
+	const row = await upsertNotificationSettings(deps.db, {
+		userId: input.userId,
+		...(input.request.emailImmediate !== undefined
+			? { emailImmediate: input.request.emailImmediate }
+			: {}),
+		...(input.request.emailDigest !== undefined
+			? { emailDigest: input.request.emailDigest }
+			: {}),
+	});
+	return NotificationSettingsDto.parse({
+		emailImmediate: row.emailImmediate,
+		emailDigest: row.emailDigest,
+	});
+}
+
+export async function unsubscribeNotifications(
+	deps: AppDeps,
+	token: string,
+): Promise<void> {
+	const tokenHash = createHash("sha256").update(token).digest("hex");
+	const updated = await unsubscribeByTokenHash(deps.db, tokenHash);
+	if (!updated) throw new AppError(404, "NOT_FOUND", "Resource not found");
 }

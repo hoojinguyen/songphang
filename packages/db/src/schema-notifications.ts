@@ -45,3 +45,8 @@ export const notificationSettings = pgTable("notification_settings", {
 	emailDigest: boolean("email_digest").notNull().default(true),
 	unsubscribeTokenHash: text("unsubscribe_token_hash").unique(),
 });
+
+export const jobCheckpoints = pgTable("job_checkpoints", {
+	name: text("name").primaryKey(),
+	lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),
+});

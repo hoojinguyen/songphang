@@ -101,6 +101,7 @@ export function registerSettlementRoutes(
 						userId: context.var.user.id,
 						request,
 						now: deps.now(),
+						enqueue: deps.enqueue,
 					}),
 				}),
 			);

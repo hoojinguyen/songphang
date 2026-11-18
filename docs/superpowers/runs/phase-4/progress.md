@@ -12,7 +12,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4A.3 — Web: the transaction view; stage gate
 - [x] 4B.1 — Notification core
 - [x] 4B.2 — Web: bell and notification list
-- [ ] 4B.3 — Mail: immediate, digest, unsubscribe
+- [x] 4B.3 — Mail: immediate, digest, unsubscribe
 - [ ] 4B.4 — Debt reminders
 - [ ] 4B.5 — Web: reminders and settings; stage gate
 - [ ] 4C.1 — Webhook, sender, identities and links
@@ -29,6 +29,8 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 None.
 
 ## Not verified
+
+- Real SMTP delivery, email client rendering, and mail-client one-click `List-Unsubscribe-Post` execution (no SMTP server/domain locally; exercised with console mailer).
 
 ## Gate not passed
 
@@ -139,3 +141,18 @@ None.
   5. With 10 unread notifications, Bell rendered `"9+"` badge and `aria-label="Thông báo, 10 chưa đọc"`, size `48x48`.
   6. On `/g/[groupId]/members`, toggled `Tắt thông báo nhóm này` on and off; zero console errors in both windows.
 - Security review: clean (plain React text rendering, Zod-validated `NotificationPayload` with safe generic fallback on unknown kinds, no `dangerouslySetInnerHTML`/`eval`).
+
+## Task 4B.3 — approach
+- Approach: place pure `formatAmount`/`formatMoney` and `formatNotificationLine` in `@songphang/core` (shared by `apps/web` and `apps/worker`), add `job_checkpoints` + notification-settings/digest/prune DB helpers in `packages/db`, wire `send-notification-mail` enqueueing into `notify.ts` for immediate kinds, expose `/me/notification-settings` and public `/notifications/unsubscribe` (30/min/IP -> 204 or 404) in `apps/api`, register `send-notification-mail`, `send-digest` (`0 20 * * *` `Asia/Ho_Chi_Minh`), and `prune-notifications` (90 days) in `apps/worker`, and add `/notifications/unsubscribe` + S13 email toggles in `apps/web`.
+- Why simplest: reuses `Mailer` console output (adding `List-Unsubscribe` / `List-Unsubscribe-Post` headers + non-PII `mail.sent` JSON log line) and `notification-settings` schema already created in migration `0016`, adding only `job_checkpoints` for reliable digest watermarks.
+- Rejected alternative: adding a separate `packages/mail` workspace package or querying `pgboss` internal job tables (which would break manual `runSendDigest` verification).
+
+### Task 4B.3 — results
+- `pnpm check`: 439 files, 0 errors (3 pre-existing `noImgElement` warnings), 8/9 workspace typechecks Done.
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`/notifications/unsubscribe` and `/account` built cleanly).
+- Generated & applied `packages/db/drizzle/0017_flimsy_vargas.sql` (`job_checkpoints`).
+- `exercise_4b3.mts`: `EXERCISE_4B3_PASSED {"row1ImmediateSubjectMatched":true,"row1ListHeadersPresent":true,"row2SkippedWhenRead":true,"row3DigestFirstSent":3,"row3DigestSecondSent":0,"row4SkippedWhenDigestFalse":true,"row5UnsubscribeStatus":204,"row5MinhSettings":{"emailImmediate":false,"emailDigest":false},"row5LanSettings":{"emailImmediate":true,"emailDigest":true},"row6BadTokenStatuses":[404,404],"row6RateLimit429":true,"row7RemovedSkipped":true,"row8PrunedCount":1}` — verified live worker `send-notification-mail` with `List-Unsubscribe` / `List-Unsubscribe-Post` headers, skip when read or removed, manual `runSendDigest` grouping & incremental checkpoint (`3` sent -> `0` on immediate repeat), `emailDigest: false` skip, unauthenticated `POST /notifications/unsubscribe` (204 on match, 404 on altered/empty token, 429 after 30/min/IP), `runPruneNotifications` deleting 91-day-old row, and non-PII structured log `{"event":"mail.sent","template":...,"userId":...}`.
+- Live Chrome check on `/notifications/unsubscribe` & `/account`: bad token rendered `Link này không còn dùng được.`; Lan's printed unsubscribe link unauthenticated rendered `Bạn sẽ không nhận thư thông báo nữa.` + `Bật lại trong Tài khoản`; logging in as Lan on `/account` showed both switches unchecked and allowed toggling both back on; 0 console errors.
+- `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 12 groups).
+- Security review: clean (only SHA-256 hash stored in `notification_settings.unsubscribe_token_hash`, public unsubscribe route answers uniform 404 on invalid/missing token and limits 30/min/IP, audit log `mail.sent` contains only `template` and `userId`).
+- Added real SMTP mail rendering / mail-client one-click header execution to `## Not verified` (local run uses console mailer only).

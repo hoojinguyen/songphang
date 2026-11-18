@@ -35,6 +35,7 @@ import { registerReceiptScanRoutes } from "./routes/receipt-scans.js";
 import { registerSettlementRoutes } from "./routes/settlement-requests.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
+import { registerUnsubscribeRoutes } from "./routes/unsubscribe.js";
 
 export type AppEnv = {
 	Variables: {
@@ -91,6 +92,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerFeatureRoute(app, deps);
 	registerMeRoute(app, deps);
 	registerNotificationRoutes(app, deps);
+	registerUnsubscribeRoutes(app, deps);
 	registerGroupRoutes(app, deps);
 	registerEventRoutes(app, deps);
 	registerGroupUserRoutes(app, deps);

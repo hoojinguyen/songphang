@@ -112,6 +112,7 @@ export async function openDispute(
 				input.user.id,
 			],
 			now,
+			enqueue: deps.enqueue,
 		});
 		return DisputeResponse.parse({
 			dispute: toDisputeDto(row, input.user.id),
@@ -197,6 +198,7 @@ export async function resolveDispute(
 				...(open.openedBy ? [open.openedBy] : []),
 			],
 			now,
+			enqueue: deps.enqueue,
 		});
 		return DisputeResponse.parse({ dispute: null });
 	});

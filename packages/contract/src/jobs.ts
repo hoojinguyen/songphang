@@ -5,6 +5,9 @@ export const JOB_NAMES = {
 	cleanupAttachments: "cleanup-attachments",
 	deleteFiles: "delete-files",
 	readReceipt: "read-receipt",
+	sendNotificationMail: "send-notification-mail",
+	sendDigest: "send-digest",
+	pruneNotifications: "prune-notifications",
 } as const;
 
 export const HeartbeatPayload = z.object({});
@@ -25,6 +28,21 @@ export const ReadReceiptPayload = z.object({
 	reservationId: z.uuid(),
 });
 export type ReadReceiptPayload = z.infer<typeof ReadReceiptPayload>;
+
+export const SendNotificationMailPayload = z.object({
+	notificationId: z.uuid(),
+});
+export type SendNotificationMailPayload = z.infer<
+	typeof SendNotificationMailPayload
+>;
+
+export const SendDigestPayload = z.object({});
+export type SendDigestPayload = z.infer<typeof SendDigestPayload>;
+
+export const PruneNotificationsPayload = z.object({});
+export type PruneNotificationsPayload = z.infer<
+	typeof PruneNotificationsPayload
+>;
 
 export const GroupEventResource = z.enum([
 	"group",

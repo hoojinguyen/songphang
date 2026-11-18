@@ -1,4 +1,5 @@
 import {
+	JOB_NAMES,
 	NotificationPayload,
 	type TransactionWarning,
 } from "@songphang/contract";
@@ -8,6 +9,18 @@ import {
 	insertNotificationRows,
 	resolveNotificationRecipients,
 } from "@songphang/db";
+import type { EnqueueFn } from "../queue.js";
+
+const IMMEDIATE_KINDS = new Set<NotificationPayload["kind"]>([
+	"dispute_opened",
+	"dispute_resolved",
+	"settlement_requested",
+	"settlement_confirmed",
+	"settlement_rejected",
+	"debt_reminder",
+	"approval_requested",
+	"approval_decided",
+]);
 
 export type NotifyInput<
 	K extends NotificationPayload["kind"] = NotificationPayload["kind"],
@@ -19,6 +32,7 @@ export type NotifyInput<
 	toUserIds?: string[];
 	toMemberIds?: string[];
 	now?: Date;
+	enqueue?: EnqueueFn;
 };
 
 /**
@@ -37,7 +51,7 @@ export async function notify<K extends NotificationPayload["kind"]>(
 	if (recipientIds.length === 0) return [];
 	const payload = NotificationPayload.parse(input.payload);
 	const createdAt = input.now ?? new Date();
-	return insertNotificationRows(
+	const inserted = await insertNotificationRows(
 		executor,
 		recipientIds.map((userId) => ({
 			userId,
@@ -47,6 +61,17 @@ export async function notify<K extends NotificationPayload["kind"]>(
 			createdAt,
 		})),
 	);
+	if (IMMEDIATE_KINDS.has(input.kind) && input.enqueue) {
+		for (const row of inserted) {
+			await input.enqueue(
+				executor,
+				JOB_NAMES.sendNotificationMail,
+				{ notificationId: row.id },
+				{ singletonKey: row.id },
+			);
+		}
+	}
+	return inserted;
 }
 
 export async function notifyBudgetWarnings(

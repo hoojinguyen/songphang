@@ -35,7 +35,11 @@ export { groupCategories } from "./schema-categories.js";
 export { comments } from "./schema-comments.js";
 export { transactionDisputes } from "./schema-disputes.js";
 export { groups, groupUsers, members } from "./schema-groups.js";
-export { notificationSettings, notifications } from "./schema-notifications.js";
+export {
+	jobCheckpoints,
+	notificationSettings,
+	notifications,
+} from "./schema-notifications.js";
 export * from "./schema-payments.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";
 export { receiptScans } from "./schema-scans.js";
