@@ -37,6 +37,7 @@ export const GroupEventResource = z.enum([
 	"categories",
 	"budget",
 	"receiptScans",
+	"comments",
 ]);
 export type GroupEventResource = z.infer<typeof GroupEventResource>;
 

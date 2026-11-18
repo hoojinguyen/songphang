@@ -13,6 +13,7 @@ export {
 	type DbExecutor,
 	listenPgChannel,
 } from "./client.js";
+export * from "./comments.js";
 export * from "./fund.js";
 export * from "./google-accounts.js";
 export * from "./group-users.js";
@@ -29,6 +30,7 @@ export { aiCalls } from "./schema-ai.js";
 export { attachments } from "./schema-attachments.js";
 export { budgets } from "./schema-budgets.js";
 export { groupCategories } from "./schema-categories.js";
+export { comments } from "./schema-comments.js";
 export { groups, groupUsers, members } from "./schema-groups.js";
 export * from "./schema-payments.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";

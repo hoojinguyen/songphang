@@ -48,3 +48,12 @@ export function requireUploadLimit(deps: AppDeps) {
 		key: (context) => context.var.user.id,
 	});
 }
+
+export function requireCommentLimit(deps: AppDeps) {
+	return deps.rateLimiter.limit({
+		name: "comment_create",
+		max: 20,
+		windowMs: 60 * 1000,
+		key: (context) => context.var.user.id,
+	});
+}

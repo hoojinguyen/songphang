@@ -172,6 +172,7 @@ const BaseTransactionFields = {
 	version: z.int().positive(),
 	updatedBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
 	createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+	commentCount: z.int().nonnegative(),
 	createdAt: z.iso.datetime(),
 	updatedAt: z.iso.datetime(),
 	deletedAt: z.iso.datetime().nullable(),

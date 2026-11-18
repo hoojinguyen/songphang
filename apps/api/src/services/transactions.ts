@@ -22,6 +22,7 @@ import {
 import {
 	attachToTransaction,
 	countAttachmentsForTransactions,
+	countCommentsForTransactions,
 	type DbExecutor,
 	findGroup,
 	findTransactionRow,
@@ -124,10 +125,11 @@ export async function mapTransactions(
 	rows: Awaited<ReturnType<typeof listTransactionRows>>,
 ) {
 	const ids = rows.map((row) => row.id);
-	const [payers, shares, attachmentRows] = await Promise.all([
+	const [payers, shares, attachmentRows, commentCounts] = await Promise.all([
 		listTransactionPayers(executor, groupId, ids),
 		listTransactionShares(executor, groupId, ids),
 		listAttachmentsForTransactions(executor, groupId, ids),
+		countCommentsForTransactions(executor, groupId, ids),
 	]);
 	return rows.map((row) =>
 		TransactionDto.parse({
@@ -136,6 +138,7 @@ export async function mapTransactions(
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			deletedAt: row.deletedAt?.toISOString() ?? null,
+			commentCount: commentCounts.get(row.id) ?? 0,
 			payers: payers.filter((payer) => payer.transactionId === row.id),
 			shares: shares.filter((share) => share.transactionId === row.id),
 			attachments: attachmentRows
@@ -151,10 +154,11 @@ async function mapTransactionListItems(
 	rows: Awaited<ReturnType<typeof listTransactionRows>>,
 ) {
 	const ids = rows.map((row) => row.id);
-	const [payers, shares, attachmentCounts] = await Promise.all([
+	const [payers, shares, attachmentCounts, commentCounts] = await Promise.all([
 		listTransactionPayers(executor, groupId, ids),
 		listTransactionShares(executor, groupId, ids),
 		countAttachmentsForTransactions(executor, groupId, ids),
+		countCommentsForTransactions(executor, groupId, ids),
 	]);
 	return rows.map((row) =>
 		TransactionListItemDto.parse({
@@ -163,6 +167,7 @@ async function mapTransactionListItems(
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			deletedAt: row.deletedAt?.toISOString() ?? null,
+			commentCount: commentCounts.get(row.id) ?? 0,
 			payers: payers.filter((payer) => payer.transactionId === row.id),
 			shares: shares.filter((share) => share.transactionId === row.id),
 			attachmentCount: attachmentCounts.get(row.id) ?? 0,

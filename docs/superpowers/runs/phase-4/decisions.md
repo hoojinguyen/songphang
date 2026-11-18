@@ -36,3 +36,12 @@ Each entry: problem, options, choice, reason; for a library also license, mainte
 | `apps/web/src/lib/money.ts` | `formatAmount`, `formatMoney` in `apps/web/src/lib/money.ts` | Exists in web only. Move/export shared integer VND formatter (`150.000 đ`) in `packages/core/src/` in 4C.1 so bot messages and web share one formatter. |
 | `apps/web/src/lib/use-group-events.ts`, `messages/vi.ts` | `apps/web/src/lib/use-group-events.ts`, `apps/web/src/messages/vi.ts` | Exists. Add `"comments"` resource, invalidate `["notifications"]`, and add exact spec strings to `vi.ts`. |
 | `infra/compose.prod.yml` | Missing | Server step has not run; skip Compose modifications in 4D.4 per plan ("if it exists"). |
+
+## Stage 4A decisions
+
+### D4A.1 — Comment and dispute response wrappers (Tasks 4A.1–4A.2)
+
+- Problem: the Stage 4A plan names `CommentDto` and `{ id, reason, openedByName, openedAt }` for `POST .../comments` and `POST .../dispute`, while every existing resource endpoint in the API wraps single DTOs in a top-level object (`{ transaction }`, `{ attachment }`, `{ category }`, `{ request }`, `{ member }`).
+- Options: return bare `CommentDto` / `TransactionDisputeDto`, or wrap as `{ comment: CommentDto }` and `{ dispute: TransactionDisputeDto | null }`.
+- Choice: wrap as `CommentResponse = { comment: CommentDto }` for `POST .../comments` and `DisputeResponse = { dispute: TransactionDisputeDto | null }` for `POST .../dispute` and `POST .../dispute/resolve`.
+- Reason: keeps every API endpoint consistent with the existing contract style and lets both `dispute` and `dispute/resolve` share one `DisputeResponse` schema.
