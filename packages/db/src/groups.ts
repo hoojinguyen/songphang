@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
+import { users } from "./schema.js";
 import { groups, groupUsers } from "./schema-groups.js";
 import { transactions } from "./schema-transactions.js";
 import { deleteGroupSettlementRequests } from "./settlement-requests.js";
@@ -37,6 +38,15 @@ export async function findGroup(executor: DbExecutor, groupId: string) {
 		.where(eq(groups.id, groupId))
 		.limit(1);
 	return group ?? null;
+}
+export async function findGroupOwner(executor: DbExecutor, groupId: string) {
+	const [owner] = await executor
+		.select({ userId: users.id, name: users.name })
+		.from(groupUsers)
+		.innerJoin(users, eq(users.id, groupUsers.userId))
+		.where(and(eq(groupUsers.groupId, groupId), eq(groupUsers.role, "owner")))
+		.limit(1);
+	return owner ?? null;
 }
 export function listUserGroups(executor: DbExecutor, userId: string) {
 	return executor

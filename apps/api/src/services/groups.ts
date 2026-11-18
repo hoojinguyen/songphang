@@ -14,6 +14,7 @@ import {
 	deleteGroupRow,
 	findGroup,
 	findGroupAccess,
+	findGroupOwner,
 	insertActivity,
 	insertGroup,
 	insertGroupUser,
@@ -32,13 +33,17 @@ export async function getGroup(
 	groupId: string,
 	userId: string,
 ) {
-	const group = await findGroup(executor, groupId);
-	const access = await findGroupAccess(executor, groupId, userId);
+	const [group, access, owner] = await Promise.all([
+		findGroup(executor, groupId),
+		findGroupAccess(executor, groupId, userId),
+		findGroupOwner(executor, groupId),
+	]);
 	if (group === null || access === null)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	return GroupResponse.parse({
 		group: {
 			...group,
+			ownerName: owner?.name ?? "",
 			role: access.role,
 			myMemberId: access.memberId,
 			muted: access.muted,
@@ -150,6 +155,9 @@ export async function editGroup(
 				...(input.changes.reminderIntervalDays === undefined
 					? {}
 					: { reminderIntervalDays: input.changes.reminderIntervalDays }),
+				...(input.changes.approvalThreshold === undefined
+					? {}
+					: { approvalThreshold: input.changes.approvalThreshold }),
 			},
 			now: deps.now(),
 		});

@@ -207,6 +207,7 @@ export function registerTransactionRoutes(
 						userId: context.var.user.id,
 						request,
 						now: deps.now(),
+						enqueue: deps.enqueue,
 					}),
 				}),
 			);

@@ -1,5 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { MemberColorCode, MemberName, MemberShapeCode } from "./member.ts";
+import { MoneyAmount } from "./transaction.ts";
 export const GroupName = z.string().trim().min(1).max(80);
 export const GroupRole = z.enum(["owner", "editor", "viewer"]);
 export type GroupRole = z.infer<typeof GroupRole>;
@@ -17,6 +18,8 @@ export const GroupDto = z
 		minimizeDebts: z.boolean(),
 		defaultRole: z.enum(["editor", "viewer"]),
 		reminderIntervalDays: ReminderIntervalDays.nullable(),
+		approvalThreshold: MoneyAmount.nullable(),
+		ownerName: z.string(),
 		role: GroupRole,
 		myMemberId: z.uuid().nullable(),
 		muted: z.boolean(),
@@ -63,6 +66,7 @@ export const UpdateGroupRequest = z
 		minimizeDebts: z.boolean().optional(),
 		defaultRole: z.enum(["editor", "viewer"]).optional(),
 		reminderIntervalDays: ReminderIntervalDays.nullable().optional(),
+		approvalThreshold: MoneyAmount.nullable().optional(),
 	})
 	.refine((value) => Object.keys(value).length > 0)
 	.openapi("UpdateGroupRequest");

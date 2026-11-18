@@ -7,6 +7,7 @@ import {
 	findBotDraftById,
 	findChatIdentity,
 	findChatLinkByChat,
+	findGroupOwner,
 	findUserById,
 	markBotDraftSaved,
 } from "@songphang/db";
@@ -144,6 +145,7 @@ export async function handleBotCallback(
 				userId: actor.user.id,
 				request,
 				now,
+				enqueue: deps.enqueue,
 			}),
 		}),
 	);
@@ -156,11 +158,16 @@ export async function handleBotCallback(
 	});
 	await sender.answerCallback(cb.id);
 	if (savedNow) {
+		const owner =
+			created.transaction.approval.status === "pending"
+				? await findGroupOwner(deps.db, actor.groupId)
+				: null;
 		await sender.send(
 			chatId,
 			BOT_MESSAGES.saved(
 				created.transaction.description,
 				created.transaction.amount,
+				owner?.name,
 			),
 		);
 	}

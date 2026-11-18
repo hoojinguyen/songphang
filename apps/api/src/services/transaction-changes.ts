@@ -4,7 +4,7 @@ import {
 	TransactionResponse,
 	type UpdateTransactionRequest,
 } from "@songphang/contract";
-import { foldVietnamese } from "@songphang/core";
+import { approvalStatusFor, foldVietnamese } from "@songphang/core";
 import {
 	type AttachmentRow,
 	attachToTransaction,
@@ -12,6 +12,7 @@ import {
 	type DbExecutor,
 	deleteRemovedTransactionAttachments,
 	findGroup,
+	findGroupOwner,
 	findTransactionRow,
 	findUserById,
 	insertActivity,
@@ -144,7 +145,42 @@ export async function editTransaction(
 		const attachmentsChanged =
 			nextAttachmentIds !== undefined &&
 			JSON.stringify(beforeAttachmentIds) !== JSON.stringify(nextAttachmentIds);
-		if (altered.length === 0 && !attachmentsChanged) {
+		const [group, owner, actor] = await Promise.all([
+			findGroup(executor, input.groupId),
+			findGroupOwner(executor, input.groupId),
+			findUserById(executor, input.userId),
+		]);
+		if (group === null)
+			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		const actorIsOwner = owner?.userId === input.userId;
+		const now = deps.now();
+		let nextApprovalStatus: "none" | "pending" | "approved" = "none";
+		let nextDecidedBy: string | null = null;
+		let nextDecidedAt: Date | null = null;
+		if (before.type === "expense") {
+			if (actorIsOwner) {
+				if (
+					group.approvalThreshold !== null &&
+					normalized.amount >= group.approvalThreshold
+				) {
+					nextApprovalStatus = "approved";
+					nextDecidedBy = input.userId;
+					nextDecidedAt = now;
+				}
+			} else {
+				nextApprovalStatus = approvalStatusFor({
+					type: "expense",
+					amount: normalized.amount,
+					threshold: group.approvalThreshold,
+					actorIsOwner: false,
+				});
+			}
+		}
+		if (
+			altered.length === 0 &&
+			!attachmentsChanged &&
+			before.approval.status === nextApprovalStatus
+		) {
 			return { transaction: before, warnings: [] };
 		}
 		changed = true;
@@ -161,9 +197,13 @@ export async function editTransaction(
 				categoryId: normalized.categoryId,
 				splitMethod: normalized.split.method,
 				splitInput: normalized.split,
+				approvalStatus: nextApprovalStatus,
+				approvalDecidedBy: nextDecidedBy,
+				approvalDecidedAt: nextDecidedAt,
+				approvalNote: null,
 				version: before.version + 1,
 				updatedBy: input.userId,
-				updatedAt: deps.now(),
+				updatedAt: now,
 			},
 		});
 		await insertTransactionPayers(
@@ -195,12 +235,16 @@ export async function editTransaction(
 			groupId: input.groupId,
 			request: input.request,
 			applied: true,
-			now: deps.now(),
+			now,
+			counted: nextApprovalStatus !== "pending",
 			replacing: {
 				type: before.type,
 				amount: before.amount,
 				occurredAt: new Date(before.occurredAt),
 				payers: before.payers,
+				counted:
+					before.approval.status === "none" ||
+					before.approval.status === "approved",
 			},
 		});
 		await insertActivity(executor, {
@@ -222,15 +266,31 @@ export async function editTransaction(
 					? { attachmentCount: after.attachments.length }
 					: {}),
 			},
-			createdAt: deps.now(),
+			createdAt: now,
 		});
-		const [group, actor] = await Promise.all([
-			findGroup(executor, input.groupId),
-			findUserById(executor, input.userId),
-		]);
 		const actorName = actor?.name ?? "";
-		const groupName = group?.name ?? "";
-		const now = deps.now();
+		const groupName = group.name;
+		if (nextApprovalStatus === "pending") {
+			if (owner) {
+				await notify(executor, {
+					groupId: input.groupId,
+					actorUserId: input.userId,
+					kind: "approval_requested",
+					payload: {
+						kind: "approval_requested",
+						actorName,
+						groupName,
+						transactionId: after.id,
+						description: after.description,
+						amount: after.amount,
+					},
+					toUserIds: [owner.userId],
+					now,
+					enqueue: deps.enqueue,
+				});
+			}
+			return { transaction: after, warnings };
+		}
 		if (after.type === "expense") {
 			await notify(executor, {
 				groupId: input.groupId,

@@ -17,8 +17,10 @@ export const BOT_MESSAGES = {
 	openFormButton: "Mở form",
 	saveButton: "Lưu",
 	dropButton: "Bỏ",
-	saved: (description: string, amount: number) =>
-		`Đã lưu: ${description} · ${formatMoney(amount)}.`,
+	saved: (description: string, amount: number, pendingOwner?: string) => {
+		const base = `Đã lưu: ${description} · ${formatMoney(amount)}.`;
+		return pendingOwner ? `${base} Khoản này chờ ${pendingOwner} duyệt.` : base;
+	},
 	dropped: "Đã bỏ.",
 	draftExpired: "Khoản này đã quá 10 phút. Hãy gõ lại.",
 	onlySenderCanSave: (name: string) => `Chỉ ${name} lưu được khoản này.`,

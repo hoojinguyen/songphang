@@ -36,6 +36,7 @@ export const ErrorCode = z
 		"REMINDER_TOO_SOON",
 		"MEMBER_NOT_LINKED",
 		"CHAT_IDENTITY_TAKEN",
+		"APPROVAL_NOT_PENDING",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

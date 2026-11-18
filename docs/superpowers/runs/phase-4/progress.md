@@ -20,7 +20,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4C.3 — Web: linking screens
 - [x] 4C.4 — Stage gate 4C and the bot runbook
 - [x] 4D.1 — Database and money path: the approval filter
-- [ ] 4D.2 — API: threshold, pending, approve, reject
+- [x] 4D.2 — API: threshold, pending, approve, reject
 - [ ] 4D.3 — Web: approval
 - [ ] 4D.4 — README, non-functional checks, final gate
 
@@ -306,3 +306,19 @@ None.
   - `packages/db/src/members.ts:109` (`hasTransactions`) — member deletion guard checking whether any transaction row (including pending/rejected/deleted) still references the member FK.
   - `packages/db/src/schema-transactions.ts:99,116`, `packages/db/src/index.ts:58,59` — schema definitions and exports.
 - Security review: type-safe union parameter on `countedTransaction("t" | "transactions")`; DB CHECK constraints enforce valid enum and length bounds.
+
+## Task 4D.2 — approach
+
+- Files to create/modify: create `packages/core/src/approval.ts`, `apps/api/src/services/approval.ts`; modify `packages/core/src/index.ts`, `packages/contract/src/{error,transaction,group}.ts`, `packages/db/src/groups.ts`, `apps/api/src/services/{groups,transactions,transaction-changes,warnings}.ts`, `apps/api/src/routes/{transactions,transaction-changes}.ts`, `apps/api/src/bot/callbacks.ts`.
+- Approach: define pure `approvalStatusFor` in `@songphang/core`; add `approval` DTO to transaction responses, `approvalThreshold` & `ownerName` to `GroupDto` (`UpdateGroupRequest` accepts `approvalThreshold`), and `APPROVAL_NOT_PENDING` (`409`); update create/edit/preview warnings so pending/rejected transactions never subtract/add uncounted amounts; add owner-only `approve`/`reject` service logging activity, firing `approval_decided` notifications, and re-evaluating budget warnings on approve; append ` Khoản này chờ {owner} duyệt.` in Telegram bot save confirmation when pending.
+- Why simplest: reuses `lockGroup`, `lockTransaction`, `notify`, `notifyBudgetWarnings`, and `approvalStatusFor` across HTTP and Telegram creation paths with one set of rules.
+- Rejected alternative: computing approval rules separately inside bot handlers or routes, which would duplicate owner lookups and risk differing threshold comparisons between web and Telegram.
+
+### Task 4D.2 results
+
+- `pnpm check`: passed (`Checked 476 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `exercise_4d2.mts` against `songphang_phase4_gate`:
+  - `approvalStatusFor` unit assertions passed (1,000,000/1,000,000 non-owner -> `pending`; 999,999 -> `none`; owner -> `none`; threshold null -> `none`; transfer 5,000,000 -> `none`; income 5,000,000 -> `none`).
+  - `EXERCISE_4D2_PASSED`: verified all 13 rows (`r1Status: "pending"` with balances 0 & `approval_requested` notification for Minh; `r2Balances` Lan +666,666 / Minh -333,333 / Hùng -333,333; Lan approve -> 403, outsider -> 404; Minh approve -> `r4Balances` Lan +1,466,666 / Minh -733,333 / Hùng -733,333 & `approval_decided` for Lan; repeat approve -> 409 `APPROVAL_NOT_PENDING`; Lan edit to 1,500,000 -> `pending` & balances back to Row 2; Minh reject with `"Chưa có hoá đơn"` -> rejected with note, balances unchanged; Lan edit to 900,000 -> `none` & balances Lan +1,266,666 / Minh -633,333 / Hùng -633,333; owner 5,000,000 -> `none`; transfer 2,000,000 -> `none`; threshold `null` then Lan 3,000,000 -> `none`; Lan threshold PATCH -> 403; reject 301-char note -> 400; Telegram bot pending save reply -> `"Đã lưu: máy in · 1.500.000 đ. Khoản này chờ Minh duyệt."`).
+  - `pnpm db:check-balances` after rows 1, 4, 7 and at end -> `All groups balanced` (13 groups).
+- Security review: `requireGroupRole("owner")` + `requireVerifiedEmail` + `requireWriteLimit` + `requireSameOrigin` on `/approve`, `/reject`, and threshold `PATCH`; outsider 404; Zod bounds note 0..300 and positive integer `approvalThreshold`.

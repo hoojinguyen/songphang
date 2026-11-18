@@ -178,6 +178,30 @@ export const OpenDisputeRequest = z
 		reason: z.string().trim().min(1).max(500),
 	})
 	.openapi("OpenDisputeRequest");
+export const ApprovalStatus = z.enum([
+	"none",
+	"pending",
+	"approved",
+	"rejected",
+]);
+export type ApprovalStatus = z.infer<typeof ApprovalStatus>;
+export const TransactionApprovalDto = z
+	.object({
+		status: ApprovalStatus,
+		decidedByName: z.string().nullable(),
+		decidedAt: z.iso.datetime().nullable(),
+		note: z.string().nullable(),
+	})
+	.openapi("TransactionApprovalDto");
+export type TransactionApprovalDto = z.infer<typeof TransactionApprovalDto>;
+export const ApproveRejectTransactionRequest = z
+	.object({
+		note: z.string().trim().max(300).optional(),
+	})
+	.openapi("ApproveRejectTransactionRequest");
+export type ApproveRejectTransactionRequest = z.infer<
+	typeof ApproveRejectTransactionRequest
+>;
 export type OpenDisputeRequest = z.infer<typeof OpenDisputeRequest>;
 export const DisputeResponse = z
 	.object({
@@ -196,6 +220,7 @@ const BaseTransactionFields = {
 	createdBy: z.object({ id: z.uuid(), name: z.string() }).nullable(),
 	commentCount: z.int().nonnegative(),
 	dispute: TransactionDisputeDto.nullable(),
+	approval: TransactionApprovalDto,
 	createdAt: z.iso.datetime(),
 	updatedAt: z.iso.datetime(),
 	deletedAt: z.iso.datetime().nullable(),

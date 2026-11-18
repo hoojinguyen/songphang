@@ -13,6 +13,7 @@ import {
 	TransactionsResponse,
 } from "@songphang/contract";
 import {
+	approvalStatusFor,
 	computeItemShares,
 	computeItemsNetTotal,
 	foldVietnamese,
@@ -25,6 +26,7 @@ import {
 	countCommentsForTransactions,
 	type DbExecutor,
 	findGroup,
+	findGroupOwner,
 	findTransactionRow,
 	findUserById,
 	insertActivity,
@@ -44,6 +46,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import type { EnqueueFn } from "../queue.js";
 import {
 	toAttachmentDto,
 	validateTransactionAttachmentIds,
@@ -98,6 +101,9 @@ export async function previewTransaction(
 						amount: existing.amount,
 						occurredAt: existing.occurredAt,
 						payers: existingPayers,
+						counted:
+							existing.approvalStatus === "none" ||
+							existing.approvalStatus === "approved",
 					};
 				}
 				existingCategoryId = existing.categoryId;
@@ -122,6 +128,20 @@ export async function previewTransaction(
 		{ isolationLevel: "repeatable read", accessMode: "read only" },
 	);
 }
+function toApprovalDto(row: {
+	approvalStatus: string;
+	approvalDecidedByName: string | null;
+	approvalDecidedAt: Date | null;
+	approvalNote: string | null;
+}) {
+	return {
+		status: row.approvalStatus,
+		decidedByName: row.approvalDecidedByName ?? null,
+		decidedAt: row.approvalDecidedAt?.toISOString() ?? null,
+		note: row.approvalNote ?? null,
+	};
+}
+
 export async function mapTransactions(
 	executor: DbExecutor,
 	groupId: string,
@@ -155,6 +175,7 @@ export async function mapTransactions(
 						mine: viewerUserId !== null && dispute.openedBy === viewerUserId,
 					}
 				: null,
+			approval: toApprovalDto(row),
 			payers: payers.filter((payer) => payer.transactionId === row.id),
 			shares: shares.filter((share) => share.transactionId === row.id),
 			attachments: attachmentRows
@@ -197,6 +218,7 @@ async function mapTransactionListItems(
 						mine: viewerUserId !== null && dispute.openedBy === viewerUserId,
 					}
 				: null,
+			approval: toApprovalDto(row),
 			payers: payers.filter((payer) => payer.transactionId === row.id),
 			shares: shares.filter((share) => share.transactionId === row.id),
 			attachmentCount: attachmentCounts.get(row.id) ?? 0,
@@ -210,6 +232,7 @@ export async function createTransaction(
 		userId: string;
 		request: CreateTransactionRequest;
 		now: Date;
+		enqueue?: EnqueueFn;
 	},
 ) {
 	await lockGroup(executor, input.groupId);
@@ -260,6 +283,7 @@ export async function createTransactionIn(
 		userId: string;
 		request: CreateTransactionRequest;
 		now: Date;
+		enqueue?: EnqueueFn;
 	},
 ) {
 	const shares = await calculateShares(executor, input.groupId, input.request);
@@ -272,9 +296,20 @@ export async function createTransactionIn(
 		attachmentIds,
 		null,
 	);
-	const group = await findGroup(executor, input.groupId);
+	const [group, owner, actor] = await Promise.all([
+		findGroup(executor, input.groupId),
+		findGroupOwner(executor, input.groupId),
+		findUserById(executor, input.userId),
+	]);
 	if (group === null)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
+	const actorIsOwner = owner?.userId === input.userId;
+	const approvalStatus = approvalStatusFor({
+		type: request.type,
+		amount: request.amount,
+		threshold: group.approvalThreshold,
+		actorIsOwner,
+	});
 	const row = await insertTransaction(executor, {
 		groupId: input.groupId,
 		type: request.type,
@@ -287,6 +322,7 @@ export async function createTransactionIn(
 		categoryId: request.categoryId,
 		splitMethod: request.split.method,
 		splitInput: request.split,
+		approvalStatus,
 		createdBy: input.userId,
 		updatedBy: input.userId,
 		createdAt: input.now,
@@ -324,9 +360,30 @@ export async function createTransactionIn(
 		request: input.request,
 		applied: true,
 		now: input.now,
+		counted: approvalStatus !== "pending",
 	});
-	const actor = await findUserById(executor, input.userId);
 	const actorName = actor?.name ?? "";
+	if (approvalStatus === "pending") {
+		if (owner) {
+			await notify(executor, {
+				groupId: input.groupId,
+				actorUserId: input.userId,
+				kind: "approval_requested",
+				payload: {
+					kind: "approval_requested",
+					actorName,
+					groupName: group.name,
+					transactionId: row.id,
+					description: request.description,
+					amount: request.amount,
+				},
+				toUserIds: [owner.userId],
+				now: input.now,
+				...(input.enqueue ? { enqueue: input.enqueue } : {}),
+			});
+		}
+		return TransactionResponse.parse({ transaction, warnings });
+	}
 	if (request.type === "expense") {
 		await notifyExpenseAdded(executor, {
 			groupId: input.groupId,
