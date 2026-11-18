@@ -31,8 +31,9 @@
 
 ## D4 — Atomic `receipt_scans` + quota reservation + transactional `pg-boss` enqueue (Task 3B.3)
 
-- `createReceiptScan` locks the group, verifies attachment ownership, enforces idempotent active-scan uniqueness (`partial unique index` on `(group_id, attachment_id)` for `queued`/`reading`/`ready`), reserves `ai_calls` quota inside the same Drizzle DB transaction, and enqueues `read-receipt` using `pgBoss.send(..., { db: fromDrizzle(tx, sql) })`.
-- `claimScan` updates `receipt_scans` from `queued` -> `reading` with an optimistic status check and claims `ai_calls` (`pending` -> `claimed`) before any provider HTTP call; retries allocate a fresh `ai_calls` reservation. `recoverStaleScans` expires orphaned stale scans without silently making duplicate unreserved provider calls.
+- `createReceiptScan` locks the group, verifies attachment ownership, returns the existing scan for the attachment (`receipt_scans.attachment_id` is `UNIQUE` for every status, as the database design specifies), reserves `ai_calls` quota inside the same Drizzle DB transaction, and enqueues `read-receipt` using `pgBoss.send(..., { db: fromDrizzle(tx, sql) })`.
+- The worker claims the reservation (`ai_calls.state` `reserved` -> `started`, conditional update) and then moves the scan from `queued` to `processing` before any provider HTTP call. Every attempt ends `finished`; the scan ends `done` or `failed`. A retry allocates a fresh `ai_calls` reservation. `recoverStaleScans` fails stale `processing` scans without making duplicate unreserved provider calls.
+- Corrected 2026-11-18 after the advisor review: an earlier version of this entry named statuses `reading`/`ready`, a partial unique index and states `pending`/`claimed`, none of which exist in the code.
 
 ## D5 — Authoritative item-split calculation on API/core (`Theo món`, Tasks 3C.1–3C.3)
 
