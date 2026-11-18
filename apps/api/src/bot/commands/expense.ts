@@ -12,7 +12,7 @@ import { BotDraftPayload } from "../draft-payload.js";
 import { LINK_CODE_TTL_MS } from "../link-codes.js";
 import { replySenderNotLinked, resolveActor } from "../resolve-actor.js";
 
-export async function handleChiCommand(
+export async function handleExpenseCommand(
 	deps: AppDeps,
 	sender: ChatSender,
 	input: { chatId: string; platformUserId: string; arg: string },

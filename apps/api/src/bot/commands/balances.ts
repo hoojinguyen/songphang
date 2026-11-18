@@ -5,7 +5,7 @@ import { getBalances } from "../../services/balances.js";
 import type { ChatSender } from "../chat-sender.js";
 import { replySenderNotLinked, resolveActor } from "../resolve-actor.js";
 
-export async function handleSoduCommand(
+export async function handleBalancesCommand(
 	deps: AppDeps,
 	sender: ChatSender,
 	input: { chatId: string; platformUserId: string },

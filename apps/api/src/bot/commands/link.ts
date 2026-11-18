@@ -3,7 +3,7 @@ import { BOT_MESSAGES } from "../../bot-messages.js";
 import { redeemGroupChatLinkCode } from "../../services/chat-links.js";
 import type { ChatSender } from "../chat-sender.js";
 
-export async function handleLienketCommand(
+export async function handleLinkCommand(
 	deps: AppDeps,
 	sender: ChatSender,
 	input: { chatId: string; arg: string },

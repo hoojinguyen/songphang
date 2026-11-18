@@ -100,3 +100,10 @@ Each entry: problem, options, choice, reason; for a library also license, mainte
 - Options: leave the older format or align `vi.notifications.bellUnreadLabel` to `"{count} thông báo chưa đọc"`.
 - Choice: update `vi.notifications.bellUnreadLabel` to `"{count} thông báo chưa đọc"`.
 - Reason: matches Plan 4D.4's accessibility check character for character while staying natural Vietnamese for screen readers.
+
+### D4D.3 — Rename Telegram bot command modules to English (Owner request)
+
+- Problem: Plan `4c-telegram.md` specified Vietnamese filenames (`chi.ts`, `sodu.ts`, `huy.ts`, `trogiup.ts`, `lienket.ts`) matching the slash command names, whereas engineering artifacts in `AGENTS.md` use English identifiers.
+- Options: leave the planned filenames in place or rename them and their handlers to English (`expense.ts`, `balances.ts`, `undo.ts`, `help.ts`, `link.ts`) while keeping the Telegram slash commands (`/chi`, `/sodu`, `/huy`, `/trogiup`, `/start`, `/lienket`) unchanged.
+- Choice: renamed all five command files and handlers to English per project owner approval.
+- Reason: aligns all Phase 4 TypeScript source filenames and identifiers with `AGENTS.md` English engineering policy without altering user-facing bot commands.

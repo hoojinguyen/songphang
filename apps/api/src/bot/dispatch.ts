@@ -1,11 +1,11 @@
 import type { AppDeps } from "../app.js";
 import { handleBotCallback } from "./callbacks.js";
 import type { ChatSender } from "./chat-sender.js";
-import { handleChiCommand } from "./commands/chi.js";
-import { handleHuyCommand } from "./commands/huy.js";
-import { handleLienketCommand } from "./commands/lienket.js";
-import { handleSoduCommand } from "./commands/sodu.js";
-import { handleTrogiupCommand } from "./commands/trogiup.js";
+import { handleBalancesCommand } from "./commands/balances.js";
+import { handleExpenseCommand } from "./commands/expense.js";
+import { handleHelpCommand } from "./commands/help.js";
+import { handleLinkCommand } from "./commands/link.js";
+import { handleUndoCommand } from "./commands/undo.js";
 import { parseBotCommand, type TelegramUpdate } from "./telegram-update.js";
 
 export async function dispatchWebhookUpdate(
@@ -30,24 +30,24 @@ export async function dispatchWebhookUpdate(
 
 	switch (parsed.command) {
 		case "lienket":
-			await handleLienketCommand(deps, sender, { chatId, arg: parsed.arg });
+			await handleLinkCommand(deps, sender, { chatId, arg: parsed.arg });
 			return;
 		case "chi":
-			await handleChiCommand(deps, sender, {
+			await handleExpenseCommand(deps, sender, {
 				chatId,
 				platformUserId,
 				arg: parsed.arg,
 			});
 			return;
 		case "sodu":
-			await handleSoduCommand(deps, sender, { chatId, platformUserId });
+			await handleBalancesCommand(deps, sender, { chatId, platformUserId });
 			return;
 		case "huy":
-			await handleHuyCommand(deps, sender, { chatId, platformUserId });
+			await handleUndoCommand(deps, sender, { chatId, platformUserId });
 			return;
 		case "trogiup":
 		case "start":
-			await handleTrogiupCommand(deps, sender, { chatId });
+			await handleHelpCommand(deps, sender, { chatId });
 			return;
 		default:
 			return;

@@ -365,3 +365,8 @@ None.
   - `pnpm check`: passed (`Checked 478 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
   - `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`2.1s`).
   - Acceptance replay: `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`, `DISABLED_FEATURES_CHECK_PASSED` (`telegram: false`, `receiptReading: false`, `sentenceAi: false`), `PHASE_1_2_3_BASELINE_REPLAY_PASSED`, `EXERCISE_4A1_PASSED`, `EXERCISE_4A2_PASSED`, `EXERCISE_4B1_PASSED`, `EXERCISE_4B3_PASSED`, `EXERCISE_4B4_PASSED`, `EXERCISE_4C1_PASSED`, `EXERCISE_4C2_PASSED`, `EXERCISE_4D1_PASSED`, `EXERCISE_4D2_PASSED`, and `pnpm db:check-balances` -> `All groups balanced` across 12 groups (`sum 0; mismatches 0`).
+
+## Post-gate refactor — rename Telegram command files to English
+
+- Renamed `apps/api/src/bot/commands/{chi,sodu,huy,trogiup,lienket}.ts` to `{expense,balances,undo,help,link}.ts` and updated exported handlers and imports in `apps/api/src/bot/dispatch.ts` per project owner request (user-facing Telegram commands `/chi`, `/sodu`, `/huy`, `/trogiup`, `/start`, `/lienket` unchanged).
+- Re-verified: `pnpm check` passed (`Checked 478 files`, 0 errors), `exercise_4c1.mts` (`EXERCISE_4C1_PASSED`), `exercise_4c2.mts` (`EXERCISE_4C2_PASSED`), and `pnpm db:check-balances` (`All groups balanced`).

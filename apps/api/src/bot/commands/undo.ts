@@ -7,7 +7,7 @@ import type { ChatSender } from "../chat-sender.js";
 import { LINK_CODE_TTL_MS } from "../link-codes.js";
 import { replySenderNotLinked, resolveActor } from "../resolve-actor.js";
 
-export async function handleHuyCommand(
+export async function handleUndoCommand(
 	deps: AppDeps,
 	sender: ChatSender,
 	input: { chatId: string; platformUserId: string },
