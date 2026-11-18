@@ -34,3 +34,10 @@ Checks are appended by screen and flow as tasks complete, plus a section **After
 3. Click `Nhắc` on `Hùng` again immediately -> snackbar shows `Bạn vừa nhắc Hùng rồi. Nhắc lại được sau {giờ} ngày {ngày}.`.
 4. Click `Nhắc cả nhóm một lần` -> snackbar shows `Đã nhắc 1 người.` (or `Chưa đến lúc nhắc lại ai.` when all pairs are within 24 hours).
 5. As owner, open `/g/{id}/settings` under `Tự nhắc nợ`, select `Mỗi tuần`, reload the page -> `Mỗi tuần` stays pressed (`PATCH /groups/{id}` persisted `reminderIntervalDays: 7`).
+
+## S11, S13, `/link/telegram`, and `?form&text=` — Telegram linking web flows (Stage 4C)
+
+1. When `TELEGRAM_PROVIDER` is enabled, open `/g/{id}/settings` as owner -> `Liên kết nhóm Telegram` appears with `Tạo mã liên kết`; click to generate a monospace `/lienket XXXXXXXX` command and copy with `Sao chép`.
+2. Open a `/link/telegram?code=...` URL while signed out -> redirects through `/login?next=...`. After signing in, `/link/telegram` asks `Liên kết Telegram với tài khoản {email}?`; clicking `Liên kết` shows `Đã liên kết. Quay lại Telegram để tiếp tục.`. Reusing the same code shows `Link này không còn dùng được.`.
+3. Open `/account` -> `Telegram` card shows `Đã liên kết với Telegram`; clicking `Bỏ liên kết` removes it. Returning to `/g/{id}/settings` shows linked chat IDs and clicking `Bỏ liên kết` unlinks them.
+4. Open `/g/{id}/tx/new?form&text=abc%20xyz` -> `Mô tả` input is prefilled with `abc xyz`.

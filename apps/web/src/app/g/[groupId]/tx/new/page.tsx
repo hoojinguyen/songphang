@@ -100,6 +100,7 @@ export default function NewExpensePage() {
 						...(search.get("attachmentId")
 							? { attachmentId: search.get("attachmentId") }
 							: {}),
+						...(search.get("text") ? { text: search.get("text") } : {}),
 					}}
 				/>
 			)}

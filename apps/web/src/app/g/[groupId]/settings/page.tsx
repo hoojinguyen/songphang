@@ -7,6 +7,7 @@ import { BudgetCard } from "../../../../components/settings/BudgetCard";
 import { CategoryList } from "../../../../components/settings/CategoryList";
 import { DeleteGroupCard } from "../../../../components/settings/DeleteGroupCard";
 import { InviteLinkCard } from "../../../../components/settings/InviteLinkCard";
+import { TelegramCard } from "../../../../components/settings/TelegramCard";
 import { TransferOwnershipCard } from "../../../../components/settings/TransferOwnershipCard";
 import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
@@ -115,6 +116,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 			<BudgetCard groupId={group.id} />
 			<CategoryList groupId={group.id} />
 			<InviteLinkCard groupId={group.id} />
+			<TelegramCard groupId={group.id} />
 			<TransferOwnershipCard groupId={group.id} />
 			<DeleteGroupCard group={group} />
 			{update.isError && (

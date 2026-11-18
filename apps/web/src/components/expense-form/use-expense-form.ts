@@ -1,11 +1,12 @@
 "use client";
-import {
-	type AttachmentDto,
-	CreateTransactionRequest,
-	type MemberDto,
-	type SplitTransactionRequest,
-	type TransactionDto,
+import type {
+	AttachmentDto,
+	MemberDto,
+	SplitTransactionRequest,
+	TransactionDto,
 } from "@songphang/contract";
+import { CreateTransactionRequest, ParseDraft } from "@songphang/contract";
+import { readSentence } from "@songphang/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
@@ -30,6 +31,7 @@ export type FormPrefill = {
 	from?: string | null;
 	to?: string | null;
 	attachmentId?: string | null;
+	text?: string | null;
 };
 
 export function useExpenseForm(
@@ -40,7 +42,43 @@ export function useExpenseForm(
 	prefill?: FormPrefill,
 ) {
 	const memory = useDraft();
-	const draft = transaction ?? memory.draft?.draft;
+	const parsedFromText =
+		!transaction && !memory.draft?.draft && prefill?.text?.trim()
+			? readSentence({
+					text: prefill.text.trim().normalize("NFC"),
+					members: members.map((member) => ({
+						id: member.id,
+						name: member.name,
+						kind: member.kind === "fund" ? "fund" : "person",
+						active: member.active,
+						position: member.position,
+					})),
+					writerMemberId: myMemberId,
+				})
+			: null;
+	const prefillDraft: ParseDraft | undefined = parsedFromText
+		? ParseDraft.parse({
+				type: "expense",
+				description:
+					parsedFromText.draft.description ??
+					prefill?.text?.trim().slice(0, 200) ??
+					"",
+				amount: parsedFromText.draft.amount,
+				category: null,
+				categoryId: null,
+				payers:
+					parsedFromText.draft.payerMemberId && parsedFromText.draft.amount
+						? [
+								{
+									memberId: parsedFromText.draft.payerMemberId,
+									amount: parsedFromText.draft.amount,
+								},
+							]
+						: [],
+				split: parsedFromText.draft.split,
+			})
+		: undefined;
+	const draft = transaction ?? memory.draft?.draft ?? prefillDraft;
 	const activeQueue =
 		!transaction &&
 		memory.draft &&
@@ -95,7 +133,11 @@ export function useExpenseForm(
 		if (nextId !== null) setBuiltInCategory(null);
 	};
 	const [payerIds, setPayerIds] = useState<string[]>(
-		draft ? draft.payers.map((p) => p.memberId) : initial ? [initial] : [],
+		draft && draft.payers.length > 0
+			? draft.payers.map((p) => p.memberId)
+			: initial
+				? [initial]
+				: [],
 	);
 	const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>(
 		Object.fromEntries(

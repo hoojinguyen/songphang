@@ -17,7 +17,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4B.5 — Web: reminders and settings; stage gate
 - [x] 4C.1 — Webhook, sender, identities and links
 - [x] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
-- [ ] 4C.3 — Web: linking screens
+- [x] 4C.3 — Web: linking screens
 - [ ] 4C.4 — Stage gate 4C and the bot runbook
 - [ ] 4D.1 — Database and money path: the approval filter
 - [ ] 4D.2 — API: threshold, pending, approve, reject
@@ -235,3 +235,22 @@ None.
   - `EXERCISE_4C2_PASSED`: verified all 17 table rows (`999` stranger link button without draft; Lan `111` `/chi cà phê 180k chia 4` draft matching `/transactions/preview` shares; `222` tap `s:` -> `"Chỉ Lan lưu được khoản này."`; Lan tap `s:` -> `"Đã lưu: cà phê · 180.000 đ."` with `createdBy: Lan`; repeat tap silent; viewer `222` `/chi` refused; empty `/chi`; unparsed `/chi abc xyz` with `Mở form` link; AI fallback `/chi lẩu 300k lan 100 lan 200` prefixed `"Đọc bằng AI."` + `d:` drop -> `"Đã bỏ."`; `/sodu` matching `GET .../balances` + `"Quỹ còn 200.000 đ"` with active fund; `/huy` soft-deleting + activity log, second `/huy` -> nothing; 11m expired draft -> expired reply; demoted viewer at tap time -> viewer reply; removed member `/sodu` -> not-in-group reply; `/chi@OtherBot` ignored; `/trogiup@songphangtestbot` help; bad callback `x:1` and cross-chat `s:` ignored; `/chi <script>` and 400-char sentence safely rejected with no drafts stored; `runPruneBotData` pruned `drafts: 2, codes: 9, updates: 1`).
   - `pnpm db:check-balances` -> `All groups balanced` (14 groups).
 - Security review: every command and callback resolves caller via verified `chat_identities` + `group_users` and re-checks current role at `s:{id}` save time; no user-submitted bot text sent as HTML/Markdown; raw link code never logged outside `/link/telegram` URL generation.
+
+## Task 4C.3 — approach
+
+- Files to create/modify: create `apps/web/src/lib/chat-links.ts`, `apps/web/src/components/settings/TelegramCard.tsx`, `apps/web/src/components/account/TelegramIdentityCard.tsx`, `apps/web/src/app/link/telegram/page.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/app/g/[groupId]/settings/page.tsx`, `apps/web/src/app/account/page.tsx`, `apps/web/src/app/g/[groupId]/tx/new/page.tsx`, `apps/web/src/components/expense-form/use-expense-form.ts`.
+- Approach: add Spec 7.3 Telegram strings to `vi.ts`, create TanStack Query hooks in `chat-links.ts`, guard `TelegramCard` and `TelegramIdentityCard` behind `features.telegram === true`, wrap `/link/telegram` in `<Suspense>` with `useSessionGuard` (redirecting through `/login?next=...` safely) and explicit `Liên kết` button claim, and accept `?form&text=` on `/g/[groupId]/tx/new` running `readSentence` first and falling back to prefilling `description` with `text`.
+- Why simplest: mirrors existing `InviteLinkCard`, `NotificationSettingsCard`, `NotificationsPage` session guard, and `useExpenseForm` `FormPrefill` patterns without extra state stores or duplicate parsers.
+- Rejected alternative: auto-claiming the code in a `useEffect` on `/link/telegram`, which violates CSRF-safe explicit confirmation (`Liên kết` button + showing signed-in email) and could consume a one-time code unintentionally on tab prefetch.
+
+### Task 4C.3 results
+
+- `pnpm check`: passed (`Checked 473 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`/link/telegram` built cleanly).
+- Live Chrome two-context exercise against disposable `songphang_phase4_gate` (`TELEGRAM_PROVIDER=console`, `TELEGRAM_BOT_USERNAME=SongPhangTestBot`):
+  - S11 (`/g/.../settings`) as Minh: displayed `Liên kết nhóm Telegram` and `@SongPhangTestBot`; generated `/lienket EMNPNQ2U` with `Sao chép` -> `Đã sao chép` and `Mã có hiệu lực 10 phút.`; linked chat `-1003` -> reload displayed `-1003` with `Bỏ liên kết` -> clicked `Bỏ liên kết` -> removed cleanly.
+  - `?form&text=abc%20xyz` on `/g/.../tx/new`: rendered `<ExpenseForm>` directly with `Mô tả` prefilled `"abc xyz"`.
+  - Signed-out Chrome opening `/link/telegram?code=VG73SN96` redirected to `/login?next=%2Flink%2Ftelegram%3Fcode%3DVG73SN96`.
+  - Signed-in as Lan on `/link/telegram?code=VG73SN96`: rendered `"Liên kết Telegram với tài khoản lan@dev.songphang.local?"` -> clicked `Liên kết` -> `"Đã liên kết. Quay lại Telegram để tiếp tục."` -> reloaded same URL and clicked `Liên kết` -> `"Link này không còn dùng được."`.
+  - S13 (`/account`) as Lan: rendered `Telegram` / `Đã liên kết với Telegram` / `Bỏ liên kết` -> clicked `Bỏ liên kết` -> card removed. Zero console errors or warnings across both tabs.
+- Security review: `safeNext` / `loginPath` preserves safe relative redirects, explicit button triggers POST `/me/chat-identities/claim`, and `code` is never logged or sent elsewhere.

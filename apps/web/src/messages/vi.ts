@@ -712,6 +712,22 @@ export const vi = {
 		interval7: "Mỗi tuần",
 		interval14: "Mỗi 2 tuần",
 	},
+	telegram: {
+		accountTitle: "Telegram",
+		accountLinked: "Đã liên kết với {name}",
+		unlink: "Bỏ liên kết",
+		settingsTitle: "Liên kết nhóm Telegram",
+		settingsHint:
+			"Thêm bot @{bot} vào nhóm Telegram rồi gửi lệnh này trong nhóm:",
+		generateCode: "Tạo mã liên kết",
+		copy: "Sao chép",
+		copied: "Đã sao chép",
+		codeTtl: "Mã có hiệu lực 10 phút.",
+		linkConfirm: "Liên kết Telegram với tài khoản {email}?",
+		linkButton: "Liên kết",
+		linkDone: "Đã liên kết. Quay lại Telegram để tiếp tục.",
+		linkInvalid: "Link này không còn dùng được.",
+	},
 	showcase: { members: { minh: "Minh", lan: "Lan", hung: "Hùng", thu: "Thu" } },
 } as const;
 
