@@ -41,3 +41,9 @@ Checks are appended by screen and flow as tasks complete, plus a section **After
 2. Open a `/link/telegram?code=...` URL while signed out -> redirects through `/login?next=...`. After signing in, `/link/telegram` asks `Liên kết Telegram với tài khoản {email}?`; clicking `Liên kết` shows `Đã liên kết. Quay lại Telegram để tiếp tục.`. Reusing the same code shows `Link này không còn dùng được.`.
 3. Open `/account` -> `Telegram` card shows `Đã liên kết với Telegram`; clicking `Bỏ liên kết` removes it. Returning to `/g/{id}/settings` shows linked chat IDs and clicking `Bỏ liên kết` unlinks them.
 4. Open `/g/{id}/tx/new?form&text=abc%20xyz` -> `Mô tả` input is prefilled with `abc xyz`.
+
+## After the Telegram bot exists
+
+1. In a real Telegram group linked via `/lienket <code>`: send `/chi cà phê 180k chia 4` -> bot replies with split breakdown and `Lưu` / `Bỏ` buttons -> tap `Lưu` -> web app expense list updates within 2 seconds.
+2. A friend who has not linked their Sòng Phẳng account runs `/chi ...` -> receives `Mình chưa biết bạn là ai trên Sòng Phẳng.` with `Liên kết tài khoản` button opening `/link/telegram?code=...`, and nothing is saved.
+3. Another person taps your `Lưu` button -> rejected with `Chỉ {tên bạn} lưu được khoản này.` and nothing is saved.

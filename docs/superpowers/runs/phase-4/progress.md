@@ -18,7 +18,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4C.1 — Webhook, sender, identities and links
 - [x] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
 - [x] 4C.3 — Web: linking screens
-- [ ] 4C.4 — Stage gate 4C and the bot runbook
+- [x] 4C.4 — Stage gate 4C and the bot runbook
 - [ ] 4D.1 — Database and money path: the approval filter
 - [ ] 4D.2 — API: threshold, pending, approve, reject
 - [ ] 4D.3 — Web: approval
@@ -31,6 +31,7 @@ None.
 ## Not verified
 
 - Real SMTP delivery, email client rendering, and mail-client one-click `List-Unsubscribe-Post` execution (no SMTP server/domain locally; exercised with console mailer).
+- Real `TelegramChatSender` HTTP calls to `api.telegram.org`, `setWebhook` registration against a public HTTPS endpoint, and inline button/message rendering inside Telegram apps (no bot token or external calls locally; exercised with `TELEGRAM_PROVIDER=console`).
 
 ## Gate not passed
 
@@ -254,3 +255,26 @@ None.
   - Signed-in as Lan on `/link/telegram?code=VG73SN96`: rendered `"Liên kết Telegram với tài khoản lan@dev.songphang.local?"` -> clicked `Liên kết` -> `"Đã liên kết. Quay lại Telegram để tiếp tục."` -> reloaded same URL and clicked `Liên kết` -> `"Link này không còn dùng được."`.
   - S13 (`/account`) as Lan: rendered `Telegram` / `Đã liên kết với Telegram` / `Bỏ liên kết` -> clicked `Bỏ liên kết` -> card removed. Zero console errors or warnings across both tabs.
 - Security review: `safeNext` / `loginPath` preserves safe relative redirects, explicit button triggers POST `/me/chat-identities/claim`, and `code` is never logged or sent elsewhere.
+
+## Task 4C.4 — approach
+
+- Files to create/modify: create `docs/runbooks/telegram.md`; update `docs/superpowers/runs/phase-4/{progress,manual-checks}.md`.
+- Approach: author English Telegram setup/webhook/rotation runbook with copyable commands matching implemented env vars and endpoints, document unverified live Telegram integration items honestly under `## Not verified`, append real-bot manual checks to `manual-checks.md`, and run Stage Gate 4C on freshly reset `songphang_phase4_gate`.
+- Why simplest: consolidates bot operations and verification in one self-contained runbook without modifying application code.
+- Rejected alternative: automating live `setWebhook` verification from CI/local runner, which is forbidden by run constraints (`never call api.telegram.org`).
+
+### Task 4C.4 & Stage Gate 4C results
+
+- Created [docs/runbooks/telegram.md](file:///Users/hoojinguyen/Projects/songphang/docs/runbooks/telegram.md) covering `@BotFather` bot creation + `/setprivacy` `Enable`, `TELEGRAM_*` env variables, `setWebhook` (`secret_token`, `allowed_updates`), `getWebhookInfo`, group & user linking, 5 commands, and secret/token rotation.
+- Updated `## Not verified` in `progress.md` and added `## After the Telegram bot exists` to `manual-checks.md`.
+- Stage Gate 4C (`task-1602`):
+  - `pnpm check`: passed (`Checked 473 files`, 3 pre-existing `noImgElement` warnings, 0 errors).
+  - `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`2.7s`, all routes built).
+  - Reset + migrated + seeded disposable `songphang_phase4_gate`, then ran full gate sequence:
+    - `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`
+    - `DISABLED_FEATURES_CHECK_PASSED` (`telegram: false`, `receiptReading: false`, `sentenceAi: false`, others `false`)
+    - `PHASE_1_2_3_BASELINE_REPLAY_PASSED`
+    - `EXERCISE_4A1_PASSED`, `EXERCISE_4A2_PASSED`
+    - `EXERCISE_4B1_PASSED`, `EXERCISE_4B3_PASSED`, `EXERCISE_4B4_PASSED`
+    - `EXERCISE_4C1_PASSED`, `EXERCISE_4C2_PASSED`
+    - `pnpm db:check-balances` -> `All groups balanced` (10 groups, sum 0, mismatches 0).
