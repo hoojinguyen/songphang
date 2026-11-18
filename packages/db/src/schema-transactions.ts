@@ -36,6 +36,12 @@ export const transactions = pgTable(
 		splitMethod: text("split_method").notNull(),
 		splitInput: jsonb("split_input").$type<unknown>().notNull(),
 		version: integer("version").notNull().default(1),
+		approvalStatus: text("approval_status").notNull().default("none"),
+		approvalDecidedBy: uuid("approval_decided_by").references(() => users.id, {
+			onDelete: "set null",
+		}),
+		approvalDecidedAt: timestamp("approval_decided_at", { withTimezone: true }),
+		approvalNote: text("approval_note"),
 		createdBy: uuid("created_by").references(() => users.id, {
 			onDelete: "set null",
 		}),
@@ -74,6 +80,14 @@ export const transactions = pgTable(
 		check(
 			"transactions_split_method_check",
 			sql`${table.splitMethod} in ('equal', 'exact', 'shares', 'percent', 'items')`,
+		),
+		check(
+			"transactions_approval_status_check",
+			sql`${table.approvalStatus} in ('none', 'pending', 'approved', 'rejected')`,
+		),
+		check(
+			"transactions_approval_note_check",
+			sql`${table.approvalNote} is null or char_length(${table.approvalNote}) <= 300`,
 		),
 		index("transactions_group_feed_index")
 			.on(table.groupId, table.occurredAt.desc(), table.id.desc())

@@ -22,6 +22,11 @@ import {
 } from "./schema-transactions.js";
 
 const editor = alias(users, "transaction_editor");
+const approver = alias(users, "transaction_approver");
+export function countedTransaction(aliasName: "t" | "transactions" = "t") {
+	const table = sql.raw(aliasName);
+	return sql`${table}.deleted_at is null and ${table}.approval_status in ('none', 'approved')`;
+}
 export const TRANSACTION_COLUMNS = {
 	id: transactions.id,
 	groupId: transactions.groupId,
@@ -34,6 +39,11 @@ export const TRANSACTION_COLUMNS = {
 	categoryId: transactions.categoryId,
 	split: transactions.splitInput,
 	version: transactions.version,
+	approvalStatus: transactions.approvalStatus,
+	approvalDecidedBy: transactions.approvalDecidedBy,
+	approvalDecidedByName: approver.name,
+	approvalDecidedAt: transactions.approvalDecidedAt,
+	approvalNote: transactions.approvalNote,
 	createdAt: transactions.createdAt,
 	updatedAt: transactions.updatedAt,
 	deletedAt: transactions.deletedAt,
@@ -69,6 +79,7 @@ export function listTransactionRows(
 		.from(transactions)
 		.leftJoin(users, eq(users.id, transactions.createdBy))
 		.leftJoin(editor, eq(editor.id, transactions.updatedBy))
+		.leftJoin(approver, eq(approver.id, transactions.approvalDecidedBy))
 		.where(
 			and(
 				eq(transactions.groupId, input.groupId),
@@ -147,6 +158,7 @@ export async function findTransactionRow(
 		.from(transactions)
 		.leftJoin(users, eq(users.id, transactions.createdBy))
 		.leftJoin(editor, eq(editor.id, transactions.updatedBy))
+		.leftJoin(approver, eq(approver.id, transactions.approvalDecidedBy))
 		.where(
 			and(
 				eq(transactions.groupId, groupId),
@@ -245,7 +257,10 @@ export function listExportTransactions(executor: DbExecutor, groupId: string) {
 		})
 		.from(transactions)
 		.where(
-			and(eq(transactions.groupId, groupId), isNull(transactions.deletedAt)),
+			and(
+				eq(transactions.groupId, groupId),
+				countedTransaction("transactions"),
+			),
 		)
 		.orderBy(asc(transactions.occurredAt), asc(transactions.id));
 }
@@ -264,7 +279,10 @@ export function listGroupLivePayers(executor: DbExecutor, groupId: string) {
 		)
 		.innerJoin(members, eq(members.id, transactionPayers.memberId))
 		.where(
-			and(eq(transactions.groupId, groupId), isNull(transactions.deletedAt)),
+			and(
+				eq(transactions.groupId, groupId),
+				countedTransaction("transactions"),
+			),
 		)
 		.orderBy(members.position);
 }
@@ -282,6 +300,9 @@ export function listGroupLiveShares(executor: DbExecutor, groupId: string) {
 			eq(transactions.id, transactionShares.transactionId),
 		)
 		.where(
-			and(eq(transactions.groupId, groupId), isNull(transactions.deletedAt)),
+			and(
+				eq(transactions.groupId, groupId),
+				countedTransaction("transactions"),
+			),
 		);
 }

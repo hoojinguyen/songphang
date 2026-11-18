@@ -30,6 +30,7 @@ export async function findGroup(executor: DbExecutor, groupId: string) {
 			minimizeDebts: groups.minimizeDebts,
 			defaultRole: groups.defaultRole,
 			reminderIntervalDays: groups.reminderIntervalDays,
+			approvalThreshold: groups.approvalThreshold,
 			createdAt: groups.createdAt,
 		})
 		.from(groups)
@@ -76,6 +77,7 @@ export function updateGroup(
 			minimizeDebts?: boolean;
 			defaultRole?: "editor" | "viewer";
 			reminderIntervalDays?: 3 | 7 | 14 | null;
+			approvalThreshold?: number | null;
 		};
 		now: Date;
 	},

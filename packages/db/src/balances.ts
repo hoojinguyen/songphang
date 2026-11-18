@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DbExecutor } from "./client.js";
 import { members } from "./schema-groups.js";
@@ -7,6 +7,7 @@ import {
 	transactionShares,
 	transactions,
 } from "./schema-transactions.js";
+import { countedTransaction } from "./transactions.js";
 
 const BALANCE_ROW = z.object({
 	memberId: z.uuid(),
@@ -26,14 +27,14 @@ export async function listBalancesForGroups(
  where t.group_id in (${sql.join(
 		groupIds.map((id) => sql`${id}::uuid`),
 		sql`, `,
- )}) and t.deleted_at is null
+ )}) and ${countedTransaction("t")}
  union all
  select s.member_id, case when t.type = 'income' then s.amount else -s.amount end
  from transaction_shares s join transactions t on t.id = s.transaction_id
  where t.group_id in (${sql.join(
 		groupIds.map((id) => sql`${id}::uuid`),
 		sql`, `,
- )}) and t.deleted_at is null
+ )}) and ${countedTransaction("t")}
  ) x on x.member_id = m.id
  where m.group_id in (${sql.join(
 		groupIds.map((id) => sql`${id}::uuid`),
@@ -62,7 +63,10 @@ export async function listLedgerSides(executor: DbExecutor, groupId: string) {
 		)
 		.innerJoin(members, eq(members.id, transactionPayers.memberId))
 		.where(
-			and(eq(transactions.groupId, groupId), isNull(transactions.deletedAt)),
+			and(
+				eq(transactions.groupId, groupId),
+				countedTransaction("transactions"),
+			),
 		)
 		.orderBy(members.position);
 	const shares = await executor
@@ -78,7 +82,10 @@ export async function listLedgerSides(executor: DbExecutor, groupId: string) {
 		)
 		.innerJoin(members, eq(members.id, transactionShares.memberId))
 		.where(
-			and(eq(transactions.groupId, groupId), isNull(transactions.deletedAt)),
+			and(
+				eq(transactions.groupId, groupId),
+				countedTransaction("transactions"),
+			),
 		)
 		.orderBy(members.position);
 	return { payers, shares };

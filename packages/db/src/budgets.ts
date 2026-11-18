@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DbExecutor } from "./client.js";
 import { budgets } from "./schema-budgets.js";
+import { countedTransaction } from "./transactions.js";
 
 const SpentRowSchema = z.object({ spent: z.string() });
 
@@ -72,7 +73,7 @@ export async function sumSpent(
 		)::bigint::text as spent
 		from transactions t
 		where t.group_id = ${groupId}::uuid
-			and t.deleted_at is null
+			and ${countedTransaction("t")}
 			and t.type in ('expense', 'income')
 			${startFilter}
 			${endFilter}

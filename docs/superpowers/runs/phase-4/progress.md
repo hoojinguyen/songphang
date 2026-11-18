@@ -19,7 +19,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
 - [x] 4C.3 — Web: linking screens
 - [x] 4C.4 — Stage gate 4C and the bot runbook
-- [ ] 4D.1 — Database and money path: the approval filter
+- [x] 4D.1 — Database and money path: the approval filter
 - [ ] 4D.2 — API: threshold, pending, approve, reject
 - [ ] 4D.3 — Web: approval
 - [ ] 4D.4 — README, non-functional checks, final gate
@@ -278,3 +278,31 @@ None.
     - `EXERCISE_4B1_PASSED`, `EXERCISE_4B3_PASSED`, `EXERCISE_4B4_PASSED`
     - `EXERCISE_4C1_PASSED`, `EXERCISE_4C2_PASSED`
     - `pnpm db:check-balances` -> `All groups balanced` (10 groups, sum 0, mismatches 0).
+
+## Task 4D.1 — approach
+
+- Files to create/modify: modify `packages/db/src/schema-transactions.ts`, `packages/db/src/schema-groups.ts`, `packages/db/src/transactions.ts`, `packages/db/src/balances.ts`, `packages/db/src/check-balances.ts`, `packages/db/src/stats.ts`, `packages/db/src/budgets.ts`, `packages/db/src/fund.ts`, `packages/db/src/groups.ts`; generate migration `0020_*.sql`.
+- Approach: add `approval_status`, `approval_decided_by`, `approval_decided_at`, `approval_note` on `transactions` and `approval_threshold` on `groups` with DB check constraints; define one type-safe `countedTransaction(alias: "t" | "transactions")` SQL fragment in `packages/db/src/transactions.ts` (`deleted_at is null and approval_status in ('none', 'approved')`) and apply it to every balance, pairwise-ledger, stats, budget, fund, and export query while keeping `check-balances` mismatch integrity over all live transactions (`deleted_at is null`).
+- Why simplest: one shared SQL fragment (`countedTransaction`) guarantees zero divergence across raw `sql` and Drizzle queries without duplicating status/deleted checks.
+- Rejected alternative: filtering pending/rejected transactions in TypeScript services after loading rows, which would load unnecessary rows, duplicate balance summation outside Postgres, and fail SQL sum/budget/stat invariants.
+
+### Task 4D.1 results
+
+- Migration `0020_sour_sheva_callister.sql` generated and applied (`transactions.approval_status`, `approval_decided_by`, `approval_decided_at`, `approval_note`; `groups.approval_threshold` + DB check constraints).
+- `pnpm check`: passed (`Checked 474 files`, 3 pre-existing `noImgElement` warnings, 0 errors).
+- `exercise_4d1.mts` against `songphang_phase4_gate`:
+  - `EXERCISE_4D1_PASSED`: with 3 counted expenses totaling 600.000 đ, toggling E3 (`300.000 đ`) to `pending` and `rejected` excluded it identically from `GET .../balances` (`minimizeDebts: true` & `false`, sum = 0, Minh balance `220000 -> 20000`), `GET .../stats` (`600000 -> 300000`), `GET .../budget` (`spent: 600000 -> 300000`), and `GET .../export.csv`, while `checkBalances` printed `All groups balanced`. Setting E3 to `approved` restored all baseline values identically.
+- `rg -n "transaction_shares|transaction_payers" packages/db/src` (plus Drizzle table references):
+  - `packages/db/src/balances.ts:26,33` (`listBalancesForGroups`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/balances.ts:59,75` (`listLedgerSides`) — **filtered** (`countedTransaction("transactions")`).
+  - `packages/db/src/check-balances.ts:20,23` (`totals`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/check-balances.ts:28,29,31` (`mismatches`) — **intentionally unfiltered by approval status** (`t.deleted_at is null`): Plan 4D.1 explicitly requires checking payer/share integrity of every live transaction, pending or not.
+  - `packages/db/src/stats.ts:104,110` (`sumByMember` CTE `counted`, plus `findCountedDateBounds`, `sumByCategory`, `sumByBucket`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/budgets.ts` (`sumSpent`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/fund.ts:36,37` (`fundCashAndContributions`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/transactions.ts` (`listExportTransactions`, `listGroupLivePayers`, `listGroupLiveShares`) — **filtered** (`countedTransaction("transactions")`).
+  - `packages/db/src/transactions.ts` (`listTransactionRows`, `listTransactionPayers`, `listTransactionShares`) — **intentionally unfiltered by approval status**: Decision 4 requires pending/rejected transactions to remain listed and viewable in the feed and S20.
+  - `packages/db/src/transaction-changes.ts:40,43` (`clearTransactionSides`), `packages/db/src/transactions.ts` (`insertTransactionPayers/Shares`) — write helpers by single transaction id.
+  - `packages/db/src/members.ts:109` (`hasTransactions`) — member deletion guard checking whether any transaction row (including pending/rejected/deleted) still references the member FK.
+  - `packages/db/src/schema-transactions.ts:99,116`, `packages/db/src/index.ts:58,59` — schema definitions and exports.
+- Security review: type-safe union parameter on `countedTransaction("t" | "transactions")`; DB CHECK constraints enforce valid enum and length bounds.

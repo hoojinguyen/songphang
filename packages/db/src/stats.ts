@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DbExecutor } from "./client.js";
+import { countedTransaction } from "./transactions.js";
 
 const DateBoundsSchema = z.object({
 	firstDate: z.string().nullable(),
@@ -48,7 +49,7 @@ export async function findCountedDateBounds(
 			to_char(max((t.occurred_at at time zone ${timeZone})::date), 'YYYY-MM-DD') as "lastDate"
 		from transactions t
 		where t.group_id = ${groupId}
-			and t.deleted_at is null
+			and ${countedTransaction("t")}
 			and t.type in ('expense', 'income')
 	`);
 	return DateBoundsSchema.parse(rows[0] ?? { firstDate: null, lastDate: null });
@@ -67,7 +68,7 @@ export async function sumByCategory(
 			coalesce(sum(case when t.type = 'income' then -t.amount else t.amount end), 0)::bigint::text as amount
 		from transactions t
 		where t.group_id = ${groupId}
-			and t.deleted_at is null
+			and ${countedTransaction("t")}
 			and t.type in ('expense', 'income')
 			${filter}
 		group by t.category, t.category_id
@@ -94,7 +95,7 @@ export async function sumByMember(
 			select t.id, t.type
 			from transactions t
 			where t.group_id = ${groupId}
-				and t.deleted_at is null
+				and ${countedTransaction("t")}
 				and t.type in ('expense', 'income')
 				${filter}
 		),
@@ -148,7 +149,7 @@ export async function sumByBucket(
 				sum(case when t.type = 'income' then -t.amount else t.amount end)::bigint as amount
 			from transactions t
 			where t.group_id = ${input.groupId}
-				and t.deleted_at is null
+				and ${countedTransaction("t")}
 				and t.type in ('expense', 'income')
 				${filter}
 			group by 1
