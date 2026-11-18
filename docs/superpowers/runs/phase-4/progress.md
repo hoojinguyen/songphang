@@ -16,7 +16,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4B.4 — Debt reminders
 - [x] 4B.5 — Web: reminders and settings; stage gate
 - [x] 4C.1 — Webhook, sender, identities and links
-- [ ] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
+- [x] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
 - [ ] 4C.3 — Web: linking screens
 - [ ] 4C.4 — Stage gate 4C and the bot runbook
 - [ ] 4D.1 — Database and money path: the approval filter
@@ -220,3 +220,18 @@ None.
   - `EXERCISE_4C1_PASSED`: missing secret and equal-length wrong secret -> 404 with 0 `bot_updates` rows; valid secret unlinked chat -> 200 with Spec 5.5 reply; duplicate `update_id` -> 200 no-op; non-JSON body and 5,000-char text -> 200 no-op; 32 updates in 1 minute -> `"Chậm lại một chút nhé."` printed once; editor `POST .../chat-links/code` -> 403; outsider -> 404; owner code generated + `/lienket <code>` from chat `-1001` -> linked + listed; reuse & backdated expired code -> bad/expired reply; re-link `-1001` -> 1 row kept; user claim valid / 409 `CHAT_IDENTITY_TAKEN` / 400 `TOKEN_INVALID` / unbind verified; unset `TELEGRAM_PROVIDER` -> webhook 404 & `features.telegram: false`; `APP_ENV=production` + `TELEGRAM_PROVIDER=console` refused startup (`exit 1`).
   - `pnpm db:check-balances` -> `All groups balanced` (8 groups).
 - Security review: checked `timingSafeEqual` secret comparison, non-exposure of `TELEGRAM_BOT_TOKEN`, SHA-256 link code hashing, `requireGroupRole("owner")` + `requireVerifiedEmail` + `requireSameOrigin` on link management routes, and plain-text `sendMessage` without `parse_mode`.
+
+## Task 4C.2 — approach
+
+- Files to create/modify: create `apps/api/src/bot/{resolve-actor,dispatch,callbacks}.ts`, `apps/api/src/bot/commands/{lienket,chi,sodu,huy,trogiup}.ts`, `apps/worker/src/jobs/prune-bot-data.ts`; modify `packages/contract/src/jobs.ts`, `packages/db/src/chat.ts`, `apps/api/src/bot-messages.ts`, `apps/api/src/routes/telegram-webhook.ts`, `apps/worker/src/main.ts`.
+- Approach: route bot updates through `dispatchWebhookUpdate` (`dispatch.ts`) using `resolveActor` (`chat_links` -> verified `chat_identities` -> `group_users`), `/chi` invoking `parseSentence(..., { ai: true })` and saving JSON `bot_drafts`, callbacks `s:{id}` / `d:{id}` re-checking membership/role at tap time and calling `runIdempotent` + `createTransaction`, `/sodu` calling `getBalances` + formatting via `@songphang/core` `formatMoney`, `/huy` calling `setTransactionDeleted` within 10 minutes, `/trogiup` / `/start` sending command help, and an hourly `prune-bot-data` worker job.
+- Why simplest: reuses `parseSentence`, `runIdempotent`, `createTransaction`, `getBalances`, and `setTransactionDeleted` directly with zero duplicated ledger/AI/notification logic and keeps `/chi` > 300 chars safely handled as "not understood" without crashing or storing drafts.
+- Rejected alternative: parsing `/chi` or computing splits separately inside bot code, which would drift from quick-entry AI limits, member matching, and notification triggers.
+
+### Task 4C.2 results
+
+- `pnpm check`: passed (`Checked 469 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `exercise_4c2.mts` against `songphang_phase4_gate` (`TELEGRAM_PROVIDER=console`, `AI_PROVIDER=fake`):
+  - `EXERCISE_4C2_PASSED`: verified all 17 table rows (`999` stranger link button without draft; Lan `111` `/chi cà phê 180k chia 4` draft matching `/transactions/preview` shares; `222` tap `s:` -> `"Chỉ Lan lưu được khoản này."`; Lan tap `s:` -> `"Đã lưu: cà phê · 180.000 đ."` with `createdBy: Lan`; repeat tap silent; viewer `222` `/chi` refused; empty `/chi`; unparsed `/chi abc xyz` with `Mở form` link; AI fallback `/chi lẩu 300k lan 100 lan 200` prefixed `"Đọc bằng AI."` + `d:` drop -> `"Đã bỏ."`; `/sodu` matching `GET .../balances` + `"Quỹ còn 200.000 đ"` with active fund; `/huy` soft-deleting + activity log, second `/huy` -> nothing; 11m expired draft -> expired reply; demoted viewer at tap time -> viewer reply; removed member `/sodu` -> not-in-group reply; `/chi@OtherBot` ignored; `/trogiup@songphangtestbot` help; bad callback `x:1` and cross-chat `s:` ignored; `/chi <script>` and 400-char sentence safely rejected with no drafts stored; `runPruneBotData` pruned `drafts: 2, codes: 9, updates: 1`).
+  - `pnpm db:check-balances` -> `All groups balanced` (14 groups).
+- Security review: every command and callback resolves caller via verified `chat_identities` + `group_users` and re-checks current role at `s:{id}` save time; no user-submitted bot text sent as HTML/Markdown; raw link code never logged outside `/link/telegram` URL generation.

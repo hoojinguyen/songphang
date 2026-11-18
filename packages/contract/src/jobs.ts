@@ -9,6 +9,7 @@ export const JOB_NAMES = {
 	sendDigest: "send-digest",
 	pruneNotifications: "prune-notifications",
 	autoReminders: "auto-reminders",
+	pruneBotData: "prune-bot-data",
 } as const;
 
 export const HeartbeatPayload = z.object({});
@@ -47,6 +48,9 @@ export type PruneNotificationsPayload = z.infer<
 
 export const AutoRemindersPayload = z.object({});
 export type AutoRemindersPayload = z.infer<typeof AutoRemindersPayload>;
+
+export const PruneBotDataPayload = z.object({});
+export type PruneBotDataPayload = z.infer<typeof PruneBotDataPayload>;
 
 export const GroupEventResource = z.enum([
 	"group",

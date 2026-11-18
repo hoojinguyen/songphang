@@ -5,6 +5,7 @@ import { registerAutoRemindersJob } from "./jobs/auto-reminders.js";
 import { registerCleanupAttachmentsJob } from "./jobs/cleanup-attachments.js";
 import { registerDeleteFilesJob } from "./jobs/delete-files.js";
 import { registerHeartbeatJob } from "./jobs/heartbeat.js";
+import { registerPruneBotDataJob } from "./jobs/prune-bot-data.js";
 import { registerPruneNotificationsJob } from "./jobs/prune-notifications.js";
 import {
 	recoverStaleScans,
@@ -50,6 +51,7 @@ try {
 	await registerSendDigestJob(boss, deps);
 	await registerPruneNotificationsJob(boss, deps);
 	await registerAutoRemindersJob(boss, deps);
+	await registerPruneBotDataJob(boss, deps);
 	await recoverStaleScans(deps);
 	const recoveryTimer = setInterval(() => {
 		void recoverStaleScans(deps).catch(() => {

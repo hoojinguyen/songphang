@@ -1,24 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { findChatLinkByChat, recordBotUpdateIfNew } from "@songphang/db";
+import { recordBotUpdateIfNew } from "@songphang/db";
 import type { AppDeps, AppEnv } from "../app.js";
-import { type ChatSender, createChatSender } from "../bot/chat-sender.js";
-import {
-	extractChatId,
-	parseBotCommand,
-	TelegramUpdate,
-} from "../bot/telegram-update.js";
+import { createChatSender } from "../bot/chat-sender.js";
+import { dispatchWebhookUpdate } from "../bot/dispatch.js";
+import { extractChatId, TelegramUpdate } from "../bot/telegram-update.js";
 import { BOT_MESSAGES } from "../bot-messages.js";
 import { AppError } from "../errors.js";
-import { redeemGroupChatLinkCode } from "../services/chat-links.js";
-
-const RECOGNIZED_GROUP_COMMANDS = new Set([
-	"chi",
-	"sodu",
-	"huy",
-	"trogiup",
-	"start",
-]);
 
 function secretMatches(
 	header: string | undefined,
@@ -32,41 +20,6 @@ function secretMatches(
 		return false;
 	}
 	return timingSafeEqual(actualBuf, expectedBuf);
-}
-
-async function handleWebhookUpdate(
-	deps: AppDeps,
-	sender: ChatSender,
-	update: TelegramUpdate,
-): Promise<void> {
-	if (!update.message?.text) return;
-	const parsed = parseBotCommand(
-		update.message.text,
-		deps.config.telegramBotUsername,
-	);
-	if (parsed === null) return;
-	const chatId = update.message.chat.id;
-	if (parsed.command === "lienket") {
-		const linked = await redeemGroupChatLinkCode(deps, {
-			chatId,
-			rawCode: parsed.arg,
-		});
-		await sender.send(
-			chatId,
-			linked.ok
-				? BOT_MESSAGES.chatLinked(linked.groupName)
-				: BOT_MESSAGES.badOrExpiredCode,
-		);
-		return;
-	}
-	if (!RECOGNIZED_GROUP_COMMANDS.has(parsed.command)) return;
-	const link = await findChatLinkByChat(deps.db, {
-		platform: "telegram",
-		chatId,
-	});
-	if (link === null) {
-		await sender.send(chatId, BOT_MESSAGES.chatNotLinked);
-	}
 }
 
 export function registerTelegramWebhookRoute(
@@ -126,7 +79,7 @@ export function registerTelegramWebhookRoute(
 				}
 			}
 
-			await handleWebhookUpdate(deps, sender, parsed.data);
+			await dispatchWebhookUpdate(deps, sender, parsed.data);
 		} catch {
 			console.error(
 				JSON.stringify({

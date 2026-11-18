@@ -319,7 +319,10 @@ export async function pruneBotRecords(
 	const deletedDrafts = await executor
 		.delete(botDrafts)
 		.where(
-			and(isNull(botDrafts.savedTransactionId), lt(botDrafts.expiresAt, now)),
+			or(
+				and(isNull(botDrafts.savedTransactionId), lt(botDrafts.expiresAt, now)),
+				and(isNotNull(botDrafts.savedAt), lt(botDrafts.savedAt, oneDayAgo)),
+			),
 		)
 		.returning({ id: botDrafts.id });
 	const deletedCodes = await executor
