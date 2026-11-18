@@ -35,6 +35,7 @@ export const ErrorCode = z
 		"DISPUTE_NOT_OPEN",
 		"REMINDER_TOO_SOON",
 		"MEMBER_NOT_LINKED",
+		"CHAT_IDENTITY_TAKEN",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

@@ -4,6 +4,7 @@ export * from "./auth.ts";
 export * from "./balance.ts";
 export * from "./budget.ts";
 export * from "./category.ts";
+export * from "./chat-link.ts";
 export * from "./comment.ts";
 export { ErrorCode, ErrorResponse } from "./error.ts";
 export * from "./features.ts";

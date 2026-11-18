@@ -20,6 +20,7 @@ export default defineConfig({
 		"./src/schema-disputes.ts",
 		"./src/schema-notifications.ts",
 		"./src/schema-reminders.ts",
+		"./src/schema-chat.ts",
 	],
 	out: "./drizzle",
 });

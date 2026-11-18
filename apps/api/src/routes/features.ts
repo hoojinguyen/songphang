@@ -22,7 +22,7 @@ export function registerFeatureRoute(
 				FeaturesResponse.parse({
 					receiptReading: Boolean(deps.config.aiProvider),
 					sentenceAi: Boolean(deps.config.aiProvider),
-					telegram: false,
+					telegram: Boolean(deps.config.telegramProvider),
 					push: false,
 					appleSignIn: false,
 					errorAlerts: false,

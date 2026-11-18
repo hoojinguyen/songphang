@@ -57,6 +57,22 @@ const CONFIG_SCHEMA = z
 			EMPTY_TO_UNDEFINED,
 			z.enum(FAKE_RECEIPT_FIXTURES).optional(),
 		),
+		TELEGRAM_PROVIDER: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.enum(["telegram", "console"]).optional(),
+		),
+		TELEGRAM_BOT_TOKEN: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(1024).optional(),
+		),
+		TELEGRAM_WEBHOOK_SECRET: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().max(512).optional(),
+		),
+		TELEGRAM_BOT_USERNAME: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(128).optional(),
+		),
 	})
 	.superRefine((env, context) => {
 		if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
@@ -107,6 +123,42 @@ const CONFIG_SCHEMA = z
 					message: "AI_FAKE_RECEIPT_FIXTURE is forbidden in production",
 				});
 			}
+			if (env.TELEGRAM_PROVIDER === "console") {
+				context.addIssue({
+					code: "custom",
+					path: ["TELEGRAM_PROVIDER"],
+					message: "TELEGRAM_PROVIDER=console is forbidden in production",
+				});
+			}
+		}
+		if (env.TELEGRAM_PROVIDER !== undefined) {
+			if (
+				!env.TELEGRAM_WEBHOOK_SECRET ||
+				env.TELEGRAM_WEBHOOK_SECRET.length < 32
+			) {
+				context.addIssue({
+					code: "custom",
+					path: ["TELEGRAM_WEBHOOK_SECRET"],
+					message:
+						"TELEGRAM_WEBHOOK_SECRET must be at least 32 characters when TELEGRAM_PROVIDER is set",
+				});
+			}
+			if (!env.TELEGRAM_BOT_USERNAME) {
+				context.addIssue({
+					code: "custom",
+					path: ["TELEGRAM_BOT_USERNAME"],
+					message:
+						"TELEGRAM_BOT_USERNAME is required when TELEGRAM_PROVIDER is set",
+				});
+			}
+			if (env.TELEGRAM_PROVIDER === "telegram" && !env.TELEGRAM_BOT_TOKEN) {
+				context.addIssue({
+					code: "custom",
+					path: ["TELEGRAM_BOT_TOKEN"],
+					message:
+						"TELEGRAM_BOT_TOKEN is required when TELEGRAM_PROVIDER=telegram",
+				});
+			}
 		}
 	})
 	.transform((env) => ({
@@ -125,6 +177,10 @@ const CONFIG_SCHEMA = z
 		aiSentencesPerUserPerDay: env.AI_SENTENCES_PER_USER_PER_DAY,
 		aiCallsPerMonth: env.AI_CALLS_PER_MONTH,
 		aiFakeReceiptFixture: env.AI_FAKE_RECEIPT_FIXTURE,
+		telegramProvider: env.TELEGRAM_PROVIDER ?? null,
+		telegramBotToken: env.TELEGRAM_BOT_TOKEN,
+		telegramWebhookSecret: env.TELEGRAM_WEBHOOK_SECRET,
+		telegramBotUsername: env.TELEGRAM_BOT_USERNAME?.replace(/^@+/, ""),
 	}));
 
 export type Config = z.infer<typeof CONFIG_SCHEMA>;

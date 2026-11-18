@@ -5,6 +5,7 @@ import type { FileStore } from "@songphang/storage";
 import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
 import type { SentenceAi } from "./ai/sentence-ai.js";
+import type { ChatSender } from "./bot/chat-sender.js";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
 import type { createEventHub } from "./events/hub.js";
@@ -17,6 +18,7 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerBudgetRoutes } from "./routes/budget.js";
 import { registerCategoryRoutes } from "./routes/categories.js";
+import { registerChatLinkRoutes } from "./routes/chat-links.js";
 import { registerCommentRoutes } from "./routes/comments.js";
 import { registerDevRoutes } from "./routes/dev.js";
 import { registerEventRoutes } from "./routes/events.js";
@@ -35,6 +37,7 @@ import { registerReceiptScanRoutes } from "./routes/receipt-scans.js";
 import { registerReminderRoutes } from "./routes/reminders.js";
 import { registerSettlementRoutes } from "./routes/settlement-requests.js";
 import { registerStatsRoutes } from "./routes/stats.js";
+import { registerTelegramWebhookRoute } from "./routes/telegram-webhook.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
 import { registerUnsubscribeRoutes } from "./routes/unsubscribe.js";
 
@@ -57,6 +60,7 @@ export type AppDeps = {
 	enqueue: EnqueueFn;
 	fileStore: FileStore;
 	sentenceAi?: SentenceAi | null;
+	chatSender?: ChatSender | null;
 };
 
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
@@ -108,6 +112,8 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerReceiptScanRoutes(app, deps);
 	registerBalanceRoutes(app, deps);
 	registerReminderRoutes(app, deps);
+	registerChatLinkRoutes(app, deps);
+	registerTelegramWebhookRoute(app, deps);
 	registerBudgetRoutes(app, deps);
 	registerStatsRoutes(app, deps);
 	registerExportRoutes(app, deps);

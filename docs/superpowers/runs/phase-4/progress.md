@@ -15,7 +15,7 @@ Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, ame
 - [x] 4B.3 — Mail: immediate, digest, unsubscribe
 - [x] 4B.4 — Debt reminders
 - [x] 4B.5 — Web: reminders and settings; stage gate
-- [ ] 4C.1 — Webhook, sender, identities and links
+- [x] 4C.1 — Webhook, sender, identities and links
 - [ ] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
 - [ ] 4C.3 — Web: linking screens
 - [ ] 4C.4 — Stage gate 4C and the bot runbook
@@ -188,3 +188,35 @@ None.
   - S5 viewport `485x812`: `scrollWidth === clientWidth === 485`, 0 console errors/warnings.
   - S11 (`/settings`): clicked `"Mỗi tuần"` under `"Tự nhắc nợ"` -> pressed state active and persisted across page reload; `"Tự nhắc nợ"` section width `390` (`scrollWidth: 390`), 0 console errors/warnings.
   - Out of scope: pre-existing `"Hạn mức"` `<MoneyInput>` section on `/settings` overflows (`scrollWidth: 818` inside `390` container at `485x812`); left untouched per `AGENTS.md` §5.
+
+### Stage Gate 4B results
+
+- `pnpm check`: passed (`Checked 446 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`2.3s`, all web routes built including `/notifications`, `/notifications/unsubscribe`, `/g/[groupId]/tx/[transactionId]/view`).
+- Reset + migrate + seed on disposable `songphang_phase4_gate`, then replayed full gate suite sequentially (`task-1232`):
+  - `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`
+  - `DISABLED_FEATURES_CHECK_PASSED {"receiptReading":false,"sentenceAi":false,"telegram":false,"push":false,"appleSignIn":false,"errorAlerts":false}`
+  - `PHASE_1_2_3_BASELINE_REPLAY_PASSED {"groupId":"01a1ef62-46c2-7a04-92c0-3b7ce0b3e4a9","tx1VersionAfterEdit":2,"vietqrPresent":true,"settlementConfirmed":"confirmed","budgetState":"near","statsTotal":200000,"scanStatus":"done","targetAdjustment":{"kind":"other","amount":8000},"parseAiReader":"ai"}`
+  - `EXERCISE_4A1_PASSED` (`balancesIdentical: true`, `finalCommentCount: 22`, rate limit 429 on #21, outsider 404/404)
+  - `EXERCISE_4A2_PASSED` (`balancesIdenticalDuringDispute: true`, `dupStatus: 409`, `lanResolveStatus: 403`, `resolveAgainCode: "DISPUTE_NOT_OPEN"`)
+  - `EXERCISE_4B1_PASSED` (`unauthStatuses: [401,401,401]`, `mutedHungDelta: 0`, `removedGroupHiddenFromList: true`, `hungUnreadChange: "32->28"`, `lanUnreadCleared: "13->0"`)
+  - `EXERCISE_4B3_PASSED` (`row1ImmediateSubjectMatched: true`, `row1ListHeadersPresent: true`, `row2SkippedWhenRead: true`, `row3DigestFirstSent: 3`, `row3DigestSecondSent: 0`, `row4SkippedWhenDigestFalse: true`, `row5UnsubscribeStatus: 204`, `row6BadTokenStatuses: [404,404]`, `row6RateLimit429: true`, `row7RemovedSkipped: true`, `row8PrunedCount: 1`)
+  - `EXERCISE_4B4_PASSED` (`outsiderStatus: 404`, `row1Reminded: 1`, `row2Code: "REMINDER_TOO_SOON"`, `row3Status: 429`, `row4Code: "MEMBER_NOT_LINKED"`, `row5Status: 403`, `row6Reminded: 1`, `row7Status: 400`, `row8AutoRun1: 2`, `row8AutoRun2: 0`, `row9Status: 403`)
+  - `pnpm db:check-balances` -> `All groups balanced` (all 7 groups sum 0, mismatches 0).
+
+## Task 4C.1 — approach
+
+- Files to create/modify: create `packages/db/src/schema-chat.ts`, `packages/db/src/chat.ts`, migration `0019_*.sql`, `packages/contract/src/chat-link.ts`, `apps/api/src/bot/{chat-sender,telegram-sender,console-sender,telegram-update,link-codes}.ts`, `apps/api/src/bot-messages.ts`, `apps/api/src/services/chat-links.ts`, `apps/api/src/routes/{chat-links,telegram-webhook}.ts`; modify `packages/db/{drizzle.config.ts,src/index.ts}`, `packages/contract/src/{error,index}.ts`, `apps/api/src/{config,app,server,rate-limit}.ts`, `apps/api/src/routes/features.ts`, `.env.example`.
+- Approach: verify Bot API `sendMessage`, `answerCallbackQuery`, `InlineKeyboardMarkup`, and `setWebhook` schemas (`chat_id`, `text`, `reply_markup.inline_keyboard`, `callback_query_id`, `secret_token`, `allowed_updates`); store the 5 chat tables in `schema-chat.ts` with SHA-256 single-use 8-char codes (32-bit-safe `crypto.randomInt` over the 29-char alphabet), atomic `bot_updates` deduplication, `timingSafeEqual` secret comparison returning `404 NOT_FOUND` on mismatch or disabled feature, raw text parsing in webhook so invalid JSON or oversized updates return `200 {}`, and per-chat rate limiting returning `Chậm lại một chút nhé.` once per 1-minute window.
+- Why simplest: isolates `TELEGRAM_BOT_TOKEN` inside `telegram-sender.ts`, decouples webhook rate limiting and deduplication before dispatching commands cleanly in `4C.2`, and avoids mutating `FeaturesResponse` shape by exposing `botUsername` on `GET /groups/{groupId}/chat-links`.
+- Rejected alternative: registering Telegram body validation through Hono OpenAPI automatic JSON middleware, which returns 400 before our custom hook runs on malformed non-JSON payloads and could cause Telegram webhook retries.
+
+### Task 4C.1 results
+
+- Verified Telegram Bot API shapes (`core.telegram.org/bots/api`): `sendMessage` (`chat_id`, `text`, `reply_markup.inline_keyboard`), `answerCallbackQuery` (`callback_query_id`, `text`), and `setWebhook` (`url`, `secret_token`, `allowed_updates`).
+- Migration `0019_sad_violations.sql` generated and applied (`bot_drafts`, `bot_updates`, `chat_identities`, `chat_link_codes`, `chat_links`).
+- `pnpm check`: passed (`Checked 459 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `exercise_4c1.mts` against `songphang_phase4_gate`:
+  - `EXERCISE_4C1_PASSED`: missing secret and equal-length wrong secret -> 404 with 0 `bot_updates` rows; valid secret unlinked chat -> 200 with Spec 5.5 reply; duplicate `update_id` -> 200 no-op; non-JSON body and 5,000-char text -> 200 no-op; 32 updates in 1 minute -> `"Chậm lại một chút nhé."` printed once; editor `POST .../chat-links/code` -> 403; outsider -> 404; owner code generated + `/lienket <code>` from chat `-1001` -> linked + listed; reuse & backdated expired code -> bad/expired reply; re-link `-1001` -> 1 row kept; user claim valid / 409 `CHAT_IDENTITY_TAKEN` / 400 `TOKEN_INVALID` / unbind verified; unset `TELEGRAM_PROVIDER` -> webhook 404 & `features.telegram: false`; `APP_ENV=production` + `TELEGRAM_PROVIDER=console` refused startup (`exit 1`).
+  - `pnpm db:check-balances` -> `All groups balanced` (8 groups).
+- Security review: checked `timingSafeEqual` secret comparison, non-exposure of `TELEGRAM_BOT_TOKEN`, SHA-256 link code hashing, `requireGroupRole("owner")` + `requireVerifiedEmail` + `requireSameOrigin` on link management routes, and plain-text `sendMessage` without `parse_mode`.

@@ -6,6 +6,7 @@ export * from "./attachments.js";
 export * from "./balances.js";
 export * from "./budgets.js";
 export * from "./categories.js";
+export * from "./chat.js";
 export {
 	checkDatabaseHealth,
 	createDb,
@@ -33,6 +34,13 @@ export { aiCalls } from "./schema-ai.js";
 export { attachments } from "./schema-attachments.js";
 export { budgets } from "./schema-budgets.js";
 export { groupCategories } from "./schema-categories.js";
+export {
+	botDrafts,
+	botUpdates,
+	chatIdentities,
+	chatLinkCodes,
+	chatLinks,
+} from "./schema-chat.js";
 export { comments } from "./schema-comments.js";
 export { transactionDisputes } from "./schema-disputes.js";
 export { groups, groupUsers, members } from "./schema-groups.js";

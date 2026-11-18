@@ -2,9 +2,46 @@ import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { AppDeps, AppEnv } from "./app.js";
 import { AppError } from "./errors.js";
+
+type RateWindow = {
+	count: number;
+	expiresAt: number;
+	warned?: boolean;
+};
+
 export function createRateLimiter(now: () => Date) {
-	const windows = new Map<string, { count: number; expiresAt: number }>();
+	const windows = new Map<string, RateWindow>();
+
+	function prune(time: number) {
+		for (const [key, window] of windows) {
+			if (window.expiresAt <= time) windows.delete(key);
+		}
+	}
+
 	return {
+		consumeQuota(options: {
+			name: string;
+			max: number;
+			windowMs: number;
+			subject: string;
+		}): { allowed: boolean; notifyExceeded: boolean } {
+			const time = now().getTime();
+			prune(time);
+			const key = JSON.stringify([options.name, options.subject]);
+			const window = windows.get(key) ?? {
+				count: 0,
+				expiresAt: time + options.windowMs,
+			};
+			if (window.count >= options.max) {
+				const notifyExceeded = !window.warned;
+				window.warned = true;
+				windows.set(key, window);
+				return { allowed: false, notifyExceeded };
+			}
+			window.count += 1;
+			windows.set(key, window);
+			return { allowed: true, notifyExceeded: false };
+		},
 		limit(options: {
 			name: string;
 			max: number;
@@ -18,8 +55,7 @@ export function createRateLimiter(now: () => Date) {
 					return;
 				}
 				const time = now().getTime();
-				for (const [key, window] of windows)
-					if (window.expiresAt <= time) windows.delete(key);
+				prune(time);
 				const key = JSON.stringify([options.name, subject]);
 				const window = windows.get(key) ?? {
 					count: 0,

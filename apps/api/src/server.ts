@@ -6,6 +6,7 @@ import {
 } from "@songphang/db";
 import { diskFileStore } from "@songphang/storage";
 import { createApp } from "./app.js";
+import { createChatSender } from "./bot/chat-sender.js";
 import { type Config, loadConfig } from "./config.js";
 import { createEventHub } from "./events/hub.js";
 import { listenForGroupEvents } from "./events/listen.js";
@@ -58,6 +59,7 @@ try {
 		rateLimiter: createRateLimiter(() => new Date()),
 		enqueue: queue.enqueue,
 		fileStore: diskFileStore(config.storageDir),
+		chatSender: createChatSender(config),
 	});
 	const server = serve(
 		{ fetch: app.fetch, port: config.apiPort, hostname: "127.0.0.1" },
