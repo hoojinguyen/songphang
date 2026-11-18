@@ -337,6 +337,12 @@ Create `phase-3` from clean local `main` (`6b36336`), verify advisor fixture has
   1. Seeded the default item amount in `useSplitState.changeMode("items")` from the current `amount` on first entry into item-split mode while keeping `itemsCustomized` changes intact across subsequent tab switches.
 - Verified live on Next.js `3010` + API `4010` (`Nhóm 3D3`): entering `200000` and switching to `Theo món` initialized `Số tiền món` = `200000` (`50.000` x 4, `Khớp 200.000 đ`).
 
+## Post-review fixes (Codex review round 6)
+
+- Findings addressed:
+  1. Updated `deleteAttachment` (`apps/api/src/services/attachments.ts`) so deleting an attachment linked to a transaction locks that transaction, increments `version`, records an `"update"` (`attachmentCount`) activity row, and publishes `["transactions", "activity"]` so stale editors receive `409 VERSION_CONFLICT`.
+- Verified via `exercise_review6_attachment_version.mts` (version `1` -> `2`, `attachmentCount: 1 -> 0` activity logged, stale `PATCH` returns `409 VERSION_CONFLICT`), `pnpm db:check-balances` (`All groups balanced`), and `pnpm check` (`0` errors).
+
 ## Not verified
 
 - Real Anthropic API calls (forbidden by policy; transport and forced-tool schemas tested against local fakes and stubbed `fetch` only).

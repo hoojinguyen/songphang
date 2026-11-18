@@ -11,9 +11,14 @@ import {
 	deleteAttachmentRow,
 	findAttachment,
 	findAttachmentsByIds,
+	findTransactionRow,
+	insertActivity,
 	insertAttachment,
+	listAttachmentsForTransactions,
 	lockGroup,
+	lockTransaction,
 	sumGroupAttachmentBytes,
+	updateTransactionRow,
 } from "@songphang/db";
 import { uuidv7 } from "uuidv7";
 import type { AppDeps } from "../app.js";
@@ -146,6 +151,58 @@ export async function deleteAttachment(
 			userId: input.userId,
 			minimumRole: "editor",
 		});
+		const existing = await findAttachment(
+			executor,
+			input.groupId,
+			parsedId.data,
+		);
+		if (existing === null) {
+			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		}
+		if (existing.transactionId !== null) {
+			await lockTransaction(executor, input.groupId, existing.transactionId);
+			const txRow = await findTransactionRow(
+				executor,
+				input.groupId,
+				existing.transactionId,
+			);
+			const beforeCount = (
+				await listAttachmentsForTransactions(executor, input.groupId, [
+					existing.transactionId,
+				])
+			).length;
+			const deleted = await deleteAttachmentRow(
+				executor,
+				input.groupId,
+				parsedId.data,
+			);
+			if (deleted === null) {
+				throw new AppError(404, "NOT_FOUND", "Resource not found");
+			}
+			if (txRow) {
+				await updateTransactionRow(executor, {
+					groupId: input.groupId,
+					id: txRow.id,
+					changes: {
+						version: txRow.version + 1,
+						updatedBy: input.userId,
+						updatedAt: deps.now(),
+					},
+				});
+				await insertActivity(executor, {
+					groupId: input.groupId,
+					actorUserId: input.userId,
+					action: "update",
+					entityType: "transaction",
+					entityId: txRow.id,
+					summary: txRow.description,
+					before: { attachmentCount: beforeCount },
+					after: { attachmentCount: Math.max(0, beforeCount - 1) },
+					createdAt: deps.now(),
+				});
+			}
+			return deleted;
+		}
 		const deleted = await deleteAttachmentRow(
 			executor,
 			input.groupId,
@@ -158,6 +215,6 @@ export async function deleteAttachment(
 	});
 	await deps.fileStore.delete(row.storageKey).catch(() => {});
 	if (row.transactionId !== null) {
-		deps.events.publishChanged(input.groupId, ["transactions"]);
+		deps.events.publishChanged(input.groupId, ["transactions", "activity"]);
 	}
 }
