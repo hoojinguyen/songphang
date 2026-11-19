@@ -12,7 +12,7 @@
 - [x] 0 — Re-baseline and parity inventory
 - [x] 5A.1 — OpenAPI snapshot and minimum version
 - [x] 5A.2 — Native password sessions and revocation
-- [ ] 5A.3 — API gate
+- [x] 5A.3 — API gate
 - [ ] 5B.1 — Generated client and live composition
 - [ ] 5B.2 — Account lifecycle and snapshots
 - [ ] 5B.3 — Groups, members and local invite routing
@@ -121,6 +121,30 @@
 - OpenAPI diff vs 5A.1 (`f0b735a`): `0 breaking, 9 additive` (3 new paths: `/api/v1/auth/token`, `/api/v1/me/sessions`, `/api/v1/me/sessions/{id}`; 6 new schemas).
 - `pnpm check` & `pnpm build`: PASS.
 - Security review: checked relevant items 1–8; no secrets/hashes in responses or logs, Zod validates all inputs and UUID params, query-string session credentials rejected, DB `CHECK` constraints in migration `0023_useful_morlun.sql`, mixed Cookie/Bearer stays on same-origin policy, `Cache-Control: no-store` on `/auth/token`, no new dependencies.
+
+### Task 5A.3 — Stage 5A API gate
+
+**Stage & SHA:** Stage 5A, code revision `d090617` (`feat(auth): add native password sessions and session management`).
+
+**Fixture & commands:**
+- Disposable DB `songphang_phase5_5a_gate` migrated via `pnpm --filter @songphang/db exec tsx src/migrate.ts` (including `0023_useful_morlun.sql`) and seeded via `src/seed.ts`.
+- Isolated API (`:4000`, `AI_PROVIDER=fake`, `TELEGRAM_PROVIDER=console`, `GOOGLE_CLIENT_ID/SECRET` fake placeholders, clean env) + Worker (`AI_PROVIDER=fake`, clean env) + capability-off API (`:4001`, optional providers unset).
+- Automated checks: `pnpm check`, `pnpm build`, `xcodebuild ... SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build`, `xcrun swift-format lint --strict --recursive apps/ios`, and pre-integration Release `#error` guard check.
+
+**Observed results:**
+- `pnpm check`: PASS (`biome check .`, 8 workspaces `tsc --noEmit`, `pnpm contract:check` → `OpenAPI contract snapshot is up to date.`).
+- `pnpm build`: PASS (`apps/web` Next.js production build succeeded).
+- Capability-off check (`:4001`): `GATE_CAPABILITY_OFF_PASS: {"receiptReading":false,"sentenceAi":false,"telegram":false,"push":false,"appleSignIn":false,"errorAlerts":false,"minAppVersion":{"ios":"0.0.0","android":"0.0.0"}}`; disabled Telegram webhook returned `404`.
+- Route/caller permission matrix & Phase 1–4 + 5A acceptance replay:
+  - `STAGE_5A_GATE_PASS: routes=102/102 cases=226 bearer_routes=85 cookie_routes=22 balances=All groups balanced`
+  - Covered all 102 live Hono routes (99 baseline + `POST /api/v1/auth/token`, `GET /api/v1/me/sessions`, `DELETE /api/v1/me/sessions/:id`) across signed-out (`401`), unverified, outsider (`404` on both Cookie & Bearer), viewer (`403` on writes, `200` on reads/comments/disputes/own payment methods), editor, owner, cross-group (`404`), idempotency replay, wrong-session Telegram pairing denial (`404`), fake worker receipt OCR (`done`), and UTF-8 BOM CSV.
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced`.
+- iOS checks (pre-integration):
+  - Debug build (`SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`): `** BUILD SUCCEEDED **`.
+  - `xcrun swift-format lint --strict --recursive apps/ios`: no output (exit 0).
+  - Release build guard (still expected until 5B.4 removes it): failed as expected at `AppShell/AppDependencies.swift:36:12: error: Live repositories arrive in the integration stage`.
+- **5B Readiness:** 5B now has a reachable local v1 API (`http://localhost:4000/api/v1`) with native email/password sign-in (`POST /auth/token`), session listing/revocation (`GET/DELETE /me/sessions`), deterministic committed OpenAPI 3.1 snapshot (`packages/contract/openapi.json`), and documented baseline gaps (Be Vietnam Pro `.ttf`/`.otf` assets pending; Phase 2–4 strings scheduled across 5D).
+- **Issues / verification gaps:** None on local Stage 5A gate. External providers (real SMTP, Google OAuth, Apple, APNs, Telegram Bot API, real AI) remain deferred/external.
 
 ## Gate Not Passed
 
