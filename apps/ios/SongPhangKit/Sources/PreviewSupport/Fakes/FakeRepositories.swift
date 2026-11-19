@@ -5,6 +5,10 @@
     private let world: FakeWorld
     public init(world: FakeWorld) { self.world = world }
 
+    public func lastKnownUser() async -> User? {
+      await world.lastKnownUser()
+    }
+
     public func currentUser() async throws(AppError) -> User? {
       try await world.getCurrentUser()
     }
@@ -47,6 +51,14 @@
 
     public func deleteAccount(email: String) async throws(AppError) {
       try await world.deleteAccount(email: email)
+    }
+
+    public func sessions() async throws(AppError) -> [UserSession] {
+      try await world.listSessions()
+    }
+
+    public func revokeSession(id: UserSession.ID) async throws(AppError) {
+      try await world.revokeSession(id: id)
     }
 
     public func serverFeatures() async throws(AppError) -> ServerFeatures {

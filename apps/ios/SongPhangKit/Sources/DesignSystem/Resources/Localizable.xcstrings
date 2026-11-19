@@ -12,6 +12,50 @@
         }
       }
     },
+    "account.clientAndroid": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        }
+      }
+    },
+    "account.clientIos": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        }
+      }
+    },
+    "account.clientWeb": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        }
+      }
+    },
+    "account.currentDevice": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thiết bị này"
+          }
+        }
+      }
+    },
     "account.currentPassword": {
       "extractionState": "manual",
       "localizations": {
@@ -96,6 +140,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lưu mật khẩu"
+          }
+        }
+      }
+    },
+    "account.sessionsTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thiết bị đang đăng nhập"
           }
         }
       }

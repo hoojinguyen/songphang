@@ -78,7 +78,12 @@ struct ErrorMapper: Sendable {
       return .unauthorized
     }
     if statusCode == 409 {
-      return .conflict
+      if code == nil || code == "VERSION_CONFLICT" || code == "CONFLICT" {
+        return .conflict
+      }
+      if let code {
+        return .api(code: code, status: 409)
+      }
     }
     if statusCode == 429 || code == "RATE_LIMITED" {
       return .rateLimited

@@ -32,6 +32,24 @@
     public private(set) var preset: ScenarioPreset
     public private(set) var behavior: FakeBehavior
     public private(set) var currentUser: User?
+    private var activeSessions: [UserSession] = [
+      UserSession(
+        id: UserSession.ID("00000000-0000-7000-8000-000000000501"),
+        client: .ios,
+        deviceName: "iPhone 17 Pro",
+        createdAt: "2026-11-16T08:00:00.000Z",
+        lastSeenAt: "2026-11-16T15:00:00.000Z",
+        current: true
+      ),
+      UserSession(
+        id: UserSession.ID("00000000-0000-7000-8000-000000000502"),
+        client: .web,
+        deviceName: nil,
+        createdAt: "2026-11-15T10:00:00.000Z",
+        lastSeenAt: "2026-11-16T14:30:00.000Z",
+        current: false
+      ),
+    ]
 
     private var groupsById: [ExpenseGroup.ID: ExpenseGroup] = [:]
     private var groupOrder: [ExpenseGroup.ID] = []
@@ -255,9 +273,33 @@
 
     // MARK: - Auth
 
+    public func lastKnownUser() -> User? {
+      behavior.hasSnapshot ? currentUser : nil
+    }
+
     public func getCurrentUser() async throws(AppError) -> User? {
       try await simulateNetwork()
       return currentUser
+    }
+
+    public func listSessions() async throws(AppError) -> [UserSession] {
+      try await simulateNetwork()
+      guard currentUser != nil else { throw .unauthorized }
+      return activeSessions
+    }
+
+    public func revokeSession(id: UserSession.ID) async throws(AppError) {
+      try await simulateNetwork()
+      guard currentUser != nil else { throw .unauthorized }
+      if let idx = activeSessions.firstIndex(where: { $0.id == id }) {
+        let wasCurrent = activeSessions[idx].current
+        activeSessions.remove(at: idx)
+        if wasCurrent {
+          currentUser = nil
+        }
+      } else {
+        throw .api(code: "NOT_FOUND", status: 404)
+      }
     }
 
     public func signIn(email: String, password: String) async throws(AppError) -> User {

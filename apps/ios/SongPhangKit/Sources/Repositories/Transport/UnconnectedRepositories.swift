@@ -1,63 +1,7 @@
 public import Domain
 
-// Temporary explicitly-gated repositories for Task 5B.1 only.
-// Each repository is replaced as Tasks 5B.2, 5B.3, and 5B.4 connect live resources.
-
-public struct GatedAuthRepository: AuthRepository {
-  private let environment: LiveAPIEnvironment
-
-  public init(environment: LiveAPIEnvironment) {
-    self.environment = environment
-  }
-
-  public func currentUser() async throws(AppError) -> User? {
-    nil
-  }
-
-  public func signIn(email: String, password: String) async throws(AppError) -> User {
-    throw .api(code: "STAGE_5B2_PENDING", status: 501)
-  }
-
-  public func signInWithGoogle() async throws(AppError) -> User {
-    throw .api(code: "STAGE_5C1_PENDING", status: 501)
-  }
-
-  public func signInWithApple() async throws(AppError) -> User {
-    throw .api(code: "STAGE_5C2_PENDING", status: 501)
-  }
-
-  public func register(email: String, name: String, password: String) async throws(AppError) {
-    throw .api(code: "STAGE_5B2_PENDING", status: 501)
-  }
-
-  public func requestPasswordReset(email: String) async throws(AppError) {
-    throw .api(code: "STAGE_5B2_PENDING", status: 501)
-  }
-
-  public func resendVerification() async throws(AppError) {
-    throw .api(code: "STAGE_5B2_PENDING", status: 501)
-  }
-
-  public func changePassword(
-    currentPassword: String,
-    newPassword: String,
-    revokeOtherSessions: Bool
-  ) async throws(AppError) {
-    throw .api(code: "STAGE_5B2_PENDING", status: 501)
-  }
-
-  public func deleteAccount(email: String) async throws(AppError) {
-    throw .api(code: "STAGE_5B2_PENDING", status: 501)
-  }
-
-  public func serverFeatures() async throws(AppError) -> ServerFeatures {
-    try await environment.fetchServerFeatures()
-  }
-
-  public func signOut() async throws(AppError) {
-    await environment.tokenStore.clear()
-  }
-}
+// Temporary explicitly-gated repositories for unconnected domains.
+// Each repository is replaced as Tasks 5B.3 and 5B.4 connect live resources.
 
 public struct GatedGroupsRepository: GroupsRepository {
   public init() {}

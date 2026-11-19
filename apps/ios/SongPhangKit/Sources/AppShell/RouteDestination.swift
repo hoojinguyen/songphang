@@ -79,8 +79,7 @@ public struct RouteDestination: View {
           repository: dependencies.auth,
           initialUser: hasSnap ? currentUser : nil,
           onSignedOut: {
-            onPopToRoot(nil)
-            Task { await sessionModel.signOut() }
+            sessionModel.markSignedOut()
           }
         )
       )

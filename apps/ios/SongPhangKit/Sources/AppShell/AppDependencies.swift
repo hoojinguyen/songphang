@@ -1,4 +1,5 @@
 public import Domain
+public import Foundation
 public import Repositories
 
 #if DEBUG
@@ -16,6 +17,9 @@ public struct AppDependencies: Sendable {
   public let quickEntry: any QuickEntryRepository
   public let groupEvents: any GroupEventsRepository
   public let liveConfiguration: APIConfiguration?
+  public let appVersion: String
+  public let appStoreURL: URL?
+  public let makeSessionInvalidations: @Sendable () -> AsyncStream<Void>
 
   #if DEBUG
     public let world: FakeWorld?
@@ -23,7 +27,7 @@ public struct AppDependencies: Sendable {
     public static func live(configuration: APIConfiguration) -> AppDependencies {
       let environment = LiveAPIEnvironment(configuration: configuration)
       return AppDependencies(
-        auth: GatedAuthRepository(environment: environment),
+        auth: LiveAuthRepository(environment: environment),
         groups: GatedGroupsRepository(),
         members: GatedMembersRepository(),
         invites: GatedInvitesRepository(),
@@ -33,11 +37,17 @@ public struct AppDependencies: Sendable {
         quickEntry: GatedQuickEntryRepository(),
         groupEvents: GatedGroupEventsRepository(),
         liveConfiguration: configuration,
+        appVersion: configuration.appVersion,
+        appStoreURL: configuration.appStoreURL,
+        makeSessionInvalidations: { environment.sessionInvalidations() },
         world: nil
       )
     }
 
-    public static func scripted(world: FakeWorld) -> AppDependencies {
+    public static func scripted(
+      world: FakeWorld,
+      appVersion: String = "1.0.0"
+    ) -> AppDependencies {
       AppDependencies(
         auth: FakeAuthRepository(world: world),
         groups: FakeGroupsRepository(world: world),
@@ -49,6 +59,9 @@ public struct AppDependencies: Sendable {
         quickEntry: FakeQuickEntryRepository(world: world),
         groupEvents: FakeGroupEventsRepository(world: world),
         liveConfiguration: nil,
+        appVersion: appVersion,
+        appStoreURL: nil,
+        makeSessionInvalidations: { AsyncStream { _ in } },
         world: world
       )
     }

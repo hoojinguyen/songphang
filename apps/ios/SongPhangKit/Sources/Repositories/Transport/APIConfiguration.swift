@@ -5,17 +5,20 @@ public struct APIConfiguration: Sendable, Hashable {
   public let webBaseURL: URL
   public let appVersion: String
   public let deviceName: String
+  public let appStoreURL: URL?
 
   public init(
     apiBaseURL: URL,
     webBaseURL: URL,
     appVersion: String,
-    deviceName: String
+    deviceName: String,
+    appStoreURL: URL? = nil
   ) {
     self.apiBaseURL = apiBaseURL
     self.webBaseURL = webBaseURL
     self.appVersion = appVersion
     self.deviceName = deviceName
+    self.appStoreURL = appStoreURL
   }
 
   /// Server origin passed to the generated OpenAPI client so `/api/v1/...` paths

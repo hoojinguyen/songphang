@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5B in progress (5B.1 complete; continuing to 5B.2). Owner checkpoint, final acceptance and merge are pending.
+- Status: Stage 5B in progress (5B.2 complete; continuing to 5B.3). Owner checkpoint, final acceptance and merge are pending.
 
 ## Tasks
 
@@ -14,7 +14,7 @@
 - [x] 5A.2 — Native password sessions and revocation
 - [x] 5A.3 — API gate
 - [x] 5B.1 — Generated client and live composition
-- [ ] 5B.2 — Account lifecycle and snapshots
+- [x] 5B.2 — Account lifecycle and snapshots
 - [ ] 5B.3 — Groups, members and local invite routing
 - [ ] 5B.4 — Ledger and realtime
 - [ ] 5B.5 — Early iOS/web Simulator acceptance and owner handoff
@@ -165,6 +165,35 @@
   - Default launch hit `GET /api/v1/features` and `GET /api/v1/auth/providers` (versioned `/api/v1` path composed once, `X-App-Version: 1.0.0`), rendered `SignInView` with Apple & Google buttons hidden and zero errors (`docs/superpowers/runs/phase-5/screens/5b1-live-signin.png`).
   - `--scripted` launch rendered `GroupListView` with `Đà Lạt 3N2Đ` (`+500.001 đồng bạn được nhận`) cleanly (`docs/superpowers/runs/phase-5/screens/5b1-scripted.png`).
 - Security review: checked relevant items 1, 2, 4, 8; Keychain `TokenStore` is `internal` to `Repositories`, no raw token is returned or logged, ephemeral `URLSession` disables `HTTPCookieStorage` and `URLCache`, Release `App/Info.plist` has zero `NSAppTransportSecurity` exceptions, and Apple OpenAPI packages are pinned in `Package.resolved`.
+
+### Task 5B.2 — Account lifecycle and session-scoped snapshots (S1 and S13)
+
+**Approach**
+- Files created/modified: `Domain/Models/{ServerFeatures,UserSession}.swift`, `Domain/Repositories/AuthRepository.swift`, `Repositories/Transport/{FlexibleDateTranscoder,ResponseBodyBox,AuthMiddleware,APIConfiguration,ErrorMapper,LiveAPIEnvironment,UnconnectedRepositories}.swift`, `Repositories/Session/SessionInvalidationHub.swift`, `Repositories/Snapshots/SnapshotStore.swift`, `Repositories/Auth/{AuthMapping,LiveAuthRepository}.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `PreviewSupport/Fakes/{FakeWorld,FakeRepositories}.swift`, `AccountFeature/Account/{AccountModel,AccountView,SessionsSectionView}.swift`, `AppShell/{UpgradeRequiredView,SessionModel,AppDependencies,RootView,RouteDestination}.swift`.
+- Approach: Add `SemanticVersion` numeric 3-component comparison and `UserSession` (with `.unknown(String)` client fallback) to `Domain`. Implement internal `SnapshotStore` actor scoped by `(userId, sessionGeneration)` and per-group `groupGeneration`, writing protected files (`.completeFileProtectionUntilFirstUserAuthentication`, `isExcludedFromBackup = true`) under `Caches/SongPhangSnapshots/<userId>/`, capping at 20 recent groups, deleting corrupt files, and wiping completely on sign-out, 401, current-session revoke, or account deletion. Add `FlexibleISO8601DateTranscoder` (accepting JS fractional-second ISO-8601 dates) and `@TaskLocal` `ResponseBodyCapture` so unknown enum values fall back safely without breaking decoding or making duplicate network requests. Connect `LiveAuthRepository` for login, registration, verification resend, forgot password, change password, active sessions list/revoke, delete account, and sign-out. Surface `SessionsSectionView` ("Thiết bị đang đăng nhập") in `AccountView` matching web, `UpgradeRequiredView` when below `minAppVersion.ios`, foreground refresh on `scenePhase == .active`, and global 401 session invalidation in `RootView`.
+- Why this is the simplest approach: Reuses the generated OpenAPI client everywhere while isolating Keychain, protected snapshots, and unknown-enum fallback strictly inside `Repositories`.
+- Rejected alternative: Weakening OpenAPI schemas to plain strings (would weaken API validation and contract diffing) or polling `/me` on a timer.
+- Questions: None.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: no output (exit 0).
+  - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -configuration Debug -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build`: `** BUILD SUCCEEDED **`.
+  - `bash apps/ios/Scripts/check-strings.sh`: 0 missing `account.*` keys, 0 differing keys.
+- Live Simulator UI screenshots (`iPhone 17 Pro`, iOS 26.5, isolated API `:4000`):
+  - `1.0.0 / 1.0.0` → allowed (`docs/superpowers/runs/phase-5/screens/5b2-minver-100-100-allowed.png` shows `SignInView`).
+  - `1.0.0 / 1.0.1` → blocked (`docs/superpowers/runs/phase-5/screens/5b2-minver-100-101-blocked.png` shows `UpgradeRequiredView` with `"Hãy cập nhật Sòng Phẳng để tiếp tục."` and `"Mở App Store"` disabled without a configured store URL).
+  - `1.10.0 / 1.9.0` → allowed (`docs/superpowers/runs/phase-5/screens/5b2-minver-1100-190-allowed.png` shows `SignInView`).
+  - Account active sessions UI (`docs/superpowers/runs/phase-5/screens/5b2-account-sessions.png` shows `"Thiết bị đang đăng nhập"`, current iOS badge `"iOS · Thiết bị này"`, Web row, single-line `"Đăng xuất"` buttons).
+- Live Simulator repository & snapshot exercise (compiled against `Domain.o`, `GeneratedAPI.o`, `Repositories.o` and executed in a real Simulator sandbox against isolated API `:4000` + disposable unknown-enum fixture `:4099`):
+  - `VERSION_AND_ROLE_PASS`: `1.0.0/1.0.0` allowed, `1.0.0/1.0.1` blocked, `1.10.0/1.9.0` allowed, `Role(code: "auditor") == .unknown("auditor")` with `canWrite == false`.
+  - `REGISTER_AND_RATE_LIMIT_PASS` & `CONSOLE_VERIFY_ALICE_PASS`: registered `alice.5b2@local.songphang.test`, 5 wrong passwords returned `401 INVALID_CREDENTIALS`, 6th returned `rateLimited`, forgot-password succeeded, console email verification token verified via `/auth/verify-email`.
+  - `BOB_SIGNIN_SNAPSHOT_PASS`: signed in `bob.5b2@local.songphang.test` via `POST /auth/token`, listed current iOS session (`client == .ios`, `deviceName == "iPhone 17 Pro Sim"`), confirmed `Caches/SongPhangSnapshots/<bobId>/me.json` exists with `isExcludedFromBackup == true` and `FileProtectionType.completeUntilFirstUserAuthentication`, confirmed cold-relaunch `lastKnownUser()` + `currentUser()`, confirmed offline relaunch retains snapshot & Keychain while returning `.offline`, changed password with `revokeOtherSessions: true`.
+  - `WEB_REVOKE_IOS_SESSION_PASS` & `BOB_REVOKED_WIPED_PASS`: revoked Bob's iOS session from a second web cookie session; iOS `currentUser()` threw `.unauthorized`, `sessionInvalidations()` fired, and `SongPhangSnapshots/` was completely wiped from disk.
+  - `CAROL_SWITCH_AND_DELETE_PASS`: signed in `carol.5b2@local.songphang.test`, confirmed Bob's snapshot folder absent, deleted Carol's account (`DELETE /me`), confirmed Keychain and `SongPhangSnapshots/` wiped.
+  - `UNKNOWN_ENUM_FIXTURE_PASS`: disposable response fixture with `"client": "desktop"` and extra top-level & nested fields decoded cleanly via `LiveAuthRepository.sessions()` with `client == .unknown("desktop")` and all readable fields preserved.
+- Security review: checked relevant items 1, 2, 4, 6, 8; tokens stay inside internal `TokenStore` Keychain item (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`), snapshots protected until first unlock and excluded from backup, full snapshot directory wiped before signed-out UI on 401/sign-out/delete/current-session-revoke, specific 409 error codes (`OWNER_REQUIRED`, etc.) preserved while `VERSION_CONFLICT` maps to `.conflict`, no secrets logged.
 
 ## Gate Not Passed
 

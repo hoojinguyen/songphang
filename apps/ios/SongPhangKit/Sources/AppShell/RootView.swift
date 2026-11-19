@@ -26,6 +26,7 @@ extension UIWindow {
 
 public struct RootView: View {
   private let dependencies: AppDependencies
+  @Environment(\.scenePhase) private var scenePhase
   @State private var sessionModel: SessionModel
   @State private var groupListModel: GroupListModel
   @State private var signInModel: SignInModel
@@ -33,6 +34,7 @@ public struct RootView: View {
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
   @State private var isShowingDebugPanel = false
+  @State private var hasCompletedInitialAppear = false
 
   public init(dependencies: AppDependencies? = nil, configuration: APIConfiguration? = nil) {
     #if DEBUG
@@ -111,6 +113,7 @@ public struct RootView: View {
       self.dependencies = resolved
       let session = SessionModel(
         authRepository: resolved.auth,
+        appVersion: resolved.appVersion,
         initialState: initialSessionState
       )
       self._sessionModel = State(initialValue: session)
@@ -145,16 +148,28 @@ public struct RootView: View {
     let info = Bundle.main.infoDictionary
     let apiString = (info?["API_BASE_URL"] as? String) ?? "http://127.0.0.1:4000/api/v1"
     let webString = (info?["WEB_BASE_URL"] as? String) ?? "http://127.0.0.1:3000"
-    let version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
+    var version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
+    #if DEBUG
+      let args = ProcessInfo.processInfo.arguments
+      if let idx = args.firstIndex(of: "--app-version"), idx + 1 < args.count {
+        version = args[idx + 1]
+      }
+    #endif
     let apiURL = URL(string: apiString) ?? URL(filePath: "/")
     let webURL = URL(string: webString) ?? URL(filePath: "/")
+    let rawStoreURL = (info?["APP_STORE_URL"] as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    let appStoreURL = rawStoreURL.flatMap { value in
+      value.isEmpty ? nil : URL(string: value)
+    }
     let rawDevice = UIDevice.current.name.trimmingCharacters(in: .whitespacesAndNewlines)
     let deviceName = rawDevice.isEmpty ? "iPhone" : String(rawDevice.prefix(60))
     return APIConfiguration(
       apiBaseURL: apiURL,
       webBaseURL: webURL,
       appVersion: version,
-      deviceName: deviceName
+      deviceName: deviceName,
+      appStoreURL: appStoreURL
     )
   }
 
@@ -264,9 +279,44 @@ public struct RootView: View {
       }
     #endif
     .task {
+      for await _ in dependencies.makeSessionInvalidations() {
+        resetToSignedOut()
+      }
+    }
+    .onChange(of: scenePhase) { _, newPhase in
+      if newPhase == .active, hasCompletedInitialAppear {
+        Task { await sessionModel.refreshOnForeground() }
+      }
+    }
+    .onChange(of: sessionModel.state) { oldState, newState in
+      if case .signedOut = newState {
+        if case .signedIn = oldState {
+          path.removeAll()
+          statusNotice = nil
+          groupListModel = GroupListModel(repository: dependencies.groups)
+          signInModel = SignInModel(
+            repository: dependencies.auth,
+            onSignedIn: { user in
+              sessionModel.didSignIn(user)
+            }
+          )
+        }
+      } else if case .signedIn(let newUser) = newState {
+        if case .signedIn(let oldUser) = oldState, oldUser.id == newUser.id {
+          return
+        }
+        if case .signedIn = oldState {
+          path.removeAll()
+          statusNotice = nil
+        }
+        groupListModel = GroupListModel(repository: dependencies.groups)
+      }
+    }
+    .task {
       if case .loading = sessionModel.state {
         await sessionModel.loadSession()
       }
+      hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
         guard let world = dependencies.world else { return }
@@ -347,8 +397,30 @@ public struct RootView: View {
     }
   }
 
+  private func resetToSignedOut() {
+    path.removeAll()
+    statusNotice = nil
+    groupListModel = GroupListModel(repository: dependencies.groups)
+    signInModel = SignInModel(
+      repository: dependencies.auth,
+      onSignedIn: { user in
+        sessionModel.didSignIn(user)
+      }
+    )
+    sessionModel.markSignedOut()
+  }
+
   @ViewBuilder
   private var mainContent: some View {
+    if sessionModel.isUpgradeRequired {
+      UpgradeRequiredView(appStoreURL: dependencies.appStoreURL)
+    } else {
+      sessionContent
+    }
+  }
+
+  @ViewBuilder
+  private var sessionContent: some View {
     switch sessionModel.state {
     case .loading:
       VStack {

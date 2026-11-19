@@ -29,6 +29,19 @@ struct AuthMiddleware: ClientMiddleware {
     if let token = await tokenStore.read(), !token.isEmpty {
       modified.headerFields[.authorization] = "Bearer \(token)"
     }
-    return try await next(modified, body, baseURL)
+    let (response, responseBody) = try await next(modified, body, baseURL)
+
+    if let captureBox = ResponseBodyCapture.box,
+      (200..<300).contains(response.status.code),
+      let contentType = response.headerFields[.contentType]?.lowercased(),
+      contentType.contains("application/json"),
+      let responseBody
+    {
+      let data = try await Data(collecting: responseBody, upTo: 8 * 1024 * 1024)
+      captureBox.store(data)
+      return (response, HTTPBody(data))
+    }
+
+    return (response, responseBody)
   }
 }

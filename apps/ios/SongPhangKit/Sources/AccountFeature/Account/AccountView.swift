@@ -78,6 +78,15 @@ public struct AccountView: View {
       changePasswordCard
     }
 
+    SessionsSectionView(
+      sessions: model.sessions,
+      revokingSessionId: model.revokingSessionId,
+      revokeError: model.revokeSessionError,
+      isOffline: model.isOffline,
+      onRetry: { Task { await model.reloadSessions() } },
+      onRevoke: { session in Task { await model.revokeSession(session) } }
+    )
+
     SPButton(
       L10n.tr("common.logout"),
       variant: .surface,
@@ -140,6 +149,7 @@ public struct AccountView: View {
         L10n.tr("account.savePassword"),
         variant: .primary,
         isFullWidth: true,
+        isDisabled: model.isOffline,
         isPending: model.isSavingPassword
       ) {
         Task { await model.savePassword() }
@@ -178,7 +188,8 @@ public struct AccountView: View {
         L10n.tr("account.delete"),
         variant: .primary,
         isFullWidth: true,
-        isDisabled: model.deleteConfirmationEmail != email || model.isDeletingAccount,
+        isDisabled: model.isOffline || model.deleteConfirmationEmail != email
+          || model.isDeletingAccount,
         isPending: model.isDeletingAccount
       ) {
         Task { await model.deleteAccount() }
