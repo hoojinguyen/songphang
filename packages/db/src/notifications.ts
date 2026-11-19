@@ -365,9 +365,49 @@ export async function findNotificationForImmediateMail(
 	};
 }
 
-export function listUnreadDigestNotifications(
+function digestEligibilityWhere(input: {
+	since: Date | null;
+	until: Date;
+	userId?: string;
+}) {
+	return and(
+		isNull(notifications.readAt),
+		inArray(notifications.kind, DIGEST_KINDS),
+		isNotNull(users.emailVerifiedAt),
+		sql`coalesce(${notificationSettings.emailDigest}, true) = true`,
+		lte(notifications.createdAt, input.until),
+		input.since ? gt(notifications.createdAt, input.since) : undefined,
+		input.userId ? eq(notifications.userId, input.userId) : undefined,
+	);
+}
+
+export async function listUnreadDigestCandidateUserIds(
 	executor: DbExecutor,
 	input: { since: Date | null; until: Date },
+): Promise<string[]> {
+	const rows = await executor
+		.selectDistinct({ userId: notifications.userId })
+		.from(notifications)
+		.innerJoin(users, eq(users.id, notifications.userId))
+		.innerJoin(
+			groupUsers,
+			and(
+				eq(groupUsers.groupId, notifications.groupId),
+				eq(groupUsers.userId, notifications.userId),
+			),
+		)
+		.leftJoin(
+			notificationSettings,
+			eq(notificationSettings.userId, notifications.userId),
+		)
+		.where(digestEligibilityWhere(input))
+		.orderBy(asc(notifications.userId));
+	return rows.map((row) => row.userId);
+}
+
+export function listUnreadDigestNotifications(
+	executor: DbExecutor,
+	input: { since: Date | null; until: Date; userId?: string },
 ) {
 	return executor
 		.select({
@@ -393,16 +433,7 @@ export function listUnreadDigestNotifications(
 			notificationSettings,
 			eq(notificationSettings.userId, notifications.userId),
 		)
-		.where(
-			and(
-				isNull(notifications.readAt),
-				inArray(notifications.kind, DIGEST_KINDS),
-				isNotNull(users.emailVerifiedAt),
-				sql`coalesce(${notificationSettings.emailDigest}, true) = true`,
-				lte(notifications.createdAt, input.until),
-				input.since ? gt(notifications.createdAt, input.since) : undefined,
-			),
-		)
+		.where(digestEligibilityWhere(input))
 		.orderBy(
 			asc(notifications.userId),
 			asc(notifications.groupId),

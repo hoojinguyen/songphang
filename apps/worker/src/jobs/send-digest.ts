@@ -2,6 +2,7 @@ import { JOB_NAMES, SendDigestPayload } from "@songphang/contract";
 import { formatNotificationText } from "@songphang/core";
 import {
 	getJobCheckpoint,
+	listUnreadDigestCandidateUserIds,
 	listUnreadDigestNotifications,
 	setJobCheckpoint,
 } from "@songphang/db";
@@ -78,19 +79,18 @@ function buildUserDigestLines(rows: DigestRow[]): string[] {
 export async function runSendDigest(deps: WorkerDeps): Promise<number> {
 	const now = deps.now();
 	const since = await getJobCheckpoint(deps.db, JOB_NAMES.sendDigest);
-	const rows = await listUnreadDigestNotifications(deps.db, {
+	const candidateUserIds = await listUnreadDigestCandidateUserIds(deps.db, {
 		since,
 		until: now,
 	});
-	const byUser = new Map<string, DigestRow[]>();
-	for (const row of rows) {
-		const list = byUser.get(row.userId);
-		if (list) list.push(row);
-		else byUser.set(row.userId, [row]);
-	}
 	const mailer = deps.mailer ?? createConsoleMailer();
 	let sentCount = 0;
-	for (const [userId, userRows] of byUser) {
+	for (const userId of candidateUserIds) {
+		const userRows = await listUnreadDigestNotifications(deps.db, {
+			since,
+			until: now,
+			userId,
+		});
 		const first = userRows[0];
 		if (!first) continue;
 		const allLines = buildUserDigestLines(userRows);
