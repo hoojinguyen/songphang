@@ -134,9 +134,6 @@ export async function createComment(
 		input.groupId,
 		input.transactionId,
 	);
-	if (transaction.deletedAt !== null) {
-		throw new AppError(404, "NOT_FOUND", "Resource not found");
-	}
 	const [group, earlierCommenters, payers, shares] = await Promise.all([
 		findGroup(executor, input.groupId),
 		listCommenterUserIds(executor, {
