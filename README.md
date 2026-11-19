@@ -27,15 +27,17 @@ Keep `.env` local and out of Git. `.env.example` contains configuration values i
 
 ## Common commands
 
-| Command                  | Purpose                                                                          |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `pnpm dev`               | Start PostgreSQL, migrate and seed the database, then start the API and web app. |
-| `pnpm check`             | Run linting and strict TypeScript checks across the workspace.                   |
-| `pnpm build`             | Build every workspace package that defines a `build` script.                     |
-| `pnpm db:migrate`        | Apply database migrations; PostgreSQL must be running.                           |
-| `pnpm db:check-balances` | Check ledger totals and group balances after changing or importing expenses.     |
-| `pnpm db:seed`           | Insert missing development users; PostgreSQL must be running and migrated.       |
-| `docker compose down`    | Stop and remove the database container while preserving its data volume.         |
+| Command                  | Purpose                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `pnpm dev`               | Start PostgreSQL, migrate and seed the database, then start the API and web app.      |
+| `pnpm check`             | Run linting, strict TypeScript checks, and OpenAPI contract snapshot check.           |
+| `pnpm contract:write`    | Regenerate the deterministic v1 OpenAPI snapshot at `packages/contract/openapi.json`. |
+| `pnpm contract:check`    | Verify `packages/contract/openapi.json` matches the live v1 route registry.           |
+| `pnpm build`             | Build every workspace package that defines a `build` script.                          |
+| `pnpm db:migrate`        | Apply database migrations; PostgreSQL must be running.                                |
+| `pnpm db:check-balances` | Check ledger totals and group balances after changing or importing expenses.          |
+| `pnpm db:seed`           | Insert missing development users; PostgreSQL must be running and migrated.            |
+| `docker compose down`    | Stop and remove the database container while preserving its data volume.              |
 
 **Reset local data:** stop the application with Ctrl+C, then run:
 
@@ -120,6 +122,15 @@ Leave `TELEGRAM_PROVIDER` unset to keep bot routes and linking cards disabled (`
 | `TELEGRAM_BOT_USERNAME`   | Bot handle without `@`, shown on `/g/{id}/settings` (`/lienket <code>` -> `@bot`) and `/link/telegram` | _(unset)_                 |
 
 When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to API logs instead of calling `api.telegram.org` (refused in production). Supported bot commands: `/chi`, `/sodu`, `/huy`, `/lienket`, `/trogiup`, and `/start` (private chat pairing).
+
+## Phase 5 contract and native app configuration
+
+`packages/contract/openapi.json` is the deterministic OpenAPI 3.1 snapshot of the v1 API registry (excluding development-only `/api/v1/dev/*` routes). Version 1 evolves strictly by addition; clients ignore unknown fields and map unknown enum values to safe fallbacks.
+
+| Variable                  | Purpose                                                                  | Default in `.env.example` |
+| ------------------------- | ------------------------------------------------------------------------ | ------------------------- |
+| `MIN_APP_VERSION_IOS`     | Minimum allowed iOS app version (`major.minor.patch`) in `GET /features` | `0.0.0`                   |
+| `MIN_APP_VERSION_ANDROID` | Minimum allowed Android version (`major.minor.patch`) in `GET /features` | `0.0.0`                   |
 
 ## Development mail and optional Google sign-in
 

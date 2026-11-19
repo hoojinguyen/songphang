@@ -1,5 +1,6 @@
 import path from "node:path";
 import { z } from "@hono/zod-openapi";
+import { AppVersion } from "@songphang/contract";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 
@@ -76,6 +77,14 @@ const CONFIG_SCHEMA = z
 		TELEGRAM_BOT_USERNAME: z.preprocess(
 			EMPTY_TO_UNDEFINED,
 			z.string().min(1).max(128).optional(),
+		),
+		MIN_APP_VERSION_IOS: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			AppVersion.default("0.0.0"),
+		),
+		MIN_APP_VERSION_ANDROID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			AppVersion.default("0.0.0"),
 		),
 	})
 	.superRefine((env, context) => {
@@ -185,6 +194,8 @@ const CONFIG_SCHEMA = z
 		telegramBotToken: env.TELEGRAM_BOT_TOKEN,
 		telegramWebhookSecret: env.TELEGRAM_WEBHOOK_SECRET,
 		telegramBotUsername: env.TELEGRAM_BOT_USERNAME?.replace(/^@+/, ""),
+		minAppVersionIos: env.MIN_APP_VERSION_IOS,
+		minAppVersionAndroid: env.MIN_APP_VERSION_ANDROID,
 	}));
 
 export type Config = z.infer<typeof CONFIG_SCHEMA>;

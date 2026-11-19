@@ -70,6 +70,12 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 - **Choice:** Option 2.
 - **Reason:** Inspection of `apps/web/public/fonts/be-vietnam-pro/` confirms only `.woff2` files exist, which CoreText/iOS cannot register as bundle fonts, and network downloads are prohibited. Owner action is flagged for final review before 5E archival.
 
+### D3 — Exclude generated `packages/contract/openapi.json` from Biome formatter (Task 5A.1)
+- **Problem:** `biome check .` flags array-wrapping differences on the generated `packages/contract/openapi.json` produced by `JSON.stringify(doc, null, "\t")`.
+- **Options:** (1) Invoke `biome format` inside `contract:write`/`contract:check`; (2) Exclude `!!packages/contract/openapi.json` in `biome.json` because `pnpm contract:check` (already part of `pnpm check`) enforces byte-for-byte determinism of that generated artifact.
+- **Choice:** Option 2.
+- **Reason:** Keeps `contract:write` and `contract:check` completely self-contained and fast without spawning Biome, mirrors `!!apps/ios` in `biome.json`, and preserves deterministic byte-identical snapshots enforced by `pnpm check`.
+
 ## Standing Documentation Follow-ups
 
 - Codex reconciles the approved design §9 changes (`docs/04-adr.md` ADR-014/029/030/032, `docs/05-api-spec.md`, `docs/05-database-design.md`, `docs/03-srs.md`, root `AGENTS.md`) with the reviewed implementation before merge.

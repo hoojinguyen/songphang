@@ -40,7 +40,26 @@ export function registerAttachmentRoutes(
 				requireUploadLimit(deps),
 				streamingUploadLimit(),
 			],
-			request: { params },
+			request: {
+				params,
+				body: {
+					required: true,
+					description: "Single receipt image file under part name 'file'",
+					content: {
+						"multipart/form-data": {
+							// Plain OpenAPI schema so @hono/zod-openapi documents the multipart payload
+							// without pre-consuming req.raw before streamingUploadLimit/readSingleUploadedFile.
+							schema: {
+								type: "object",
+								required: ["file"],
+								properties: {
+									file: { type: "string", format: "binary" },
+								},
+							},
+						},
+					},
+				},
+			},
 			responses: {
 				201: {
 					description: "Attachment uploaded",
@@ -78,7 +97,11 @@ export function registerAttachmentRoutes(
 			responses: {
 				200: {
 					description: "Attachment binary content",
-					content: { "image/jpeg": { schema: z.string() } },
+					content: {
+						"image/jpeg": { schema: { type: "string", format: "binary" } },
+						"image/png": { schema: { type: "string", format: "binary" } },
+						"image/webp": { schema: { type: "string", format: "binary" } },
+					},
 				},
 			},
 		}),

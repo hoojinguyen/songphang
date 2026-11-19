@@ -10,7 +10,7 @@
 ## Tasks
 
 - [x] 0 — Re-baseline and parity inventory
-- [ ] 5A.1 — OpenAPI snapshot and minimum version
+- [x] 5A.1 — OpenAPI snapshot and minimum version
 - [ ] 5A.2 — Native password sessions and revocation
 - [ ] 5A.3 — API gate
 - [ ] 5B.1 — Generated client and live composition
@@ -70,6 +70,32 @@
   - Balance integrity check (`DATABASE_URL=... pnpm --filter @songphang/db exec tsx src/check-balances.ts`): `All groups balanced` (`sum 0; mismatches 0`).
   - Disposable database dropped and `/tmp/songphang-phase5-t0-uploads` removed cleanly.
 - Security review: documentation-only task; no secrets, tokens, or personal data committed.
+
+### Task 5A.1 — OpenAPI snapshot and minimum version
+
+**Approach**
+- Files to create/modify: `packages/contract/src/features.ts`, `apps/api/src/config.ts`, `apps/api/src/routes/features.ts`, `apps/api/src/routes/attachments.ts`, `apps/api/src/app.ts`, `apps/api/src/openapi/{build,diff,cli}.ts`, `apps/api/package.json`, `package.json`, `biome.json`, `packages/contract/openapi.json`, `.env.example`, `README.md`.
+- Approach: Add `AppVersion` (`major.minor.patch`) and `minAppVersion: { ios, android }` to `FeaturesResponse` and API config (default `0.0.0`). Document multipart upload (`multipart/form-data` plain OpenAPI schema so `readSingleUploadedFile` keeps exact raw-body parsing) and all 3 binary image types (`image/jpeg`, `image/png`, `image/webp`) on attachment routes. Share `OPENAPI_DOCUMENT_CONFIG` between `app.doc31` and a deterministic offline CLI (`contract:write` / `contract:check`) that enables documented provider routes, excludes dev-only routes, sorts object keys without reordering semantic arrays, and classifies additive vs breaking diffs. Join `pnpm contract:check` into `pnpm check`.
+- Why this is the simplest approach: Reuses the live `OpenAPIHono` registry with zero new dependencies and a single authoritative schema source.
+- Rejected alternative: Hand-maintaining an OpenAPI YAML or adding a third-party OpenAPI diff package.
+- Questions: None (recorded D3 in `decisions.md`).
+
+**Observed results:**
+- Repeat generation determinism (`pnpm contract:write` × 2):
+  - `SHA1=835f96bc99cee24a864432c678fc10056cfc11be6d866adde4bdb40ef5bfab1e`
+  - `SHA2=835f96bc99cee24a864432c678fc10056cfc11be6d866adde4bdb40ef5bfab1e` (`BYTE_IDENTICAL=YES`)
+  - Dev routes in snapshot: `0`; Google routes: `2`; receipt-scan routes: `2`; chat-link routes: `3`.
+- Scratch contract diff & drift exercises:
+  - Hand-edited drift (`check --snapshot`): `[ADDITIVE] info.description: Documentation updated` → CLI exit code `1`.
+  - New optional field + enum member (`diff`): `[ADDITIVE] components.schemas.GroupDto.properties.role.enum: Enum value "auditor" added`, `[ADDITIVE] components.schemas.UserDto.properties.nickname: Optional property "nickname" added` (`0 breaking, 2 additive`) → CLI exit code `1`.
+  - Removed field (`diff`): `[BREAKING] components.schemas.UserDto.properties.avatarUrl: Property "avatarUrl" removed` (`1 breaking, 0 additive`) → CLI exit code `2`.
+  - Optional field becoming required (`diff`): `[BREAKING] components.schemas.UpdateGroupRequest.required.name: Field "name" became required` (`1 breaking, 0 additive`) → CLI exit code `2`.
+- Config & `/api/v1/features` exercises:
+  - Defaults with providers off: `200 {"receiptReading":false,"sentenceAi":false,"telegram":false,"push":false,"appleSignIn":false,"errorAlerts":false,"minAppVersion":{"ios":"0.0.0","android":"0.0.0"}}`
+  - Custom `MIN_APP_VERSION_IOS=1.2.3`, `MIN_APP_VERSION_ANDROID=2.0.1`: `200 ... "minAppVersion":{"ios":"1.2.3","android":"2.0.1"}`
+  - Invalid values (`1.0`, `v1.0.0`, `01.0.0`, `1.0.0-beta`): all refused at startup with `Invalid environment variables: MIN_APP_VERSION_IOS`.
+- `pnpm check`: PASS (`biome check . && pnpm -r typecheck && pnpm contract:check` → `OpenAPI contract snapshot is up to date.`).
+- Security review: checked relevant items 1, 2, 6, 8; no secrets in code/config/`.env.example`, Zod validates `MIN_APP_VERSION_*` at startup, no internal details leaked, no new dependencies added.
 
 ## Gate Not Passed
 

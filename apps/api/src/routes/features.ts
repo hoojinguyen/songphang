@@ -26,6 +26,10 @@ export function registerFeatureRoute(
 					push: false,
 					appleSignIn: false,
 					errorAlerts: false,
+					minAppVersion: {
+						ios: deps.config.minAppVersionIos,
+						android: deps.config.minAppVersionAndroid,
+					},
 				}),
 				200,
 			),

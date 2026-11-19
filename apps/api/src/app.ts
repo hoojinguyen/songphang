@@ -63,6 +63,16 @@ export type AppDeps = {
 	chatSender?: ChatSender | null;
 };
 
+export const OPENAPI_DOCUMENT_CONFIG = {
+	openapi: "3.1.0",
+	info: {
+		title: "Song Phang API",
+		version: "1.0.0",
+		description:
+			"Version 1 additive-only HTTP contract for Song Phang web and native clients. Clients must ignore unknown object fields and map unknown enum values to safe fallbacks (for example read-only or other). App versions use three-component major.minor.patch strings.",
+	},
+} as const;
+
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	const app = new OpenAPIHono<AppEnv>({
 		defaultHook: validateRequest,
@@ -123,9 +133,6 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	if (deps.config.devLogin && deps.config.appEnv === "development") {
 		registerDevRoutes(app, deps);
 	}
-	app.doc31("/api/v1/openapi.json", {
-		openapi: "3.1.0",
-		info: { title: "Song Phang API", version: "0.0.0" },
-	});
+	app.doc31("/api/v1/openapi.json", OPENAPI_DOCUMENT_CONFIG);
 	return app;
 }

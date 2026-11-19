@@ -8,7 +8,9 @@
 	"scripts": {
 		"dev": "docker compose up -d --wait db && pnpm db:migrate && pnpm db:seed && pnpm -r --parallel dev",
 		"build": "pnpm -r --if-present build",
-		"check": "biome check . && pnpm -r typecheck",
+		"check": "biome check . && pnpm -r typecheck && pnpm contract:check",
+		"contract:write": "pnpm --filter @songphang/api contract:write",
+		"contract:check": "pnpm --filter @songphang/api contract:check",
 		"typecheck": "pnpm -r typecheck",
 		"db:migrate": "pnpm --filter @songphang/db migrate",
 		"db:seed": "pnpm --filter @songphang/db seed",
