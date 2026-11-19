@@ -86,7 +86,10 @@ export async function decideTransactionApproval(
 			entityType: "transaction",
 			entityId: input.id,
 			summary: transaction.description,
-			...(trimmedNote ? { after: { note: trimmedNote } } : {}),
+			after: {
+				amount: transaction.amount,
+				...(trimmedNote ? { note: trimmedNote } : {}),
+			},
 			createdAt: now,
 		});
 		if (row.createdBy !== null) {

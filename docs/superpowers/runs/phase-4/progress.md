@@ -387,7 +387,7 @@ None.
 - [x] **R5 [P2]** — Publish group SSE resource events (`["balances"]`) for manual and automatic debt reminders so open notification bells update live
 - [x] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
 - [x] **R7 [P2]** — Persist stable `occurredAt` in bot draft and make transaction creation, idempotency state, and `markBotDraftSaved` atomic with save/drop serialization
-- [ ] **R8 [P3]** — Store decision-time amount in approval/rejection activity snapshots
+- [x] **R8 [P3]** — Store decision-time amount in approval/rejection activity snapshots
 - [ ] **README & Runbook** — Fix unsupported 5s delay / 7-day bot retention claims and update operational docs for R1/R2/R3/R4/R5
 - [ ] **Gate 1: Static & Build** — `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `git diff --check main..phase-4`
 - [ ] **Gate 2: 87 Quick-Entry Samples** — Full 87 rows of `docs/08-quick-entry-samples.md` over HTTP `/transactions/parse`
@@ -487,6 +487,26 @@ None.
   - Real output: `R7_ALL_CHECKS_PASSED {"concurrentSaveSingleTx":true,"undoWorked":true,"saveDropRaceWinner":"drop","injectedFailureRolledBackAtomically":true,"restartRetrySucceeded":true,"wrongSenderBlocked":true,"expiredBlocked":true,"roleDowngradeBlocked":true,"removedMemberBlocked":true}`
   - Verified: simultaneous `s:` with distinct `update_id`s creates 1 tx + 1 reply + 1 `savedTransactionId`; `/huy` undoes saved tx; `s:`/`d:` race is strictly serialized via `lockBotDraftById`; injected failure on `bot_drafts` UPDATE rolls back tx + idempotency key atomically; after trigger cleanup and simulated process restart + 5s clock advance, retry succeeds with 1 tx + `savedTransactionId` + 1 reply; wrong sender, expired draft, downgraded `viewer`, and removed group member are all rejected inside the write transaction.
 - **Security review:** Live actor/role/membership authorization (`resolveActor({ db: tx }, ...)`) is now enforced inside the committing transaction while holding the `bot_drafts` row lock; temporary failure-injection trigger `trg_r7_fail_mark_saved` and function `fn_r7_fail_mark_saved` removed after verification.
+
+### R8 [P3] — approach
+
+- **Files to change:** `apps/api/src/services/approval.ts`.
+- **Plan:** Always populate `after: { amount: transaction.amount, ...(trimmedNote ? { note: trimmedNote } : {}) }` when inserting `approve`/`reject` activity entries so `describeActivity` renders the exact decision-time integer amount (and preserves it immutably if the transaction is edited later). Do not fabricate or backfill amounts on old historical rows.
+- **Why simplest:** Single-line change at the canonical activity write site; `describeActivity` already reads `after.amount` and formats it.
+- **Reproduction on `e4356fb` (`songphang_phase4_fix_20261119`):** `R8_CHECK` rendered `Minh duyệt Vé máy bay · …`, `Minh không duyệt Khách sạn · …`, and `Minh không duyệt Thuê xe · …` (`after` lacked `amount`).
+
+### R8 [P3] — verification & security review
+
+- **Checks:** `pnpm check` passed (485 files checked, 0 errors, 3 pre-existing warnings, 8 typechecks Done).
+- **Exercise (`repro_r8.mts` against live HTTP API + `describeActivity` on `songphang_phase4_fix_20261119`):**
+  - Real output:
+    - Approve (no note, verified AFTER subsequently editing transaction from `1,500,000` to `1,800,000`): `after: {"amount":1500000}` -> `Minh duyệt Vé máy bay · 1.500.000 đ`.
+    - Reject (with note): `after: {"note":"Cần hóa đơn","amount":2000000}` -> `Minh không duyệt Khách sạn · 2.000.000 đ`.
+    - Reject (no note): `after: {"amount":900000}` -> `Minh không duyệt Thuê xe · 900.000 đ`.
+  - No historical rows were fabricated or backfilled.
+- **Security review:** Integer amount copied from the locked transaction row inside `decideTransactionApproval`; no new user input or surface change.
+
+
 
 
 
