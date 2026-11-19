@@ -11,7 +11,7 @@
 
 - [x] 0 — Re-baseline and parity inventory
 - [x] 5A.1 — OpenAPI snapshot and minimum version
-- [ ] 5A.2 — Native password sessions and revocation
+- [x] 5A.2 — Native password sessions and revocation
 - [ ] 5A.3 — API gate
 - [ ] 5B.1 — Generated client and live composition
 - [ ] 5B.2 — Account lifecycle and snapshots
@@ -96,6 +96,31 @@
   - Invalid values (`1.0`, `v1.0.0`, `01.0.0`, `1.0.0-beta`): all refused at startup with `Invalid environment variables: MIN_APP_VERSION_IOS`.
 - `pnpm check`: PASS (`biome check . && pnpm -r typecheck && pnpm contract:check` → `OpenAPI contract snapshot is up to date.`).
 - Security review: checked relevant items 1, 2, 6, 8; no secrets in code/config/`.env.example`, Zod validates `MIN_APP_VERSION_*` at startup, no internal details leaked, no new dependencies added.
+
+### Task 5A.2 — Native password sessions and revocation
+
+**Approach**
+- Files to create/modify: `packages/db/src/{schema,sessions,index}.ts`, `packages/db/drizzle/0023_useful_morlun.sql` (+ `meta/`), `packages/contract/src/auth.ts`, `apps/api/src/{app.ts,auth/sessions.ts,auth/middleware.ts,services/accounts.ts}`, `apps/api/src/routes/{account-auth,auth,me,mobile-auth}.ts`, `apps/web/src/messages/vi.ts`, `apps/web/src/lib/auth.ts`, `apps/web/src/components/account/SessionsCard.tsx`, `apps/web/src/app/account/page.tsx`, regenerated `packages/contract/openapi.json`.
+- Approach: Add `client` (`'web' | 'ios' | 'android'`, default `'web'`) and nullable `device_name` (1–60 chars) with PostgreSQL `CHECK` constraints to `sessions` via `drizzle-kit generate`. Reuse `loginAccount` and the shared `"login-ip"` / `"login-email"` limiters in `POST /api/v1/auth/token` (returning `200 { token, user }`, `Cache-Control: no-store`, no cookie). Enforce query-string credential rejection in `requireUser` and Bearer-only vs Cookie/mixed same-origin rules in `requireSameOrigin`. Add `GET /api/v1/me/sessions` and `DELETE /api/v1/me/sessions/{id}` (revoking SSE via `deps.events.revokeSession` and expiring cookie on current web session revoke), and render "Thiết bị đang đăng nhập" on web `/account`.
+- Why this is the simplest approach: Single session table, single credential verification path, single shared rate-limiter pair, and single SSE revocation channel.
+- Rejected alternative: Separate native session table or duplicated password verification logic.
+- Questions: None.
+
+**Observed results:**
+- Pre-existing migration backfill (`0000..0022` seeded with pre-existing web session row, then migrated with `0023_useful_morlun.sql`):
+  - `PRE_EXISTING_SESSION_BACKFILL_PASS: {"id":"01900000-0000-7000-8000-000000000001","client":"web","deviceName":null,"createdAt":"...","lastSeenAt":"...","current":true}` (no `token` or `tokenHash`; pre-existing cookie continues returning 200 on `GET /api/v1/me`).
+- Native token login & error parity:
+  - `NATIVE_TOKEN_LOGIN_PASS: 200 no-cookie Cache-Control=no-store`
+  - `IDENTICAL_401_BODIES_PASS: {"code":"INVALID_CREDENTIALS","message":"Email or password is incorrect"}` across wrong password & unknown email on both `POST /auth/login` and `POST /auth/token`.
+  - `SHARED_EMAIL_BUDGET_PASS`: alternating `/auth/login` and `/auth/token` for the same email returned `401` on attempts 1–5 and `429 RATE_LIMITED` on attempt 6.
+- Credential transport & Origin matrix:
+  - `QUERY_STRING_CREDENTIAL_REJECT_PASS`: `GET /api/v1/me?token=...` returned `400 VALIDATION_FAILED`.
+  - `ORIGIN_TRANSPORT_MATRIX_PASS`: Bearer-only `[absent=201, local=201, foreign=201, invalid=401]`, Cookie `[local=201, absent=201, foreign=400 VALIDATION_FAILED]`, Mixed Cookie+Bearer `[local=201, absent=201, foreign=400 VALIDATION_FAILED]`.
+- Session revocation & SSE closure:
+  - `REVOCATION_SSE_LOGOUT_PASS`: cross-account revoke `404`, active iOS SSE stream closed immediately (`CLOSED`) when revoked from web session, revoked iOS token returned `401`, web session remained `200`, revoking current web session returned `204` with `sp_session=; Max-Age=0` and invalidated cookie (`401`), Bearer `POST /auth/logout` returned `204` with no cookie and invalidated token (`401`).
+- OpenAPI diff vs 5A.1 (`f0b735a`): `0 breaking, 9 additive` (3 new paths: `/api/v1/auth/token`, `/api/v1/me/sessions`, `/api/v1/me/sessions/{id}`; 6 new schemas).
+- `pnpm check` & `pnpm build`: PASS.
+- Security review: checked relevant items 1–8; no secrets/hashes in responses or logs, Zod validates all inputs and UUID params, query-string session credentials rejected, DB `CHECK` constraints in migration `0023_useful_morlun.sql`, mixed Cookie/Bearer stays on same-origin policy, `Cache-Control: no-store` on `/auth/token`, no new dependencies.
 
 ## Gate Not Passed
 

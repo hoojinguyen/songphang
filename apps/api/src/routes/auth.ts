@@ -22,7 +22,7 @@ export function registerAuthRoutes(
 		createRoute({
 			method: "post",
 			path: "/api/v1/auth/logout",
-			middleware: [requireSameOrigin(deps.config), requireUser(deps)],
+			middleware: [requireUser(deps), requireSameOrigin(deps.config)],
 			responses: {
 				204: { description: "Signed out" },
 				400: {
@@ -38,11 +38,13 @@ export function registerAuthRoutes(
 		async (context) => {
 			await deleteSession(deps.db, context.get("sessionToken"));
 			deps.events.revokeSession(hashSessionToken(context.var.sessionToken));
-			deleteCookie(
-				context,
-				SESSION_COOKIE,
-				sessionCookieAttributes(deps.config.appEnv),
-			);
+			if (context.var.sessionTransport !== "bearer") {
+				deleteCookie(
+					context,
+					SESSION_COOKIE,
+					sessionCookieAttributes(deps.config.appEnv),
+				);
+			}
 			return context.body(null, 204);
 		},
 	);

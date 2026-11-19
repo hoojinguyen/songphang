@@ -7,6 +7,8 @@ import {
 	ProvidersResponse,
 	type RegisterRequest,
 	type ResetPasswordRequest,
+	type SessionDto,
+	SessionsResponse,
 } from "@songphang/contract";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -100,6 +102,31 @@ export function useDeleteAccount() {
 			await client.cancelQueries();
 			client.clear();
 			router.replace("/login");
+		},
+	});
+}
+
+export function useSessions() {
+	return useQuery<SessionDto[], ApiError>({
+		queryKey: ["me", "sessions"],
+		queryFn: async () =>
+			(await apiFetch("/me/sessions", SessionsResponse)).sessions,
+	});
+}
+
+export function useRevokeSession() {
+	const router = useRouter();
+	const client = useQueryClient();
+	return useMutation<void, ApiError, { id: string; current: boolean }>({
+		mutationFn: ({ id }) => apiSend(`/me/sessions/${id}`, { method: "DELETE" }),
+		onSuccess: async (_data, variables) => {
+			if (variables.current) {
+				await client.cancelQueries();
+				client.clear();
+				router.replace("/login");
+				return;
+			}
+			await client.invalidateQueries({ queryKey: ["me", "sessions"] });
 		},
 	});
 }

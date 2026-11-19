@@ -1751,6 +1751,13 @@
 				],
 				"type": "object"
 			},
+			"NativeClient": {
+				"enum": [
+					"ios",
+					"android"
+				],
+				"type": "string"
+			},
 			"NotificationDto": {
 				"properties": {
 					"createdAt": {
@@ -3156,6 +3163,65 @@
 				],
 				"type": "object"
 			},
+			"SessionClient": {
+				"enum": [
+					"web",
+					"ios",
+					"android"
+				],
+				"type": "string"
+			},
+			"SessionDto": {
+				"properties": {
+					"client": {
+						"$ref": "#/components/schemas/SessionClient"
+					},
+					"createdAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"current": {
+						"type": "boolean"
+					},
+					"deviceName": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"lastSeenAt": {
+						"format": "date-time",
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"client",
+					"deviceName",
+					"createdAt",
+					"lastSeenAt",
+					"current"
+				],
+				"type": "object"
+			},
+			"SessionsResponse": {
+				"properties": {
+					"sessions": {
+						"items": {
+							"$ref": "#/components/schemas/SessionDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"sessions"
+				],
+				"type": "object"
+			},
 			"SettlementRequestDto": {
 				"properties": {
 					"amount": {
@@ -3791,6 +3857,50 @@
 					"expired"
 				],
 				"type": "string"
+			},
+			"TokenLoginRequest": {
+				"properties": {
+					"client": {
+						"$ref": "#/components/schemas/NativeClient"
+					},
+					"deviceName": {
+						"maxLength": 60,
+						"minLength": 1,
+						"type": "string"
+					},
+					"email": {
+						"format": "email",
+						"maxLength": 254,
+						"type": "string"
+					},
+					"password": {
+						"maxLength": 1024,
+						"minLength": 1,
+						"type": "string"
+					}
+				},
+				"required": [
+					"email",
+					"password",
+					"client",
+					"deviceName"
+				],
+				"type": "object"
+			},
+			"TokenLoginResponse": {
+				"properties": {
+					"token": {
+						"type": "string"
+					},
+					"user": {
+						"$ref": "#/components/schemas/UserDto"
+					}
+				},
+				"required": [
+					"token",
+					"user"
+				],
+				"type": "object"
 			},
 			"TransactionApprovalDto": {
 				"properties": {
@@ -4790,6 +4900,63 @@
 				"responses": {
 					"204": {
 						"description": "Password reset"
+					}
+				}
+			}
+		},
+		"/api/v1/auth/token": {
+			"post": {
+				"parameters": [
+					{
+						"in": "header",
+						"name": "user-agent",
+						"required": false,
+						"schema": {
+							"maxLength": 1024,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/TokenLoginRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/TokenLoginResponse"
+								}
+							}
+						},
+						"description": "Native session issued"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Invalid credentials"
+					},
+					"429": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Too many login attempts"
 					}
 				}
 			}
@@ -8006,6 +8173,72 @@
 							}
 						},
 						"description": "Unread notification count"
+					}
+				}
+			}
+		},
+		"/api/v1/me/sessions": {
+			"get": {
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SessionsResponse"
+								}
+							}
+						},
+						"description": "Active sessions for the current user"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Authentication required"
+					}
+				}
+			}
+		},
+		"/api/v1/me/sessions/{id}": {
+			"delete": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Session revoked"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Authentication required"
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Session not found"
 					}
 				}
 			}

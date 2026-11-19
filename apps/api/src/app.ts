@@ -32,6 +32,7 @@ import { registerHealthRoute } from "./routes/health.js";
 import { registerInviteRoutes } from "./routes/invites.js";
 import { registerMeRoute } from "./routes/me.js";
 import { registerMemberRoutes } from "./routes/members.js";
+import { registerMobileAuthRoutes } from "./routes/mobile-auth.js";
 import { registerNotificationRoutes } from "./routes/notifications.js";
 import { registerReceiptScanRoutes } from "./routes/receipt-scans.js";
 import { registerReminderRoutes } from "./routes/reminders.js";
@@ -46,6 +47,7 @@ export type AppEnv = {
 		requestId: string;
 		user: UserDto;
 		sessionToken: string;
+		sessionTransport: "bearer" | "cookie" | "mixed";
 		authEmail: string;
 		groupAccess: { groupId: string; role: GroupRole; memberId: string | null };
 	};
@@ -129,6 +131,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerExportRoutes(app, deps);
 	registerActivityRoutes(app, deps);
 	registerAuthRoutes(app, deps);
+	registerMobileAuthRoutes(app, deps);
 	registerGoogleRoutes(app, deps);
 	if (deps.config.devLogin && deps.config.appEnv === "development") {
 		registerDevRoutes(app, deps);

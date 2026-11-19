@@ -67,6 +67,23 @@ const providersRoute = createRoute({
 		},
 	},
 });
+export function createLoginRateLimiters(deps: AppDeps) {
+	return {
+		loginIpLimit: deps.rateLimiter.limit({
+			name: "login-ip",
+			max: 10,
+			windowMs: 15 * 60 * 1000,
+			key: socketIp,
+		}),
+		loginEmailLimit: deps.rateLimiter.limit({
+			name: "login-email",
+			max: 5,
+			windowMs: 15 * 60 * 1000,
+			key: (context) => context.var.authEmail,
+		}),
+	};
+}
+
 export function registerAccountAuthRoutes(
 	app: OpenAPIHono<AppEnv>,
 	deps: AppDeps,
@@ -78,18 +95,7 @@ export function registerAccountAuthRoutes(
 		windowMs: 60 * 60 * 1000,
 		key: socketIp,
 	});
-	const loginIpLimit = deps.rateLimiter.limit({
-		name: "login-ip",
-		max: 10,
-		windowMs: 15 * 60 * 1000,
-		key: socketIp,
-	});
-	const loginEmailLimit = deps.rateLimiter.limit({
-		name: "login-email",
-		max: 5,
-		windowMs: 15 * 60 * 1000,
-		key: (context) => context.var.authEmail,
-	});
+	const { loginIpLimit, loginEmailLimit } = createLoginRateLimiters(deps);
 	const resendLimit = deps.rateLimiter.limit({
 		name: "resend-user",
 		max: 3,
@@ -115,8 +121,9 @@ export function registerAccountAuthRoutes(
 		},
 		async (context) => {
 			const userAgent = context.req.valid("header")["user-agent"];
-			const session = await loginAccount(deps, {
+			const { session } = await loginAccount(deps, {
 				request: context.req.valid("json"),
+				client: "web",
 				...(userAgent === undefined ? {} : { userAgent }),
 			});
 			setCookie(
@@ -135,7 +142,7 @@ export function registerAccountAuthRoutes(
 	app.openapi(
 		{
 			...resendRoute,
-			middleware: [sameOrigin, requireUser(deps), resendLimit],
+			middleware: [requireUser(deps), sameOrigin, resendLimit],
 		},
 		async (context) => {
 			await resendVerification(deps, context.var.user);

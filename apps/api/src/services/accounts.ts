@@ -1,13 +1,19 @@
-import type {
-	LoginRequest,
-	RegisterRequest,
+import {
+	type LoginRequest,
+	type RegisterRequest,
+	SessionDto,
+	type SessionsResponse,
 	UserDto,
 } from "@songphang/contract";
 import {
+	type DbSessionClient,
+	deleteUserSessionById,
 	findAccountByEmail,
 	findAccountById,
+	findUserById,
 	insertAccount,
 	insertIdentity,
+	listUserSessions,
 	lockAccount,
 	verifyAccountEmail,
 } from "@songphang/db";
@@ -19,7 +25,7 @@ import {
 	hashPassword,
 	verifyPassword,
 } from "../auth/passwords.js";
-import { createSession } from "../auth/sessions.js";
+import { createSession, hashSessionToken } from "../auth/sessions.js";
 import { AppError } from "../errors.js";
 import { accountExistsMail, verificationMail } from "../mail-templates.js";
 export function requireStrongPassword(password: string): void {
@@ -71,7 +77,12 @@ export async function registerAccount(
 }
 export async function loginAccount(
 	deps: AppDeps,
-	input: { request: LoginRequest; userAgent?: string },
+	input: {
+		request: LoginRequest;
+		userAgent?: string;
+		client?: DbSessionClient;
+		deviceName?: string;
+	},
 ) {
 	const account = await findAccountByEmail(deps.db, input.request.email);
 	const matches = await verifyPassword(
@@ -93,12 +104,64 @@ export async function loginAccount(
 				"INVALID_CREDENTIALS",
 				"Email or password is incorrect",
 			);
-		return createSession(transaction, {
+		const userRow = await findUserById(transaction, current.id);
+		if (userRow === null)
+			throw new AppError(
+				401,
+				"INVALID_CREDENTIALS",
+				"Email or password is incorrect",
+			);
+		const session = await createSession(transaction, {
 			userId: current.id,
 			now: deps.now(),
 			...(input.userAgent === undefined ? {} : { userAgent: input.userAgent }),
+			...(input.client === undefined ? {} : { client: input.client }),
+			...(input.deviceName === undefined
+				? {}
+				: { deviceName: input.deviceName }),
 		});
+		return { session, user: UserDto.parse(userRow) };
 	});
+}
+
+export async function listActiveSessions(
+	deps: AppDeps,
+	input: { userId: string; currentToken: string },
+): Promise<SessionsResponse> {
+	const currentHash = hashSessionToken(input.currentToken);
+	const rows = await listUserSessions(deps.db, {
+		userId: input.userId,
+		now: deps.now(),
+	});
+	return {
+		sessions: rows.map((row) =>
+			SessionDto.parse({
+				id: row.id,
+				client: row.client,
+				deviceName: row.deviceName,
+				createdAt: row.createdAt.toISOString(),
+				lastSeenAt: row.lastSeenAt.toISOString(),
+				current: row.tokenHash === currentHash,
+			}),
+		),
+	};
+}
+
+export async function revokeUserSession(
+	deps: AppDeps,
+	input: { userId: string; sessionId: string; currentToken: string },
+): Promise<{ isCurrent: boolean }> {
+	const deleted = await deleteUserSessionById(deps.db, {
+		userId: input.userId,
+		sessionId: input.sessionId,
+	});
+	if (deleted === null) {
+		throw new AppError(404, "NOT_FOUND", "Session not found");
+	}
+	deps.events.revokeSession(deleted.tokenHash);
+	return {
+		isCurrent: deleted.tokenHash === hashSessionToken(input.currentToken),
+	};
 }
 export async function verifyEmail(deps: AppDeps, token: string): Promise<void> {
 	await deps.db.transaction(async (transaction) => {

@@ -64,10 +64,13 @@ export {
 } from "./schema-transactions.js";
 export { DEV_USERS, seedDevUsers } from "./seed.js";
 export {
+	type DbSessionClient,
 	deleteSessionByHash,
+	deleteUserSessionById,
 	deleteUserSessions,
 	findUserBySessionHash,
 	insertSession,
+	listUserSessions,
 } from "./sessions.js";
 export * from "./settlement-requests.js";
 export * from "./stats.js";

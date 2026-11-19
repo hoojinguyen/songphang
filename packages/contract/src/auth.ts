@@ -71,3 +71,50 @@ export const DeleteAccountRequest = z
 	.object({ email: EmailAddress })
 	.openapi("DeleteAccountRequest");
 export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequest>;
+
+export const SessionClient = z
+	.enum(["web", "ios", "android"])
+	.openapi("SessionClient");
+export type SessionClient = z.infer<typeof SessionClient>;
+
+export const NativeClient = z.enum(["ios", "android"]).openapi("NativeClient");
+export type NativeClient = z.infer<typeof NativeClient>;
+
+export const DeviceName = z.string().trim().min(1).max(60);
+
+export const TokenLoginRequest = z
+	.object({
+		email: EmailAddress,
+		password: z.string().min(1).max(1024),
+		client: NativeClient,
+		deviceName: DeviceName,
+	})
+	.openapi("TokenLoginRequest");
+export type TokenLoginRequest = z.infer<typeof TokenLoginRequest>;
+
+export const TokenLoginResponse = z
+	.object({
+		token: z.string(),
+		user: UserDto,
+	})
+	.openapi("TokenLoginResponse");
+export type TokenLoginResponse = z.infer<typeof TokenLoginResponse>;
+
+export const SessionDto = z
+	.object({
+		id: z.uuid(),
+		client: SessionClient,
+		deviceName: z.string().nullable(),
+		createdAt: z.iso.datetime(),
+		lastSeenAt: z.iso.datetime(),
+		current: z.boolean(),
+	})
+	.openapi("SessionDto");
+export type SessionDto = z.infer<typeof SessionDto>;
+
+export const SessionsResponse = z
+	.object({
+		sessions: z.array(SessionDto),
+	})
+	.openapi("SessionsResponse");
+export type SessionsResponse = z.infer<typeof SessionsResponse>;

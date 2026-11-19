@@ -4,6 +4,7 @@ import { UserDto } from "@songphang/contract";
 import {
 	type Db,
 	type DbExecutor,
+	type DbSessionClient,
 	deleteSessionByHash,
 	findUserById,
 	findUserBySessionHash,
@@ -30,19 +31,21 @@ export async function createSession(
 		userId: string;
 		now: Date;
 		userAgent?: string;
+		client?: DbSessionClient;
+		deviceName?: string;
 	},
-): Promise<{ token: string; expiresAt: Date }> {
+): Promise<{ id: string; token: string; expiresAt: Date }> {
 	if ((await findUserById(db, input.userId)) === null) {
 		throw new AppError(404, "NOT_FOUND", "User not found");
 	}
 	const token = randomBytes(32).toString("base64url");
 	const expiresAt = new Date(input.now.getTime() + SESSION_TTL_MS);
-	await insertSession(db, {
+	const { id } = await insertSession(db, {
 		...input,
 		tokenHash: hashSessionToken(token),
 		expiresAt,
 	});
-	return { token, expiresAt };
+	return { id, token, expiresAt };
 }
 
 export async function findSessionUser(
