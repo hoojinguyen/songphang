@@ -27,14 +27,15 @@ export function AmountField({
 		if (amount !== null) onChange(formatAmount(amount));
 	};
 	return (
-		<div className="flex items-center gap-2 rounded-[32px] border-[3px] border-ink bg-surface px-4 py-2">
+		<div className="flex min-w-0 w-full items-center gap-2 rounded-[32px] border-[3px] border-ink bg-surface px-4 py-2">
 			<input
 				ref={input}
 				aria-label={label}
 				inputMode="numeric"
+				size={1}
 				value={value}
 				onChange={(event) => change(event.target.value)}
-				className="min-w-0 flex-1 bg-transparent text-center text-[52px] font-black tracking-tight outline-none"
+				className="min-w-0 w-full flex-1 bg-transparent text-center text-[52px] font-black tracking-tight outline-none"
 			/>
 			<span className="text-[22px] font-black text-muted">
 				{vi.common.currency}
