@@ -231,6 +231,16 @@ export async function findBotDraftById(executor: DbExecutor, draftId: string) {
 	return row ?? null;
 }
 
+export async function lockBotDraftById(executor: DbExecutor, draftId: string) {
+	const [row] = await executor
+		.select()
+		.from(botDrafts)
+		.where(eq(botDrafts.id, draftId))
+		.for("update")
+		.limit(1);
+	return row ?? null;
+}
+
 export async function markBotDraftSaved(
 	executor: DbExecutor,
 	input: { draftId: string; transactionId: string; savedAt: Date },

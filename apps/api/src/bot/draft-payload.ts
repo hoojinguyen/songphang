@@ -8,6 +8,7 @@ import {
 export const BotDraftPayload = z.object({
 	description: z.string().trim().min(1).max(200),
 	amount: MoneyAmount,
+	occurredAt: z.iso.datetime().optional(),
 	category: TransactionCategory.nullable(),
 	categoryId: z.uuid().nullable(),
 	payers: z.array(z.object({ memberId: z.uuid(), amount: MoneyAmount })).min(1),

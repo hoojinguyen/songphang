@@ -386,7 +386,7 @@ None.
 - [x] **R4 [P2]** — Enqueue automatic reminder `send-notification-mail` jobs transactionally inside the reminder/notification transaction
 - [x] **R5 [P2]** — Publish group SSE resource events (`["balances"]`) for manual and automatic debt reminders so open notification bells update live
 - [x] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
-- [ ] **R7 [P2]** — Persist stable `occurredAt` in bot draft and make transaction creation, idempotency state, and `markBotDraftSaved` atomic with save/drop serialization
+- [x] **R7 [P2]** — Persist stable `occurredAt` in bot draft and make transaction creation, idempotency state, and `markBotDraftSaved` atomic with save/drop serialization
 - [ ] **R8 [P3]** — Store decision-time amount in approval/rejection activity snapshots
 - [ ] **README & Runbook** — Fix unsupported 5s delay / 7-day bot retention claims and update operational docs for R1/R2/R3/R4/R5
 - [ ] **Gate 1: Static & Build** — `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `git diff --check main..phase-4`
@@ -469,6 +469,26 @@ None.
   - Real output: `R6_ALL_CHECKS_PASSED {"pendingCreate":{"preview":[],"save":[]},"itemsPendingCreate":{"preview":[],"save":[]},"approvedEditToPending":{"preview":[],"save":[]},"rejectedEditToPending":{"preview":[],"save":[]},"belowThresholdEdit":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"ownerEditAboveThreshold":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"disabledThreshold":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"fundPendingLan":{"preview":[],"save":[]},"fundOwnerMinh":{"preview":["FUND_OVERDRAWN"],"save":["FUND_OVERDRAWN"]}}`
   - Verified exact parity between preview and create/edit warnings across all 9 cases, and confirmed pending/rejected amounts never enter official budget spent totals.
 - **Security review:** Authenticated `context.var.user.id` passed from route to `previewTransaction` after `requireUser` + `requireGroupRole(deps, "editor")`; read-only repeatable-read transaction; no new endpoints or privilege changes.
+
+### R7 [P2] — approach
+
+- **Files to change:** `apps/api/src/bot/draft-payload.ts`, `apps/api/src/bot/commands/expense.ts`, `packages/db/src/chat.ts`, `packages/db/src/index.ts`, `apps/api/src/bot/callbacks.ts`.
+- **Plan:** Add optional `occurredAt: z.iso.datetime().optional()` to `BotDraftPayload` and persist `occurredAt: now.toISOString()` when creating a bot draft in `apps/api/src/bot/commands/expense.ts` (falling back to `draft.createdAt.toISOString()` for any existing legacy drafts without `occurredAt`). Add `lockBotDraftById(executor, draftId)` (`SELECT ... FOR UPDATE`) in `packages/db/src/chat.ts`. In `apps/api/src/bot/callbacks.ts`:
+  - Serialize drop (`d:`) inside a DB transaction using `lockBotDraftById(tx, draft.id)` before deleting if `savedTransactionId === null`.
+  - Serialize save (`s:`) inside `runIdempotent`'s transaction: acquire `lockBotDraftById(tx, draft.id)`, verify the draft still exists and is unexpired, re-check `resolveActor({ db: tx }, { chatId, platformUserId: cb.from.id })` inside the write transaction (verifying chat link, sender identity, group membership, and non-viewer role against live state), call `createTransaction(tx, ...)`, and call `markBotDraftSaved(tx, ...)` atomically in the SAME transaction so a failure at `markBotDraftSaved` rolls back both `createTransaction` and `idempotency_keys`.
+  - On idempotent replay, `runIdempotent` returns the stored response; `created.transaction.id` is already committed and `savedTransactionId` was already set atomically (with safe recovery if `savedTransactionId` were ever null on an older pre-fix row).
+- **Why simplest:** Keeps the existing `runIdempotent` contract and `bot_drafts` table (no migration needed), eliminates the split-commit window and `occurredAt` hash drift completely, and enforces live role/membership authorization inside the write transaction.
+- **Reproduction on `4335d95` (`songphang_phase4_fix_20261119`):** `R7_REPRO {"firstSaveStatus":200,"retrySaveStatus":200,"retryHasIdempotencyReuse":false,"draftSavedTxIdAfterRetry":null,"txCountInGroup":1}` (with two `telegram.webhook.error` events: first at `markBotDraftSaved` after transaction committed, second on retry due to `occurredAt` request-hash drift, leaving `saved_transaction_id = null` permanently).
+
+### R7 [P2] — verification & security review
+
+- **Checks:** `pnpm check` passed (485 files checked, 0 errors, 3 pre-existing warnings, 8 typechecks Done).
+- **Exercise (`exercise_r7.mts` against live HTTP webhook on `songphang_phase4_fix_20261119`):**
+  - Real output: `R7_ALL_CHECKS_PASSED {"concurrentSaveSingleTx":true,"undoWorked":true,"saveDropRaceWinner":"drop","injectedFailureRolledBackAtomically":true,"restartRetrySucceeded":true,"wrongSenderBlocked":true,"expiredBlocked":true,"roleDowngradeBlocked":true,"removedMemberBlocked":true}`
+  - Verified: simultaneous `s:` with distinct `update_id`s creates 1 tx + 1 reply + 1 `savedTransactionId`; `/huy` undoes saved tx; `s:`/`d:` race is strictly serialized via `lockBotDraftById`; injected failure on `bot_drafts` UPDATE rolls back tx + idempotency key atomically; after trigger cleanup and simulated process restart + 5s clock advance, retry succeeds with 1 tx + `savedTransactionId` + 1 reply; wrong sender, expired draft, downgraded `viewer`, and removed group member are all rejected inside the write transaction.
+- **Security review:** Live actor/role/membership authorization (`resolveActor({ db: tx }, ...)`) is now enforced inside the committing transaction while holding the `bot_drafts` row lock; temporary failure-injection trigger `trg_r7_fail_mark_saved` and function `fn_r7_fail_mark_saved` removed after verification.
+
+
 
 
 

@@ -84,15 +84,16 @@ export async function handleExpenseCommand(
 		return;
 	}
 
+	const now = deps.now();
 	const payload = BotDraftPayload.parse({
 		description: parsed.draft.description,
 		amount: parsed.draft.amount,
+		occurredAt: now.toISOString(),
 		category: parsed.draft.category,
 		categoryId: parsed.draft.categoryId,
 		payers: parsed.draft.payers,
 		split: parsed.draft.split,
 	});
-	const now = deps.now();
 	const draftId = uuidv7();
 	await insertBotDraft(deps.db, {
 		id: draftId,
