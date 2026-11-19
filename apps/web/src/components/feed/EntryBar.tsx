@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
+import { useFeatures } from "../../lib/features";
 import { useOnline } from "../../lib/use-online";
 import { vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
+import { CameraButton } from "./CameraButton";
 export function EntryBar({
 	groupId,
 	readOnly = false,
@@ -11,6 +13,7 @@ export function EntryBar({
 	readOnly?: boolean;
 }) {
 	const online = useOnline();
+	const features = useFeatures();
 	if (!online)
 		return (
 			<div className="fixed bottom-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-bg px-5 pb-5 pt-3">
@@ -39,6 +42,7 @@ export function EntryBar({
 				<Icon name="plus" size={24} />
 				{vi.feed.manualEntry}
 			</Link>
+			{features.data?.receiptReading && <CameraButton groupId={groupId} />}
 			<Link
 				href={`/g/${groupId}/tx/new`}
 				className="flex h-16 min-w-0 flex-1 items-center rounded-[32px] bg-surface px-4 text-[15px] text-muted"

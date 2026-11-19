@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { ExpenseForm } from "../../../../../components/expense-form/ExpenseForm";
+import { ReceiptReview } from "../../../../../components/receipt/ReceiptReview";
 import { LoadError } from "../../../../../components/ui/LoadError";
 import { VerifyEmailBanner } from "../../../../../components/ui/VerifyEmailBanner";
 import { useGroup } from "../../../../../lib/groups";
@@ -68,10 +69,18 @@ export default function NewExpensePage() {
 				/>
 			</main>
 		);
+	const scanId = search.get("scan");
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-4 px-5 py-5">
 			{!me.data.emailVerified ? (
 				<VerifyEmailBanner />
+			) : scanId ? (
+				<ReceiptReview
+					groupId={groupId}
+					scanId={scanId}
+					members={members.data}
+					myMemberId={group.data.myMemberId}
+				/>
 			) : !search.has("form") ? (
 				<ComposeScreen
 					writerMemberId={group.data.myMemberId}
@@ -88,6 +97,10 @@ export default function NewExpensePage() {
 						...(search.get("type") === "transfer" ? { type: "transfer" } : {}),
 						...(search.get("from") ? { from: search.get("from") } : {}),
 						...(search.get("to") ? { to: search.get("to") } : {}),
+						...(search.get("attachmentId")
+							? { attachmentId: search.get("attachmentId") }
+							: {}),
+						...(search.get("text") ? { text: search.get("text") } : {}),
 					}}
 				/>
 			)}

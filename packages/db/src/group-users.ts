@@ -37,6 +37,24 @@ export function updateGroupUserRole(
 			),
 		);
 }
+export function updateGroupUserMuted(
+	executor: DbExecutor,
+	input: {
+		groupId: string;
+		userId: string;
+		muted: boolean;
+	},
+) {
+	return executor
+		.update(groupUsers)
+		.set({ muted: input.muted })
+		.where(
+			and(
+				eq(groupUsers.groupId, input.groupId),
+				eq(groupUsers.userId, input.userId),
+			),
+		);
+}
 export function deleteGroupUser(
 	executor: DbExecutor,
 	input: { groupId: string; userId: string },

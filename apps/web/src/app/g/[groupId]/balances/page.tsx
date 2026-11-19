@@ -9,11 +9,14 @@ import { OwnSettlementCard } from "../../../../components/balances/OwnSettlement
 import { PendingRequestRow } from "../../../../components/balances/PendingRequestRow";
 import { SettlementCard } from "../../../../components/balances/SettlementCard";
 import { FundBlock } from "../../../../components/fund/FundBlock";
+import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
+import { useSnackbar } from "../../../../components/ui/Snackbar";
 import { useBalances } from "../../../../lib/balances";
 import { useGroup } from "../../../../lib/groups";
 import { useMembers } from "../../../../lib/members";
+import { canRemindTransfer, useSendReminder } from "../../../../lib/reminders";
 import { useMe } from "../../../../lib/session";
 import { usePendingSettlementRequests } from "../../../../lib/settlement-requests";
 import { useTransactions } from "../../../../lib/transactions";
@@ -27,6 +30,8 @@ export default function BalancesPage() {
 	const balances = useBalances(groupId);
 	const transactions = useTransactions(groupId);
 	const pendingRequests = usePendingSettlementRequests(groupId);
+	const sendAllReminders = useSendReminder(groupId);
+	const showNotice = useSnackbar();
 	const error =
 		group.error ??
 		members.error ??
@@ -126,6 +131,31 @@ export default function BalancesPage() {
 	const unmatchedPending = (pendingRequests.data ?? []).filter(
 		(request) => request.status === "pending" && !matchedIds.has(request.id),
 	);
+	const remindableCount = transfers.filter((transfer) => {
+		const from = members.data.find((m) => m.id === transfer.fromMemberId);
+		const to = members.data.find((m) => m.id === transfer.toMemberId);
+		if (!from || !to) return false;
+		return canRemindTransfer({
+			transfer,
+			from,
+			to,
+			myMemberId: group.data.myMemberId,
+			role: group.data.role,
+			verified: me.data.emailVerified,
+		});
+	}).length;
+	const handleRemindAll = async () => {
+		try {
+			const res = await sendAllReminders.mutateAsync({ all: true });
+			showNotice({
+				text: t(vi.reminders.remindedMany, {
+					count: String(res.reminded.length),
+				}),
+			});
+		} catch {
+			showNotice({ text: vi.common.saveError });
+		}
+	};
 
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 py-6">
@@ -175,6 +205,18 @@ export default function BalancesPage() {
 									? vi.balances.collectHint
 									: vi.balances.pairwiseHint}
 						</p>
+						{remindableCount >= 2 && (
+							<Button
+								variant="surface"
+								disabled={sendAllReminders.isPending}
+								onClick={() => {
+									void handleRemindAll();
+								}}
+								className="mt-3"
+							>
+								{vi.reminders.remindAll}
+							</Button>
+						)}
 					</div>
 					{own.length > 0 ? (
 						<>
@@ -198,6 +240,7 @@ export default function BalancesPage() {
 								myMemberId={group.data.myMemberId}
 								role={group.data.role}
 								verified={me.data.emailVerified}
+								onRemindNotice={(text) => showNotice({ text })}
 							/>
 						</>
 					) : (
@@ -210,6 +253,7 @@ export default function BalancesPage() {
 								myMemberId={group.data.myMemberId}
 								role={group.data.role}
 								verified={me.data.emailVerified}
+								onRemindNotice={(text) => showNotice({ text })}
 							/>
 						))
 					)}

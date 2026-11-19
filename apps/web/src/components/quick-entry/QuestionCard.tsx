@@ -1,10 +1,12 @@
 "use client";
 import {
+	type CategoryDto,
 	CreateTransactionRequest,
 	type MemberDto,
+	type ParseDraft,
 	ParseResponse,
 } from "@songphang/contract";
-import { readSentence } from "@songphang/core";
+import { readSentence, toVietnamDate } from "@songphang/core";
 import { useState } from "react";
 import { usePreviewShares } from "../../lib/transactions";
 import { t, vi } from "../../messages/vi";
@@ -15,17 +17,23 @@ export function QuestionCard({
 	writerMemberId,
 	result,
 	members,
+	categories,
 	groupId,
 	onSave,
 	onEdit,
+	onChangeCategory,
 	disabled,
 }: {
 	writerMemberId: string | null;
 	result: ParseResponse;
 	members: MemberDto[];
+	categories?: CategoryDto[] | undefined;
 	groupId: string;
 	onSave: (r: ParseResponse) => void;
 	onEdit: (r: ParseResponse) => void;
+	onChangeCategory?:
+		| ((category: ParseDraft["category"], categoryId: string | null) => void)
+		| undefined;
 	disabled: boolean;
 }) {
 	const [selected, setSelected] = useState<string[]>([]);
@@ -62,6 +70,8 @@ export function QuestionCard({
 										},
 									]
 								: [],
+						category: result.draft.category,
+						categoryId: result.draft.categoryId,
 					},
 				}
 			: result,
@@ -97,8 +107,7 @@ export function QuestionCard({
 		(!missing || !!description.trim());
 	const parsed = CreateTransactionRequest.safeParse({
 		...draft,
-		occurredAt: `${new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10)}T05:00:00.000Z`,
-		category: null,
+		occurredAt: `${toVietnamDate(new Date())}T05:00:00.000Z`,
 	});
 	const preview = usePreviewShares(
 		groupId,
@@ -123,6 +132,9 @@ export function QuestionCard({
 		<ConfirmationCard
 			result={effective}
 			members={members}
+			groupId={groupId}
+			categories={categories}
+			onChangeCategory={onChangeCategory}
 			onSave={() => onSave(effective)}
 			onEdit={() => onEdit(effective)}
 			disabled={disabled || !ready}

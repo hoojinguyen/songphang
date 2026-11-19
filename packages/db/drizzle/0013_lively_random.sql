@@ -1,0 +1,2 @@
+ALTER TABLE "transactions" DROP CONSTRAINT "transactions_split_method_check";--> statement-breakpoint
+ALTER TABLE "transactions" ADD CONSTRAINT "transactions_split_method_check" CHECK ("transactions"."split_method" in ('equal', 'exact', 'shares', 'percent', 'items'));

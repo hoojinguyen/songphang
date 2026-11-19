@@ -3,6 +3,7 @@ import { z } from "zod";
 import { listMemberBalances } from "./balances.js";
 import type { DbExecutor } from "./client.js";
 import { findFund } from "./members.js";
+import { countedTransaction } from "./transactions.js";
 
 const ContributionRowSchema = z.object({
 	memberId: z.uuid(),
@@ -31,7 +32,7 @@ export async function fundCashAndContributions(
 		from members m
 		join transactions t on t.group_id = ${groupId}::uuid
 			and t.type = 'transfer'
-			and t.deleted_at is null
+			and ${countedTransaction("t")}
 		join transaction_payers p on p.transaction_id = t.id
 		join transaction_shares s on s.transaction_id = t.id
 		where m.group_id = ${groupId}::uuid

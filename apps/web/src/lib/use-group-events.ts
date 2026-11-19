@@ -20,9 +20,11 @@ const Resources = z.object({
 				"settlementRequests",
 				"categories",
 				"budget",
+				"receiptScans",
+				"comments",
 			]),
 		)
-		.max(9),
+		.max(10),
 });
 export function useGroupEvents(groupId: string) {
 	const online = useOnline();
@@ -42,6 +44,7 @@ export function useGroupEvents(groupId: string) {
 			if (failed) {
 				void client.invalidateQueries({ queryKey: ["group", groupId] });
 				void client.invalidateQueries({ queryKey: ["groups"] });
+				void client.invalidateQueries({ queryKey: ["notifications"] });
 				failed = false;
 			}
 		};
@@ -71,6 +74,7 @@ export function useGroupEvents(groupId: string) {
 					queryKey: ["group", groupId, "invite"],
 				});
 				void client.invalidateQueries({ queryKey: ["groups"] });
+				void client.invalidateQueries({ queryKey: ["notifications"] });
 			} catch {
 				return;
 			}

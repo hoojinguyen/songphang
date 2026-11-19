@@ -10,6 +10,7 @@ export function SettlementCard({
 	myMemberId,
 	role,
 	verified,
+	onRemindNotice,
 }: {
 	groupId: string;
 	transfer: BalancesResponse["transfers"][number];
@@ -17,6 +18,7 @@ export function SettlementCard({
 	myMemberId: string | null;
 	role: "owner" | "editor" | "viewer";
 	verified: boolean;
+	onRemindNotice?: (message: string) => void;
 }) {
 	const from = members.find((member) => member.id === transfer.fromMemberId);
 	const to = members.find((member) => member.id === transfer.toMemberId);
@@ -50,6 +52,7 @@ export function SettlementCard({
 				myMemberId={myMemberId}
 				role={role}
 				verified={verified}
+				{...(onRemindNotice ? { onRemindNotice } : {})}
 			/>
 		</div>
 	);

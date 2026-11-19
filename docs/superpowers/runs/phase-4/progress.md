@@ -1,0 +1,597 @@
+# Phase 4 run — progress
+
+## Current status (2026-11-19 — Advisor PASS, Pending Owner Acceptance)
+
+This section supersedes earlier open R11 status entries below without modifying historical run logs or prior review verdicts.
+
+- **Branch:** `phase-4`
+- **Accepted / gate-tested code revision:** `8602eda95abdd5e9a4b831a4c93a6abccfe8d373` (the subsequent documentation closeout commit modifies only Markdown run documents under `docs/superpowers/runs/phase-4/`; runtime code is identical to `8602eda95abdd5e9a4b831a4c93a6abccfe8d373`).
+- **Implementation and local phase gates:** Complete on `8602eda95abdd5e9a4b831a4c93a6abccfe8d373`.
+- **Advisor review:** **PASS** — [review-r11-ab-final.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/review-r11-ab-final.md). No new must-fix finding was established.
+- **R11-A:** Closed by advisor review (`61` browser child cases rolled up into `16` parent groups, with saved per-case observations and `22` sanitized PNG screenshots). Note: the advisor's own in-app browser attachment timed out during review, so advisor R11-A acceptance is based on reviewing the implementer's saved browser evidence rather than independently re-executing all 61 UI actions.
+- **R11-B:** Closed by advisor review (`65` leaf/standalone money cases plus `2` parent rollup records = `67` records, not `67` independent leaf cases), independently replayed by the advisor on a separate disposable database.
+- **R11:** Closed. **R9** and **R10** remain **PASS** with independent regression replay in the latest advisor review.
+- **Initial HTTP startup note (recovered on the same SHA):** In the final-SHA implementer replay (`summary.log`), the initial run of `gate_phase4_stages.mts` encountered an environment startup refusal (`ECONNREFUSED 127.0.0.1:4080`, API not yet listening); a subsequent rerun on the same frozen SHA `8602eda95abdd5e9a4b831a4c93a6abccfe8d373` passed all `7/7` suites and `pnpm db:check-balances` (`All groups balanced`). The advisor also independently reran the `7/7` Phase 4 HTTP/web/worker suites to PASS.
+- **Owner manual acceptance:** **PENDING** — see [manual-checks.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/manual-checks.md) (no boxes prechecked on the owner's behalf) and [handoff.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/handoff.md).
+- **Merge:** **PENDING OWNER ACTION** (no push, merge, deployment, or GitHub mutation performed).
+- **Real-provider and owner-device checks:** **DEFERRED** under the existing owner decision (real SMTP/mail-client delivery, Telegram network/webhook registration, Google OAuth, real AI providers deferred until all phases including iOS are done, and owner-device checks). These are not silently passed and are not prerequisites for this documentation handoff.
+- **Reviewed evidence links:**
+  - Implementer final replay manifest (`8602eda95abdd5e9a4b831a4c93a6abccfe8d373`): [/Users/hoojinguyen/.gemini/antigravity/brain/fa161507-b8d0-4447-ba9a-fef03545bbe9/final-replay-8602eda95abdd5e9a4b831a4c93a6abccfe8d373/manifest.json](file:///Users/hoojinguyen/.gemini/antigravity/brain/fa161507-b8d0-4447-ba9a-fef03545bbe9/final-replay-8602eda95abdd5e9a4b831a4c93a6abccfe8d373/manifest.json)
+  - Advisor independent review evidence (`8602eda`): [/Users/hoojinguyen/.codex/review-artifacts/songphang-r11ab-8602eda/](file:///Users/hoojinguyen/.codex/review-artifacts/songphang-r11ab-8602eda/)
+  - Advisor PASS report: [review-r11-ab-final.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/review-r11-ab-final.md)
+
+## Status (historical run start)
+
+Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, amendment 2026-11-18) and plan, and authorized continuous execution from Task 0 through Task 4D.4 on branch `phase-4`, created by the advisor from local `main` at `b3cf730`. Implementation agent: Antigravity. Advisor and reviewer: Claude. Checks with a real AI provider are deferred by the owner until all phases, including iOS, are done; use `AI_PROVIDER=fake` where the AI path is exercised.
+
+## Task checklist
+
+- [x] Task 0 — re-baseline (`docs(run): re-baseline phase 4`)
+- [x] 4A.1 — API: comments
+- [x] 4A.2 — API: disputes
+- [x] 4A.3 — Web: the transaction view; stage gate
+- [x] 4B.1 — Notification core
+- [x] 4B.2 — Web: bell and notification list
+- [x] 4B.3 — Mail: immediate, digest, unsubscribe
+- [x] 4B.4 — Debt reminders
+- [x] 4B.5 — Web: reminders and settings; stage gate
+- [x] 4C.1 — Webhook, sender, identities and links
+- [x] 4C.2 — Commands: `/chi`, `/sodu`, `/huy`, `/trogiup`
+- [x] 4C.3 — Web: linking screens
+- [x] 4C.4 — Stage gate 4C and the bot runbook
+- [x] 4D.1 — Database and money path: the approval filter
+- [x] 4D.2 — API: threshold, pending, approve, reject
+- [x] 4D.3 — Web: approval
+- [x] 4D.4 — README, non-functional checks, final gate
+
+## Baseline failures
+
+None.
+
+## Not verified
+
+- Real SMTP delivery, email client rendering, and mail-client one-click `List-Unsubscribe-Post` execution (no SMTP server/domain locally; exercised with console mailer).
+- Real `TelegramChatSender` HTTP calls to `api.telegram.org`, `setWebhook` registration against a public HTTPS endpoint, and inline button/message rendering inside Telegram apps (no bot token or external calls locally; exercised with `TELEGRAM_PROVIDER=console`).
+
+## Gate not passed
+
+## Task 0 — approach
+
+- Confirm current branch is `phase-4`, run `pnpm check` and `API_ORIGIN=http://localhost:4010 pnpm build`.
+- Reset disposable database `songphang_phase4_gate`, run `pnpm db:migrate` and `pnpm db:seed`.
+- Replay representative baseline checks across Phases 1, 2, and 3 (including all 87 quick-entry samples from `docs/08-quick-entry-samples.md`, permission matrix, `GET /api/v1/features`, `pnpm db:check-balances`) against an isolated API/worker instance on port 4010 using `AI_PROVIDER=fake` where AI is exercised and unset for capability disabled checks.
+- Map every file/function/table/route/component referenced by the Phase 4 plan against the actual repository in `docs/superpowers/runs/phase-4/decisions.md`, record outputs in `progress.md`, tick Task 0, and commit `docs(run): re-baseline phase 4`.
+
+### Task 0 results
+
+- Branch: `phase-4` (`git branch --show-current` confirmed).
+- Earlier phases on `main` (`b3cf730`): Phase 0, Phase 1 (1A–1E), Phase 2 (2A–2D + `257fc50`), Phase 3 (3A–3D + `5c27dea`, `ed086fa`, `e70095b`, `c99a7fc`). Server step not merged (`infra/compose.prod.yml` absent).
+- `pnpm check`: passed (`Checked 400 files`, all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`next build` compiled cleanly, 11 static pages + dynamic routes built).
+- Disposable DB `songphang_phase4_gate` reset, migrated, and seeded: passed (`Migrations applied`, `Development users seeded`); owner `songphang` DB untouched.
+- Disabled capabilities check (`AI_PROVIDER` and `TELEGRAM_PROVIDER` unset): `DISABLED_FEATURES_CHECK_PASSED {"receiptReading":false,"sentenceAi":false,"telegram":false,"push":false,"appleSignIn":false,"errorAlerts":false}`; `POST /receipt-scans` returned `404`.
+- Baseline replay on `songphang_phase4_gate` (API on port 4010 + worker with `AI_PROVIDER=fake`): `PHASE_1_2_3_BASELINE_REPLAY_PASSED` (dev login, invite/join, viewer 403 / outsider 404 / unauth 401, tx create/edit/409/delete/restore, VietQR, settlement confirm, categories, budget `near`, stats `200000`, `spendingOnly=true`, UTF-8 BOM CSV export, fund, attachment upload & magic-byte validation, fake receipt scan `done`, `items/preview` `targetAdjustment: { kind: "other", amount: 8000 }`, sentence AI parse `ai: false` -> `rules` & `ai: true` -> `ai`).
+- Quick-entry baseline: `ALL_87_QUICK_ENTRY_SAMPLES_PASSED` (75 Phase 1 + 12 Phase 2 fund samples from `docs/08-quick-entry-samples.md`).
+- `pnpm db:check-balances` on `songphang_phase4_gate`: `All groups balanced` (`Disabled Probe: sum 0; mismatches 0`, `Đà Lạt 12/2026: sum 0; mismatches 0`).
+
+## Task 4A.1 — approach
+
+- Files to create/modify: create `packages/db/src/schema-comments.ts`, `packages/db/src/comments.ts`, migration, `packages/contract/src/comment.ts`, `apps/api/src/services/comments.ts`, `apps/api/src/routes/comments.ts`; modify `packages/db/{drizzle.config.ts,src/index.ts}`, `packages/contract/src/{transaction,jobs,index}.ts`, `apps/api/src/{app,rate-limit}.ts`, `apps/api/src/services/transactions.ts`.
+- Approach: store comments in `comments` with soft-delete (`deleted_at`) and `(transaction_id, created_at)` index, add `commentCount` to transaction list and detail DTOs via grouped counts, paginate comments oldest-first (50/page) with `{ createdAt, id }` keyset cursor, enforce 20 comments/minute/user rate limit and `Idempotency-Key` on `POST`, and verify transaction-in-group (including soft-deleted transactions) before reading or writing.
+- Why simplest: reuses `lockGroup`, `getGroupAccess`, `runIdempotent`, and existing keyset cursor encoding without extra tables or streams.
+- Rejected alternative: embedding comment bodies directly in transaction list responses, which would bloat feed pagination payloads.
+
+### Task 4A.1 results
+
+- `pnpm check`: passed (`Checked 406 files`, all 8 workspace typechecks Done). Migration `0014_funny_beast.sql` generated and applied to `songphang_phase4_gate`.
+- `exercise_4a1.mts` against `songphang_phase4_gate` (API on port 4010):
+  - `EXERCISE_4A1_PASSED`: Hùng (viewer) commented `201` (`authorName: "Hùng"`, `mine: true`), idempotent replay returned same comment ID, Lan listed (`mine: false`), Lan delete Hùng's comment -> `403`, Minh (owner) delete -> `204` (`commentCount: 0`), 1001 chars / `""` / whitespace -> `400` each, `<script>alert(1)</script>` -> `201` stored verbatim, comment on soft-deleted transaction -> `201`, outsider list & post -> `404`/`404`, Lan 21st comment in 1 min -> `429`, balances identical before and after.
+  - `pnpm db:check-balances` -> `All groups balanced`.
+- Security review: checked relevant items 1, 2, 3, 4, 5, 6, 8; no issues found.
+
+## Task 4A.2 — approach
+
+- Files to create/modify: create `packages/db/src/schema-disputes.ts`, `packages/db/src/disputes.ts`, migration, `apps/api/src/services/disputes.ts`; modify `packages/db/{drizzle.config.ts,src/index.ts}`, `packages/contract/src/{transaction,error}.ts`, `apps/api/src/services/{transactions,transaction-changes}.ts`, `apps/api/src/routes/{transactions,transaction-changes,comments}.ts`.
+- Approach: add `transaction_disputes` with partial unique index `(transaction_id) WHERE resolved_at IS NULL`, expose `dispute: TransactionDisputeDto | null` on `TransactionDto` and `TransactionListItemDto` (computing `mine` from `viewerUserId`), implement `openDispute` (`409 DISPUTE_ALREADY_OPEN`) and `resolveDispute` (`409 DISPUTE_NOT_OPEN`, `403 FORBIDDEN` unless opener or owner) inside `lockGroup`, log `dispute_open`/`dispute_resolve` activity entries, and publish `["transactions", "activity"]`.
+- Why simplest: enforces single-open-dispute invariant at both service lock and DB partial unique index without modifying balance/split paths.
+- Rejected alternative: storing dispute state as columns on `transactions`, which would lose multi-round dispute history and conflict with optimistic locking `version` bumps.
+
+### Task 4A.2 results
+
+- `pnpm check`: passed (`Checked 410 files`, all 8 workspace typechecks Done). Migration `0015_colossal_ezekiel_stane.sql` generated and applied to `songphang_phase4_gate`.
+- `exercise_4a2.mts` against `songphang_phase4_gate` (API on port 4010):
+  - `EXERCISE_4A2_PASSED`: Hùng (viewer) opened dispute `201` (`openedByName: "Hùng"`, `mine: true`, `mine: false` for Minh), balances unchanged, duplicate open by Lan -> `409 DISPUTE_ALREADY_OPEN`, Lan resolve -> `403`, Lan edit amount -> `200` with dispute still open, Hùng resolve -> `200` (`dispute: null`), repeat resolve -> `409 DISPUTE_NOT_OPEN`, reopen by Hùng + resolve by Minh (owner) -> `201`/`200`, outsider open -> `404`, `GET .../activity` recorded all 4 dispute entries with actor names, invalid reasons (`""`, 501 chars) -> `400`.
+  - `pnpm db:check-balances` -> `All groups balanced`.
+- Security review: checked relevant items 1, 2, 3, 4, 5, 6, 8; no issues found.
+
+## Task 4A.3 — approach
+
+- Files to create/modify: create `apps/web/src/lib/comments.ts`, `apps/web/src/components/transaction/{TransactionSummary,CommentThread,CommentField,DisputeBlock}.tsx`, `apps/web/src/app/g/[groupId]/tx/[transactionId]/view/page.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/components/ui/Icon.tsx`, `apps/web/src/lib/{use-group-events,activity-sentences}.ts`, `apps/web/src/components/feed/{ExpenseRow,LedgerPill,ExpenseStream}.tsx`, `apps/web/src/app/g/[groupId]/tx/[transactionId]/page.tsx`, `apps/web/src/components/expense-form/ExpenseForm.tsx`.
+- Approach: route all stream row taps to `/g/${groupId}/tx/${transaction.id}/view` (S20) showing `TransactionSummary` (reusing `ConfirmationCard` card styling and `PhotoRow readOnly`), `DisputeBlock` (`bg-coral text-ink`, contrast 7.43:1, with `ConfirmDialog` for reason), `CommentThread` (plain text nodes with `whitespace-pre-wrap`), and fixed-bottom `CommentField` (`Enter` sends, `Shift+Enter` newline); link `Sửa` in the header to the existing edit page and update edit's back href to the view.
+- Why simplest: reuses `ScreenHeader`, `ShareShapes`, `PhotoRow`, `ConfirmDialog`, `useTransaction`, and `useGroupEvents` without adding client state stores or extra routes.
+- Rejected alternative: putting comments and disputes inside a modal drawer on the stream, which would diverge from S20's deep-linkable `/g/{id}/tx/{txId}/view` URL needed by Phase 4 notifications.
+
+### Task 4A.3 — results
+- `pnpm check` passed (416 files, 0 errors; 8 workspace typechecks Done) and `API_ORIGIN=http://localhost:4010 pnpm build` passed (S20 `/g/[groupId]/tx/[transactionId]/view` built).
+- Contrast ratio check for `DisputeBlock` (`bg-coral` `#ff8a73` + `text-ink` `#1c1b22`): relative luminances 0.40675 and 0.01146 -> **7.43:1** (passes WCAG AA and AAA).
+- Security review on diff: clean (plain React text rendering with `whitespace-pre-wrap`, zero `dangerouslySetInnerHTML`/`eval`/raw HTML, server-derived viewer vs editor visibility of `Sửa`).
+- Live Chrome two-context browser exercise against disposable `songphang_phase4_gate` (Minh owner in `isolatedContext=minh-4a3`, Hùng viewer in `isolatedContext=hung-4a3`):
+  1. Tapped `Bún chả 4A3` in both windows -> navigated to `/g/01a1ef33-65d4-76c6-8490-8539fc3c45d9/tx/01a1ef33-6612-7e9e-9e26-6108c9a60d0a/view`.
+  2. Minh saw `Sửa` (click -> edit screen `/tx/...` loaded, `Quay lại` returned to `/view`); Hùng saw no `Sửa` link and had active comment box and `Khoản này chưa đúng`.
+  3. Hùng sent `Hôm đó mình không ăn` via keyboard `Enter` and `<script>alert(1)</script>` via `Gửi` -> both appeared immediately in Minh's window via SSE without reload; `mainScriptTags: 0`, rendered as literal text.
+  4. Hùng opened `Khoản này chưa đúng`, submitted `Mình không đi hôm đó` -> `DisputeBlock` (`Hùng cho rằng khoản này chưa đúng`) appeared live in Minh's window via SSE; group feed in Hùng's window showed `đang hỏi lại` and `2 bình luận`.
+  5. Minh clicked `Đã giải quyết` -> snackbar `Đã giải quyết.` displayed, button reset to `Khoản này chưa đúng`, and `đang hỏi lại` disappeared live from Hùng's group feed via SSE without reload.
+  6. Keyboard `Tab` traversed `Khoản này chưa đúng` -> `Xoá bình luận`; zero console errors in either window.
+
+### Stage Gate 4A — results
+- `pnpm check`: 416 files, 0 errors (3 pre-existing `noImgElement` warnings), 8/9 workspace typechecks Done.
+- `API_ORIGIN=http://localhost:4010 pnpm build`: `next build` passed (`/g/[groupId]/tx/[transactionId]/view` built).
+- Disposable database `songphang_phase4_gate` reset (`DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE;`), migrated (`0000`–`0015`), seeded (`Development users seeded`).
+- `task0_samples.mts`: `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`
+- `task0_replay.mts`: `DISABLED_FEATURES_CHECK_PASSED {"receiptReading":false,"sentenceAi":false,"telegram":false,"push":false,"appleSignIn":false,"errorAlerts":false}` and `PHASE_1_2_3_BASELINE_REPLAY_PASSED {"groupId":"01a1ef39-d4f4-7ae9-a2f8-d1cc3ff0718c","tx1VersionAfterEdit":2,"vietqrPresent":true,"settlementConfirmed":"confirmed","budgetState":"near","statsTotal":200000,"scanStatus":"done","targetAdjustment":{"kind":"other","amount":8000},"parseAiReader":"ai"}`
+- `exercise_4a1.mts`: `EXERCISE_4A1_PASSED {"c1Author":"Hùng","lanViewMine":false,"delLanStatus":403,"delMinhStatus":204,"scriptBody":"<script>alert(1)</script>","commentOnDeletedTxStatus":201,"outsiderStatuses":[404,404],"rateLimit429OnRequestNumber":21,"finalCommentCount":22,"balancesIdentical":true}`
+- `exercise_4a2.mts`: `EXERCISE_4A2_PASSED {"openedBy":"Hùng","balancesIdenticalDuringDispute":true,"dupStatus":409,"lanResolveStatus":403,"stillOpenAfterEdit":true,"hungResolveStatus":200,"resolveAgainCode":"DISPUTE_NOT_OPEN","ownerResolveStatus":200,"outsiderStatus":404,"disputeActivityActions":["dispute_resolve:Minh","dispute_open:Hùng","dispute_resolve:Hùng","dispute_open:Hùng"]}`
+- `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 4 groups).
+
+## Task 4B.1 — approach
+- Approach: add `group_users.muted` and create `notifications` + `notification_settings` tables in Drizzle (`schema-notifications.ts`, migration `0016`), add discriminated-union `NotificationPayload` for all 12 kinds in `@songphang/contract`, implement `notify(tx, ...)` resolving non-muted non-actor `group_users` inside callers' existing DB transactions (`transactions`, `transaction-changes`, `comments`, `disputes`, `settlement-requests`, budget warnings), and expose `/me/notifications*` (inner-joining `group_users`) plus `PUT /groups/{groupId}/me/muted`.
+- Why simplest: inserting notifications directly through the service's open `DbExecutor` avoids an outbox table or post-commit race condition and guarantees rollback atomicity.
+- Rejected alternative: publishing internal domain events post-commit to create notification rows asynchronously, which breaks transactional atomicity when a write fails after queueing.
+
+### Task 4B.1 — results
+- `pnpm check`: 423 files, 0 errors (3 pre-existing `noImgElement` warnings), 8/9 workspace typechecks Done.
+- Generated & applied `packages/db/drizzle/0016_illegal_cloak.sql` (`notifications`, `notification_settings`, `group_users.muted`, `notifications_user_created_index`).
+- `exercise_4b1.mts`: `EXERCISE_4B1_PASSED {"unauthStatuses":[401,401,401],"row1Share":50000,"minhDisputeCount":1,"minhBudgetOver":true,"mutedHungDelta":0,"removedGroupHiddenFromList":true,"hungUnreadChange":"5->1","crossReadStatus":204,"lanUnreadCleared":"4->0"}` — verified all 9 table rows plus `dispute_resolved`, `settlement_requested`, `settlement_confirmed`, `budget_state` (`over`), outsider mute 404, and cross-user read 204 leaving Lan's row unread.
+- Forced rollback test (temporary throw right after `notifyBudgetWarnings` inside `createTransactionIn`): `FORCED_ROLLBACK_4B1_PASSED {"status":500,"txBefore":4,"txAfter":4,"notifBefore":5,"notifAfter":5}`, then reverted and verified clean.
+- `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 8 groups).
+- Security review: clean (strict Zod schemas on queries/bodies, inner join `group_users` enforces access on list & unread-count, `read` filtered by caller `userId`, outsider mute 404, parameterized Drizzle queries only).
+
+## Task 4B.2 — approach
+- Approach: add `notificationText(dto)` in `apps/web/src/lib/notification-text.ts` formatting all 12 kinds per Spec 7.2 (with `Có cập nhật trong nhóm {group}` fallback), add `Bell` (44px accessible button, `9+` cap above 9, window focus refetch + SSE refetch in `use-group-events.ts`) to S2 (`/`) and S4 (`/g/[groupId]`), add S19 `/notifications` with cursor loading & `Đánh dấu đã đọc`, and add `Tắt thông báo nhóm này` on `/g/[groupId]/members` (decision 4).
+- Why simplest: reuses `useInfiniteQuery` / `useMutation` patterns and triggers `unread-count` invalidation directly from the existing `useGroupEvents` handler without opening a second SSE stream.
+- Rejected alternative: creating a separate user-level `/me/events` SSE endpoint just for the bell, which violates Spec 4.3 ("No new stream").
+
+### Task 4B.2 — results
+- `pnpm check`: 428 files, 0 errors (3 pre-existing `noImgElement` warnings), 8/9 workspace typechecks Done.
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`/notifications` built cleanly).
+- Live Chrome two-context browser exercise (`minh-4b2`, `hung-4b2` against disposable `songphang_phase4_gate`):
+  1. Bell visible on S2 (`/`) and S4 (`/g/[groupId]`) as a 48×48px accessible link (`aria-label="Thông báo, 3 chưa đọc"`).
+  2. While Minh had S4 open, Hùng commented on `Lẩu gà lá é 4B2` -> Minh's Bell updated live over SSE to `Thông báo, 4 chưa đọc` without reload.
+  3. On S19 (`/notifications`), verified exact Spec 7.2 lines (`expense_added` with `phần bạn 50.000 đ`, `expense_changed`, `comment_added`, `dispute_opened`, `settlement_requested`, `budget_state`) and deep links (`/tx/.../view`, `/balances`, `/stats`).
+  4. Tapping an unread row marked only that row read (`3 chưa đọc` -> `2 chưa đọc`) and navigated to S20; clicking `Đánh dấu đã đọc` cleared Minh's unread rows and reset Bell to `Thông báo`.
+  5. With 10 unread notifications, Bell rendered `"9+"` badge and `aria-label="Thông báo, 10 chưa đọc"`, size `48x48`.
+  6. On `/g/[groupId]/members`, toggled `Tắt thông báo nhóm này` on and off; zero console errors in both windows.
+- Security review: clean (plain React text rendering, Zod-validated `NotificationPayload` with safe generic fallback on unknown kinds, no `dangerouslySetInnerHTML`/`eval`).
+
+## Task 4B.3 — approach
+- Approach: place pure `formatAmount`/`formatMoney` and `formatNotificationLine` in `@songphang/core` (shared by `apps/web` and `apps/worker`), add `job_checkpoints` + notification-settings/digest/prune DB helpers in `packages/db`, wire `send-notification-mail` enqueueing into `notify.ts` for immediate kinds, expose `/me/notification-settings` and public `/notifications/unsubscribe` (30/min/IP -> 204 or 404) in `apps/api`, register `send-notification-mail`, `send-digest` (`0 20 * * *` `Asia/Ho_Chi_Minh`), and `prune-notifications` (90 days) in `apps/worker`, and add `/notifications/unsubscribe` + S13 email toggles in `apps/web`.
+- Why simplest: reuses `Mailer` console output (adding `List-Unsubscribe` / `List-Unsubscribe-Post` headers + non-PII `mail.sent` JSON log line) and `notification-settings` schema already created in migration `0016`, adding only `job_checkpoints` for reliable digest watermarks.
+- Rejected alternative: adding a separate `packages/mail` workspace package or querying `pgboss` internal job tables (which would break manual `runSendDigest` verification).
+
+### Task 4B.3 — results
+- `pnpm check`: 439 files, 0 errors (3 pre-existing `noImgElement` warnings), 8/9 workspace typechecks Done.
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`/notifications/unsubscribe` and `/account` built cleanly).
+- Generated & applied `packages/db/drizzle/0017_flimsy_vargas.sql` (`job_checkpoints`).
+- `exercise_4b3.mts`: `EXERCISE_4B3_PASSED {"row1ImmediateSubjectMatched":true,"row1ListHeadersPresent":true,"row2SkippedWhenRead":true,"row3DigestFirstSent":3,"row3DigestSecondSent":0,"row4SkippedWhenDigestFalse":true,"row5UnsubscribeStatus":204,"row5MinhSettings":{"emailImmediate":false,"emailDigest":false},"row5LanSettings":{"emailImmediate":true,"emailDigest":true},"row6BadTokenStatuses":[404,404],"row6RateLimit429":true,"row7RemovedSkipped":true,"row8PrunedCount":1}` — verified live worker `send-notification-mail` with `List-Unsubscribe` / `List-Unsubscribe-Post` headers, skip when read or removed, manual `runSendDigest` grouping & incremental checkpoint (`3` sent -> `0` on immediate repeat), `emailDigest: false` skip, unauthenticated `POST /notifications/unsubscribe` (204 on match, 404 on altered/empty token, 429 after 30/min/IP), `runPruneNotifications` deleting 91-day-old row, and non-PII structured log `{"event":"mail.sent","template":...,"userId":...}`.
+- Live Chrome check on `/notifications/unsubscribe` & `/account`: bad token rendered `Link này không còn dùng được.`; Lan's printed unsubscribe link unauthenticated rendered `Bạn sẽ không nhận thư thông báo nữa.` + `Bật lại trong Tài khoản`; logging in as Lan on `/account` showed both switches unchecked and allowed toggling both back on; 0 console errors.
+- `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 12 groups).
+- Security review: clean (only SHA-256 hash stored in `notification_settings.unsubscribe_token_hash`, public unsubscribe route answers uniform 404 on invalid/missing token and limits 30/min/IP, audit log `mail.sent` contains only `template` and `userId`).
+- Added real SMTP mail rendering / mail-client one-click header execution to `## Not verified` (local run uses console mailer only).
+
+## Task 4B.4 — approach
+- Approach: add `debt_reminders` table (`schema-reminders.ts`) + `groups.reminder_interval_days` (migration `0018`), extend `ErrorCode` (`REMINDER_TOO_SOON`, `MEMBER_NOT_LINKED`) and `GroupDto`/`UpdateGroupRequest`, extract shared `computeGroupTransfers` (reusing `suggestMinimizedSettlements` / `netPairwiseDebts` from `@songphang/core`), implement `POST /api/v1/groups/{groupId}/reminders` supporting `{ fromMemberId, toMemberId }` (429/422/403/400 on cooldown/unlinked/unauthorized/invalid-pair) and `{ all: true }` (`reminded` + `skipped`), and register daily `auto-reminders` cron (`0 9 * * *` `Asia/Ho_Chi_Minh`).
+- Why simplest: reuses `notify(..., enqueue)` for `debt_reminder` immediate mails, `getGroupAccess` + `listGroupMembers` for role/linked checks, and shares one `core`-backed transfer calculation between `balances`, `reminders`, and `auto-reminders`.
+- Rejected alternative: recomputing or duplicating settlement minimization logic inside `apps/worker`, which risks drift between displayed S5 transfers and reminder amounts.
+
+### Task 4B.4 — results
+- `pnpm check`: 445 files, 0 errors (3 pre-existing `noImgElement` warnings; fixed `auto-reminders.ts` optional chain suggestion cleanly), 8/9 workspace typechecks Done.
+- Generated & applied `packages/db/drizzle/0018_wise_cerebro.sql` (`debt_reminders`, `groups.reminder_interval_days` CHECK `(3, 7, 14)`).
+- `exercise_4b4.mts`: `EXERCISE_4B4_PASSED {"outsiderStatus":404,"row1Reminded":1,"row2Code":"REMINDER_TOO_SOON","row3Status":429,"row4Code":"MEMBER_NOT_LINKED","row5Status":403,"row6Reminded":1,"row6SkippedReasons":["MEMBER_NOT_LINKED","REMINDER_TOO_SOON"],"row7Status":400,"row8AutoRun1":2,"row8AutoRun2":0,"row9Status":403}` — verified all 9 rows, `nextAt` ~24h cooldown, automatic `auto-reminders` worker run sending to linked members (`sent_by = NULL`) with immediate email headers and 0 on immediate repeat, and `PATCH /groups/{groupId}` owner-only check (`403` for editor).
+- `pnpm db:check-balances`: `All groups balanced` (0 mismatches across 13 groups).
+- Security review: clean (`requireGroupRole` + pair permission check `access.role !== "viewer" || access.memberId === toMemberId`, outsider 404, server-derived transfer amounts from `suggestGroupTransfers`, unlinked member check 422).
+
+## Task 4B.5 — approach
+
+- Approach: add Spec 7.3 (`Tự nhắc nợ`) and 7.4 reminder strings in `vi.ts`, create `apps/web/src/lib/reminders.ts` (`useSendReminder`, `canRemindTransfer`, and Vietnam-time `formatReminderNextAt`), add `Nhắc` to eligible `TransferAction` rows (`SettlementCard` and `OtherSettlements`) and `Nhắc cả nhóm một lần` (when >= 2 pairs qualify) with `Snackbar` feedback on S5 (`balances/page.tsx`), and add the `Tự nhắc nợ` segmented control (`Tắt`, `Mỗi 3 ngày`, `Mỗi tuần`, `Mỗi 2 tuần`) on S11 (`settings/page.tsx`).
+- Why simplest: reuses `Switch`/`SegmentedControl`, `Snackbar`, `useUpdateGroup`, and shared `canRemindTransfer` predicate so per-row eligibility and the >=2 group-remind threshold stay in sync.
+- Rejected alternative: rendering `Nhắc` unconditionally and letting users hit 422 on unlinked members, which violates Plan 4B.5 ("hidden for them").
+
+### Task 4B.5 results
+
+- `pnpm check`: passed (`Checked 446 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed.
+- Security review on diff: clean (plain React text rendering, Zod-validated client/API boundary, zero `dangerouslySetInnerHTML`/`eval`/unchecked redirects/`any`).
+- Live Chrome two-context exercise against disposable `songphang_phase4_gate` (`4B5 Live cf05ba93`, `01a1ef5a-d235-7018-ac98-717fc75a3c36`):
+  - S5 (`/balances`): `Nhắc` hidden for unlinked debtor `Thu`, rendered on `Lan` and `Hùng` rows, and `Nhắc cả nhóm một lần` rendered (2 linked pairs).
+  - Clicked `Nhắc` on Hùng -> snackbar `"Đã nhắc Hùng."`; clicked again immediately -> `"Bạn vừa nhắc Hùng rồi. Nhắc lại được sau 22:51 ngày 19/11."`
+  - Hùng's `/notifications` received `"Nhắc nhẹ: bạn cần trả Minh 100.000 đ trong nhóm 4B5 Live cf05ba93"`.
+  - Clicked `Nhắc cả nhóm một lần` -> snackbar `"Đã nhắc 1 người."`
+  - S5 viewport `485x812`: `scrollWidth === clientWidth === 485`, 0 console errors/warnings.
+  - S11 (`/settings`): clicked `"Mỗi tuần"` under `"Tự nhắc nợ"` -> pressed state active and persisted across page reload; `"Tự nhắc nợ"` section width `390` (`scrollWidth: 390`), 0 console errors/warnings.
+  - Out of scope: pre-existing `"Hạn mức"` `<MoneyInput>` section on `/settings` overflows (`scrollWidth: 818` inside `390` container at `485x812`); left untouched per `AGENTS.md` §5.
+
+### Stage Gate 4B results
+
+- `pnpm check`: passed (`Checked 446 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`2.3s`, all web routes built including `/notifications`, `/notifications/unsubscribe`, `/g/[groupId]/tx/[transactionId]/view`).
+- Reset + migrate + seed on disposable `songphang_phase4_gate`, then replayed full gate suite sequentially (`task-1232`):
+  - `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`
+  - `DISABLED_FEATURES_CHECK_PASSED {"receiptReading":false,"sentenceAi":false,"telegram":false,"push":false,"appleSignIn":false,"errorAlerts":false}`
+  - `PHASE_1_2_3_BASELINE_REPLAY_PASSED {"groupId":"01a1ef62-46c2-7a04-92c0-3b7ce0b3e4a9","tx1VersionAfterEdit":2,"vietqrPresent":true,"settlementConfirmed":"confirmed","budgetState":"near","statsTotal":200000,"scanStatus":"done","targetAdjustment":{"kind":"other","amount":8000},"parseAiReader":"ai"}`
+  - `EXERCISE_4A1_PASSED` (`balancesIdentical: true`, `finalCommentCount: 22`, rate limit 429 on #21, outsider 404/404)
+  - `EXERCISE_4A2_PASSED` (`balancesIdenticalDuringDispute: true`, `dupStatus: 409`, `lanResolveStatus: 403`, `resolveAgainCode: "DISPUTE_NOT_OPEN"`)
+  - `EXERCISE_4B1_PASSED` (`unauthStatuses: [401,401,401]`, `mutedHungDelta: 0`, `removedGroupHiddenFromList: true`, `hungUnreadChange: "32->28"`, `lanUnreadCleared: "13->0"`)
+  - `EXERCISE_4B3_PASSED` (`row1ImmediateSubjectMatched: true`, `row1ListHeadersPresent: true`, `row2SkippedWhenRead: true`, `row3DigestFirstSent: 3`, `row3DigestSecondSent: 0`, `row4SkippedWhenDigestFalse: true`, `row5UnsubscribeStatus: 204`, `row6BadTokenStatuses: [404,404]`, `row6RateLimit429: true`, `row7RemovedSkipped: true`, `row8PrunedCount: 1`)
+  - `EXERCISE_4B4_PASSED` (`outsiderStatus: 404`, `row1Reminded: 1`, `row2Code: "REMINDER_TOO_SOON"`, `row3Status: 429`, `row4Code: "MEMBER_NOT_LINKED"`, `row5Status: 403`, `row6Reminded: 1`, `row7Status: 400`, `row8AutoRun1: 2`, `row8AutoRun2: 0`, `row9Status: 403`)
+  - `pnpm db:check-balances` -> `All groups balanced` (all 7 groups sum 0, mismatches 0).
+
+## Task 4C.1 — approach
+
+- Files to create/modify: create `packages/db/src/schema-chat.ts`, `packages/db/src/chat.ts`, migration `0019_*.sql`, `packages/contract/src/chat-link.ts`, `apps/api/src/bot/{chat-sender,telegram-sender,console-sender,telegram-update,link-codes}.ts`, `apps/api/src/bot-messages.ts`, `apps/api/src/services/chat-links.ts`, `apps/api/src/routes/{chat-links,telegram-webhook}.ts`; modify `packages/db/{drizzle.config.ts,src/index.ts}`, `packages/contract/src/{error,index}.ts`, `apps/api/src/{config,app,server,rate-limit}.ts`, `apps/api/src/routes/features.ts`, `.env.example`.
+- Approach: verify Bot API `sendMessage`, `answerCallbackQuery`, `InlineKeyboardMarkup`, and `setWebhook` schemas (`chat_id`, `text`, `reply_markup.inline_keyboard`, `callback_query_id`, `secret_token`, `allowed_updates`); store the 5 chat tables in `schema-chat.ts` with SHA-256 single-use 8-char codes (32-bit-safe `crypto.randomInt` over the 29-char alphabet), atomic `bot_updates` deduplication, `timingSafeEqual` secret comparison returning `404 NOT_FOUND` on mismatch or disabled feature, raw text parsing in webhook so invalid JSON or oversized updates return `200 {}`, and per-chat rate limiting returning `Chậm lại một chút nhé.` once per 1-minute window.
+- Why simplest: isolates `TELEGRAM_BOT_TOKEN` inside `telegram-sender.ts`, decouples webhook rate limiting and deduplication before dispatching commands cleanly in `4C.2`, and avoids mutating `FeaturesResponse` shape by exposing `botUsername` on `GET /groups/{groupId}/chat-links`.
+- Rejected alternative: registering Telegram body validation through Hono OpenAPI automatic JSON middleware, which returns 400 before our custom hook runs on malformed non-JSON payloads and could cause Telegram webhook retries.
+
+### Task 4C.1 results
+
+- Verified Telegram Bot API shapes (`core.telegram.org/bots/api`): `sendMessage` (`chat_id`, `text`, `reply_markup.inline_keyboard`), `answerCallbackQuery` (`callback_query_id`, `text`), and `setWebhook` (`url`, `secret_token`, `allowed_updates`).
+- Migration `0019_sad_violations.sql` generated and applied (`bot_drafts`, `bot_updates`, `chat_identities`, `chat_link_codes`, `chat_links`).
+- `pnpm check`: passed (`Checked 459 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `exercise_4c1.mts` against `songphang_phase4_gate`:
+  - `EXERCISE_4C1_PASSED`: missing secret and equal-length wrong secret -> 404 with 0 `bot_updates` rows; valid secret unlinked chat -> 200 with Spec 5.5 reply; duplicate `update_id` -> 200 no-op; non-JSON body and 5,000-char text -> 200 no-op; 32 updates in 1 minute -> `"Chậm lại một chút nhé."` printed once; editor `POST .../chat-links/code` -> 403; outsider -> 404; owner code generated + `/lienket <code>` from chat `-1001` -> linked + listed; reuse & backdated expired code -> bad/expired reply; re-link `-1001` -> 1 row kept; user claim valid / 409 `CHAT_IDENTITY_TAKEN` / 400 `TOKEN_INVALID` / unbind verified; unset `TELEGRAM_PROVIDER` -> webhook 404 & `features.telegram: false`; `APP_ENV=production` + `TELEGRAM_PROVIDER=console` refused startup (`exit 1`).
+  - `pnpm db:check-balances` -> `All groups balanced` (8 groups).
+- Security review: checked `timingSafeEqual` secret comparison, non-exposure of `TELEGRAM_BOT_TOKEN`, SHA-256 link code hashing, `requireGroupRole("owner")` + `requireVerifiedEmail` + `requireSameOrigin` on link management routes, and plain-text `sendMessage` without `parse_mode`.
+
+## Task 4C.2 — approach
+
+- Files to create/modify: create `apps/api/src/bot/{resolve-actor,dispatch,callbacks}.ts`, `apps/api/src/bot/commands/{lienket,chi,sodu,huy,trogiup}.ts`, `apps/worker/src/jobs/prune-bot-data.ts`; modify `packages/contract/src/jobs.ts`, `packages/db/src/chat.ts`, `apps/api/src/bot-messages.ts`, `apps/api/src/routes/telegram-webhook.ts`, `apps/worker/src/main.ts`.
+- Approach: route bot updates through `dispatchWebhookUpdate` (`dispatch.ts`) using `resolveActor` (`chat_links` -> verified `chat_identities` -> `group_users`), `/chi` invoking `parseSentence(..., { ai: true })` and saving JSON `bot_drafts`, callbacks `s:{id}` / `d:{id}` re-checking membership/role at tap time and calling `runIdempotent` + `createTransaction`, `/sodu` calling `getBalances` + formatting via `@songphang/core` `formatMoney`, `/huy` calling `setTransactionDeleted` within 10 minutes, `/trogiup` / `/start` sending command help, and an hourly `prune-bot-data` worker job.
+- Why simplest: reuses `parseSentence`, `runIdempotent`, `createTransaction`, `getBalances`, and `setTransactionDeleted` directly with zero duplicated ledger/AI/notification logic and keeps `/chi` > 300 chars safely handled as "not understood" without crashing or storing drafts.
+- Rejected alternative: parsing `/chi` or computing splits separately inside bot code, which would drift from quick-entry AI limits, member matching, and notification triggers.
+
+### Task 4C.2 results
+
+- `pnpm check`: passed (`Checked 469 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `exercise_4c2.mts` against `songphang_phase4_gate` (`TELEGRAM_PROVIDER=console`, `AI_PROVIDER=fake`):
+  - `EXERCISE_4C2_PASSED`: verified all 17 table rows (`999` stranger link button without draft; Lan `111` `/chi cà phê 180k chia 4` draft matching `/transactions/preview` shares; `222` tap `s:` -> `"Chỉ Lan lưu được khoản này."`; Lan tap `s:` -> `"Đã lưu: cà phê · 180.000 đ."` with `createdBy: Lan`; repeat tap silent; viewer `222` `/chi` refused; empty `/chi`; unparsed `/chi abc xyz` with `Mở form` link; AI fallback `/chi lẩu 300k lan 100 lan 200` prefixed `"Đọc bằng AI."` + `d:` drop -> `"Đã bỏ."`; `/sodu` matching `GET .../balances` + `"Quỹ còn 200.000 đ"` with active fund; `/huy` soft-deleting + activity log, second `/huy` -> nothing; 11m expired draft -> expired reply; demoted viewer at tap time -> viewer reply; removed member `/sodu` -> not-in-group reply; `/chi@OtherBot` ignored; `/trogiup@songphangtestbot` help; bad callback `x:1` and cross-chat `s:` ignored; `/chi <script>` and 400-char sentence safely rejected with no drafts stored; `runPruneBotData` pruned `drafts: 2, codes: 9, updates: 1`).
+  - `pnpm db:check-balances` -> `All groups balanced` (14 groups).
+- Security review: every command and callback resolves caller via verified `chat_identities` + `group_users` and re-checks current role at `s:{id}` save time; no user-submitted bot text sent as HTML/Markdown; raw link code never logged outside `/link/telegram` URL generation.
+
+## Task 4C.3 — approach
+
+- Files to create/modify: create `apps/web/src/lib/chat-links.ts`, `apps/web/src/components/settings/TelegramCard.tsx`, `apps/web/src/components/account/TelegramIdentityCard.tsx`, `apps/web/src/app/link/telegram/page.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/app/g/[groupId]/settings/page.tsx`, `apps/web/src/app/account/page.tsx`, `apps/web/src/app/g/[groupId]/tx/new/page.tsx`, `apps/web/src/components/expense-form/use-expense-form.ts`.
+- Approach: add Spec 7.3 Telegram strings to `vi.ts`, create TanStack Query hooks in `chat-links.ts`, guard `TelegramCard` and `TelegramIdentityCard` behind `features.telegram === true`, wrap `/link/telegram` in `<Suspense>` with `useSessionGuard` (redirecting through `/login?next=...` safely) and explicit `Liên kết` button claim, and accept `?form&text=` on `/g/[groupId]/tx/new` running `readSentence` first and falling back to prefilling `description` with `text`.
+- Why simplest: mirrors existing `InviteLinkCard`, `NotificationSettingsCard`, `NotificationsPage` session guard, and `useExpenseForm` `FormPrefill` patterns without extra state stores or duplicate parsers.
+- Rejected alternative: auto-claiming the code in a `useEffect` on `/link/telegram`, which violates CSRF-safe explicit confirmation (`Liên kết` button + showing signed-in email) and could consume a one-time code unintentionally on tab prefetch.
+
+### Task 4C.3 results
+
+- `pnpm check`: passed (`Checked 473 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`/link/telegram` built cleanly).
+- Live Chrome two-context exercise against disposable `songphang_phase4_gate` (`TELEGRAM_PROVIDER=console`, `TELEGRAM_BOT_USERNAME=SongPhangTestBot`):
+  - S11 (`/g/.../settings`) as Minh: displayed `Liên kết nhóm Telegram` and `@SongPhangTestBot`; generated `/lienket EMNPNQ2U` with `Sao chép` -> `Đã sao chép` and `Mã có hiệu lực 10 phút.`; linked chat `-1003` -> reload displayed `-1003` with `Bỏ liên kết` -> clicked `Bỏ liên kết` -> removed cleanly.
+  - `?form&text=abc%20xyz` on `/g/.../tx/new`: rendered `<ExpenseForm>` directly with `Mô tả` prefilled `"abc xyz"`.
+  - Signed-out Chrome opening `/link/telegram?code=VG73SN96` redirected to `/login?next=%2Flink%2Ftelegram%3Fcode%3DVG73SN96`.
+  - Signed-in as Lan on `/link/telegram?code=VG73SN96`: rendered `"Liên kết Telegram với tài khoản lan@dev.songphang.local?"` -> clicked `Liên kết` -> `"Đã liên kết. Quay lại Telegram để tiếp tục."` -> reloaded same URL and clicked `Liên kết` -> `"Link này không còn dùng được."`.
+  - S13 (`/account`) as Lan: rendered `Telegram` / `Đã liên kết với Telegram` / `Bỏ liên kết` -> clicked `Bỏ liên kết` -> card removed. Zero console errors or warnings across both tabs.
+- Security review: `safeNext` / `loginPath` preserves safe relative redirects, explicit button triggers POST `/me/chat-identities/claim`, and `code` is never logged or sent elsewhere.
+
+## Task 4C.4 — approach
+
+- Files to create/modify: create `docs/runbooks/telegram.md`; update `docs/superpowers/runs/phase-4/{progress,manual-checks}.md`.
+- Approach: author English Telegram setup/webhook/rotation runbook with copyable commands matching implemented env vars and endpoints, document unverified live Telegram integration items honestly under `## Not verified`, append real-bot manual checks to `manual-checks.md`, and run Stage Gate 4C on freshly reset `songphang_phase4_gate`.
+- Why simplest: consolidates bot operations and verification in one self-contained runbook without modifying application code.
+- Rejected alternative: automating live `setWebhook` verification from CI/local runner, which is forbidden by run constraints (`never call api.telegram.org`).
+
+### Task 4C.4 & Stage Gate 4C results
+
+- Created [docs/runbooks/telegram.md](file:///Users/hoojinguyen/Projects/songphang/docs/runbooks/telegram.md) covering `@BotFather` bot creation + `/setprivacy` `Enable`, `TELEGRAM_*` env variables, `setWebhook` (`secret_token`, `allowed_updates`), `getWebhookInfo`, group & user linking, 5 commands, and secret/token rotation.
+- Updated `## Not verified` in `progress.md` and added `## After the Telegram bot exists` to `manual-checks.md`.
+- Stage Gate 4C (`task-1602`):
+  - `pnpm check`: passed (`Checked 473 files`, 3 pre-existing `noImgElement` warnings, 0 errors).
+  - `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`2.7s`, all routes built).
+  - Reset + migrated + seeded disposable `songphang_phase4_gate`, then ran full gate sequence:
+    - `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`
+    - `DISABLED_FEATURES_CHECK_PASSED` (`telegram: false`, `receiptReading: false`, `sentenceAi: false`, others `false`)
+    - `PHASE_1_2_3_BASELINE_REPLAY_PASSED`
+    - `EXERCISE_4A1_PASSED`, `EXERCISE_4A2_PASSED`
+    - `EXERCISE_4B1_PASSED`, `EXERCISE_4B3_PASSED`, `EXERCISE_4B4_PASSED`
+    - `EXERCISE_4C1_PASSED`, `EXERCISE_4C2_PASSED`
+    - `pnpm db:check-balances` -> `All groups balanced` (10 groups, sum 0, mismatches 0).
+
+## Task 4D.1 — approach
+
+- Files to create/modify: modify `packages/db/src/schema-transactions.ts`, `packages/db/src/schema-groups.ts`, `packages/db/src/transactions.ts`, `packages/db/src/balances.ts`, `packages/db/src/check-balances.ts`, `packages/db/src/stats.ts`, `packages/db/src/budgets.ts`, `packages/db/src/fund.ts`, `packages/db/src/groups.ts`; generate migration `0020_*.sql`.
+- Approach: add `approval_status`, `approval_decided_by`, `approval_decided_at`, `approval_note` on `transactions` and `approval_threshold` on `groups` with DB check constraints; define one type-safe `countedTransaction(alias: "t" | "transactions")` SQL fragment in `packages/db/src/transactions.ts` (`deleted_at is null and approval_status in ('none', 'approved')`) and apply it to every balance, pairwise-ledger, stats, budget, fund, and export query while keeping `check-balances` mismatch integrity over all live transactions (`deleted_at is null`).
+- Why simplest: one shared SQL fragment (`countedTransaction`) guarantees zero divergence across raw `sql` and Drizzle queries without duplicating status/deleted checks.
+- Rejected alternative: filtering pending/rejected transactions in TypeScript services after loading rows, which would load unnecessary rows, duplicate balance summation outside Postgres, and fail SQL sum/budget/stat invariants.
+
+### Task 4D.1 results
+
+- Migration `0020_sour_sheva_callister.sql` generated and applied (`transactions.approval_status`, `approval_decided_by`, `approval_decided_at`, `approval_note`; `groups.approval_threshold` + DB check constraints).
+- `pnpm check`: passed (`Checked 474 files`, 3 pre-existing `noImgElement` warnings, 0 errors).
+- `exercise_4d1.mts` against `songphang_phase4_gate`:
+  - `EXERCISE_4D1_PASSED`: with 3 counted expenses totaling 600.000 đ, toggling E3 (`300.000 đ`) to `pending` and `rejected` excluded it identically from `GET .../balances` (`minimizeDebts: true` & `false`, sum = 0, Minh balance `220000 -> 20000`), `GET .../stats` (`600000 -> 300000`), `GET .../budget` (`spent: 600000 -> 300000`), and `GET .../export.csv`, while `checkBalances` printed `All groups balanced`. Setting E3 to `approved` restored all baseline values identically.
+- `rg -n "transaction_shares|transaction_payers" packages/db/src` (plus Drizzle table references):
+  - `packages/db/src/balances.ts:26,33` (`listBalancesForGroups`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/balances.ts:59,75` (`listLedgerSides`) — **filtered** (`countedTransaction("transactions")`).
+  - `packages/db/src/check-balances.ts:20,23` (`totals`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/check-balances.ts:28,29,31` (`mismatches`) — **intentionally unfiltered by approval status** (`t.deleted_at is null`): Plan 4D.1 explicitly requires checking payer/share integrity of every live transaction, pending or not.
+  - `packages/db/src/stats.ts:104,110` (`sumByMember` CTE `counted`, plus `findCountedDateBounds`, `sumByCategory`, `sumByBucket`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/budgets.ts` (`sumSpent`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/fund.ts:36,37` (`fundCashAndContributions`) — **filtered** (`${countedTransaction("t")}`).
+  - `packages/db/src/transactions.ts` (`listExportTransactions`, `listGroupLivePayers`, `listGroupLiveShares`) — **filtered** (`countedTransaction("transactions")`).
+  - `packages/db/src/transactions.ts` (`listTransactionRows`, `listTransactionPayers`, `listTransactionShares`) — **intentionally unfiltered by approval status**: Decision 4 requires pending/rejected transactions to remain listed and viewable in the feed and S20.
+  - `packages/db/src/transaction-changes.ts:40,43` (`clearTransactionSides`), `packages/db/src/transactions.ts` (`insertTransactionPayers/Shares`) — write helpers by single transaction id.
+  - `packages/db/src/members.ts:109` (`hasTransactions`) — member deletion guard checking whether any transaction row (including pending/rejected/deleted) still references the member FK.
+  - `packages/db/src/schema-transactions.ts:99,116`, `packages/db/src/index.ts:58,59` — schema definitions and exports.
+- Security review: type-safe union parameter on `countedTransaction("t" | "transactions")`; DB CHECK constraints enforce valid enum and length bounds.
+
+## Task 4D.2 — approach
+
+- Files to create/modify: create `packages/core/src/approval.ts`, `apps/api/src/services/approval.ts`; modify `packages/core/src/index.ts`, `packages/contract/src/{error,transaction,group}.ts`, `packages/db/src/groups.ts`, `apps/api/src/services/{groups,transactions,transaction-changes,warnings}.ts`, `apps/api/src/routes/{transactions,transaction-changes}.ts`, `apps/api/src/bot/callbacks.ts`.
+- Approach: define pure `approvalStatusFor` in `@songphang/core`; add `approval` DTO to transaction responses, `approvalThreshold` & `ownerName` to `GroupDto` (`UpdateGroupRequest` accepts `approvalThreshold`), and `APPROVAL_NOT_PENDING` (`409`); update create/edit/preview warnings so pending/rejected transactions never subtract/add uncounted amounts; add owner-only `approve`/`reject` service logging activity, firing `approval_decided` notifications, and re-evaluating budget warnings on approve; append ` Khoản này chờ {owner} duyệt.` in Telegram bot save confirmation when pending.
+- Why simplest: reuses `lockGroup`, `lockTransaction`, `notify`, `notifyBudgetWarnings`, and `approvalStatusFor` across HTTP and Telegram creation paths with one set of rules.
+- Rejected alternative: computing approval rules separately inside bot handlers or routes, which would duplicate owner lookups and risk differing threshold comparisons between web and Telegram.
+
+### Task 4D.2 results
+
+- `pnpm check`: passed (`Checked 476 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `exercise_4d2.mts` against `songphang_phase4_gate`:
+  - `approvalStatusFor` unit assertions passed (1,000,000/1,000,000 non-owner -> `pending`; 999,999 -> `none`; owner -> `none`; threshold null -> `none`; transfer 5,000,000 -> `none`; income 5,000,000 -> `none`).
+  - `EXERCISE_4D2_PASSED`: verified all 13 rows (`r1Status: "pending"` with balances 0 & `approval_requested` notification for Minh; `r2Balances` Lan +666,666 / Minh -333,333 / Hùng -333,333; Lan approve -> 403, outsider -> 404; Minh approve -> `r4Balances` Lan +1,466,666 / Minh -733,333 / Hùng -733,333 & `approval_decided` for Lan; repeat approve -> 409 `APPROVAL_NOT_PENDING`; Lan edit to 1,500,000 -> `pending` & balances back to Row 2; Minh reject with `"Chưa có hoá đơn"` -> rejected with note, balances unchanged; Lan edit to 900,000 -> `none` & balances Lan +1,266,666 / Minh -633,333 / Hùng -633,333; owner 5,000,000 -> `none`; transfer 2,000,000 -> `none`; threshold `null` then Lan 3,000,000 -> `none`; Lan threshold PATCH -> 403; reject 301-char note -> 400; Telegram bot pending save reply -> `"Đã lưu: máy in · 1.500.000 đ. Khoản này chờ Minh duyệt."`).
+  - `pnpm db:check-balances` after rows 1, 4, 7 and at end -> `All groups balanced` (13 groups).
+- Security review: `requireGroupRole("owner")` + `requireVerifiedEmail` + `requireWriteLimit` + `requireSameOrigin` on `/approve`, `/reject`, and threshold `PATCH`; outsider 404; Zod bounds note 0..300 and positive integer `approvalThreshold`.
+
+## Task 4D.3 — approach
+
+- Files to create/modify: create `apps/web/src/components/transaction/ApprovalBlock.tsx` and `apps/web/src/components/settings/ApprovalCard.tsx`; modify `apps/web/src/messages/vi.ts`, `apps/web/src/lib/activity-sentences.ts`, `apps/web/src/lib/transaction-changes.ts`, `apps/web/src/components/feed/ExpenseRow.tsx`, `apps/web/src/components/feed/LedgerPill.tsx`, `apps/web/src/app/g/[groupId]/tx/[transactionId]/view/page.tsx`, `apps/web/src/app/g/[groupId]/settings/page.tsx`, `apps/web/src/components/expense-form/use-expense-form.ts`, `apps/web/src/app/g/[groupId]/tx/new/ComposeScreen.tsx`, `apps/web/src/components/receipt/ReceiptReview.tsx`.
+- Approach: add Spec 7.3/7.5 strings and approval hooks (`useApproveTransaction`, `useRejectTransaction`) following `DisputeBlock` and `BudgetCard`; render `opacity-85` + `chờ duyệt`/`không được duyệt` tags on `ExpenseRow`/`LedgerPill` so all elements clear WCAG AA; mount `ApprovalBlock` on S20 and `ApprovalCard` on S11; surface `Đã lưu. Khoản này chờ {owner} duyệt.` via the group layout `SnackbarProvider` on every pending save (manual form, edit, quick-entry compose, receipt review).
+- Why simplest: reuses `ConfirmDialog`, `AmountField`, `Switch`, `SnackbarProvider` (already wrapping `/g/[groupId]/*`), and React Query group invalidation without adding extra routes or state stores.
+- Rejected alternative: passing query params (`?saved=pending`) across router redirects to render a separate banner on S4, which would linger across refreshes and browser history.
+
+### Task 4D.3 results
+
+- `pnpm check`: passed (`Checked 478 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`4.2s`, all web routes built).
+- Live two-context Chrome check (`minh-4d3` and `lan-4d3` at `390x844` on `songphang_phase4_gate`):
+  - Minh enabled `Duyệt khoản chi lớn` -> `1.000.000` on `/g/{id}/settings` (`Từ số tiền` + `Khoản chi từ mức này chỉ được tính sau khi bạn duyệt.`).
+  - Lan saved `1.200.000` (`khách sạn`): snackbar displayed `Đã lưu. Khoản này chờ Minh duyệt.`, stream row dimmed (`opacity: 0.85`) with `chờ duyệt` (`rgb(255, 216, 77)` / `rgb(28, 27, 34)` over `#f6f2fb`, WCAG AA contrast `8.21:1`), and both balances stayed `0 đ`.
+  - Minh clicked Bell (`1 thông báo chưa đọc`) -> navigated via `/notifications` (`Lan thêm khách sạn · 1.200.000 đ, cần bạn duyệt`) -> S20 displayed `Khoản này chờ Minh duyệt. Chưa tính vào số dư.` with `Duyệt` / `Không duyệt` -> clicked `Duyệt`: banner cleared, Minh's balance updated to `Bạn cần trả 400.000 đ`, and Lan's open window updated live via SSE to `Bạn được nhận 800.000 đ` without refreshing.
+  - Lan edited `khách sạn` to `1.500.000` -> saw `Đã lưu. Khoản này chờ Minh duyệt.` and `chờ duyệt`; Minh opened S20 -> clicked `Không duyệt` -> entered `"Chưa có hoá đơn"` -> submitted `Không duyệt`: S20 displayed `Minh không duyệt khoản này.` + `Chưa có hoá đơn`, and both open S4 streams updated live to `không được duyệt` (`rgb(255, 138, 115)` / `rgb(28, 27, 34)` at `0.85` opacity = `5.35:1` WCAG AA) with balances back at `0 đ`.
+  - Zero console errors (`list_console_messages`) in both contexts, `horizontalOverflow: 0`; closed Chrome pages and verified ports `3010`/`4010` free.
+- Recorded `D4D.1` (`opacity-85` WCAG AA fix) and `D4D.2` (`bellUnreadLabel`) in [decisions.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/decisions.md).
+- Security review: no `dangerouslySetInnerHTML`, `eval(`, `any`, or bypass annotations; owner-only actions gated behind `role === "owner" && verified` and API `ownerWrite`; note bounded `maxLength={300}`.
+
+## Task 4D.4 — approach
+
+- Files to create/modify: modify `README.md`, `docs/superpowers/runs/phase-4/progress.md`, and `docs/superpowers/runs/phase-4/manual-checks.md`.
+- Approach: update `README.md` with Phase 4 collaboration features (comments, disputes, in-app & email notifications, reminders, Telegram bot, expense approval, worker schedules, and `TELEGRAM_*` configuration); benchmark `GET /api/v1/me/notifications?limit=30` against 1,000 rows (`< 300 ms`) with `EXPLAIN (ANALYZE, BUFFERS)`; verify keyboard navigation across S20/S19/S11 and Bell badge `aria-label` in Chrome; run Final Stage Gate 4D across all tasks from Task 0 through 4D.2 on reset `songphang_phase4_gate` + `pnpm db:check-balances`.
+- Why simplest: reuses existing gate scripts (`task0_samples.mts`..`exercise_4d2.mts`) on a freshly reset database and consolidates all verified documentation and owner checks in one commit.
+- Rejected alternative: modifying production Compose (`infra/compose.prod.yml`), which is absent on branch `phase-4` because server provisioning has not run yet.
+
+### Task 4D.4 & Final Stage Gate 4D results
+
+- Updated [README.md](file:///Users/hoojinguyen/Projects/songphang/README.md) with `## Phase 4 features` (S20 comments/disputes, notifications, debt reminders, expense approval), `### Worker jobs and schedules` (`send-notification-mail`, `send-digest` `0 20 * * *`, `auto-reminders` `0 9 * * *`, `prune-notifications` `15 3 * * *`, `prune-bot-data` `0 * * * *` in `Asia/Ho_Chi_Minh`), and `### Telegram bot configuration` (`TELEGRAM_PROVIDER`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_BOT_USERNAME`, console mode, commands, and runbook link). (`infra/compose.prod.yml` does not exist yet on this branch.)
+- **Performance check (1,000 notifications seeded for Lan in `songphang_phase4_gate`, `ANALYZE notifications`):**
+  - `GET /api/v1/me/notifications?limit=30` cold: `5.56 ms`, warm: `4.14 ms`, cursor page 2: `3.92 ms` (all `< 300 ms`; `count: 30`, `nextCursor: true`).
+  - `EXPLAIN (ANALYZE, BUFFERS)` execution time: `0.310 ms` (`top-N heapsort Memory: 27kB`, `shared hit=45`), and index verification with `enable_seqscan = off`: `Bitmap Index Scan on notifications_user_created_index` (`Execution Time: 1.045 ms`, `Buffers: shared hit=53`).
+- **Keyboard & Bell accessibility walk (`minh-a11y` Chrome `390x844`):**
+  - Header Bell link exposed accessible name `"3 thông báo chưa đọc"` with `outlineStyle: "solid"`, `outlineWidth: "2px"` on `Tab` focus; `Enter` opened `/notifications`.
+  - On S19 (`/notifications`), `Tab` reached `Đánh dấu đã đọc` (`BUTTON`, `2px solid` outline) and notification links, and `Enter` navigated to S20.
+  - On S20 (`/g/{id}/tx/{txId}/view`), `Tab` reached `Khoản này chưa đúng` (`2px solid` outline), `Enter` opened the modal dialog, and `Escape` closed it (`openDialogs: 0`) returning focus cleanly to the trigger button.
+  - On S11 (`/g/{id}/settings`), all Phase 4 controls (`Tắt`/`Mỗi 3 ngày`/`Mỗi tuần`/`Mỗi 2 tuần`, `switch "Duyệt khoản chi lớn"`, `Từ số tiền`, `Tạo mã liên kết`) exposed accessible labels/roles with `tabIndex >= 0` (`switch "Gộp nợ"` `2px solid` outline verified); 0 console errors.
+- **Final Stage Gate 4D (`songphang_phase4_gate` freshly reset, migrated, seeded):**
+  - `pnpm check`: passed (`Checked 478 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+  - `API_ORIGIN=http://localhost:4010 pnpm build`: passed (`2.1s`).
+  - Acceptance replay: `ALL_87_QUICK_ENTRY_SAMPLES_PASSED`, `DISABLED_FEATURES_CHECK_PASSED` (`telegram: false`, `receiptReading: false`, `sentenceAi: false`), `PHASE_1_2_3_BASELINE_REPLAY_PASSED`, `EXERCISE_4A1_PASSED`, `EXERCISE_4A2_PASSED`, `EXERCISE_4B1_PASSED`, `EXERCISE_4B3_PASSED`, `EXERCISE_4B4_PASSED`, `EXERCISE_4C1_PASSED`, `EXERCISE_4C2_PASSED`, `EXERCISE_4D1_PASSED`, `EXERCISE_4D2_PASSED`, and `pnpm db:check-balances` -> `All groups balanced` across 12 groups (`sum 0; mismatches 0`).
+
+## Post-gate refactor — rename Telegram command files to English
+
+- Renamed `apps/api/src/bot/commands/{chi,sodu,huy,trogiup,lienket}.ts` to `{expense,balances,undo,help,link}.ts` and updated exported handlers and imports in `apps/api/src/bot/dispatch.ts` per project owner request (user-facing Telegram commands `/chi`, `/sodu`, `/huy`, `/trogiup`, `/start`, `/lienket` unchanged).
+- Re-verified: `pnpm check` passed (`Checked 478 files`, 0 errors), `exercise_4c1.mts` (`EXERCISE_4C1_PASSED`), `exercise_4c2.mts` (`EXERCISE_4C2_PASSED`), and `pnpm db:check-balances` (`All groups balanced`).
+
+---
+
+## Advisor Review Correction Run (2026-11-19)
+
+- **Baseline:** Branch `phase-4`, reviewed HEAD `7f99fc6` against `main` (`b3cf730`). Untracked baseline files: `docs/superpowers/runs/phase-4/review.md` (preserved unchanged) and `docs/superpowers/plans/2026-11-19-phase-4-review-fixes-PROMPT.md` (kept untracked).
+- **Disposable DB & Isolated Ports:** `songphang_phase4_fix_20261119` (`postgres://songphang:songphang@localhost:54329/songphang_phase4_fix_20261119`), API port `4020`, Web port `3020`, isolated `STORAGE_DIR`.
+
+### Correction checklist
+
+- [x] **R1 [P1]** — Replace public bearer identity linking with two-sided web+Telegram pairing (`fix(api,web): require two-sided confirmation for Telegram identity pairing`)
+- [x] **R2 [P2]** — Server-side one-click `List-Unsubscribe-Post` handling at `/notifications/unsubscribe`
+- [x] **R3 [P2]** — Durable hash-only unsubscribe token storage preserving previously emailed links across restarts and concurrent sends
+- [x] **R4 [P2]** — Enqueue automatic reminder `send-notification-mail` jobs transactionally inside the reminder/notification transaction
+- [x] **R5 [P2]** — Publish group SSE resource events (`["balances"]`) for manual and automatic debt reminders so open notification bells update live
+- [x] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
+- [x] **R7 [P2]** — Persist stable `occurredAt` in bot draft and make transaction creation, idempotency state, and `markBotDraftSaved` atomic with save/drop serialization
+- [x] **R8 [P3]** — Store decision-time amount in approval/rejection activity snapshots
+- [x] **README & Runbook** — Fix unsupported 5s delay / 7-day bot retention claims and update operational docs for R1/R2/R3/R4/R5
+- [x] **Gate 1: Static & Build** — `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `git diff --check main..phase-4`
+- [x] **Gate 2: 87 Quick-Entry Samples** — Full 87 rows of `docs/08-quick-entry-samples.md` over HTTP `/transactions/parse`
+- [x] **Gate 3: Earlier-Phase Acceptance Replay** — Representative per-stage replay across Stages 1A–1E, 2A–2D, 3A–3D (with `AI_PROVIDER=fake` and unset)
+- [x] **Gate 4: Full Permission Matrix** — Every endpoint across Phases 1–4 for Owner, Editor, Viewer, Outsider, Cross-group ID, Unauthenticated, Unverified, and Token-public routes
+- [x] **Gate 5: Phase 4 Stage Gates & 4D Money Variants** — Stages 4A, 4B, 4C (R1/R7), 4D.1 all money variants + `rg` inventory, 4D.2 13-row table + `pnpm db:check-balances`
+- [x] **Gate 6: Capability-Off & Production Config Guards** — All 6 feature flags `false` + 404 on disabled endpoints; production startup refusals
+- [x] **Gate 7: Browser, Keyboard/A11y, Contrast, & 1,000-Notification Perf** — Two-context Chrome checks, keyboard-only S20/S19/S11/pairing, contrast/overflow/44px targets, and `< 300ms` + `EXPLAIN (ANALYZE, BUFFERS)`
+- [x] **Gate 8: Security Review & Final Clean Checks** — `security-review` on final diff, fresh `pnpm check`, `pnpm build`, `pnpm db:check-balances`
+
+### R1 [P1] — approach
+
+- Files to modify: `packages/db/src/{schema-chat,chat,index}.ts`, migration `0021_*.sql`, `packages/contract/src/chat-link.ts`, `apps/api/src/{rate-limit,bot-messages}.ts`, `apps/api/src/bot/{link-codes,resolve-actor,dispatch}.ts`, `apps/api/src/services/chat-links.ts`, `apps/api/src/routes/chat-links.ts`, `apps/web/src/{messages/vi,lib/chat-links}.ts`, `apps/web/src/app/link/telegram/page.tsx`.
+- Approach: replace public bearer `purpose='user'` codes with `chat_identity_pairings` bound to `(userId, sessionId)` and a SHA-256 hashed 192-bit `pair_...` secret (10-minute TTL, single-use, 10/min/user rate limit). Unknown group senders receive a generic `{WEB_ORIGIN}/link/telegram` button with no secret or email. On `/link/telegram`, the signed-in verified user starts a pairing, sends `/start <secret>` in a private chat with the bot (group/supergroup `/start <secret>` immediately cancels the leaked pairing and refuses without echoing/logging), confirms via private-chat inline button (`pc:{id}` / `px:{id}` locked to `from.id === stagedPlatformUserId`), and completes activation via final confirmation in the initiating web session (re-checking active initiating session, verified email, expiry, Telegram confirmation, and identity uniqueness under row + advisory locks).
+- Why simplest: keeps existing `chat_identities`, group `/lienket` flow, and cookie/bearer session auth while storing all pairing state durably in one table and disabling legacy `/me/chat-identities/claim` + migrating out old `purpose='user'` codes and legacy `chat_identities`.
+- Rejected alternative: signing a JWT challenge token or using Telegram Login Widget (`widget.js`), which would add external widget dependencies or omit DB-backed initiating-session revocation checks.
+- Reproduction on `7f99fc6` (`songphang_phase4_fix_20261119`): `R1_REPRO {"groupReplyUrl":"http://localhost:3020/link/telegram?code=<REDACTED_CODE>","thuClaimStatus":204,"thuChatIdentities":[{"platform":"telegram","linkedAt":"2026-11-18T17:54:17.020Z"}]}` — outsider `Thu` hijacked Telegram ID `111` using the group-posted link.
+
+### R1 [P1] — results
+
+- `pnpm check`: passed (`Checked 483 files`, 3 pre-existing `noImgElement` warnings, 0 errors; all 8 workspace typechecks Done).
+- `API_ORIGIN=http://localhost:4020 pnpm build`: passed cleanly (`/link/telegram` built).
+- Migration `0021_mighty_songbird.sql` applied on `songphang_phase4_fix_20261119` containing legacy rows: `chat_link_codes` `purpose='user'` cleared (`1 -> 0`), legacy `chat_identities` cleared (`1 -> 0`, requiring secure re-linking without logging private identifiers), `purpose='group'` link codes (`1 -> 1`) and `chat_links` (`1 -> 1`) preserved intact.
+- `exercise_r1.mts` (all 16 R1 scenarios against live HTTP server on port 4020):
+  - `R1_DISABLED_PROVIDER_PASSED {"telegram":false,"start":404,"claim":404,"webhook":404}`
+  - `R1_ALL_16_SCENARIOS_PASSED {"groupBtnUrl":"http://localhost:3020/link/telegram","legacyClaimStatus":400,"dbBlockedLegacyCode":true,"concStatuses":[204,400],"unvStartStatus":403,"rateLimited429":true}`
+  - Verified: Thu/Lan public-link attack blocked; attacker-generated pairing shows attacker's masked email (`t***u@dev.songphang.local`) and cannot bind Lan's account even after Telegram confirmation; happy path proves both identities; 0 `chat_identities` rows exist after staging or single-side confirmation; wrong sender (`222`) & group-forwarded callbacks ignored; cross-session access returns `404`; group `/start <secret>` cancels pairing and replies without echoing/logging secret; expired/replayed/cancelled/revoked-session attempts rejected; concurrent `POST .../confirm` yields `[204, 400]` with single `chat_identities` row; already-taken identity returns `409 CHAT_IDENTITY_TAKEN` without reassigning; unverified account returns `403 EMAIL_NOT_VERIFIED`; missing/wrong webhook secret returns `404`; legacy `purpose='user'` DB insert blocked and `/claim` returns `400 TOKEN_INVALID`; pairing start rate limit triggers `429` at 10/min/user.
+- Security review: checked items 1–7 on R1 diff; secrets hashed with SHA-256 and never logged/echoed, session binding checked inside write transactions, `FOR UPDATE` + advisory lock prevent races, `rel="noopener noreferrer"` on Telegram external deep link, zero `localStorage`/`sessionStorage`/`dangerouslySetInnerHTML`/`any`/`!`.
+
+### R2 & R3 [P2] — approach
+
+- Files to modify/create: `packages/db/src/{schema-notifications,notifications,index}.ts`, migration `0022_*.sql`, `apps/worker/src/{mailer,jobs/send-notification-mail,jobs/send-digest}.ts`, `apps/api/src/routes/unsubscribe.ts`, `apps/web/src/proxy.ts`.
+- Approach: add `notification_unsubscribe_tokens` (`id`, `user_id` cascade FK, `token_hash` unique, `created_at`) and backfill legacy `notification_settings.unsubscribe_token_hash` in migration `0022`; issue fresh 32-byte random tokens per mail without removing prior hashes (`UNSUBSCRIBE_TOKEN_CACHE` deleted); update `unsubscribeByTokenHash` to match either `notification_unsubscribe_tokens` or legacy `notification_settings.unsubscribe_token_hash`; remove browser `requireSameOrigin` on `/api/v1/notifications/unsubscribe` (retaining 30/min/IP rate limit) and accept query `?token=`, form-encoded (`List-Unsubscribe=One-Click` / `token=`), and JSON `{ token }` payloads; add `apps/web/src/proxy.ts` to rewrite `POST /notifications/unsubscribe` server-side to `/api/v1/notifications/unsubscribe` while leaving `GET /notifications/unsubscribe` for the browser page.
+- Why simplest: keeps one canonical `unsubscribeNotifications` service and existing `List-Unsubscribe` URL while cleanly separating `POST` (Next.js proxy -> API) from `GET` (App Router page) without moving the page route or breaking existing JSON callers.
+- Rejected alternative: encrypting tokens symmetrically in `notification_settings`, which would require adding a new key env var and rotating/managing encryption secrets.
+- Reproduction on `094fd86` (`songphang_phase4_fix_20261119`): `R2_R3_REPRO {"r3":{"t1StillValid":false,"t2Valid":true},"r2":{"postWebStatus":200,"postWebContentType":"text/html; charset=utf-8","emailImmediateAfter":true,"emailDigestAfter":true,"foreignOriginStatus":400}}`.
+
+### R2 & R3 [P2] — verification & security review
+
+- **Grouping rationale:** R2 (server-side RFC 8058 `POST /notifications/unsubscribe`) and R3 (durable multi-token hash table `notification_unsubscribe_tokens`) touch the same unsubscribe service/DB boundary and migration (`0022_mute_reptil.sql`).
+- **Checks:**
+  - `pnpm check`: 485 files checked, 0 errors (3 pre-existing `noImgElement` warnings), 8 typechecks Done.
+  - `API_ORIGIN=http://localhost:4020 pnpm build`: passed (`ƒ Proxy (Middleware)` + `○ /notifications/unsubscribe`).
+  - Migration `0022_mute_reptil.sql` applied cleanly to `songphang_phase4_fix_20261119` (backfills `notification_settings.unsubscribe_token_hash` into `notification_unsubscribe_tokens`).
+- **Exercise (`exercise_r2_r3.mts` against live Next.js on `3020` and API on `4020`, DB `songphang_phase4_fix_20261119`):**
+  - Real output (raw token redacted): `R2_R3_ALL_CHECKS_PASSED {"postProviderStatus":204,"getPageStatus":200,"postForeignOriginWebStatus":204,"repeatFormStatus":204,"jsonValidStatus":204,"legacyHashStatus":204,"invalidStatuses":[404,404,404,404],"rateLimited429":true}`
+  - Verified: advertised `List-Unsubscribe` + `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers; server-side form `POST` with no cookies/Origin/JS disables both switches; browser `GET` returns HTML page; foreign `Origin` POST succeeds on unsubscribe without relaxing global `requireSameOrigin`; repeated `POST` stays `204`; JSON `{ token }` succeeds; bad/missing/mismatched tokens return uniform `404`; two independent users isolated; concurrent & simulated multi-worker / post-restart issuance preserves all older links; legacy `notification_settings.unsubscribe_token_hash` remains accepted; account deletion cascades `notification_unsubscribe_tokens`; IP rate limit triggers `429` after 30/min; zero raw tokens persisted in Postgres or structured logs.
+- **Security review:** Boundary Zod validation on token/body; non-enumerating 404 on invalid/missing tokens; `requireSameOrigin` removed only on token-authorized `POST /api/v1/notifications/unsubscribe`; 256-bit random tokens stored as SHA-256 hashes only; parameterized Drizzle queries; cascade delete on `users.id`.
+
+### R4 & R5 [P2] — approach
+
+- **Files to change:** `apps/worker/src/queue.ts`, `apps/worker/src/main.ts`, `apps/worker/src/jobs/auto-reminders.ts`, `apps/worker/src/jobs/send-notification-mail.ts`, `apps/api/src/services/reminders.ts`.
+- **Plan:** Add a `WorkerEnqueueFn` + `createWorkerEnqueue(boss)` helper in `apps/worker/src/queue.ts` using pg-boss's `fromDrizzle(executor, drizzleSql)` (matching `apps/api/src/queue.ts` without cross-app imports), wire it in `apps/worker/src/main.ts`, and in `apps/worker/src/jobs/auto-reminders.ts` enqueue `JOB_NAMES.sendNotificationMail` (`{ notificationId: row.id }`, `{ singletonKey: row.id }`) AND call `notifyGroup(executor, group.id, ["balances"])` inside each group's database transaction. Also emit `notifyGroup(deps.db, row.groupId, ["balances"])` inside `runSendNotificationMail` when `row !== null && row.inGroup && row.kind === "debt_reminder"` so durable job execution/retry guarantees refresh delivery after process interruption. In `apps/api/src/services/reminders.ts`, publish `deps.events.publishChanged(input.groupId, ["balances"])` after transaction commit when `response.reminded.length > 0`.
+- **Why simplest:** Reuses the existing `pg-boss` transactional adapter, `send-notification-mail` job, `songphang_events` Postgres LISTEN/NOTIFY bridge, and `["balances"]` invalidation key (which `apps/web/src/lib/use-group-events.ts` already maps to `["notifications"]`), with zero new tables, streams, or libraries.
+- **Alternative considered:** Creating a separate `emit-group-event` pg-boss job type; rejected because `send-notification-mail` is already durably enqueued transactionally per notification row and handles retry/restart recovery cleanly.
+- **Reproduction on `0616f9d` (`songphang_phase4_fix_20261119`):** `R4_R5_REPRO {"manualStatus":200,"manualReminded":1,"manualPublishedCount":0,"mailThrowCaught":false,"notifsAfterFail":1,"cooldownsAfterFail":1,"rerunReminded":0,"retrySent":0,"autoPublishedCount":0}` (0 manual SSE events, 0 auto Postgres events, and rerun blocked by cooldown without queued mail).
+
+### R4 & R5 [P2] — verification & security review
+
+- **Grouping rationale:** R4 (transactional `send-notification-mail` enqueue in `runAutoReminders`) and R5 (emitting `["balances"]` group invalidation events for manual and automatic reminders + durable job refresh) share the same automatic reminder transaction in `apps/worker/src/jobs/auto-reminders.ts` and `send-notification-mail.ts`.
+- **Checks:**
+  - `pnpm check`: 485 files checked, 0 errors (3 pre-existing `noImgElement` warnings), 8 typechecks Done.
+- **Exercise (`exercise_r4_r5.mts` with real HTTP API, real `pg-boss` worker queue, and `songphang_events` Postgres listener on `songphang_phase4_fix_20261119`):**
+  - Real output: `R4_R5_ALL_CHECKS_PASSED {"manualEvent":true,"manualCooldown429":true,"rollbackSilent":true,"autoReminded":2,"autoEventFromTx":true,"rerunWithin3Days":0,"lanAttempts":2,"deliveredTo":["lan@dev.songphang.local"],"durableEventFromJob":true,"removedUserBlocked":true,"balancesUnchanged":true}`
+  - Verified: manual reminder publishes `["balances"]` after commit; 24h cooldown returns `429` with zero events; rolled-back tx emits zero `songphang_events`; automatic reminders enqueue `send-notification-mail` transactionally with `{ singletonKey: row.id }` and emit `notifyGroup(executor, group.id, ["balances"])`; rerun within 3-day interval emits 0 duplicates; simulated transient mailer failure retries via `pg-boss` (`lanAttempts: 2`) and succeeds; muted user (`Hung`) receives no mail while in-app notification is recorded; removed user (`Lan` removed from `group_users`) receives neither mail nor event; balances unchanged.
+- **Security review:** No cross-app imports; `notifyGroup` validates payload via `GroupEventNotification` (<=500B) and uses parameterized `pg_notify`; removed users are blocked at send time (`!row.inGroup`); no private notification content is placed in `pg_notify` payloads (only `groupId` and `["balances"]`).
+
+### R6 [P2] — approach
+
+- **Files to change:** `packages/core/src/approval.ts`, `packages/core/src/index.ts`, `apps/api/src/services/transaction-changes.ts`, `apps/api/src/services/transactions.ts`, `apps/api/src/routes/transactions.ts`, `apps/api/src/services/warnings.ts`.
+- **Plan:** Add a pure `nextEditApprovalStatusFor` helper in `packages/core/src/approval.ts` (matching the existing owner/non-owner edit rule in `editTransaction`) and reuse it in both `editTransaction` and `previewTransaction`. Pass the authenticated `userId` (`context.var.user.id`) from `apps/api/src/routes/transactions.ts` into `previewTransaction`, read `[group, owner]` inside `previewTransaction`'s read-only transaction, compute prospective approval status (`approvalStatusFor` on create, `nextEditApprovalStatusFor` when `replacingTransactionId` is present), and pass `counted: prospectiveStatus !== "pending"` to `transactionWarnings`. Also fix `beforeSpent` in `apps/api/src/services/warnings.ts` (`input.applied ? spentNow - signedAmount + oldSigned : spentNow`) so edit preview and edit save calculate identical pre-edit spent totals for both counted and uncounted replaced transactions.
+- **Why simplest:** One canonical approval-status rule in `packages/core`, zero schema/contract changes, and exact mathematical parity between preview (`applied: false`) and save (`applied: true`).
+- **Reproduction on `6cf1326` (`songphang_phase4_fix_20261119`):** `R6_REPRO {"previewWarnings":["BUDGET_OVER"],"saveWarnings":[]}` (budget 1M, threshold 1M, 600k spent; Lan previews 1.5M and gets `BUDGET_OVER` while saving yields `pending` with `warnings: []`).
+
+### R6 [P2] — verification & security review
+
+- **Checks:** `pnpm check` passed (485 files checked, 0 errors, 3 pre-existing warnings, 8 typechecks Done).
+- **Exercise (`exercise_r6.mts` against HTTP API on `songphang_phase4_fix_20261119`):**
+  - Real output: `R6_ALL_CHECKS_PASSED {"pendingCreate":{"preview":[],"save":[]},"itemsPendingCreate":{"preview":[],"save":[]},"approvedEditToPending":{"preview":[],"save":[]},"rejectedEditToPending":{"preview":[],"save":[]},"belowThresholdEdit":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"ownerEditAboveThreshold":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"disabledThreshold":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"fundPendingLan":{"preview":[],"save":[]},"fundOwnerMinh":{"preview":["FUND_OVERDRAWN"],"save":["FUND_OVERDRAWN"]}}`
+  - Verified exact parity between preview and create/edit warnings across all 9 cases, and confirmed pending/rejected amounts never enter official budget spent totals.
+- **Security review:** Authenticated `context.var.user.id` passed from route to `previewTransaction` after `requireUser` + `requireGroupRole(deps, "editor")`; read-only repeatable-read transaction; no new endpoints or privilege changes.
+
+### R7 [P2] — approach
+
+- **Files to change:** `apps/api/src/bot/draft-payload.ts`, `apps/api/src/bot/commands/expense.ts`, `packages/db/src/chat.ts`, `packages/db/src/index.ts`, `apps/api/src/bot/callbacks.ts`.
+- **Plan:** Add optional `occurredAt: z.iso.datetime().optional()` to `BotDraftPayload` and persist `occurredAt: now.toISOString()` when creating a bot draft in `apps/api/src/bot/commands/expense.ts` (falling back to `draft.createdAt.toISOString()` for any existing legacy drafts without `occurredAt`). Add `lockBotDraftById(executor, draftId)` (`SELECT ... FOR UPDATE`) in `packages/db/src/chat.ts`. In `apps/api/src/bot/callbacks.ts`:
+  - Serialize drop (`d:`) inside a DB transaction using `lockBotDraftById(tx, draft.id)` before deleting if `savedTransactionId === null`.
+  - Serialize save (`s:`) inside `runIdempotent`'s transaction: acquire `lockBotDraftById(tx, draft.id)`, verify the draft still exists and is unexpired, re-check `resolveActor({ db: tx }, { chatId, platformUserId: cb.from.id })` inside the write transaction (verifying chat link, sender identity, group membership, and non-viewer role against live state), call `createTransaction(tx, ...)`, and call `markBotDraftSaved(tx, ...)` atomically in the SAME transaction so a failure at `markBotDraftSaved` rolls back both `createTransaction` and `idempotency_keys`.
+  - On idempotent replay, `runIdempotent` returns the stored response; `created.transaction.id` is already committed and `savedTransactionId` was already set atomically (with safe recovery if `savedTransactionId` were ever null on an older pre-fix row).
+- **Why simplest:** Keeps the existing `runIdempotent` contract and `bot_drafts` table (no migration needed), eliminates the split-commit window and `occurredAt` hash drift completely, and enforces live role/membership authorization inside the write transaction.
+- **Reproduction on `4335d95` (`songphang_phase4_fix_20261119`):** `R7_REPRO {"firstSaveStatus":200,"retrySaveStatus":200,"retryHasIdempotencyReuse":false,"draftSavedTxIdAfterRetry":null,"txCountInGroup":1}` (with two `telegram.webhook.error` events: first at `markBotDraftSaved` after transaction committed, second on retry due to `occurredAt` request-hash drift, leaving `saved_transaction_id = null` permanently).
+
+### R7 [P2] — verification & security review
+
+- **Checks:** `pnpm check` passed (485 files checked, 0 errors, 3 pre-existing warnings, 8 typechecks Done).
+- **Exercise (`exercise_r7.mts` against live HTTP webhook on `songphang_phase4_fix_20261119`):**
+  - Real output: `R7_ALL_CHECKS_PASSED {"concurrentSaveSingleTx":true,"undoWorked":true,"saveDropRaceWinner":"drop","injectedFailureRolledBackAtomically":true,"restartRetrySucceeded":true,"wrongSenderBlocked":true,"expiredBlocked":true,"roleDowngradeBlocked":true,"removedMemberBlocked":true}`
+  - Verified: simultaneous `s:` with distinct `update_id`s creates 1 tx + 1 reply + 1 `savedTransactionId`; `/huy` undoes saved tx; `s:`/`d:` race is strictly serialized via `lockBotDraftById`; injected failure on `bot_drafts` UPDATE rolls back tx + idempotency key atomically; after trigger cleanup and simulated process restart + 5s clock advance, retry succeeds with 1 tx + `savedTransactionId` + 1 reply; wrong sender, expired draft, downgraded `viewer`, and removed group member are all rejected inside the write transaction.
+- **Security review:** Live actor/role/membership authorization (`resolveActor({ db: tx }, ...)`) is now enforced inside the committing transaction while holding the `bot_drafts` row lock; temporary failure-injection trigger `trg_r7_fail_mark_saved` and function `fn_r7_fail_mark_saved` removed after verification.
+
+### R8 [P3] — approach
+
+- **Files to change:** `apps/api/src/services/approval.ts`.
+- **Plan:** Always populate `after: { amount: transaction.amount, ...(trimmedNote ? { note: trimmedNote } : {}) }` when inserting `approve`/`reject` activity entries so `describeActivity` renders the exact decision-time integer amount (and preserves it immutably if the transaction is edited later). Do not fabricate or backfill amounts on old historical rows.
+- **Why simplest:** Single-line change at the canonical activity write site; `describeActivity` already reads `after.amount` and formats it.
+- **Reproduction on `e4356fb` (`songphang_phase4_fix_20261119`):** `R8_CHECK` rendered `Minh duyệt Vé máy bay · …`, `Minh không duyệt Khách sạn · …`, and `Minh không duyệt Thuê xe · …` (`after` lacked `amount`).
+
+### R8 [P3] — verification & security review
+
+- **Checks:** `pnpm check` passed (485 files checked, 0 errors, 3 pre-existing warnings, 8 typechecks Done).
+- **Exercise (`repro_r8.mts` against live HTTP API + `describeActivity` on `songphang_phase4_fix_20261119`):**
+  - Real output:
+    - Approve (no note, verified AFTER subsequently editing transaction from `1,500,000` to `1,800,000`): `after: {"amount":1500000}` -> `Minh duyệt Vé máy bay · 1.500.000 đ`.
+    - Reject (with note): `after: {"note":"Cần hóa đơn","amount":2000000}` -> `Minh không duyệt Khách sạn · 2.000.000 đ`.
+    - Reject (no note): `after: {"amount":900000}` -> `Minh không duyệt Thuê xe · 900.000 đ`.
+  - No historical rows were fabricated or backfilled.
+- **Security review:** Integer amount copied from the locked transaction row inside `decideTransactionApproval`; no new user input or surface change.
+
+### Full Gate Reconstruction & Replay — Pre-Execution Coverage Matrix
+
+Disposable database: `songphang_phase4_fix_20261119` (verified via `SELECT current_database()` before every reset; never touching `songphang`, `songphang_phase4_gate`, or `songphang_phase4_review_20261119`; never running `docker compose down -v`). Isolated uploads: `/tmp/songphang-gate-uploads`. Free ports: API `4020`, Web `3020`.
+
+| Gate | Source Document / Stage | Cases & Fixtures | Expected Result | Invocation | Status |
+|---|---|---|---|---|---|
+| **Gate 1** | Static / build / diff | `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `git diff --check main..phase-4` | 0 lint/type errors, clean production build, 0 whitespace/conflict markers | Shell commands | **PASS** (485 files, 0 errors, 8 typechecks Done, Next.js build Done, `git diff --check` clean) |
+| **Gate 2** | `docs/08-quick-entry-samples.md` (87 rows) | All 87 quick-entry samples (Vietnamese expenses, splits, payers, dates, categories, refusals) via HTTP `POST /api/v1/groups/{id}/transactions/parse` | Exact match on status (200 vs 422), description, amount, payers, shares, and refusal issue codes for all 87 rows | `task0_samples.mts` + `gate2_http_87.mts` | **PASS** (`ALL_87_QUICK_ENTRY_SAMPLES_PASSED` & `GATE2_HTTP_ALL_87_QUICK_ENTRY_SAMPLES_PASSED`) |
+| **Gate 3** | Earlier merged phases (`1A`–`1E`, `2A`–`2D`, `3A`–`3D`) | Representative per-stage replay: accounts/sessions/invites/revocation (`1A`–`1E`), settlement/fund/stats/budget/export (`2A`–`2D`), uploads/receipt/items/explicit AI opt-in with fake adapter (`3A`–`3D`) | All stage behaviors pass and `pnpm db:check-balances` ends with `All groups balanced` | `gate3_earlier_phases.mts` + `pnpm db:check-balances` | **PASS** (`GATE3_EARLIER_PHASES_PASSED` & `All groups balanced`) |
+| **Gate 4** | Full Permission Matrix (Phase 1–4) | Owner, Editor, Viewer, Outsider, Cross-group UUID, Unauth (401), Unverified (403), public token routes across all Phase 1–4 endpoints with valid fixtures | Exact expected HTTP status per endpoint & caller (outsiders & cross-group receive 404; viewers blocked from writes; owner-only routes reject editors; author/opener checks enforced) | `gate4_permission_matrix.mts` | **PASS** (`GATE4_PERMISSION_MATRIX_PASSED {"totalChecks":44,"allMatched":true}`) |
+| **Gate 5** | Phase 4 Stages `4A`, `4B`, `4C` (with R1/R7), `4D.1`, `4D.2` | Comments/disputes (`4A`), notifications/mute/mail/unsubscribe/reminders (`4B`), Telegram group link + R1 two-sided pairing + `/chi`/`/sodu`/`/huy` + R7 (`4C`), all 4D.1 money variants (balances min on/off, pairwise, stats, budget, fund, CSV, reminders, `/sodu`, items, fake receipt) + `transaction_shares`/`transaction_payers` inventory, full 4D.2 table + `pnpm db:check-balances` checkpoints | All assertions pass; `pnpm db:check-balances` reports `All groups balanced` at every checkpoint | `gate5_phase4_stages.mts` + `rg` inventory + `pnpm db:check-balances` | **PASS** (`GATE5_4D1_4D2_ALL_CHECKS_PASSED`, all SQL money refs audited, `All groups balanced`) |
+| **Gate 6** | Capability-off & Production refusals | Unset `AI_PROVIDER` & `TELEGRAM_PROVIDER` -> `GET /api/v1/features` (all 6 flags false) + disabled endpoints return 404; `APP_ENV=production` refuses `AI_PROVIDER=fake`, `AI_FAKE_RECEIPT_FIXTURE`, `TELEGRAM_PROVIDER=console`, `DEV_LOGIN=true` | All 6 flags false, disabled endpoints 404, all unsafe prod configs refused | `gate6_capabilities_prod.mts` | **PASS** (`GATE6_CAPABILITIES_PROD_PASSED`: 6 false flags, `[404,404,404]`, 5 prod refusals verified) |
+| **Gate 7** | 1,000-notification perf & Browser checks | 1,000 notifications: page 1 & cursor page 2 `< 300ms`, `EXPLAIN (ANALYZE, BUFFERS)`, membership loss hides private content; Chrome DevTools MCP checks (S20, S19 + live debtor bell update on reminder, S5, S11, S13, R1 `/link/telegram` + legacy `?code=`, R2 signed-out `/notifications/unsubscribe`, offline, 44px targets, 375px mobile overflow, WCAG AA contrast) | Perf `< 300ms` + index plan + privacy verified; browser checks verified with real observations | `gate7_perf_1000.mts` + Chrome DevTools MCP (`http://localhost:3020` / `4020`) | **PASS** (`page1Ms: 5.18`, `page2Ms: 3.61`, `leakedAfterRemoval: 0`, live bell `46 -> 47`, R1 browser pairing completed, S20 contrast `15.47`/`17.08`, 48px/64px targets, `overflow: false`, offline revert verified) |
+| **Gate 8** | Final `security-review`, manifest check & final clean checks | Full `security-review` checklist on `git diff main..phase-4` and `git diff 7f99fc6..HEAD`, `git diff main..phase-4 -- pnpm-lock.yaml`, fresh `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `pnpm db:check-balances` | 0 security violations, lockfile unchanged, all final checks green | Shell commands | **PASS** (`CLEAN_SECURITY_SCAN`, lockfile unchanged, no trigger residue, `All groups balanced`) |
+
+### Not verified (explicitly deferred by project owner)
+
+- Real SMTP provider delivery and real mail-client `List-Unsubscribe-Post` callbacks (verified locally via console mailer + simulated HTTP `POST` to `/notifications/unsubscribe`).
+- Real Telegram Bot API (`api.telegram.org`) and HTTPS webhook registration (verified locally via `TELEGRAM_PROVIDER=console` and authenticated webhook POSTs).
+- Real AI providers (`AI_PROVIDER=gemini` / `openai`) and real receipt OCR (deferred by owner until all phases including iOS are done).
+- Real Google OAuth login and owner-device manual checks.
+
+---
+
+## Advisor Review Round 2 Correction Run (2026-11-19)
+
+- **Baseline:** Branch `phase-4`, local HEAD `7078c00` (remote PR #1 remained at `7f99fc6`; no push performed). Untracked advisor review `docs/superpowers/runs/phase-4/review-round-2.md` preserved unchanged and included in the documentation commit; advisor prompts preserved untracked.
+- **Disposable DB & Isolated Ports:** `songphang_phase4_r2_20261119` (`postgres://songphang:songphang@localhost:54329/songphang_phase4_r2_20261119`), API port `4040`, Web port `3040`, isolated `STORAGE_DIR=/tmp/songphang-r2-uploads`.
+
+### Round 2 correction checklist
+
+- [x] **R9 [P1]** — Revalidate digest authorization per recipient at delivery (`8882307`)
+- [x] **R10 [P2]** — Restore comments and open-dispute resolution on soft-deleted transactions (`70cc66e`)
+- [x] **Cast observation** — Remove redundant forced cast in `apps/api/src/services/transaction-changes.ts` (`63840a4`)
+- [x] **Whitespace observation** — Fix trailing blank lines in `progress.md` (`git diff --check` clean)
+- [x] **R11 [P2]** — Complete 99-route / 309-case permission matrix, 87 quick-entry samples, earlier-phase representative replay, Phase 4 stage/regression suite, capability-off/prod refusals, 1,000-notification perf/privacy gate, and Chrome DevTools MCP browser gates ([gate-inventory-round-2.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/gate-inventory-round-2.md), [review-round-2-fixes.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/review-round-2-fixes.md))
+
+### Round 2 verification summary (pre-freeze pass)
+
+- `pnpm check`: passed (485 files, 0 errors, 3 pre-existing `noImgElement` warnings, 8/8 workspace typechecks Done).
+- `API_ORIGIN=http://127.0.0.1:4040 pnpm build`: passed (`3.1s`, all routes + `ƒ Proxy (Middleware)` compiled cleanly).
+- `git diff --check main..HEAD` and `git diff --check 7078c00..HEAD`: exit 0 (clean).
+- **R9:** Pre-fix `R9_REPRO` confirmed `privateDataMailedAfterRemoval: true`. Post-fix `R9_EXERCISE_ALL_PASSED` verified inter-recipient removal of only group, removal of 1 of 2 groups with >20 overflow (`2` not `7`, no removed-group text/name/prefix), opt-out, partial/full read, email unverification, email change, multi-group >20 overflow, and immediate repeat run (`0`).
+- **R10:** `R10_EXERCISE_ALL_PASSED` verified HTTP comment before/after deletion (`201`), not auto-restored, opener/owner resolve open dispute on deleted tx (`200`), editor resolve (`403`), open new dispute on deleted tx (`404`), restore retains comments, author/owner delete (`204`), non-author (`403`), outsider/cross-group (`404`), unauth (`401`), unverified (`403`), invalid input (`400`), rate limit (`429`), balances identical. Browser S20 verified live SSE comment on soft-deleted tx with literal `<script>alert(1)</script>` (`scriptTagsInMain: 0`).
+- **R11 Complete Gate Set:** `99/99` actual Hono routes covered, `309/309` permission cases PASS, `87/87` quick-entry samples PASS (`over300Status: 400`), `15/15` earlier-phase representative cases PASS, `7/7` Phase 4 stage/R1-R10 suites PASS, `18/18` capability-off/prod checks PASS, 1,000-notification perf `8.6ms`/`4.58ms` (`<300ms`, 0 leaked after removal), `10/10` Chrome DevTools MCP browser checks PASS (0 console errors), `pnpm db:check-balances` `All groups balanced`, temporary DB triggers/functions verified absent, `pnpm-lock.yaml` unchanged.
+- **Security review:** checked relevant items 1–8 on `git diff 7078c00..HEAD` and `git diff main..HEAD`; no security issues found (no secrets, parameterized Drizzle queries, strict Zod boundaries, shared group authorization with outsider 404, hash-only tokens, no `dangerouslySetInnerHTML`/`eval`, no new dependencies).
+
+---
+
+## Round 3 — R11 Completion Run (2026-11-19)
+
+- **Baseline:** Branch `phase-4`, Round 3 reviewed HEAD `f0b5da5f07a26fd17ef456ba5e16b6549618928a` (`review-round-3.md`: R9 PASS, R10 PASS, R11 CHANGES NEEDED). Zero product-code defects were uncovered by the expanded R11 coverage; no product files modified.
+- **Disposable DB & Isolated Ports:** `songphang_phase4_r11_20261119`, `STORAGE_DIR=/tmp/songphang-r11-uploads`, API `4070` (`4071`–`4077`), Web `3070`.
+- **Expanded Inventory & Protocol:** [r11-completion.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/r11-completion.md) (supersedes `gate-inventory-round-2.md` with explicit links).
+- **Pre-Freeze Expanded Verification:**
+  - Permission Matrix (`PM-001`–`PM-353`): `99/99` registered Hono routes, `353/353` cases PASS, **0 missing group-role combinations** across all 62 group routes (closing `POST /reminders`, `POST /transactions/:id/restore`, `POST /leave`, and all 14 other previously partial group routes).
+  - Complete 4D.1 Money Matrix (`M4D-001`–`M4D-031`): `31/31` cases PASS across `pending`/`rejected`/`approved` for both debt modes (`PATCH minimizeDebts` true/false), stats breakdowns, budget & `FUND_OVERDRAWN` warnings, fund cash/contributions, parsed CSV rows, reminders, Telegram `/sodu`, and `items` + fake-receipt threshold saves.
+  - Final-SHA post-freeze replay (all backend, money, regression, perf, and all 16 browser cases `BR-01`–`BR-16`) is executed on this frozen commit and archived outside the repository under `final-replay-<FULL_SHA>/` with `manifest.json`.
+
+---
+
+## R11-A & R11-B Completion Run (2026-11-19)
+
+- **Baseline:** Branch `phase-4`, reviewed HEAD `93e01e992cc5a58a24227bf490c4ada98712f87a` (`review-r11-final.md`: expanded `353/353` core-role permission matrix, R9, and R10 retain PASS; R11 kept open for R11-A child browser evidence and R11-B omitted money variants). Unchanged advisor report `docs/superpowers/runs/phase-4/review-r11-final.md` is committed deliberately with this run documentation.
+- **Disposable DB & Isolated Ports:** `songphang_phase4_r11ab_20261119`, `STORAGE_DIR=/Users/hoojinguyen/.gemini/antigravity/brain/fa161507-b8d0-4447-ba9a-fef03545bbe9/r11_ab_uploads`, API `4080` (`4081`–`4088`), Web `3080`.
+- **Reproduced product fix (`e479bd2`):** `BR-14.4` reproduced `S11` horizontal overflow at `375×812` (`scrollWidth: 838 > clientWidth: 375`) caused by `AmountField` `<input>` intrinsic width inside CSS grid cards (`ApprovalCard`, `BudgetCard`). Fixed narrowly in `apps/web/src/components/expense-form/AmountField.tsx` (`min-w-0 w-full`, `size={1}`); verified `scrollWidth === clientWidth === 375`.
+- **Expanded Inventory, Corrections & Protocol:** [r11-ab-completion.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/r11-ab-completion.md) (supersedes `r11-completion.md`; corrects group-ID route count `63` of `99`, shifted PM ranges `PM-258`–`PM-268` / `PM-214`–`PM-220` / `PM-339`–`PM-343`, and prior browser artifact filename `09_browser.json`).
+- **Pre-Freeze R11-B Expanded Money Matrix (`gate_4d1_money_r11ab.mts`):** `65/65` leaf/standalone cases PASS (`+2` parent rollups `M4D-030`/`M4D-031` computed from 4/4 children each), closing items-split & fake-receipt pending/rejected/edit/approved lifecycles, isolated settlement/payment approval paths, fund refund under enabled threshold, and 21-case create/edit/preview warning parity matrix (`pnpm db:check-balances` `All groups balanced` at every checkpoint).
+- **Final-SHA Post-Freeze Replay:** Executed strictly on the frozen commit after this documentation commit across all static/build/permission/money/regression/perf/security gates and all `61` browser child cases (`BR-01.1`–`BR-16.2`) with real screenshots, DOM/a11y/focus/contrast/overflow measurements, and `manifest.json` archived outside the repo under `final-replay-<FULL_SHA>/`.

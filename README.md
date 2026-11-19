@@ -19,7 +19,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) and choose the development sign-in link, then Minh.
 
-`pnpm dev` waits for PostgreSQL to become healthy, applies migrations, seeds the four development users, and starts the API and web app. Migrations and seed operations can run repeatedly without creating duplicate users.
+`pnpm dev` waits for PostgreSQL to become healthy, applies migrations, seeds the four development users, and starts the API, worker, and web app. Migrations and seed operations can run repeatedly without creating duplicate users.
 
 Press Ctrl+C to stop the API and web app. PostgreSQL continues running in Docker. Run `pnpm dev` again to restart the application; existing data and valid login sessions are preserved.
 
@@ -63,6 +63,63 @@ pnpm dev
 
 - `packages/core/src/banks.ts` contains the 76-bank BIN mapping sourced from `https://api.vietqr.io/v2/banks` (VietQR.io by Casso, retrieved `2026-11-17`). It is not a NAPAS-certified dataset; automated NAPAS bank-account verification is disabled.
 - Before real-money use, verify the QR payload bytes match the VietQR specification and scan a 1.000 đ test transfer from `/g/{id}/pay` with a Vietnamese banking app to confirm bank, account number, account name, amount, and transfer note fill in accurately.
+
+## Phase 3 features
+
+- **Background worker & private attachments:** `apps/worker` runs `pg-boss` jobs (`heartbeat`, `cleanup-attachments`, `delete-files`, `read-receipt`) and notifies the API over PostgreSQL `LISTEN`/`NOTIFY` (`songphang_events`) so connected clients refresh `receiptScans` live. Uploaded receipt photos are stored privately under `STORAGE_DIR` (resolved relative to the repository root; default `./.data/uploads`) with a 5 MB image cap, 200 MB per-group storage quota, magic-byte validation (`image/jpeg`, `image/png`, `image/webp`), authorized streaming (`Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff`), and 24-hour orphan cleanup.
+- **Receipt scanning & item-by-item splitting (`Theo món`):** Editors and owners can upload a receipt from `Chụp hoá đơn` in the feed entry bar, inspect extracted items, taxes/fees, and total discrepancies, assign items per member (including `Chia đều các món còn lại`), and save or edit expenses using the `items` split method (`packages/core/src/split-items.ts`, `POST /api/v1/groups/{groupId}/transactions/items/preview`).
+- **AI sentence fallback & category suggestions:** When rule parsing cannot parse an expense sentence, the API optionally calls the sentence reader (`AI_PROVIDER`), displays `Đọc bằng AI. Hãy xem lại.`, supports multi-expense drafts (`Khoản {index}/{count}`, `Lưu và sang khoản sau`, `Bỏ khoản này`), and suggests categories via `suggestCategory` (`packages/core/src/category-keywords.ts` + live group custom categories).
+
+### AI configuration and local fake fixtures
+
+Leave `AI_PROVIDER` unset to keep optional AI endpoints and UI entry points disabled (`receiptReading: false`, `sentenceAi: false`). Production startups refuse `AI_PROVIDER=fake`, and require `ANTHROPIC_API_KEY` and `AI_MODEL` when `AI_PROVIDER=anthropic`.
+
+| Variable                        | Purpose                                                                                | Default in `.env.example` |
+| ------------------------------- | -------------------------------------------------------------------------------------- | ------------------------- |
+| `STORAGE_DIR`                   | Private upload directory resolved from repo root                                       | `./.data/uploads`         |
+| `AI_PROVIDER`                   | Leave empty to disable, `fake` for local fixtures, or `anthropic`                      | _(unset)_                 |
+| `ANTHROPIC_API_KEY`             | Anthropic API key when `AI_PROVIDER=anthropic`                                         | _(unset)_                 |
+| `AI_MODEL`                      | Claude model ID for receipt and sentence calls                                         | `claude-haiku-4-5`        |
+| `AI_RECEIPTS_PER_USER_PER_DAY`  | Daily receipt scan cap per user                                                        | `20`                      |
+| `AI_SENTENCES_PER_USER_PER_DAY` | Daily AI sentence cap per user                                                         | `100`                     |
+| `AI_CALLS_PER_MONTH`            | Monthly total AI calls cap across all users                                            | `1000`                    |
+| `AI_FAKE_RECEIPT_FIXTURE`       | Optional forced fake receipt key (`clean`, `tax-service`, `mismatch`, `not-a-receipt`) | _(unset)_                 |
+
+Offline fake fixtures used when `AI_PROVIDER=fake`:
+
+- Receipt JPEGs and SHA-256 readings: `apps/worker/fixtures/receipts/` (`manifest.json`, `clean.jpg`, `tax-service.jpg`, `mismatch.jpg`, `not-a-receipt.jpg`)
+- Sentence fixtures (`AI01`–`AI15`): `apps/api/fixtures/sentences.json`
+
+## Phase 4 features
+
+- **Transaction view (`S20`), comments, and disputes:** Tapping any stream row opens `/g/{id}/tx/{txId}/view` with breakdown, comments (`20/min/user` rate limit, author/admin/owner deletion, live SSE `comments`), and disputes (`Khoản này chưa đúng` -> `đang hỏi lại` -> `Đã giải quyết`).
+- **Notifications, mail delivery, and debt reminders:** Live unread header bell (`{count} thông báo chưa đọc`), notifications list (`/notifications`), per-group mute (`Tắt thông báo nhóm này` on `/g/{id}/members`), immediate & daily digest emails (`Thông báo qua email` on `/account`), RFC 8058 one-click unsubscribe (`/notifications/unsubscribe?token=...` — server-side `POST` handled directly without session/Origin/JS alongside browser `GET`, backed by durable hash-only tokens in `notification_unsubscribe_tokens`), manual debt reminders (`Nhắc` / `Nhắc cả nhóm một lần` on `/g/{id}/balances` with a 24-hour per-pair cooldown and live SSE refresh), and automatic reminders (`Tự nhắc nợ` on `/g/{id}/settings`: `Tắt`, `Mỗi 3 ngày`, `Mỗi tuần`, `Mỗi 2 tuần`, enqueuing `send-notification-mail` and publishing `songphang_events` transactionally).
+- **Expense approval above a threshold:** Owners can enable `Duyệt khoản chi lớn` (`Từ số tiền`) on `/g/{id}/settings`. Non-owner expenses at or above the threshold enter `pending` (`chờ duyệt`), trigger `approval_requested` notifications, and stay excluded from balances, stats, budgets, fund cash, and CSV exports (`countedTransaction` SQL invariant) until approved (`Duyệt`) or rejected (`Không duyệt`) by the group owner on S20.
+
+### Worker jobs and schedules
+
+`apps/worker` runs these Phase 4 jobs in `pg-boss` (`Asia/Ho_Chi_Minh` timezone):
+
+| Job                      | Schedule / trigger                                              | Purpose                                                                                                                                                |
+| ------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `send-notification-mail` | Enqueued transactionally on notification write (`singletonKey`) | Sends immediate notification emails (at-least-once retry via `pg-boss`) using durable hashed one-click unsubscribe tokens and emits reminder refreshes |
+| `send-digest`            | `0 20 * * *` (daily 20:00)                                      | Sends unread digest emails created since the `job_checkpoints` cursor                                                                                  |
+| `auto-reminders`         | `0 9 * * *` (daily 09:00)                                       | Creates scheduled debt reminders when the group interval has elapsed, enqueuing `send-notification-mail` and `songphang_events` in the same tx         |
+| `prune-notifications`    | `15 3 * * *` (daily 03:15)                                      | Deletes notifications older than 90 days                                                                                                               |
+| `prune-bot-data`         | `0 * * * *` (hourly)                                            | Deletes expired unsaved `bot_drafts`, plus saved `bot_drafts`, `chat_link_codes`, `bot_updates`, and `chat_identity_pairings` older than 24 hours      |
+
+### Telegram bot configuration
+
+Leave `TELEGRAM_PROVIDER` unset to keep bot routes and linking cards disabled (`GET /api/v1/features` -> `telegram: false`). See [docs/runbooks/telegram.md](docs/runbooks/telegram.md) for BotFather setup, webhook registration, two-sided account pairing, and token rotation.
+
+| Variable                  | Purpose                                                                                                | Default in `.env.example` |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------- |
+| `TELEGRAM_PROVIDER`       | Leave empty to disable, `console` for local logging (`ConsoleChatSender`), or `telegram` for Bot API   | _(unset)_                 |
+| `TELEGRAM_BOT_TOKEN`      | Token from `@BotFather` (required when `TELEGRAM_PROVIDER=telegram`)                                   | _(unset)_                 |
+| `TELEGRAM_WEBHOOK_SECRET` | Random secret (`>= 32` chars, `[A-Za-z0-9_-]`) checked via `X-Telegram-Bot-Api-Secret-Token`           | _(unset)_                 |
+| `TELEGRAM_BOT_USERNAME`   | Bot handle without `@`, shown on `/g/{id}/settings` (`/lienket <code>` -> `@bot`) and `/link/telegram` | _(unset)_                 |
+
+When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to API logs instead of calling `api.telegram.org` (refused in production). Supported bot commands: `/chi`, `/sodu`, `/huy`, `/lienket`, `/trogiup`, and `/start` (private chat pairing).
 
 ## Development mail and optional Google sign-in
 

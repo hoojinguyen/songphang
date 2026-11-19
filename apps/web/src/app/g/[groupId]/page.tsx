@@ -10,6 +10,7 @@ import { ExpenseStream } from "../../../components/feed/ExpenseStream";
 import { FilterChips } from "../../../components/feed/FilterChips";
 import { FilterSheet } from "../../../components/feed/FilterSheet";
 import { StreamSearchBar } from "../../../components/feed/StreamSearchBar";
+import { Bell } from "../../../components/notifications/Bell";
 import { LoadError } from "../../../components/ui/LoadError";
 import { MemberShape } from "../../../components/ui/MemberShape";
 import { ScreenHeader } from "../../../components/ui/ScreenHeader";
@@ -142,18 +143,21 @@ function GroupScreen() {
 				backHref="/"
 				backLabel={vi.common.back}
 				trailing={
-					<Link
-						href={`/g/${groupId}/members`}
-						aria-label={vi.feed.membersLink}
-						className="flex h-12 items-center rounded-[24px] bg-surface px-3"
-					>
-						{members.data
-							.filter((member) => member.kind === "person")
-							.slice(0, 4)
-							.map((member) => (
-								<MemberShape key={member.id} {...member} size={24} />
-							))}
-					</Link>
+					<div className="flex items-center gap-2">
+						<Bell />
+						<Link
+							href={`/g/${groupId}/members`}
+							aria-label={vi.feed.membersLink}
+							className="flex h-12 items-center rounded-[24px] bg-surface px-3"
+						>
+							{members.data
+								.filter((member) => member.kind === "person")
+								.slice(0, 4)
+								.map((member) => (
+									<MemberShape key={member.id} {...member} size={24} />
+								))}
+						</Link>
+					</div>
 				}
 			/>
 			{!filtersActive && <BalanceBlock groupId={groupId} balance={balance} />}
@@ -194,7 +198,6 @@ function GroupScreen() {
 			{hasTransactions ? (
 				<ExpenseStream
 					groupId={groupId}
-					canEdit={group.data.role !== "viewer" && me.data.emailVerified}
 					query={transactions}
 					members={members.data}
 					categories={categories.data}

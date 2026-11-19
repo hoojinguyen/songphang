@@ -347,9 +347,9 @@ Transaction list query gains optional `spendingOnly=true|false` (default false).
 
 Every statistics category/member/time link sets `spendingOnly=true` in the feed URL. The scope survives reload, pagination, search and other filter changes and has a removable type chip composed from the existing Chi/Thu labels. Picking a single transaction type replaces the combined scope. Ordinary `uncategorized=true` without this flag continues to include transfers with no category; statistics navigation excludes them to match its source aggregate.
 
-## Phase 3 API amendment — approved 2026-11-17, not implemented
+## Phase 3 API amendment — approved 2026-11-17, implemented (merged 905cdf2)
 
-The following contracts describe future work from the approved Phase 3 spec (including section 15); they are not available on current main. No route, environment variable, queue or adapter is created by advisor preparation.
+The following contracts come from the approved Phase 3 spec (including section 15) and are available on main since merge `905cdf2`. The section "Phase 3 review corrections — 2026-11-18" below amends the parse request and the items preview.
 
 | Method | Route below /api/v1 | Authorization and planned result |
 |---|---|---|
@@ -358,7 +358,7 @@ The following contracts describe future work from the approved Phase 3 spec (inc
 | DELETE | /groups/{groupId}/attachments/{id} | Editor; 204, remove row/file |
 | POST | /groups/{groupId}/receipt-scans | Editor, Idempotency-Key; {attachmentId}; 201 queued, 200 existing, 404 when receiptReading disabled |
 | GET | /groups/{groupId}/receipt-scans/{id} | Viewer; group-scoped scan DTO |
-| POST | /groups/{groupId}/transactions/items/preview | Editor and ordinary write guards; {items,extras}; 200 computedAmount/optional shares/issues for structurally valid incomplete editor input |
+| POST | /groups/{groupId}/transactions/items/preview | Editor and ordinary write guards; {items,extras,targetTotal?}; 200 computedAmount/optional shares/issues/optional targetAdjustment for structurally valid incomplete editor input |
 
 All group endpoints use shared authorization; outsiders and cross-group attachment/scan IDs get indistinguishable 404, signed-out callers 401. Upload enforces a 6-MiB streamed body cap, file bytes 1..5242880, JPEG/PNG/WebP leading bytes, 30 uploads/hour/user and 200-MiB serialized group quota. The 100-KiB bound remains elsewhere. Never trust the request's type/name. Attachment IDs are 0–3 unique UUIDs, same group and unattached or owned by that transaction.
 
@@ -372,6 +372,17 @@ Parse response adds reader (rules|ai), category/categoryId on drafts (mutually e
 
 Preserve the existing six-field public features response; enable receiptReading/sentenceAi only through approved configuration. SSE adds receiptScans as a resource, distinct from capability receiptReading. Unset AI leaves camera hidden and scan creation 404. Provider errors never expose raw bodies, keys, paths or prompts.
 
-New planned errors: STORAGE_QUOTA_EXCEEDED (422), AI_QUOTA_EXCEEDED (429 with scope user|month), ITEM_UNASSIGNED (400 on ordinary create/preview, itemIndex). Scan terminal errors include NOT_A_RECEIPT, READER_UNAVAILABLE and READER_INVALID; flags include TOTAL_MISMATCH, TOTAL_MISSING, NO_ITEMS. Reuse SPLIT_TOTAL_MISMATCH and FUND_CANNOT_SHARE. Quota is per reserved provider attempt, including retries and uncertain outcomes; one scan may consume two receipt attempts. API admission/reservation/job enqueue is one transaction; actual HTTP is outside it.
+New planned errors: STORAGE_QUOTA_EXCEEDED (422), AI_QUOTA_EXCEEDED (429 with scope user|month), ITEM_UNASSIGNED (400 on ordinary create/preview, itemIndex). Scan terminal errors are NOT_A_RECEIPT, READER_UNAVAILABLE, READER_INVALID and READ_FAILED (missing image, abandoned or stale attempt); flags include TOTAL_MISMATCH, TOTAL_MISSING, NO_ITEMS. Reuse SPLIT_TOTAL_MISMATCH and FUND_CANNOT_SHARE. Quota is per reserved provider attempt, including retries and uncertain outcomes; one scan may consume two receipt attempts. API admission/reservation/job enqueue is one transaction; actual HTTP is outside it.
 
 Synthetic fixture inventory and exact expected data: apps/worker/fixtures/README.md and receipts/manifest.json. The fake browser fixture selector is development configuration only and is rejected with real providers or production. No application-facing fixture selector exists.
+
+## Phase 3 review corrections — 2026-11-18
+
+Approved by the owner after the Phase 3 advisor review (`docs/superpowers/runs/phase-3/advisor-review-2026-11-18.md`).
+
+**Parse request.** `POST …/transactions/parse` accepts `{ "text": "…", "ai": false }`. `ai` is an optional boolean, default `false`; any other type is 400 `VALIDATION_FAILED`. The sentence AI runs only when `ai` is `true`, `features.sentenceAi` is on, the rule reader answered `unparsed` and the quota allows. With `ai` absent or `false` the response is the rule reader's answer and no `ai_calls` row is created. Clients send `ai: true` only when the user explicitly sends the sentence (Enter or the send button), never from a live, as-you-type reading, so unfinished text never reaches the provider. While `features.sentenceAi` is on, the web keeps a refused live reading on S7 until the user sends; with it off, the Phase 1 behavior (open the form) is unchanged.
+
+**Items preview.** The request accepts an optional `targetTotal` (integer, 0–999 999 999 999), the printed receipt total. When it is present, the response carries `targetAdjustment`: `null` when `computedAmount` already equals it, otherwise `{ "kind": "other" | "discount", "amount": <positive integer> }`, the one extra that makes the computed total equal the printed total (`other` when the receipt is higher, `discount` when lower). `core` computes it; the client only adds it as an extra line labelled with the approved mismatch label. Without `targetTotal` the field is absent. Example: items and extras summing to 442 000 with `targetTotal` 450 000 give `{ "kind": "other", "amount": 8000 }`.
+
+**AI cost ledger.** A provider response that is billed but unusable (no tool block, invalid shape, invalid reading) records its model and token counts in `ai_calls` with `ok = false`; only transport failures without a response record zero tokens.
+

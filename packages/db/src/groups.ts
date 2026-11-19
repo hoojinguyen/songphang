@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
+import { users } from "./schema.js";
 import { groups, groupUsers } from "./schema-groups.js";
 import { transactions } from "./schema-transactions.js";
 import { deleteGroupSettlementRequests } from "./settlement-requests.js";
@@ -14,6 +15,7 @@ export async function findGroupAccess(
 			groupId: groupUsers.groupId,
 			role: groupUsers.role,
 			memberId: groupUsers.memberId,
+			muted: groupUsers.muted,
 		})
 		.from(groupUsers)
 		.where(and(eq(groupUsers.groupId, groupId), eq(groupUsers.userId, userId)))
@@ -28,12 +30,23 @@ export async function findGroup(executor: DbExecutor, groupId: string) {
 			currency: groups.currency,
 			minimizeDebts: groups.minimizeDebts,
 			defaultRole: groups.defaultRole,
+			reminderIntervalDays: groups.reminderIntervalDays,
+			approvalThreshold: groups.approvalThreshold,
 			createdAt: groups.createdAt,
 		})
 		.from(groups)
 		.where(eq(groups.id, groupId))
 		.limit(1);
 	return group ?? null;
+}
+export async function findGroupOwner(executor: DbExecutor, groupId: string) {
+	const [owner] = await executor
+		.select({ userId: users.id, name: users.name })
+		.from(groupUsers)
+		.innerJoin(users, eq(users.id, groupUsers.userId))
+		.where(and(eq(groupUsers.groupId, groupId), eq(groupUsers.role, "owner")))
+		.limit(1);
+	return owner ?? null;
 }
 export function listUserGroups(executor: DbExecutor, userId: string) {
 	return executor
@@ -73,6 +86,8 @@ export function updateGroup(
 			name?: string;
 			minimizeDebts?: boolean;
 			defaultRole?: "editor" | "viewer";
+			reminderIntervalDays?: 3 | 7 | 14 | null;
+			approvalThreshold?: number | null;
 		};
 		now: Date;
 	},

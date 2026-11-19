@@ -28,6 +28,15 @@ export const ErrorCode = z
 		"FUND_CANNOT_SHARE",
 		"FUND_NOT_EMPTY",
 		"FUND_EXISTS",
+		"STORAGE_QUOTA_EXCEEDED",
+		"AI_QUOTA_EXCEEDED",
+		"ITEM_UNASSIGNED",
+		"DISPUTE_ALREADY_OPEN",
+		"DISPUTE_NOT_OPEN",
+		"REMINDER_TOO_SOON",
+		"MEMBER_NOT_LINKED",
+		"CHAT_IDENTITY_TAKEN",
+		"APPROVAL_NOT_PENDING",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

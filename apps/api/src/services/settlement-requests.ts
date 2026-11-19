@@ -7,6 +7,7 @@ import {
 } from "@songphang/contract";
 import {
 	type DbExecutor,
+	findGroup,
 	findMember,
 	findPendingSettlement,
 	findSettlementRequest,
@@ -19,6 +20,8 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import type { EnqueueFn } from "../queue.js";
+import { notify } from "./notify.js";
 import { createTransactionIn } from "./transactions.js";
 
 type Access = { role: "owner" | "editor" | "viewer"; memberId: string | null };
@@ -78,7 +81,11 @@ export async function getSettlementRequests(
 }
 export async function createSettlementRequest(
 	executor: DbExecutor,
-	input: Actor & { request: CreateSettlementRequest; now: Date },
+	input: Actor & {
+		request: CreateSettlementRequest;
+		now: Date;
+		enqueue?: EnqueueFn;
+	},
 ) {
 	await lockGroup(executor, input.groupId);
 	const access = await getGroupAccess(executor, {
@@ -113,7 +120,23 @@ export async function createSettlementRequest(
 		createdBy: input.userId,
 		createdAt: input.now,
 	});
-	return { request: await requestDto(executor, row) };
+	const dto = await requestDto(executor, row);
+	const group = await findGroup(executor, input.groupId);
+	await notify(executor, {
+		groupId: input.groupId,
+		actorUserId: input.userId,
+		kind: "settlement_requested",
+		payload: {
+			kind: "settlement_requested",
+			actorName: dto.createdBy?.name ?? "",
+			groupName: group?.name ?? "",
+			amount: input.request.amount,
+		},
+		toMemberIds: [input.request.toMemberId],
+		now: input.now,
+		...(input.enqueue ? { enqueue: input.enqueue } : {}),
+	});
+	return { request: dto };
 }
 export async function resolveSettlement(
 	deps: AppDeps,
@@ -167,6 +190,30 @@ export async function resolveSettlement(
 						: "cancelled",
 			transactionId: transfer?.transaction.id ?? null,
 		});
+		if (input.action === "confirm" || input.action === "reject") {
+			const [group, actor] = await Promise.all([
+				findGroup(executor, input.groupId),
+				findUserById(executor, input.userId),
+			]);
+			const kind =
+				input.action === "confirm"
+					? "settlement_confirmed"
+					: "settlement_rejected";
+			await notify(executor, {
+				groupId: input.groupId,
+				actorUserId: input.userId,
+				kind,
+				payload: {
+					kind,
+					actorName: actor?.name ?? "",
+					groupName: group?.name ?? "",
+					amount: row.amount,
+				},
+				toMemberIds: [row.fromMemberId],
+				now,
+				enqueue: deps.enqueue,
+			});
+		}
 		return {
 			request: await requestDto(executor, updated),
 			...(transfer ? { transaction: transfer.transaction } : {}),

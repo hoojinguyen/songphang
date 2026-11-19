@@ -1,12 +1,7 @@
-import { vi } from "../messages/vi";
+import { formatAmount, formatMoney } from "@songphang/core";
 
-const AMOUNT_FORMATTER = new Intl.NumberFormat("vi-VN");
-export function formatAmount(amount: number): string {
-	return AMOUNT_FORMATTER.format(amount);
-}
-export function formatMoney(amount: number): string {
-	return `${formatAmount(amount)} ${vi.common.currency}`;
-}
+export { formatAmount, formatMoney };
+
 export function formatSignedAmount(amount: number): string {
 	return amount === 0
 		? "0"

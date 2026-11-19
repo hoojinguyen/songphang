@@ -14,11 +14,13 @@ import { Button } from "../../../../components/ui/Button";
 import { FundShape } from "../../../../components/ui/FundShape";
 import { LoadError } from "../../../../components/ui/LoadError";
 import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
+import { Switch } from "../../../../components/ui/Switch";
 import { VerifyEmailBanner } from "../../../../components/ui/VerifyEmailBanner";
 import { useBalances } from "../../../../lib/balances";
 import { useGroupUserAction, useGroupUsers } from "../../../../lib/group-users";
 import { useGroup } from "../../../../lib/groups";
 import { useMembers } from "../../../../lib/members";
+import { useSetGroupMuted } from "../../../../lib/notifications";
 import { useMe } from "../../../../lib/session";
 import { useSessionGuard } from "../../../../lib/use-session-guard";
 import { t, vi } from "../../../../messages/vi";
@@ -32,9 +34,10 @@ export default function MembersPage() {
 	const balances = useBalances(groupId);
 	const users = useGroupUsers(groupId);
 	const action = useGroupUserAction(groupId);
+	const setMuted = useSetGroupMuted(groupId);
 	const error =
 		group.error ?? members.error ?? balances.error ?? users.error ?? me.error;
-	useSessionGuard(action.error);
+	useSessionGuard(action.error ?? setMuted.error);
 	useSessionGuard(error);
 	if (error?.status === 404)
 		return (
@@ -220,6 +223,16 @@ export default function MembersPage() {
 							: vi.common.saveError}
 				</p>
 			)}
+			<div className="flex items-center justify-between gap-3 rounded-[28px] bg-surface p-4">
+				<span className="font-bold text-ink">{vi.notifications.muteGroup}</span>
+				<Switch
+					checked={group.data.muted}
+					disabled={setMuted.isPending}
+					label={vi.notifications.muteGroup}
+					onChange={(muted) => setMuted.mutate(muted)}
+				/>
+			</div>
+			{setMuted.isError && <p role="alert">{vi.common.saveError}</p>}
 			{group.data.role !== "owner" && me.data.emailVerified && (
 				<LeaveGroupButton groupId={groupId} name={group.data.name} />
 			)}

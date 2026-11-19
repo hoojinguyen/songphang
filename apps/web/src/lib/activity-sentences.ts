@@ -58,14 +58,20 @@ function fieldValue(key: string, value: unknown, members: MemberDto[]): string {
 		const p = SplitInput.safeParse(value);
 		if (!p.success) return vi.common.pendingValue;
 		const split = p.data;
-		return split.method === "equal"
-			? split.members.map(name).join(" · ")
-			: split.entries
-					.map(
-						(e) =>
-							`${name(e.memberId)} ${"amount" in e ? formatAmount(e.amount) : "weight" in e ? e.weight : e.percent}`,
-					)
-					.join(" · ");
+		if (split.method === "equal") {
+			return split.members.map(name).join(" · ");
+		}
+		if (split.method === "items") {
+			return split.items
+				.map((item) => `${item.name} ${formatAmount(item.amount)}`)
+				.join(" · ");
+		}
+		return split.entries
+			.map(
+				(e) =>
+					`${name(e.memberId)} ${"amount" in e ? formatAmount(e.amount) : "weight" in e ? e.weight : e.percent}`,
+			)
+			.join(" · ");
 	}
 	if (key === "category") {
 		const labels = vi.expenseForm.categories;
@@ -158,7 +164,15 @@ export function describeActivity(
 					? vi.activity.edit
 					: entry.action === "delete"
 						? vi.activity.delete
-						: vi.activity.restore,
+						: entry.action === "dispute_open"
+							? vi.activity.disputeOpen
+							: entry.action === "dispute_resolve"
+								? vi.activity.disputeResolve
+								: entry.action === "approve"
+									? vi.activity.approve
+									: entry.action === "reject"
+										? vi.activity.reject
+										: vi.activity.restore,
 		];
 	else if (entry.entityType === "group") {
 		if (entry.action === "create") templates = [vi.activity.groupCreate];

@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { createDb, type Db } from "./client.js";
+import { countedTransaction } from "./transactions.js";
 
 const GROUP_BALANCE_SCHEMA = z.object({
 	id: z.uuid(),
@@ -16,10 +17,10 @@ export async function checkBalances(db: Db): Promise<boolean> {
   from groups g
   left join (
    select t.group_id, case when t.type = 'income' then -p.amount else p.amount end as signed
-   from transaction_payers p join transactions t on t.id = p.transaction_id where t.deleted_at is null
+   from transaction_payers p join transactions t on t.id = p.transaction_id where ${countedTransaction("t")}
    union all
    select t.group_id, case when t.type = 'income' then s.amount else -s.amount end
-   from transaction_shares s join transactions t on t.id = s.transaction_id where t.deleted_at is null
+   from transaction_shares s join transactions t on t.id = s.transaction_id where ${countedTransaction("t")}
   ) lines on lines.group_id = g.id group by g.id order by g.id
  `);
 	const mismatches = await db.execute(sql`

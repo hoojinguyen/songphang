@@ -24,6 +24,9 @@
 
 ## Dependencies on other phases
 
+Spec section 14 (amendment 2026-11-18) applies: Phases 2 and 3 are merged, so the two "absent" rules below do not apply; `/chi` parses with `ai: true`; Task 0 reconstructs earlier acceptance replays.
+
+
 - **Phase 3 absent:** before 4B.1, do tasks 3A.1 of the phase 3 plan (worker, queue, event bridge, features endpoint) as task 4B.0, with its own commit, and record it.
 - **Phase 2 absent:** skip the notification kinds `settlement_requested`, `settlement_confirmed`, `settlement_rejected` and `budget_state`, and the approval filter's lines for statistics, budget and export; record each.
 - **Server step absent:** mail goes to the console mailer; nothing else changes.
@@ -43,3 +46,9 @@
 3. **Someone in a Telegram chat acts with another person's rights.** Unlinked senders, non-members, viewers, and taps by another person all save nothing. → 4C.2, 4C.3.
 4. **A forged webhook.** A missing or wrong secret is a 404 with no side effect. → 4C.1.
 5. **A pending expense leaks into a balance.** Balances, pairwise debts, statistics, budget, export and the balance check all ignore it. → 4D.1.
+
+## Pre-execution approval
+
+- [x] Owner approves the spec (including the three product rules of its section 13 and the amendment of section 14) and this plan.
+- [x] Owner authorizes execution; the advisor then creates branch `phase-4` from `main` and the run files `docs/superpowers/runs/phase-4/` with their headings. Approved and authorized by the owner on 2026-11-18; the implementation agent is Antigravity, and the advisor (Claude) reviews the finished branch.
+

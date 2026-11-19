@@ -1,18 +1,25 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { GroupRole, UserDto } from "@songphang/contract";
 import type { Db } from "@songphang/db";
+import type { FileStore } from "@songphang/storage";
 import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
+import type { SentenceAi } from "./ai/sentence-ai.js";
+import type { ChatSender } from "./bot/chat-sender.js";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
 import type { createEventHub } from "./events/hub.js";
 import type { Mailer } from "./mailer.js";
+import type { EnqueueFn } from "./queue.js";
 import type { createRateLimiter } from "./rate-limit.js";
 import { registerActivityRoutes } from "./routes/activity.js";
+import { registerAttachmentRoutes } from "./routes/attachments.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerBalanceRoutes } from "./routes/balances.js";
 import { registerBudgetRoutes } from "./routes/budget.js";
 import { registerCategoryRoutes } from "./routes/categories.js";
+import { registerChatLinkRoutes } from "./routes/chat-links.js";
+import { registerCommentRoutes } from "./routes/comments.js";
 import { registerDevRoutes } from "./routes/dev.js";
 import { registerEventRoutes } from "./routes/events.js";
 import { registerExportRoutes } from "./routes/export.js";
@@ -25,9 +32,14 @@ import { registerHealthRoute } from "./routes/health.js";
 import { registerInviteRoutes } from "./routes/invites.js";
 import { registerMeRoute } from "./routes/me.js";
 import { registerMemberRoutes } from "./routes/members.js";
+import { registerNotificationRoutes } from "./routes/notifications.js";
+import { registerReceiptScanRoutes } from "./routes/receipt-scans.js";
+import { registerReminderRoutes } from "./routes/reminders.js";
 import { registerSettlementRoutes } from "./routes/settlement-requests.js";
 import { registerStatsRoutes } from "./routes/stats.js";
+import { registerTelegramWebhookRoute } from "./routes/telegram-webhook.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
+import { registerUnsubscribeRoutes } from "./routes/unsubscribe.js";
 
 export type AppEnv = {
 	Variables: {
@@ -45,6 +57,10 @@ export type AppDeps = {
 	now: () => Date;
 	mailer: Mailer;
 	rateLimiter: ReturnType<typeof createRateLimiter>;
+	enqueue: EnqueueFn;
+	fileStore: FileStore;
+	sentenceAi?: SentenceAi | null;
+	chatSender?: ChatSender | null;
 };
 
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
@@ -58,25 +74,30 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 		await next();
 	});
 	app.onError(handleError);
-	app.use(
-		"*",
-		bodyLimit({
-			maxSize: 100 * 1024,
-			onError: () => {
-				throw new AppError(
-					400,
-					"VALIDATION_FAILED",
-					"Request body is too large",
-				);
-			},
-		}),
-	);
+	const defaultBodyLimit = bodyLimit({
+		maxSize: 100 * 1024,
+		onError: () => {
+			throw new AppError(400, "VALIDATION_FAILED", "Request body is too large");
+		},
+	});
+	app.use("*", async (context, next) => {
+		if (
+			context.req.method === "POST" &&
+			/^\/api\/v1\/groups\/[^/]+\/attachments$/.test(context.req.path)
+		) {
+			await next();
+			return;
+		}
+		await defaultBodyLimit(context, next);
+	});
 	app.notFound(() => {
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	});
 	registerHealthRoute(app, deps.db);
-	registerFeatureRoute(app);
+	registerFeatureRoute(app, deps);
 	registerMeRoute(app, deps);
+	registerNotificationRoutes(app, deps);
+	registerUnsubscribeRoutes(app, deps);
 	registerGroupRoutes(app, deps);
 	registerEventRoutes(app, deps);
 	registerGroupUserRoutes(app, deps);
@@ -86,7 +107,13 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerCategoryRoutes(app, deps);
 	registerSettlementRoutes(app, deps);
 	registerTransactionRoutes(app, deps);
+	registerCommentRoutes(app, deps);
+	registerAttachmentRoutes(app, deps);
+	registerReceiptScanRoutes(app, deps);
 	registerBalanceRoutes(app, deps);
+	registerReminderRoutes(app, deps);
+	registerChatLinkRoutes(app, deps);
+	registerTelegramWebhookRoute(app, deps);
 	registerBudgetRoutes(app, deps);
 	registerStatsRoutes(app, deps);
 	registerExportRoutes(app, deps);

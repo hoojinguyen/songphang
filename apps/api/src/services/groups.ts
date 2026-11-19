@@ -4,6 +4,7 @@ import {
 	type DeleteGroupRequest,
 	GroupResponse,
 	GroupsResponse,
+	JOB_NAMES,
 	nextMemberAppearance,
 	type UpdateGroupRequest,
 	type UserDto,
@@ -13,11 +14,13 @@ import {
 	deleteGroupRow,
 	findGroup,
 	findGroupAccess,
+	findGroupOwner,
 	insertActivity,
 	insertGroup,
 	insertGroupUser,
 	insertMember,
 	listBalancesForGroups,
+	listGroupAttachmentKeys,
 	listMembersForGroups,
 	listUserGroups,
 	lockGroup,
@@ -30,15 +33,20 @@ export async function getGroup(
 	groupId: string,
 	userId: string,
 ) {
-	const group = await findGroup(executor, groupId);
-	const access = await findGroupAccess(executor, groupId, userId);
+	const [group, access, owner] = await Promise.all([
+		findGroup(executor, groupId),
+		findGroupAccess(executor, groupId, userId),
+		findGroupOwner(executor, groupId),
+	]);
 	if (group === null || access === null)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	return GroupResponse.parse({
 		group: {
 			...group,
+			ownerName: owner?.name ?? "",
 			role: access.role,
 			myMemberId: access.memberId,
+			muted: access.muted,
 			createdAt: group.createdAt.toISOString(),
 		},
 	});
@@ -144,6 +152,12 @@ export async function editGroup(
 				...(input.changes.minimizeDebts === undefined
 					? {}
 					: { minimizeDebts: input.changes.minimizeDebts }),
+				...(input.changes.reminderIntervalDays === undefined
+					? {}
+					: { reminderIntervalDays: input.changes.reminderIntervalDays }),
+				...(input.changes.approvalThreshold === undefined
+					? {}
+					: { approvalThreshold: input.changes.approvalThreshold }),
 			},
 			now: deps.now(),
 		});
@@ -179,7 +193,13 @@ export async function deleteGroup(
 			throw new AppError(403, "FORBIDDEN", "Insufficient group role");
 		if (input.request.name !== current.group.name)
 			throw new AppError(400, "VALIDATION_FAILED", "Group name does not match");
+		const keys = await listGroupAttachmentKeys(tx, input.groupId);
 		await deleteGroupRow(tx, input.groupId);
+		for (let offset = 0; offset < keys.length; offset += 10_000) {
+			await deps.enqueue(tx, JOB_NAMES.deleteFiles, {
+				keys: keys.slice(offset, offset + 10_000),
+			});
+		}
 	});
 	deps.events.publishRemoved(input.groupId, null);
 }

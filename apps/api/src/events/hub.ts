@@ -1,13 +1,6 @@
-export type GroupResource =
-	| "group"
-	| "members"
-	| "users"
-	| "transactions"
-	| "balances"
-	| "activity"
-	| "settlementRequests"
-	| "categories"
-	| "budget";
+import type { GroupEventResource } from "@songphang/contract";
+
+export type GroupResource = GroupEventResource;
 export type GroupEvent =
 	| { type: "changed"; resources: GroupResource[] }
 	| { type: "removed" }

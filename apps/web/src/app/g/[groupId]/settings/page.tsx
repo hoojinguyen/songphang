@@ -3,10 +3,12 @@ import type { GroupDto } from "@songphang/contract";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { ApprovalCard } from "../../../../components/settings/ApprovalCard";
 import { BudgetCard } from "../../../../components/settings/BudgetCard";
 import { CategoryList } from "../../../../components/settings/CategoryList";
 import { DeleteGroupCard } from "../../../../components/settings/DeleteGroupCard";
 import { InviteLinkCard } from "../../../../components/settings/InviteLinkCard";
+import { TelegramCard } from "../../../../components/settings/TelegramCard";
 import { TransferOwnershipCard } from "../../../../components/settings/TransferOwnershipCard";
 import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
@@ -83,9 +85,40 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					}}
 				/>
 			</section>
+			<section className="grid gap-3 rounded-[28px] bg-surface p-5">
+				<h2 className="font-extrabold">{vi.reminders.settingTitle}</h2>
+				<SegmentedControl
+					label={vi.reminders.settingTitle}
+					value={
+						group.reminderIntervalDays === null
+							? "off"
+							: String(group.reminderIntervalDays)
+					}
+					options={[
+						{ value: "off", label: vi.reminders.intervalOff },
+						{ value: "3", label: vi.reminders.interval3 },
+						{ value: "7", label: vi.reminders.interval7 },
+						{ value: "14", label: vi.reminders.interval14 },
+					]}
+					disabled={update.isPending}
+					onChange={(value) => {
+						const reminderIntervalDays =
+							value === "3"
+								? 3
+								: value === "7"
+									? 7
+									: value === "14"
+										? 14
+										: null;
+						update.mutate({ reminderIntervalDays });
+					}}
+				/>
+			</section>
+			<ApprovalCard group={group} />
 			<BudgetCard groupId={group.id} />
 			<CategoryList groupId={group.id} />
 			<InviteLinkCard groupId={group.id} />
+			<TelegramCard groupId={group.id} />
 			<TransferOwnershipCard groupId={group.id} />
 			<DeleteGroupCard group={group} />
 			{update.isError && (

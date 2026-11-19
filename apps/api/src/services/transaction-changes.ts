@@ -4,11 +4,17 @@ import {
 	TransactionResponse,
 	type UpdateTransactionRequest,
 } from "@songphang/contract";
-import { foldVietnamese } from "@songphang/core";
+import { foldVietnamese, nextEditApprovalStatusFor } from "@songphang/core";
 import {
+	type AttachmentRow,
+	attachToTransaction,
 	clearTransactionSides,
 	type DbExecutor,
+	deleteRemovedTransactionAttachments,
+	findGroup,
+	findGroupOwner,
 	findTransactionRow,
+	findUserById,
 	insertActivity,
 	insertTransactionPayers,
 	insertTransactionShares,
@@ -19,7 +25,9 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { validateTransactionAttachmentIds } from "./attachments.js";
 import { assertLiveCategory } from "./categories.js";
+import { notify, notifyBudgetWarnings } from "./notify.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { mapTransactions } from "./transactions.js";
 import { transactionWarnings } from "./warnings.js";
@@ -28,21 +36,28 @@ async function readTransaction(
 	executor: DbExecutor,
 	groupId: string,
 	id: string,
+	viewerUserId: string | null = null,
 ) {
 	if (!z.uuid().safeParse(id).success)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	const row = await findTransactionRow(executor, groupId, id);
 	if (!row) throw new AppError(404, "NOT_FOUND", "Resource not found");
-	const [transaction] = await mapTransactions(executor, groupId, [row]);
+	const [transaction] = await mapTransactions(
+		executor,
+		groupId,
+		[row],
+		viewerUserId,
+	);
 	return TransactionResponse.parse({ transaction });
 }
 export async function getTransaction(
 	deps: AppDeps,
 	groupId: string,
 	id: string,
+	viewerUserId: string | null = null,
 ) {
 	return deps.db.transaction(
-		(executor) => readTransaction(executor, groupId, id),
+		(executor) => readTransaction(executor, groupId, id, viewerUserId),
 		{ isolationLevel: "repeatable read", accessMode: "read only" },
 	);
 }
@@ -55,7 +70,9 @@ async function lockedTransaction(executor: DbExecutor, input: Operation) {
 		!(await lockTransaction(executor, input.groupId, input.id))
 	)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
-	return (await readTransaction(executor, input.groupId, input.id)).transaction;
+	return (
+		await readTransaction(executor, input.groupId, input.id, input.userId)
+	).transaction;
 }
 const fields = [
 	"description",
@@ -85,6 +102,7 @@ export async function editTransaction(
 	input: Operation & { request: UpdateTransactionRequest },
 ) {
 	let changed = false;
+	let removedFiles: AttachmentRow[] = [];
 	const result = await deps.db.transaction(async (executor) => {
 		const before = await lockedTransaction(executor, input);
 		if (before.deletedAt)
@@ -99,6 +117,15 @@ export async function editTransaction(
 			throw new AppError(409, "VERSION_CONFLICT", "Transaction has changed", {
 				current: before,
 			});
+		const nextAttachmentIds = input.request.attachmentIds;
+		if (nextAttachmentIds !== undefined) {
+			await validateTransactionAttachmentIds(
+				executor,
+				input.groupId,
+				nextAttachmentIds,
+				input.id,
+			);
+		}
 		const shares = await calculateShares(
 			executor,
 			input.groupId,
@@ -114,7 +141,35 @@ export async function editTransaction(
 		const altered = fields.filter(
 			(field) => JSON.stringify(before[field]) !== JSON.stringify(next[field]),
 		);
-		if (altered.length === 0) return { transaction: before, warnings: [] };
+		const beforeAttachmentIds = before.attachments.map((a) => a.id);
+		const attachmentsChanged =
+			nextAttachmentIds !== undefined &&
+			JSON.stringify(beforeAttachmentIds) !== JSON.stringify(nextAttachmentIds);
+		const [group, owner, actor] = await Promise.all([
+			findGroup(executor, input.groupId),
+			findGroupOwner(executor, input.groupId),
+			findUserById(executor, input.userId),
+		]);
+		if (group === null)
+			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		const actorIsOwner = owner?.userId === input.userId;
+		const now = deps.now();
+		const nextApprovalStatus = nextEditApprovalStatusFor({
+			type: before.type,
+			amount: normalized.amount,
+			threshold: group.approvalThreshold,
+			actorIsOwner,
+		});
+		const nextDecidedBy =
+			nextApprovalStatus === "approved" ? input.userId : null;
+		const nextDecidedAt = nextApprovalStatus === "approved" ? now : null;
+		if (
+			altered.length === 0 &&
+			!attachmentsChanged &&
+			before.approval.status === nextApprovalStatus
+		) {
+			return { transaction: before, warnings: [] };
+		}
 		changed = true;
 		await clearTransactionSides(executor, input.id);
 		await updateTransactionRow(executor, {
@@ -129,9 +184,13 @@ export async function editTransaction(
 				categoryId: normalized.categoryId,
 				splitMethod: normalized.split.method,
 				splitInput: normalized.split,
+				approvalStatus: nextApprovalStatus,
+				approvalDecidedBy: nextDecidedBy,
+				approvalDecidedAt: nextDecidedAt,
+				approvalNote: null,
 				version: before.version + 1,
 				updatedBy: input.userId,
-				updatedAt: deps.now(),
+				updatedAt: now,
 			},
 		});
 		await insertTransactionPayers(
@@ -142,18 +201,37 @@ export async function editTransaction(
 			executor,
 			shares.map((s) => ({ ...s, transactionId: input.id })),
 		);
-		const after = (await readTransaction(executor, input.groupId, input.id))
-			.transaction;
+		if (nextAttachmentIds !== undefined) {
+			removedFiles = await deleteRemovedTransactionAttachments(
+				executor,
+				input.groupId,
+				input.id,
+				nextAttachmentIds,
+			);
+			await attachToTransaction(
+				executor,
+				input.groupId,
+				input.id,
+				nextAttachmentIds,
+			);
+		}
+		const after = (
+			await readTransaction(executor, input.groupId, input.id, input.userId)
+		).transaction;
 		const warnings = await transactionWarnings(executor, {
 			groupId: input.groupId,
 			request: input.request,
 			applied: true,
-			now: deps.now(),
+			now,
+			counted: nextApprovalStatus !== "pending",
 			replacing: {
 				type: before.type,
 				amount: before.amount,
 				occurredAt: new Date(before.occurredAt),
 				payers: before.payers,
+				counted:
+					before.approval.status === "none" ||
+					before.approval.status === "approved",
 			},
 		});
 		await insertActivity(executor, {
@@ -163,12 +241,80 @@ export async function editTransaction(
 			entityType: "transaction",
 			entityId: input.id,
 			summary: after.description,
-			before: Object.fromEntries(altered.map((k) => [k, before[k]])),
-			after: Object.fromEntries(altered.map((k) => [k, after[k]])),
-			createdAt: deps.now(),
+			before: {
+				...Object.fromEntries(altered.map((k) => [k, before[k]])),
+				...(attachmentsChanged
+					? { attachmentCount: before.attachments.length }
+					: {}),
+			},
+			after: {
+				...Object.fromEntries(altered.map((k) => [k, after[k]])),
+				...(attachmentsChanged
+					? { attachmentCount: after.attachments.length }
+					: {}),
+			},
+			createdAt: now,
+		});
+		const actorName = actor?.name ?? "";
+		const groupName = group.name;
+		if (nextApprovalStatus === "pending") {
+			if (owner) {
+				await notify(executor, {
+					groupId: input.groupId,
+					actorUserId: input.userId,
+					kind: "approval_requested",
+					payload: {
+						kind: "approval_requested",
+						actorName,
+						groupName,
+						transactionId: after.id,
+						description: after.description,
+						amount: after.amount,
+					},
+					toUserIds: [owner.userId],
+					now,
+					enqueue: deps.enqueue,
+				});
+			}
+			return { transaction: after, warnings };
+		}
+		if (after.type === "expense") {
+			await notify(executor, {
+				groupId: input.groupId,
+				actorUserId: input.userId,
+				kind: "expense_changed",
+				payload: {
+					kind: "expense_changed",
+					actorName,
+					groupName,
+					transactionId: after.id,
+					description: after.description,
+					action: "edited",
+				},
+				toMemberIds: [
+					...before.payers.map((payer) => payer.memberId),
+					...before.shares.map((share) => share.memberId),
+					...after.payers.map((payer) => payer.memberId),
+					...after.shares.map((share) => share.memberId),
+				],
+				now,
+			});
+		}
+		await notifyBudgetWarnings(executor, {
+			groupId: input.groupId,
+			actorUserId: input.userId,
+			actorName,
+			groupName,
+			warnings,
+			now,
 		});
 		return { transaction: after, warnings };
 	});
+	if (removedFiles.length > 0) {
+		await Promise.allSettled(
+			removedFiles.map((row) => deps.fileStore.delete(row.storageKey)),
+		);
+	}
 	if (changed) publish(deps, input.groupId);
 	return TransactionResponse.parse(result);
 }
@@ -190,8 +336,9 @@ export async function setTransactionDeleted(
 				updatedAt: deps.now(),
 			},
 		});
-		const after = (await readTransaction(executor, input.groupId, input.id))
-			.transaction;
+		const after = (
+			await readTransaction(executor, input.groupId, input.id, input.userId)
+		).transaction;
 		await insertActivity(executor, {
 			groupId: input.groupId,
 			actorUserId: input.userId,
@@ -203,6 +350,30 @@ export async function setTransactionDeleted(
 			after: input.restore ? snapshot(after) : null,
 			createdAt: deps.now(),
 		});
+		if (!input.restore && before.type === "expense") {
+			const [group, actor] = await Promise.all([
+				findGroup(executor, input.groupId),
+				findUserById(executor, input.userId),
+			]);
+			await notify(executor, {
+				groupId: input.groupId,
+				actorUserId: input.userId,
+				kind: "expense_changed",
+				payload: {
+					kind: "expense_changed",
+					actorName: actor?.name ?? "",
+					groupName: group?.name ?? "",
+					transactionId: before.id,
+					description: before.description,
+					action: "deleted",
+				},
+				toMemberIds: [
+					...before.payers.map((payer) => payer.memberId),
+					...before.shares.map((share) => share.memberId),
+				],
+				now: deps.now(),
+			});
+		}
 		return { transaction: after };
 	});
 	publish(deps, input.groupId);

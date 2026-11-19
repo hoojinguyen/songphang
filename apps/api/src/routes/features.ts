@@ -1,8 +1,11 @@
 import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import { FeaturesResponse } from "@songphang/contract";
-import type { AppEnv } from "../app.js";
+import type { AppDeps, AppEnv } from "../app.js";
 
-export function registerFeatureRoute(app: OpenAPIHono<AppEnv>): void {
+export function registerFeatureRoute(
+	app: OpenAPIHono<AppEnv>,
+	deps: AppDeps,
+): void {
 	app.openapi(
 		createRoute({
 			method: "get",
@@ -17,9 +20,9 @@ export function registerFeatureRoute(app: OpenAPIHono<AppEnv>): void {
 		(context) =>
 			context.json(
 				FeaturesResponse.parse({
-					receiptReading: false,
-					sentenceAi: false,
-					telegram: false,
+					receiptReading: Boolean(deps.config.aiProvider),
+					sentenceAi: Boolean(deps.config.aiProvider),
+					telegram: Boolean(deps.config.telegramProvider),
 					push: false,
 					appleSignIn: false,
 					errorAlerts: false,

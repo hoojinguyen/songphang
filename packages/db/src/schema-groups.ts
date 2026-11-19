@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
 	type AnyPgColumn,
+	bigint,
 	boolean,
 	check,
 	integer,
@@ -26,6 +27,8 @@ export const groups = pgTable(
 		inviteToken: text("invite_token").notNull().unique(),
 		inviteActive: boolean("invite_active").notNull().default(true),
 		defaultRole: text("default_role").notNull().default("editor"),
+		reminderIntervalDays: integer("reminder_interval_days"),
+		approvalThreshold: bigint("approval_threshold", { mode: "number" }),
 		createdBy: uuid("created_by").references(() => users.id, {
 			onDelete: "set null",
 		}),
@@ -44,6 +47,14 @@ export const groups = pgTable(
 		check(
 			"groups_default_role_check",
 			sql`${table.defaultRole} in ('editor', 'viewer')`,
+		),
+		check(
+			"groups_reminder_interval_days_check",
+			sql`${table.reminderIntervalDays} is null or ${table.reminderIntervalDays} in (3, 7, 14)`,
+		),
+		check(
+			"groups_approval_threshold_check",
+			sql`${table.approvalThreshold} is null or ${table.approvalThreshold} > 0`,
 		),
 	],
 );
@@ -114,6 +125,7 @@ export const groupUsers = pgTable(
 		memberId: uuid("member_id").references(() => members.id, {
 			onDelete: "set null",
 		}),
+		muted: boolean("muted").notNull().default(false),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),

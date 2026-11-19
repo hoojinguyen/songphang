@@ -17,6 +17,7 @@ export type ReplacedTransaction = {
 	amount: number;
 	occurredAt: Date;
 	payers: Array<{ memberId: string; amount: number }>;
+	counted?: boolean;
 };
 
 function splitFundCashDelta(
@@ -75,9 +76,10 @@ async function fundOverdrawWarning(
 	const fundBalance =
 		balances.find((row) => row.memberId === fund.id)?.balance ?? 0;
 	const currentCash = -fundBalance;
-	const oldDelta = input.replacing
-		? replacedFundCashDelta(input.replacing, fund.id)
-		: 0;
+	const oldDelta =
+		input.replacing && input.replacing.counted !== false
+			? replacedFundCashDelta(input.replacing, fund.id)
+			: 0;
 	const afterCash = input.applied
 		? currentCash
 		: currentCash - oldDelta + deltaCash;
@@ -111,6 +113,7 @@ async function budgetLimitWarning(
 			: input.request.amount;
 	const oldSigned =
 		input.replacing &&
+		input.replacing.counted !== false &&
 		input.replacing.type !== "transfer" &&
 		inPeriod(input.replacing.occurredAt, periodStart, periodEnd)
 			? input.replacing.type === "income"
@@ -121,8 +124,8 @@ async function budgetLimitWarning(
 		? spentNow
 		: spentNow - oldSigned + signedAmount;
 	const beforeSpent = input.applied
-		? spentNow - signedAmount
-		: spentNow - oldSigned;
+		? spentNow - signedAmount + oldSigned
+		: spentNow;
 	const beforeState = budgetState(beforeSpent, row.amount);
 	const afterState = budgetState(afterSpent, row.amount);
 	if (afterState === "over" && beforeState !== "over") return "BUDGET_OVER";
@@ -138,8 +141,10 @@ export async function transactionWarnings(
 		applied: boolean;
 		now: Date;
 		replacing?: ReplacedTransaction;
+		counted?: boolean;
 	},
 ): Promise<TransactionWarning[]> {
+	if (input.counted === false) return [];
 	const [fundWarning, budgetWarning] = await Promise.all([
 		fundOverdrawWarning(executor, input),
 		budgetLimitWarning(executor, input),

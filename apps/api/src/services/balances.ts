@@ -1,20 +1,12 @@
 import { BalancesResponse } from "@songphang/contract";
-import {
-	buildVietQrPayload,
-	type LedgerEntry,
-	netPairwiseDebts,
-	pairDebtsOf,
-	suggestMinimizedSettlements,
-	transferPurpose,
-} from "@songphang/core";
+import { buildVietQrPayload, transferPurpose } from "@songphang/core";
 import {
 	findGroup,
 	fundCashAndContributions,
 	listGroupMembers,
-	listLedgerSides,
-	listMemberBalances,
 	listPaymentMethodsByGroup,
 	listPendingSettlements,
+	suggestGroupTransfers,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { AppError } from "../errors.js";
@@ -32,7 +24,10 @@ export async function getBalances(
 			const group = await findGroup(executor, groupId);
 			if (group === null)
 				throw new AppError(404, "NOT_FOUND", "Resource not found");
-			const balances = await listMemberBalances(executor, groupId);
+			const { balances, transfers } = await suggestGroupTransfers(executor, {
+				groupId,
+				minimizeDebts: group.minimizeDebts,
+			});
 			if (balances.length === 0)
 				return BalancesResponse.parse({
 					currency: group.currency,
@@ -41,10 +36,6 @@ export async function getBalances(
 					transfers: [],
 					fund: null,
 				});
-			const sides = group.minimizeDebts
-				? null
-				: await listLedgerSides(executor, groupId);
-			const debts = sides === null ? [] : ledgerDebts(sides);
 			const [members, methods, pending, fund] = await Promise.all([
 				listGroupMembers(executor, groupId),
 				listPaymentMethodsByGroup(executor, groupId),
@@ -59,12 +50,6 @@ export async function getBalances(
 			const peopleBalances = balances.filter((entry) =>
 				peopleIds.has(entry.memberId),
 			);
-			const transfers = group.minimizeDebts
-				? suggestMinimizedSettlements(balances)
-				: netPairwiseDebts(
-						debts,
-						balances.map((member) => member.memberId),
-					);
 			return BalancesResponse.parse({
 				currency: group.currency,
 				minimized: group.minimizeDebts,
@@ -115,22 +100,5 @@ export async function getBalances(
 			});
 		},
 		{ isolationLevel: "repeatable read", accessMode: "read only" },
-	);
-}
-
-function ledgerDebts(sides: Awaited<ReturnType<typeof listLedgerSides>>) {
-	return [...new Set(sides.payers.map((payer) => payer.transactionId))].flatMap(
-		(id) => {
-			const payers = sides.payers.filter((payer) => payer.transactionId === id);
-			const type = payers[0]?.type;
-			if (type !== "expense" && type !== "income" && type !== "transfer")
-				throw new Error("Invalid ledger type");
-			const entry: LedgerEntry = {
-				type,
-				payers,
-				shares: sides.shares.filter((share) => share.transactionId === id),
-			};
-			return pairDebtsOf(entry);
-		},
 	);
 }

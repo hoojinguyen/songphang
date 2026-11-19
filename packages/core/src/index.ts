@@ -1,4 +1,9 @@
+export { quotaWindowStarts } from "./ai-quota.ts";
 export { allocateByWeights } from "./allocate.ts";
+export {
+	approvalStatusFor,
+	nextEditApprovalStatusFor,
+} from "./approval.ts";
 export { BANKS } from "./banks.ts";
 export {
 	BUDGET_NEAR_PERCENT,
@@ -17,6 +22,8 @@ export {
 	toVietnamDate,
 } from "./dates.ts";
 export { parseHundredths } from "./decimal.ts";
+export { formatAmount, formatMoney } from "./money.ts";
+export { formatNotificationText } from "./notification-text.ts";
 export { type LedgerEntry, pairDebtsOf } from "./pair-debts.ts";
 export { foldVietnamese } from "./quick-entry/normalize.ts";
 export {
@@ -26,6 +33,14 @@ export {
 	readSentence,
 	type SpanKind,
 } from "./quick-entry/read-sentence.ts";
+export {
+	checkReceipt,
+	type ReceiptAdjustment,
+	type ReceiptCheckFlag,
+	type ReceiptCheckInput,
+	type ReceiptCheckResult,
+	receiptAdjustment,
+} from "./receipt.ts";
 export {
 	type MemberBalance,
 	netPairwiseDebts,
@@ -37,8 +52,21 @@ export {
 	computeShares,
 	type Share,
 	type SplitInput,
+	type SplitResult,
 	splitEqually,
 } from "./split.ts";
+export {
+	computeItemShares,
+	computeItemsNetTotal,
+	type ItemExtraEntry,
+	type ItemExtraKind,
+	type ItemSplitEntry,
+	type ItemsSplitInput,
+} from "./split-items.ts";
+export {
+	type CategorySuggestion,
+	suggestCategory,
+} from "./suggest-category.ts";
 export {
 	buildVietQrPayload,
 	crc16CcittFalse,

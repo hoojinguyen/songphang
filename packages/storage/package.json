@@ -1,0 +1,17 @@
+{
+	"name": "@songphang/storage",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@songphang/contract": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "26.6.6"
+	}
+}

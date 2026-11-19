@@ -10,8 +10,9 @@ import { jsonRequest } from "./request";
 export function transactionRequestOf(
 	t: TransactionDto,
 ): CreateTransactionRequest {
+	const attachmentIds = t.attachments.map((attachment) => attachment.id);
 	return t.type === "transfer"
-		? transferRequest(t)
+		? { ...transferRequest(t), attachmentIds }
 		: {
 				type: t.type,
 				description: t.description,
@@ -21,6 +22,7 @@ export function transactionRequestOf(
 				categoryId: t.categoryId,
 				payers: t.payers,
 				split: t.split,
+				attachmentIds,
 			};
 }
 function transferRequest(t: TransactionDto): CreateTransactionRequest {
@@ -89,6 +91,32 @@ export function useRestoreTransaction(groupId: string) {
 				TransactionResponse,
 				jsonRequest("POST"),
 			),
+		onSuccess: refresh,
+	});
+}
+export function useApproveTransaction(groupId: string, id: string) {
+	const refresh = useRefresh(groupId);
+	return useMutation<{ transaction: TransactionDto }, ApiError, void>({
+		mutationFn: () =>
+			apiFetch(
+				`/groups/${groupId}/transactions/${id}/approve`,
+				TransactionResponse,
+				jsonRequest("POST"),
+			),
+		onSuccess: refresh,
+	});
+}
+export function useRejectTransaction(groupId: string, id: string) {
+	const refresh = useRefresh(groupId);
+	return useMutation<{ transaction: TransactionDto }, ApiError, string>({
+		mutationFn: (note) => {
+			const trimmed = note.trim();
+			return apiFetch(
+				`/groups/${groupId}/transactions/${id}/reject`,
+				TransactionResponse,
+				jsonRequest("POST", trimmed ? { note: trimmed } : {}),
+			);
+		},
 		onSuccess: refresh,
 	});
 }

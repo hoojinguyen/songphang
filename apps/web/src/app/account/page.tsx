@@ -1,6 +1,8 @@
 "use client";
 import { ChangePasswordCard } from "../../components/account/ChangePasswordCard";
 import { DeleteAccountCard } from "../../components/account/DeleteAccountCard";
+import { NotificationSettingsCard } from "../../components/account/NotificationSettingsCard";
+import { TelegramIdentityCard } from "../../components/account/TelegramIdentityCard";
 import { Button } from "../../components/ui/Button";
 import { LoadError } from "../../components/ui/LoadError";
 import { MemberShape } from "../../components/ui/MemberShape";
@@ -47,6 +49,8 @@ export default function AccountPage() {
 						</div>
 					</div>
 					{me.data.hasPassword && <ChangePasswordCard />}
+					<NotificationSettingsCard />
+					<TelegramIdentityCard />
 					<Button
 						variant="surface"
 						size="lg"
