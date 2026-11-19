@@ -50,6 +50,7 @@ export {
 	jobCheckpoints,
 	notificationSettings,
 	notifications,
+	notificationUnsubscribeTokens,
 } from "./schema-notifications.js";
 export * from "./schema-payments.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";

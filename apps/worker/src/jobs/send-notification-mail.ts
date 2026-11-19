@@ -25,11 +25,7 @@ export async function runSendNotificationMail(
 		kind: row.kind,
 		payload: row.payload,
 	});
-	const unsubscribeToken = await issueUnsubscribeToken(
-		deps.db,
-		row.userId,
-		row.unsubscribeTokenHash,
-	);
+	const unsubscribeToken = await issueUnsubscribeToken(deps.db, row.userId);
 	const mail = immediateNotificationMail({
 		webOrigin: deps.config.webOrigin,
 		line,

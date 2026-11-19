@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { type DbExecutor, upsertNotificationSettings } from "@songphang/db";
+import { type DbExecutor, insertUnsubscribeTokenHash } from "@songphang/db";
 
 export type MailMessage = {
 	to: string;
@@ -41,24 +41,12 @@ export function createConsoleMailer(): Mailer {
 	};
 }
 
-const UNSUBSCRIBE_TOKEN_CACHE = new Map<string, string>();
-
 export async function issueUnsubscribeToken(
 	executor: DbExecutor,
 	userId: string,
-	existingHash: string | null,
 ): Promise<string> {
-	const cached = UNSUBSCRIBE_TOKEN_CACHE.get(userId);
-	if (cached && existingHash) {
-		const cachedHash = createHash("sha256").update(cached).digest("hex");
-		if (cachedHash === existingHash) return cached;
-	}
 	const token = randomBytes(32).toString("base64url");
 	const tokenHash = createHash("sha256").update(token).digest("hex");
-	await upsertNotificationSettings(executor, {
-		userId,
-		unsubscribeTokenHash: tokenHash,
-	});
-	UNSUBSCRIBE_TOKEN_CACHE.set(userId, token);
+	await insertUnsubscribeTokenHash(executor, { userId, tokenHash });
 	return token;
 }

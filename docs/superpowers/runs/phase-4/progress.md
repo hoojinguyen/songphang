@@ -381,8 +381,8 @@ None.
 ### Correction checklist
 
 - [x] **R1 [P1]** — Replace public bearer identity linking with two-sided web+Telegram pairing (`fix(api,web): require two-sided confirmation for Telegram identity pairing`)
-- [ ] **R2 [P2]** — Server-side one-click `List-Unsubscribe-Post` handling at `/notifications/unsubscribe`
-- [ ] **R3 [P2]** — Durable hash-only unsubscribe token storage preserving previously emailed links across restarts and concurrent sends
+- [x] **R2 [P2]** — Server-side one-click `List-Unsubscribe-Post` handling at `/notifications/unsubscribe`
+- [x] **R3 [P2]** — Durable hash-only unsubscribe token storage preserving previously emailed links across restarts and concurrent sends
 - [ ] **R4 [P2]** — Enqueue automatic reminder `send-notification-mail` jobs transactionally inside the reminder/notification transaction
 - [ ] **R5 [P2]** — Publish group SSE resource events (`["balances"]`) for manual and automatic debt reminders so open notification bells update live
 - [ ] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
@@ -416,4 +416,25 @@ None.
   - `R1_ALL_16_SCENARIOS_PASSED {"groupBtnUrl":"http://localhost:3020/link/telegram","legacyClaimStatus":400,"dbBlockedLegacyCode":true,"concStatuses":[204,400],"unvStartStatus":403,"rateLimited429":true}`
   - Verified: Thu/Lan public-link attack blocked; attacker-generated pairing shows attacker's masked email (`t***u@dev.songphang.local`) and cannot bind Lan's account even after Telegram confirmation; happy path proves both identities; 0 `chat_identities` rows exist after staging or single-side confirmation; wrong sender (`222`) & group-forwarded callbacks ignored; cross-session access returns `404`; group `/start <secret>` cancels pairing and replies without echoing/logging secret; expired/replayed/cancelled/revoked-session attempts rejected; concurrent `POST .../confirm` yields `[204, 400]` with single `chat_identities` row; already-taken identity returns `409 CHAT_IDENTITY_TAKEN` without reassigning; unverified account returns `403 EMAIL_NOT_VERIFIED`; missing/wrong webhook secret returns `404`; legacy `purpose='user'` DB insert blocked and `/claim` returns `400 TOKEN_INVALID`; pairing start rate limit triggers `429` at 10/min/user.
 - Security review: checked items 1–7 on R1 diff; secrets hashed with SHA-256 and never logged/echoed, session binding checked inside write transactions, `FOR UPDATE` + advisory lock prevent races, `rel="noopener noreferrer"` on Telegram external deep link, zero `localStorage`/`sessionStorage`/`dangerouslySetInnerHTML`/`any`/`!`.
+
+### R2 & R3 [P2] — approach
+
+- Files to modify/create: `packages/db/src/{schema-notifications,notifications,index}.ts`, migration `0022_*.sql`, `apps/worker/src/{mailer,jobs/send-notification-mail,jobs/send-digest}.ts`, `apps/api/src/routes/unsubscribe.ts`, `apps/web/src/proxy.ts`.
+- Approach: add `notification_unsubscribe_tokens` (`id`, `user_id` cascade FK, `token_hash` unique, `created_at`) and backfill legacy `notification_settings.unsubscribe_token_hash` in migration `0022`; issue fresh 32-byte random tokens per mail without removing prior hashes (`UNSUBSCRIBE_TOKEN_CACHE` deleted); update `unsubscribeByTokenHash` to match either `notification_unsubscribe_tokens` or legacy `notification_settings.unsubscribe_token_hash`; remove browser `requireSameOrigin` on `/api/v1/notifications/unsubscribe` (retaining 30/min/IP rate limit) and accept query `?token=`, form-encoded (`List-Unsubscribe=One-Click` / `token=`), and JSON `{ token }` payloads; add `apps/web/src/proxy.ts` to rewrite `POST /notifications/unsubscribe` server-side to `/api/v1/notifications/unsubscribe` while leaving `GET /notifications/unsubscribe` for the browser page.
+- Why simplest: keeps one canonical `unsubscribeNotifications` service and existing `List-Unsubscribe` URL while cleanly separating `POST` (Next.js proxy -> API) from `GET` (App Router page) without moving the page route or breaking existing JSON callers.
+- Rejected alternative: encrypting tokens symmetrically in `notification_settings`, which would require adding a new key env var and rotating/managing encryption secrets.
+- Reproduction on `094fd86` (`songphang_phase4_fix_20261119`): `R2_R3_REPRO {"r3":{"t1StillValid":false,"t2Valid":true},"r2":{"postWebStatus":200,"postWebContentType":"text/html; charset=utf-8","emailImmediateAfter":true,"emailDigestAfter":true,"foreignOriginStatus":400}}`.
+
+### R2 & R3 [P2] — verification & security review
+
+- **Grouping rationale:** R2 (server-side RFC 8058 `POST /notifications/unsubscribe`) and R3 (durable multi-token hash table `notification_unsubscribe_tokens`) touch the same unsubscribe service/DB boundary and migration (`0022_mute_reptil.sql`).
+- **Checks:**
+  - `pnpm check`: 485 files checked, 0 errors (3 pre-existing `noImgElement` warnings), 8 typechecks Done.
+  - `API_ORIGIN=http://localhost:4020 pnpm build`: passed (`ƒ Proxy (Middleware)` + `○ /notifications/unsubscribe`).
+  - Migration `0022_mute_reptil.sql` applied cleanly to `songphang_phase4_fix_20261119` (backfills `notification_settings.unsubscribe_token_hash` into `notification_unsubscribe_tokens`).
+- **Exercise (`exercise_r2_r3.mts` against live Next.js on `3020` and API on `4020`, DB `songphang_phase4_fix_20261119`):**
+  - Real output (raw token redacted): `R2_R3_ALL_CHECKS_PASSED {"postProviderStatus":204,"getPageStatus":200,"postForeignOriginWebStatus":204,"repeatFormStatus":204,"jsonValidStatus":204,"legacyHashStatus":204,"invalidStatuses":[404,404,404,404],"rateLimited429":true}`
+  - Verified: advertised `List-Unsubscribe` + `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers; server-side form `POST` with no cookies/Origin/JS disables both switches; browser `GET` returns HTML page; foreign `Origin` POST succeeds on unsubscribe without relaxing global `requireSameOrigin`; repeated `POST` stays `204`; JSON `{ token }` succeeds; bad/missing/mismatched tokens return uniform `404`; two independent users isolated; concurrent & simulated multi-worker / post-restart issuance preserves all older links; legacy `notification_settings.unsubscribe_token_hash` remains accepted; account deletion cascades `notification_unsubscribe_tokens`; IP rate limit triggers `429` after 30/min; zero raw tokens persisted in Postgres or structured logs.
+- **Security review:** Boundary Zod validation on token/body; non-enumerating 404 on invalid/missing tokens; `requireSameOrigin` removed only on token-authorized `POST /api/v1/notifications/unsubscribe`; 256-bit random tokens stored as SHA-256 hashes only; parameterized Drizzle queries; cascade delete on `users.id`.
+
 

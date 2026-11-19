@@ -97,11 +97,7 @@ export async function runSendDigest(deps: WorkerDeps): Promise<number> {
 		if (allLines.length === 0) continue;
 		const lines = allLines.slice(0, DIGEST_LINE_LIMIT);
 		const overflowCount = Math.max(0, allLines.length - DIGEST_LINE_LIMIT);
-		const unsubscribeToken = await issueUnsubscribeToken(
-			deps.db,
-			userId,
-			first.unsubscribeTokenHash ?? null,
-		);
+		const unsubscribeToken = await issueUnsubscribeToken(deps.db, userId);
 		const mail = digestMail({
 			webOrigin: deps.config.webOrigin,
 			lines,

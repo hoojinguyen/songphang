@@ -46,6 +46,26 @@ export const notificationSettings = pgTable("notification_settings", {
 	unsubscribeTokenHash: text("unsubscribe_token_hash").unique(),
 });
 
+export const notificationUnsubscribeTokens = pgTable(
+	"notification_unsubscribe_tokens",
+	{
+		id: uuid("id").primaryKey().$defaultFn(uuidv7),
+		userId: uuid("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		tokenHash: text("token_hash").notNull().unique(),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("notification_unsubscribe_tokens_user_idx").on(
+			table.userId,
+			table.createdAt.desc(),
+		),
+	],
+);
+
 export const jobCheckpoints = pgTable("job_checkpoints", {
 	name: text("name").primaryKey(),
 	lastRunAt: timestamp("last_run_at", { withTimezone: true }).notNull(),

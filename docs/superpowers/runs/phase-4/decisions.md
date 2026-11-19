@@ -120,3 +120,17 @@ Each entry: problem, options, choice, reason; for a library also license, mainte
   - `docs/05-api-spec.md`: document `POST /me/chat-identities/telegram/pairings`, `GET /me/chat-identities/telegram/pairings/{pairingId}`, `POST .../confirm`, `POST .../cancel`, and deprecation/rejection (`400 TOKEN_INVALID`) of `POST /me/chat-identities/claim`.
   - `docs/superpowers/specs/2026-11-15-phase-4-collaboration-design.md` (sections 5.2, 5.3, 5.5, 7.3) & `docs/06-ux-ui/user-flows.md`: replace the bearer-link user identity flow with two-sided pairing and new `/link/telegram` strings.
   - `docs/04-adr.md`: record ADR for two-sided web+Telegram pairing proving both account session and Telegram sender ownership before activating `chat_identities`.
+
+### DR2_3 — Server-side RFC 8058 one-click unsubscribe and durable issued-token hashes (R2 & R3)
+
+- **Problem:** (R2) `List-Unsubscribe` pointed to Next.js page `GET /notifications/unsubscribe?token=...`, so a mail provider's `POST` with `List-Unsubscribe=One-Click` and no session/Origin/JavaScript returned Next.js HTML without disabling email settings, while the API route also enforced `requireSameOrigin`. (R3) `apps/worker/src/mailer.ts` held issued raw tokens in an in-memory `Map`, rotating `notification_settings.unsubscribe_token_hash` after worker restart or across concurrent worker instances and invalidating previously emailed links.
+- **Options:**
+  1. Dedicated `notification_unsubscribe_tokens` table (hash-only, unique `token_hash`, FK `user_id -> users.id ON DELETE CASCADE`, backfilled from `notification_settings.unsubscribe_token_hash`) + Next.js 16 `apps/web/src/proxy.ts` rewriting `POST /notifications/unsubscribe` to `/api/v1/notifications/unsubscribe` while `GET /notifications/unsubscribe` continues to serve the browser page + canonical API handler accepting query/form/JSON without `requireSameOrigin` and retaining 30/min/IP rate limiting.
+  2. Move unsubscribe URL to `/api/v1/notifications/unsubscribe` directly (breaks browser GET HTML page UX).
+- **Choice:** Option 1.
+- **Reason:** Preserves the exact advertised URL `/notifications/unsubscribe?token=...` for both mail-client RFC 8058 `POST` (no session/Origin/JS) and browser `GET`, keeps one canonical API service/DB path, stores only SHA-256 hashes durably across restarts and multiple workers, retains legacy `notification_settings.unsubscribe_token_hash` compatibility, and cleans up all issued hashes automatically on account deletion via `ON DELETE CASCADE`.
+- **Retention & cleanup:** Issued token hashes remain valid until the account is deleted (cascaded via `notification_unsubscribe_tokens_user_id_users_id_fk`) so older emails in a user's inbox keep working. Re-enabling email switches in `/account` does not require deleting hashes; repeated unsubscribe remains idempotent (`204`).
+- **Standing-doc amendments needed (advisor-owned):**
+  - `docs/05-database-design.md`: document `notification_unsubscribe_tokens` (`id`, `user_id` FK cascade, `token_hash` unique, `created_at`).
+  - `docs/05-api-spec.md`: document `POST /notifications/unsubscribe` (proxied to `POST /api/v1/notifications/unsubscribe`) accepting RFC 8058 `application/x-www-form-urlencoded` (`List-Unsubscribe=One-Click`), query `?token=`, or JSON `{ token }`, intentionally exempt from `requireSameOrigin` and protected by 256-bit token + 30/min/IP rate limit.
+  - `docs/04-adr.md` and `docs/superpowers/specs/2026-11-15-phase-4-collaboration-design.md`: record durable multi-token hash retention replacing `D4B.1`'s in-memory rotation approach.

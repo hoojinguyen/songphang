@@ -22,6 +22,7 @@ import {
 	jobCheckpoints,
 	notificationSettings,
 	notifications,
+	notificationUnsubscribeTokens,
 } from "./schema-notifications.js";
 
 export type NotificationRow = typeof notifications.$inferSelect;
@@ -273,16 +274,46 @@ export async function upsertNotificationSettings(
 	return row;
 }
 
+export async function insertUnsubscribeTokenHash(
+	executor: DbExecutor,
+	input: { userId: string; tokenHash: string; now?: Date },
+): Promise<void> {
+	await executor.insert(notificationUnsubscribeTokens).values({
+		userId: input.userId,
+		tokenHash: input.tokenHash,
+		...(input.now ? { createdAt: input.now } : {}),
+	});
+	await executor
+		.insert(notificationSettings)
+		.values({ userId: input.userId })
+		.onConflictDoNothing();
+}
+
 export async function unsubscribeByTokenHash(
 	executor: DbExecutor,
 	tokenHash: string,
 ): Promise<boolean> {
-	const rows = await executor
-		.update(notificationSettings)
-		.set({ emailImmediate: false, emailDigest: false })
-		.where(eq(notificationSettings.unsubscribeTokenHash, tokenHash))
-		.returning({ userId: notificationSettings.userId });
-	return rows.length > 0;
+	const [issued] = await executor
+		.select({ userId: notificationUnsubscribeTokens.userId })
+		.from(notificationUnsubscribeTokens)
+		.where(eq(notificationUnsubscribeTokens.tokenHash, tokenHash))
+		.limit(1);
+	let userId = issued?.userId ?? null;
+	if (userId === null) {
+		const [legacy] = await executor
+			.select({ userId: notificationSettings.userId })
+			.from(notificationSettings)
+			.where(eq(notificationSettings.unsubscribeTokenHash, tokenHash))
+			.limit(1);
+		userId = legacy?.userId ?? null;
+	}
+	if (userId === null) return false;
+	await upsertNotificationSettings(executor, {
+		userId,
+		emailImmediate: false,
+		emailDigest: false,
+	});
+	return true;
 }
 
 export async function findNotificationForImmediateMail(

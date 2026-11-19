@@ -1,10 +1,68 @@
-import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
+import { type OpenAPIHono, z } from "@hono/zod-openapi";
 import { UnsubscribeRequest } from "@songphang/contract";
+import type { Context } from "hono";
 import type { AppDeps, AppEnv } from "../app.js";
 import { socketIp } from "../auth/account-limits.js";
-import { requireSameOrigin } from "../auth/middleware.js";
 import { AppError } from "../errors.js";
 import { unsubscribeNotifications } from "../services/notifications.js";
+
+const MAX_BODY_CHARS = 4096;
+const JsonTokenBody = z.object({ token: z.unknown() });
+
+function notFound(): AppError {
+	return new AppError(404, "NOT_FOUND", "Resource not found");
+}
+
+async function extractUnsubscribeToken(
+	context: Context<AppEnv>,
+): Promise<string> {
+	const queryToken = context.req.query("token");
+	const rawText = await context.req.text();
+	if (rawText.length > MAX_BODY_CHARS) {
+		throw notFound();
+	}
+	const contentType =
+		context.req.header("Content-Type")?.split(";")[0]?.trim().toLowerCase() ??
+		"";
+	let bodyToken: unknown;
+
+	if (contentType === "application/json") {
+		let parsedJson: unknown;
+		try {
+			parsedJson = JSON.parse(rawText);
+		} catch {
+			throw notFound();
+		}
+		const obj = JsonTokenBody.safeParse(parsedJson);
+		if (!obj.success) throw notFound();
+		bodyToken = obj.data.token;
+	} else if (contentType === "application/x-www-form-urlencoded") {
+		const params = new URLSearchParams(rawText);
+		const listUnsub = params.get("List-Unsubscribe");
+		if (listUnsub !== null && listUnsub !== "One-Click") {
+			throw notFound();
+		}
+		bodyToken = params.get("token") ?? undefined;
+	} else if (rawText.trim().length > 0) {
+		throw notFound();
+	}
+
+	if (
+		queryToken !== undefined &&
+		bodyToken !== undefined &&
+		queryToken !== bodyToken
+	) {
+		throw notFound();
+	}
+
+	const parsed = UnsubscribeRequest.safeParse({
+		token: queryToken ?? bodyToken,
+	});
+	if (!parsed.success) {
+		throw notFound();
+	}
+	return parsed.data.token;
+}
 
 export function registerUnsubscribeRoutes(
 	app: OpenAPIHono<AppEnv>,
@@ -17,29 +75,11 @@ export function registerUnsubscribeRoutes(
 		key: (context) => socketIp(context),
 	});
 
-	app.openapi(
-		createRoute({
-			method: "post",
-			path: "/api/v1/notifications/unsubscribe",
-			middleware: [requireSameOrigin(deps.config), limit],
-			request: {
-				body: {
-					required: true,
-					content: { "application/json": { schema: UnsubscribeRequest } },
-				},
-			},
-			responses: {
-				204: { description: "Unsubscribed from notification emails" },
-			},
-		}),
-		async (context) => {
-			await unsubscribeNotifications(deps, context.req.valid("json").token);
-			return context.body(null, 204);
-		},
-		(result) => {
-			if (!result.success) {
-				throw new AppError(404, "NOT_FOUND", "Resource not found");
-			}
-		},
-	);
+	// Mail providers send RFC 8058 POSTs without cookies or browser Origin;
+	// requests are authorized solely by the 256-bit unsubscribe token.
+	app.post("/api/v1/notifications/unsubscribe", limit, async (context) => {
+		const token = await extractUnsubscribeToken(context);
+		await unsubscribeNotifications(deps, token);
+		return context.body(null, 204);
+	});
 }

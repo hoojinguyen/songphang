@@ -26,6 +26,7 @@ Checks are appended by screen and flow as tasks complete, plus a section **After
 1. Open `/account` (`S13`) -> card `Thông báo qua email` shows `Việc cần bạn làm ngay` and `Tổng hợp cuối ngày` toggles; turn one off, refresh -> state persists.
 2. With both worker and API running (`TELEGRAM_PROVIDER` unset, console mailer), have another member open a dispute -> worker console prints one mail with `List-Unsubscribe` / `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, subject matching the notification line, `Mở Sòng Phẳng`, and footer `Không muốn nhận thư nữa? Bỏ đăng ký`.
 3. Copy the `/notifications/unsubscribe?token=...` URL from the printed mail and open it in an unauthenticated/private browser window -> confirms `Bạn sẽ không nhận thư thông báo nữa.` with link `Bật lại trong Tài khoản`. Opening `/account` shows both email switches off; alter 1 character of `token` -> renders `Link này không còn dùng được.`.
+4. Re-enable email notifications in `/account`, trigger a second mail, then simulate an RFC 8058 mail client with `curl -i -X POST -H 'Content-Type: application/x-www-form-urlencoded' -d 'List-Unsubscribe=One-Click' '<copied URL from mail 1>'` (no cookies, no `Origin` header, using the *older* link from step 3) -> returns `204 No Content` and disables both email switches again.
 
 ## S5 & S11 — Debt reminders and auto-reminder settings (Stage 4B)
 
