@@ -3,6 +3,7 @@ import AuthFeature
 import DesignSystem
 import Domain
 import GroupsFeature
+public import Repositories
 public import SwiftUI
 import UIKit
 
@@ -33,13 +34,40 @@ public struct RootView: View {
   @State private var deletedTransactionId: LedgerTransaction.ID?
   @State private var isShowingDebugPanel = false
 
-  public init(dependencies: AppDependencies? = nil) {
+  public init(dependencies: AppDependencies? = nil, configuration: APIConfiguration? = nil) {
     #if DEBUG
+      let args = ProcessInfo.processInfo.arguments
+      let useScripted =
+        args.contains("--scripted")
+        || args.contains("--scenario-empty")
+        || args.contains("--scenario-trip0")
+        || args.contains("--scenario-large")
+        || args.contains("--signed-out")
+        || args.contains("--fail-offline")
+        || args.contains("--fail-rate-limited")
+        || args.contains("--fail-invalid-credentials")
+        || args.contains("--role-editor")
+        || args.contains("--role-viewer")
+        || args.contains("--latency-2s")
+        || args.contains("--latency-300ms")
+        || args.contains("--no-snapshot")
+        || args.contains("--unverified-user")
+        || args.contains("--all-settled")
+        || args.contains("--delete-t4")
+        || args.contains("--empty-activity")
+        || args.contains("--enter-step1")
+        || args.contains("--enter-step2")
+        || args.contains("--enter-step3")
+        || args.contains("--enter-step4")
+        || args.contains("--emit-changed")
+        || args.contains("--emit-removed")
+
       let resolved: AppDependencies
+      let initialSessionState: SessionModel.State
       if let dependencies {
         resolved = dependencies
-      } else {
-        let args = ProcessInfo.processInfo.arguments
+        initialSessionState = dependencies.world == nil ? .loading : .signedIn(PreviewSamples.user)
+      } else if useScripted {
         let signedIn = !args.contains("--signed-out")
         let preset: ScenarioPreset
         if args.contains("--scenario-empty") {
@@ -74,18 +102,21 @@ public struct RootView: View {
 
         let world = FakeWorld(preset: preset, behavior: behavior, signedIn: signedIn)
         resolved = .scripted(world: world)
+        initialSessionState = signedIn ? .signedIn(PreviewSamples.user) : .signedOut
+      } else {
+        let liveConfig = configuration ?? Self.bundleConfiguration()
+        resolved = .live(configuration: liveConfig)
+        initialSessionState = .loading
       }
       self.dependencies = resolved
       let session = SessionModel(
         authRepository: resolved.auth,
-        initialState: ProcessInfo.processInfo.arguments.contains("--signed-out")
-          ? .signedOut : .signedIn(PreviewSamples.user)
+        initialState: initialSessionState
       )
       self._sessionModel = State(initialValue: session)
       self._groupListModel = State(
         initialValue: GroupListModel(repository: resolved.groups)
       )
-      let args = ProcessInfo.processInfo.arguments
       let initialError: AppError?
       if args.contains("--fail-rate-limited") {
         initialError = .rateLimited
@@ -108,6 +139,23 @@ public struct RootView: View {
     #else
       fatalError("Live repositories arrive in the integration stage")
     #endif
+  }
+
+  private static func bundleConfiguration() -> APIConfiguration {
+    let info = Bundle.main.infoDictionary
+    let apiString = (info?["API_BASE_URL"] as? String) ?? "http://127.0.0.1:4000/api/v1"
+    let webString = (info?["WEB_BASE_URL"] as? String) ?? "http://127.0.0.1:3000"
+    let version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
+    let apiURL = URL(string: apiString) ?? URL(filePath: "/")
+    let webURL = URL(string: webString) ?? URL(filePath: "/")
+    let rawDevice = UIDevice.current.name.trimmingCharacters(in: .whitespacesAndNewlines)
+    let deviceName = rawDevice.isEmpty ? "iPhone" : String(rawDevice.prefix(60))
+    return APIConfiguration(
+      apiBaseURL: apiURL,
+      webBaseURL: webURL,
+      appVersion: version,
+      deviceName: deviceName
+    )
   }
 
   public var body: some View {
@@ -200,6 +248,7 @@ public struct RootView: View {
       .sheet(isPresented: $isShowingDebugPanel) {
         DebugPanel(
           world: dependencies.world,
+          liveConfiguration: dependencies.liveConfiguration,
           sessionModel: sessionModel,
           onOpenJoinToken: { token in
             path.append(.joinGroup(token: token))
@@ -215,15 +264,19 @@ public struct RootView: View {
       }
     #endif
     .task {
+      if case .loading = sessionModel.state {
+        await sessionModel.loadSession()
+      }
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
+        guard let world = dependencies.world else { return }
         if args.contains("--unverified-user") {
-          await dependencies.world.setCurrentUser(PreviewSamples.unverifiedUser)
+          await world.setCurrentUser(PreviewSamples.unverifiedUser)
           sessionModel.didSignIn(PreviewSamples.unverifiedUser)
         }
         if args.contains("--all-settled") {
           for transfer in TripScenario.step4Balances.transfers {
-            _ = try? await dependencies.world.createTransaction(
+            _ = try? await world.createTransaction(
               groupId: TripScenario.groupId,
               draft: .transfer(
                 TransactionDraft.TransferPayload(
@@ -238,13 +291,13 @@ public struct RootView: View {
           }
         }
         if args.contains("--delete-t4") {
-          try? await dependencies.world.deleteTransaction(
+          try? await world.deleteTransaction(
             groupId: TripScenario.groupId,
             id: TripScenario.t4Transaction.id
           )
         }
         if args.contains("--empty-activity") {
-          await dependencies.world.clearActivity(groupId: TripScenario.groupId)
+          await world.clearActivity(groupId: TripScenario.groupId)
         }
         let stepCount: Int = {
           if args.contains("--enter-step1") { return 1 }
@@ -273,7 +326,7 @@ public struct RootView: View {
                 split: tx.split
               )
             )
-            _ = try? await dependencies.world.createTransaction(
+            _ = try? await world.createTransaction(
               groupId: TripScenario.groupId,
               draft: draft,
               key: IdempotencyKey()
@@ -282,13 +335,13 @@ public struct RootView: View {
         }
         if args.contains("--emit-changed") {
           try? await Task.sleep(for: .milliseconds(400))
-          await dependencies.world.emitEvent(
+          await world.emitEvent(
             .changed(["group", "members", "balances", "transactions"])
           )
         }
         if args.contains("--emit-removed") {
           try? await Task.sleep(for: .milliseconds(400))
-          await dependencies.world.emitEvent(.removed)
+          await world.emitEvent(.removed)
         }
       #endif
     }

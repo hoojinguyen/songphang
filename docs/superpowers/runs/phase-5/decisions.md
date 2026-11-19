@@ -76,6 +76,24 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 - **Choice:** Option 2.
 - **Reason:** Keeps `contract:write` and `contract:check` completely self-contained and fast without spawning Biome, mirrors `!!apps/ios` in `biome.json`, and preserves deterministic byte-identical snapshots enforced by `pnpm check`.
 
+### D4 — Upcoming-feature flags on `GeneratedAPI` target (Task 5B.1)
+- **Problem:** Apple's `swift-openapi-generator` (`1.14.4`) emits Swift 6 code without `ExistentialAny`, `InternalImportsByDefault`, `MemberImportVisibility`, `NonisolatedNonsendingByDefault`, or `InferIsolatedConformances` annotations.
+- **Options:** (1) Enable all five upcoming features on `GeneratedAPI` (fails compilation on generated Swift); (2) Per architecture design §11, drop those upcoming-feature flags on `GeneratedAPI` only while keeping `.swiftLanguageMode(.v6)` and `.treatAllWarnings(as: .error)`, and keeping all five upcoming-feature flags on every hand-written target (`Domain`, `Repositories`, `DesignSystem`, `PreviewSupport`, feature targets, `AppShell`).
+- **Choice:** Option 2.
+- **Reason:** Explicitly permitted by AD §11; preserves strict Swift 6 + warnings-as-errors across `GeneratedAPI` and all hand-written modules without modifying generated code.
+
+### D5 — Xcode 27.2 warnings-as-errors with remote SwiftPM packages (Task 5B.1)
+- **Problem:** Passing `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES` as a global `xcodebuild` command-line override conflicts with Xcode 27.2's automatic `-suppress-warnings` flag on remote SwiftPM dependencies (`swift-collections`, `swift-http-types`): `error: Conflicting options '-warnings-as-errors' and '-suppress-warnings'`.
+- **Options:** (1) Remove warnings-as-errors; (2) Keep `SWIFT_TREAT_WARNINGS_AS_ERRORS = YES` on the `SongPhang` Xcode target (`project.pbxproj`) and `.treatAllWarnings(as: .error)` on every target in `SongPhangKit/Package.swift`, and run `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination '...' -skipPackagePluginValidation build` without overriding remote SwiftPM targets.
+- **Choice:** Option 2.
+- **Reason:** Every single target in `SongPhang` and `SongPhangKit` (including `GeneratedAPI` and `Repositories`) is still compiled with `-warnings-as-errors` enforced by Xcode/SwiftPM, while Apple's remote dependencies compile cleanly.
+
+### D6 — Debug-only ATS local networking via `Config/Info-Debug.plist` (Task 5B.1)
+- **Problem:** Phase 5 design §7.1 requires local HTTP (`NSAllowsLocalNetworking`) only in Debug and never in Release, while `App/Info.plist` is shared unless overridden per configuration.
+- **Options:** (1) Add `NSAllowsLocalNetworking` to `App/Info.plist` (leaks into Release); (2) Point the Debug target configuration to `Config/Info-Debug.plist` (outside `App/` so it is never bundled as a resource in Release) with `NSAllowsLocalNetworking = true` and keep `App/Info.plist` for Release with zero ATS exceptions.
+- **Choice:** Option 2.
+- **Reason:** Guarantees strict Debug/Release separation verified by inspecting the Release bundle's `Info.plist`.
+
 ## Standing Documentation Follow-ups
 
 - Codex reconciles the approved design §9 changes (`docs/04-adr.md` ADR-014/029/030/032, `docs/05-api-spec.md`, `docs/05-database-design.md`, `docs/03-srs.md`, root `AGENTS.md`) with the reviewed implementation before merge.

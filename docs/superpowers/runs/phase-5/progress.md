@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Task 0 complete; continuing to Stage 5A. Owner checkpoint, final acceptance and merge are pending.
+- Status: Stage 5B in progress (5B.1 complete; continuing to 5B.2). Owner checkpoint, final acceptance and merge are pending.
 
 ## Tasks
 
@@ -13,7 +13,7 @@
 - [x] 5A.1 — OpenAPI snapshot and minimum version
 - [x] 5A.2 — Native password sessions and revocation
 - [x] 5A.3 — API gate
-- [ ] 5B.1 — Generated client and live composition
+- [x] 5B.1 — Generated client and live composition
 - [ ] 5B.2 — Account lifecycle and snapshots
 - [ ] 5B.3 — Groups, members and local invite routing
 - [ ] 5B.4 — Ledger and realtime
@@ -145,6 +145,26 @@
   - Release build guard (still expected until 5B.4 removes it): failed as expected at `AppShell/AppDependencies.swift:36:12: error: Live repositories arrive in the integration stage`.
 - **5B Readiness:** 5B now has a reachable local v1 API (`http://localhost:4000/api/v1`) with native email/password sign-in (`POST /auth/token`), session listing/revocation (`GET/DELETE /me/sessions`), deterministic committed OpenAPI 3.1 snapshot (`packages/contract/openapi.json`), and documented baseline gaps (Be Vietnam Pro `.ttf`/`.otf` assets pending; Phase 2–4 strings scheduled across 5D).
 - **Issues / verification gaps:** None on local Stage 5A gate. External providers (real SMTP, Google OAuth, Apple, APNs, Telegram Bot API, real AI) remain deferred/external.
+
+### Task 5B.1 — Generated client, transport and live composition
+
+**Approach**
+- Files created/modified: `apps/ios/SongPhangKit/Package.swift`, `apps/ios/SongPhang.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`, `apps/ios/SongPhangKit/Sources/GeneratedAPI/{openapi-generator-config.yaml,GeneratedAPI.swift,openapi.json}`, `apps/ios/SongPhangKit/Sources/Repositories/{Session/TokenStore.swift,Transport/{APIConfiguration,BearerURLSession,AuthMiddleware,ErrorMapper,LiveAPIEnvironment,UnconnectedRepositories}.swift}`, `apps/ios/Config/{Debug.xcconfig,Release.xcconfig,Info-Debug.plist}`, `apps/ios/App/Info.plist`, `apps/ios/SongPhang.xcodeproj/project.pbxproj`, `apps/ios/SongPhangKit/Sources/AppShell/{AppDependencies.swift,RootView.swift,Debug/DebugPanel.swift}`, `docs/superpowers/runs/phase-5/{decisions,progress}.md`, `docs/superpowers/runs/phase-5/screens/5b1-{live-signin,scripted}.png`.
+- Approach: Pin Apple's `swift-openapi-generator` (`1.14.4`), `swift-openapi-runtime` (`1.13.4`), and `swift-openapi-urlsession` (`1.4.0`). Point `GeneratedAPI/openapi.json` via relative symlink to `packages/contract/openapi.json` with `accessModifier: package` and `generate: [types, client]`. Build `Repositories` with an internal Keychain `TokenStore` (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`), ephemeral cookie-free `URLSession`, `@concurrent` `AuthMiddleware` (`X-App-Version` + `Authorization: Bearer`), single `ErrorMapper`, and `LiveAPIEnvironment.fetchServerFeatures()` composing `/api/v1` exactly once. Isolate Debug localhost ATS in `Config/Info-Debug.plist` while keeping Release `App/Info.plist` free of HTTP exceptions. Compose `AppDependencies.live(configuration:)` by default in Debug while retaining `--scripted` / 5U launch flags and the Release `#error` guard until 5B.4.
+- Why this is the simplest approach: Single authoritative OpenAPI snapshot via symlink (zero duplicate contract files), strict compiler-enforced module boundaries, and zero third-party networking libraries.
+- Rejected alternative: Copying `openapi.json` via a shell build phase or using `URLSession.shared` (which retains cookies and disk cache).
+- Questions: None (recorded Decisions D4, D5, D6 in `decisions.md`).
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: no output (exit 0).
+  - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -configuration Debug -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build`: `** BUILD SUCCEEDED **`.
+  - Release `#error` guard check (`-configuration Release ... CODE_SIGNING_ALLOWED=NO build`): compiled `GeneratedAPI` + `Repositories` cleanly and failed as expected at `AppShell/AppDependencies.swift:56:12: error: Live repositories arrive in the integration stage`.
+- Live Simulator run (booted `iPhone 17 Pro`, iOS 26.5, isolated local API on `127.0.0.1:4000`, providers off):
+  - Default launch hit `GET /api/v1/features` and `GET /api/v1/auth/providers` (versioned `/api/v1` path composed once, `X-App-Version: 1.0.0`), rendered `SignInView` with Apple & Google buttons hidden and zero errors (`docs/superpowers/runs/phase-5/screens/5b1-live-signin.png`).
+  - `--scripted` launch rendered `GroupListView` with `Đà Lạt 3N2Đ` (`+500.001 đồng bạn được nhận`) cleanly (`docs/superpowers/runs/phase-5/screens/5b1-scripted.png`).
+- Security review: checked relevant items 1, 2, 4, 8; Keychain `TokenStore` is `internal` to `Repositories`, no raw token is returned or logged, ephemeral `URLSession` disables `HTTPCookieStorage` and `URLCache`, Release `App/Info.plist` has zero `NSAppTransportSecurity` exceptions, and Apple OpenAPI packages are pinned in `Package.resolved`.
 
 ## Gate Not Passed
 

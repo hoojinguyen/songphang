@@ -2,10 +2,12 @@
   import DesignSystem
   import Domain
   import PreviewSupport
+  import Repositories
   import SwiftUI
 
   struct DebugPanel: View {
-    private let world: FakeWorld
+    private let world: FakeWorld?
+    private let liveConfiguration: APIConfiguration?
     private let sessionModel: SessionModel
     private let onOpenJoinToken: (String) -> Void
     private let onOpenGallery: () -> Void
@@ -62,13 +64,15 @@
     }
 
     init(
-      world: FakeWorld,
+      world: FakeWorld?,
+      liveConfiguration: APIConfiguration?,
       sessionModel: SessionModel,
       onOpenJoinToken: @escaping (String) -> Void,
       onOpenGallery: @escaping () -> Void,
       onDismiss: @escaping () -> Void
     ) {
       self.world = world
+      self.liveConfiguration = liveConfiguration
       self.sessionModel = sessionModel
       self.onOpenJoinToken = onOpenJoinToken
       self.onOpenGallery = onOpenGallery
@@ -78,98 +82,115 @@
     var body: some View {
       NavigationStack {
         Form {
-          Section("Scenario") {
-            Picker("Scenario", selection: $selectedPreset) {
-              ForEach(ScenarioPreset.allCases, id: \.self) { preset in
-                Text(preset.rawValue).tag(preset)
-              }
-            }
-            .onChange(of: selectedPreset) { _, newValue in
-              Task {
-                await world.applyScenario(newValue, signedIn: true)
-                if let user = await world.currentUser {
-                  sessionModel.didSignIn(user)
-                }
-              }
-            }
-          }
-
-          Section("Network & Snapshot") {
-            Picker("Latency", selection: $selectedLatencyIndex) {
-              Text("0 ms").tag(0)
-              Text("300 ms").tag(1)
-              Text("2 s").tag(2)
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: selectedLatencyIndex) { _, _ in
-              Task { await syncBehavior() }
-            }
-
-            Toggle("Has Snapshot", isOn: $hasSnapshot)
-              .onChange(of: hasSnapshot) { _, _ in
-                Task { await syncBehavior() }
-              }
-
-            Picker("Failure", selection: $selectedFailureKind) {
-              ForEach(FailureKind.allCases) { kind in
-                Text(kind.rawValue).tag(kind)
-              }
-            }
-            .onChange(of: selectedFailureKind) { _, newKind in
-              Task {
-                await syncBehavior()
-                if newKind == .unauthorized {
-                  sessionModel.handleError(.unauthorized)
-                }
-              }
-            }
-          }
-
-          Section("Role & Account") {
-            Picker("Role", selection: $selectedRole) {
-              ForEach(RoleChoice.allCases) { role in
-                Text(role.rawValue).tag(role)
-              }
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: selectedRole) { _, _ in
-              Task { await syncBehavior() }
-            }
-
-            Toggle("Unverified Email", isOn: $unverifiedEmail)
-              .onChange(of: unverifiedEmail) { _, isUnverified in
+          if let liveConfiguration {
+            Section("Live API") {
+              LabeledContent("API Base", value: liveConfiguration.apiBaseURL.absoluteString)
+              LabeledContent("Origin", value: liveConfiguration.serverOriginURL.absoluteString)
+              LabeledContent("Web Base", value: liveConfiguration.webBaseURL.absoluteString)
+              LabeledContent("Version", value: liveConfiguration.appVersion)
+              Button("Sign Out", role: .destructive) {
                 Task {
-                  let user = isUnverified ? PreviewSamples.unverifiedUser : PreviewSamples.user
-                  await world.setCurrentUser(user)
-                  sessionModel.didSignIn(user)
+                  await sessionModel.signOut()
+                  onDismiss()
                 }
-              }
-
-            Button("Sign Out", role: .destructive) {
-              Task {
-                await sessionModel.signOut()
-                onDismiss()
               }
             }
           }
 
-          Section("Realtime Group Events") {
-            Button("Send .changed([\"transactions\", \"balances\"])") {
-              Task {
-                await world.emitEvent(.changed(["transactions", "balances"]))
-                onDismiss()
+          if let world {
+            Section("Scenario") {
+              Picker("Scenario", selection: $selectedPreset) {
+                ForEach(ScenarioPreset.allCases, id: \.self) { preset in
+                  Text(preset.rawValue).tag(preset)
+                }
+              }
+              .onChange(of: selectedPreset) { _, newValue in
+                Task {
+                  await world.applyScenario(newValue, signedIn: true)
+                  if let user = await world.currentUser {
+                    sessionModel.didSignIn(user)
+                  }
+                }
               }
             }
-            Button("Send .reconnected") {
-              Task {
-                await world.emitEvent(.reconnected)
-                onDismiss()
+
+            Section("Network & Snapshot") {
+              Picker("Latency", selection: $selectedLatencyIndex) {
+                Text("0 ms").tag(0)
+                Text("300 ms").tag(1)
+                Text("2 s").tag(2)
+              }
+              .pickerStyle(.segmented)
+              .onChange(of: selectedLatencyIndex) { _, _ in
+                Task { await syncBehavior(world: world) }
+              }
+
+              Toggle("Has Snapshot", isOn: $hasSnapshot)
+                .onChange(of: hasSnapshot) { _, _ in
+                  Task { await syncBehavior(world: world) }
+                }
+
+              Picker("Failure", selection: $selectedFailureKind) {
+                ForEach(FailureKind.allCases) { kind in
+                  Text(kind.rawValue).tag(kind)
+                }
+              }
+              .onChange(of: selectedFailureKind) { _, newKind in
+                Task {
+                  await syncBehavior(world: world)
+                  if newKind == .unauthorized {
+                    sessionModel.handleError(.unauthorized)
+                  }
+                }
               }
             }
-            Button("Send .removed", role: .destructive) {
-              Task {
-                await world.emitEvent(.removed)
-                onDismiss()
+
+            Section("Role & Account") {
+              Picker("Role", selection: $selectedRole) {
+                ForEach(RoleChoice.allCases) { role in
+                  Text(role.rawValue).tag(role)
+                }
+              }
+              .pickerStyle(.segmented)
+              .onChange(of: selectedRole) { _, _ in
+                Task { await syncBehavior(world: world) }
+              }
+
+              Toggle("Unverified Email", isOn: $unverifiedEmail)
+                .onChange(of: unverifiedEmail) { _, isUnverified in
+                  Task {
+                    let user = isUnverified ? PreviewSamples.unverifiedUser : PreviewSamples.user
+                    await world.setCurrentUser(user)
+                    sessionModel.didSignIn(user)
+                  }
+                }
+
+              Button("Sign Out", role: .destructive) {
+                Task {
+                  await sessionModel.signOut()
+                  onDismiss()
+                }
+              }
+            }
+
+            Section("Realtime Group Events") {
+              Button("Send .changed([\"transactions\", \"balances\"])") {
+                Task {
+                  await world.emitEvent(.changed(["transactions", "balances"]))
+                  onDismiss()
+                }
+              }
+              Button("Send .reconnected") {
+                Task {
+                  await world.emitEvent(.reconnected)
+                  onDismiss()
+                }
+              }
+              Button("Send .removed", role: .destructive) {
+                Task {
+                  await world.emitEvent(.removed)
+                  onDismiss()
+                }
               }
             }
           }
@@ -196,6 +217,7 @@
           }
         }
         .task {
+          guard let world else { return }
           selectedPreset = await world.preset
           let behavior = await world.behavior
           hasSnapshot = behavior.hasSnapshot
@@ -218,7 +240,7 @@
       }
     }
 
-    private func syncBehavior() async {
+    private func syncBehavior(world: FakeWorld) async {
       let latency: Duration
       switch selectedLatencyIndex {
       case 1: latency = .milliseconds(300)
