@@ -124,8 +124,8 @@ async function budgetLimitWarning(
 		? spentNow
 		: spentNow - oldSigned + signedAmount;
 	const beforeSpent = input.applied
-		? spentNow - signedAmount
-		: spentNow - oldSigned;
+		? spentNow - signedAmount + oldSigned
+		: spentNow;
 	const beforeState = budgetState(beforeSpent, row.amount);
 	const afterState = budgetState(afterSpent, row.amount);
 	if (afterState === "over" && beforeState !== "over") return "BUDGET_OVER";

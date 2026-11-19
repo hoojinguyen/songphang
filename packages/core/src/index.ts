@@ -1,6 +1,9 @@
 export { quotaWindowStarts } from "./ai-quota.ts";
 export { allocateByWeights } from "./allocate.ts";
-export { approvalStatusFor } from "./approval.ts";
+export {
+	approvalStatusFor,
+	nextEditApprovalStatusFor,
+} from "./approval.ts";
 export { BANKS } from "./banks.ts";
 export {
 	BUDGET_NEAR_PERCENT,

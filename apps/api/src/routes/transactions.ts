@@ -167,6 +167,7 @@ export function registerTransactionRoutes(
 			await previewTransaction(
 				deps,
 				context.var.groupAccess.groupId,
+				context.var.user.id,
 				context.req.valid("json"),
 			),
 			200,

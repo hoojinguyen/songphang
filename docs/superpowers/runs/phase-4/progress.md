@@ -385,7 +385,7 @@ None.
 - [x] **R3 [P2]** — Durable hash-only unsubscribe token storage preserving previously emailed links across restarts and concurrent sends
 - [x] **R4 [P2]** — Enqueue automatic reminder `send-notification-mail` jobs transactionally inside the reminder/notification transaction
 - [x] **R5 [P2]** — Publish group SSE resource events (`["balances"]`) for manual and automatic debt reminders so open notification bells update live
-- [ ] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
+- [x] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
 - [ ] **R7 [P2]** — Persist stable `occurredAt` in bot draft and make transaction creation, idempotency state, and `markBotDraftSaved` atomic with save/drop serialization
 - [ ] **R8 [P3]** — Store decision-time amount in approval/rejection activity snapshots
 - [ ] **README & Runbook** — Fix unsupported 5s delay / 7-day bot retention claims and update operational docs for R1/R2/R3/R4/R5
@@ -454,6 +454,23 @@ None.
   - Real output: `R4_R5_ALL_CHECKS_PASSED {"manualEvent":true,"manualCooldown429":true,"rollbackSilent":true,"autoReminded":2,"autoEventFromTx":true,"rerunWithin3Days":0,"lanAttempts":2,"deliveredTo":["lan@dev.songphang.local"],"durableEventFromJob":true,"removedUserBlocked":true,"balancesUnchanged":true}`
   - Verified: manual reminder publishes `["balances"]` after commit; 24h cooldown returns `429` with zero events; rolled-back tx emits zero `songphang_events`; automatic reminders enqueue `send-notification-mail` transactionally with `{ singletonKey: row.id }` and emit `notifyGroup(executor, group.id, ["balances"])`; rerun within 3-day interval emits 0 duplicates; simulated transient mailer failure retries via `pg-boss` (`lanAttempts: 2`) and succeeds; muted user (`Hung`) receives no mail while in-app notification is recorded; removed user (`Lan` removed from `group_users`) receives neither mail nor event; balances unchanged.
 - **Security review:** No cross-app imports; `notifyGroup` validates payload via `GroupEventNotification` (<=500B) and uses parameterized `pg_notify`; removed users are blocked at send time (`!row.inGroup`); no private notification content is placed in `pg_notify` payloads (only `groupId` and `["balances"]`).
+
+### R6 [P2] — approach
+
+- **Files to change:** `packages/core/src/approval.ts`, `packages/core/src/index.ts`, `apps/api/src/services/transaction-changes.ts`, `apps/api/src/services/transactions.ts`, `apps/api/src/routes/transactions.ts`, `apps/api/src/services/warnings.ts`.
+- **Plan:** Add a pure `nextEditApprovalStatusFor` helper in `packages/core/src/approval.ts` (matching the existing owner/non-owner edit rule in `editTransaction`) and reuse it in both `editTransaction` and `previewTransaction`. Pass the authenticated `userId` (`context.var.user.id`) from `apps/api/src/routes/transactions.ts` into `previewTransaction`, read `[group, owner]` inside `previewTransaction`'s read-only transaction, compute prospective approval status (`approvalStatusFor` on create, `nextEditApprovalStatusFor` when `replacingTransactionId` is present), and pass `counted: prospectiveStatus !== "pending"` to `transactionWarnings`. Also fix `beforeSpent` in `apps/api/src/services/warnings.ts` (`input.applied ? spentNow - signedAmount + oldSigned : spentNow`) so edit preview and edit save calculate identical pre-edit spent totals for both counted and uncounted replaced transactions.
+- **Why simplest:** One canonical approval-status rule in `packages/core`, zero schema/contract changes, and exact mathematical parity between preview (`applied: false`) and save (`applied: true`).
+- **Reproduction on `6cf1326` (`songphang_phase4_fix_20261119`):** `R6_REPRO {"previewWarnings":["BUDGET_OVER"],"saveWarnings":[]}` (budget 1M, threshold 1M, 600k spent; Lan previews 1.5M and gets `BUDGET_OVER` while saving yields `pending` with `warnings: []`).
+
+### R6 [P2] — verification & security review
+
+- **Checks:** `pnpm check` passed (485 files checked, 0 errors, 3 pre-existing warnings, 8 typechecks Done).
+- **Exercise (`exercise_r6.mts` against HTTP API on `songphang_phase4_fix_20261119`):**
+  - Real output: `R6_ALL_CHECKS_PASSED {"pendingCreate":{"preview":[],"save":[]},"itemsPendingCreate":{"preview":[],"save":[]},"approvedEditToPending":{"preview":[],"save":[]},"rejectedEditToPending":{"preview":[],"save":[]},"belowThresholdEdit":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"ownerEditAboveThreshold":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"disabledThreshold":{"preview":["BUDGET_OVER"],"save":["BUDGET_OVER"]},"fundPendingLan":{"preview":[],"save":[]},"fundOwnerMinh":{"preview":["FUND_OVERDRAWN"],"save":["FUND_OVERDRAWN"]}}`
+  - Verified exact parity between preview and create/edit warnings across all 9 cases, and confirmed pending/rejected amounts never enter official budget spent totals.
+- **Security review:** Authenticated `context.var.user.id` passed from route to `previewTransaction` after `requireUser` + `requireGroupRole(deps, "editor")`; read-only repeatable-read transaction; no new endpoints or privilege changes.
+
+
 
 
 

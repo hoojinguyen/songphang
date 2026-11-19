@@ -4,7 +4,7 @@ import {
 	TransactionResponse,
 	type UpdateTransactionRequest,
 } from "@songphang/contract";
-import { approvalStatusFor, foldVietnamese } from "@songphang/core";
+import { foldVietnamese, nextEditApprovalStatusFor } from "@songphang/core";
 import {
 	type AttachmentRow,
 	attachToTransaction,
@@ -154,28 +154,15 @@ export async function editTransaction(
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
 		const actorIsOwner = owner?.userId === input.userId;
 		const now = deps.now();
-		let nextApprovalStatus: "none" | "pending" | "approved" = "none";
-		let nextDecidedBy: string | null = null;
-		let nextDecidedAt: Date | null = null;
-		if (before.type === "expense") {
-			if (actorIsOwner) {
-				if (
-					group.approvalThreshold !== null &&
-					normalized.amount >= group.approvalThreshold
-				) {
-					nextApprovalStatus = "approved";
-					nextDecidedBy = input.userId;
-					nextDecidedAt = now;
-				}
-			} else {
-				nextApprovalStatus = approvalStatusFor({
-					type: "expense",
-					amount: normalized.amount,
-					threshold: group.approvalThreshold,
-					actorIsOwner: false,
-				});
-			}
-		}
+		const nextApprovalStatus = nextEditApprovalStatusFor({
+			type: before.type as "expense" | "transfer" | "income",
+			amount: normalized.amount,
+			threshold: group.approvalThreshold,
+			actorIsOwner,
+		});
+		const nextDecidedBy =
+			nextApprovalStatus === "approved" ? input.userId : null;
+		const nextDecidedAt = nextApprovalStatus === "approved" ? now : null;
 		if (
 			altered.length === 0 &&
 			!attachmentsChanged &&

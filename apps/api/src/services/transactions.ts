@@ -18,6 +18,7 @@ import {
 	computeItemsNetTotal,
 	foldVietnamese,
 	localDateRangeToUtc,
+	nextEditApprovalStatusFor,
 	receiptAdjustment,
 } from "@songphang/core";
 import {
@@ -72,6 +73,7 @@ function decodeCursor(cursor: string | undefined): TransactionCursor | null {
 export async function previewTransaction(
 	deps: AppDeps,
 	groupId: string,
+	userId: string,
 	request: PreviewTransactionRequest,
 ) {
 	return deps.db.transaction(
@@ -113,6 +115,26 @@ export async function previewTransaction(
 				request.categoryId !== existingCategoryId
 			)
 				await assertLiveCategory(executor, groupId, request.categoryId);
+			const [group, owner] = await Promise.all([
+				findGroup(executor, groupId),
+				findGroupOwner(executor, groupId),
+			]);
+			const actorIsOwner = owner !== null && owner.userId === userId;
+			const threshold = group?.approvalThreshold ?? null;
+			const prospectiveStatus = replacing
+				? nextEditApprovalStatusFor({
+						type: replacing.type,
+						amount: request.amount,
+						threshold,
+						actorIsOwner,
+					})
+				: approvalStatusFor({
+						type: request.type,
+						amount: request.amount,
+						threshold,
+						actorIsOwner,
+					});
+			const counted = prospectiveStatus !== "pending";
 			const [shares, warnings] = await Promise.all([
 				calculateShares(executor, groupId, request),
 				transactionWarnings(executor, {
@@ -120,6 +142,7 @@ export async function previewTransaction(
 					request,
 					applied: false,
 					now: deps.now(),
+					counted,
 					...(replacing ? { replacing } : {}),
 				}),
 			]);
