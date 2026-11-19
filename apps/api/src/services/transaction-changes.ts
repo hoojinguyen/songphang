@@ -155,7 +155,7 @@ export async function editTransaction(
 		const actorIsOwner = owner?.userId === input.userId;
 		const now = deps.now();
 		const nextApprovalStatus = nextEditApprovalStatusFor({
-			type: before.type as "expense" | "transfer" | "income",
+			type: before.type,
 			amount: normalized.amount,
 			threshold: group.approvalThreshold,
 			actorIsOwner,
