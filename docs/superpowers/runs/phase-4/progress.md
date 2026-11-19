@@ -1,6 +1,26 @@
 # Phase 4 run — progress
 
-## Status
+## Current status (2026-11-19 — Advisor PASS, Pending Owner Acceptance)
+
+This section supersedes earlier open R11 status entries below without modifying historical run logs or prior review verdicts.
+
+- **Branch:** `phase-4`
+- **Accepted / gate-tested code revision:** `8602eda95abdd5e9a4b831a4c93a6abccfe8d373` (the subsequent documentation closeout commit modifies only Markdown run documents under `docs/superpowers/runs/phase-4/`; runtime code is identical to `8602eda95abdd5e9a4b831a4c93a6abccfe8d373`).
+- **Implementation and local phase gates:** Complete on `8602eda95abdd5e9a4b831a4c93a6abccfe8d373`.
+- **Advisor review:** **PASS** — [review-r11-ab-final.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/review-r11-ab-final.md). No new must-fix finding was established.
+- **R11-A:** Closed by advisor review (`61` browser child cases rolled up into `16` parent groups, with saved per-case observations and `22` sanitized PNG screenshots). Note: the advisor's own in-app browser attachment timed out during review, so advisor R11-A acceptance is based on reviewing the implementer's saved browser evidence rather than independently re-executing all 61 UI actions.
+- **R11-B:** Closed by advisor review (`65` leaf/standalone money cases plus `2` parent rollup records = `67` records, not `67` independent leaf cases), independently replayed by the advisor on a separate disposable database.
+- **R11:** Closed. **R9** and **R10** remain **PASS** with independent regression replay in the latest advisor review.
+- **Initial HTTP startup note (recovered on the same SHA):** In the final-SHA implementer replay (`summary.log`), the initial run of `gate_phase4_stages.mts` encountered an environment startup refusal (`ECONNREFUSED 127.0.0.1:4080`, API not yet listening); a subsequent rerun on the same frozen SHA `8602eda95abdd5e9a4b831a4c93a6abccfe8d373` passed all `7/7` suites and `pnpm db:check-balances` (`All groups balanced`). The advisor also independently reran the `7/7` Phase 4 HTTP/web/worker suites to PASS.
+- **Owner manual acceptance:** **PENDING** — see [manual-checks.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/manual-checks.md) (no boxes prechecked on the owner's behalf) and [handoff.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/handoff.md).
+- **Merge:** **PENDING OWNER ACTION** (no push, merge, deployment, or GitHub mutation performed).
+- **Real-provider and owner-device checks:** **DEFERRED** under the existing owner decision (real SMTP/mail-client delivery, Telegram network/webhook registration, Google OAuth, real AI providers deferred until all phases including iOS are done, and owner-device checks). These are not silently passed and are not prerequisites for this documentation handoff.
+- **Reviewed evidence links:**
+  - Implementer final replay manifest (`8602eda95abdd5e9a4b831a4c93a6abccfe8d373`): [/Users/hoojinguyen/.gemini/antigravity/brain/fa161507-b8d0-4447-ba9a-fef03545bbe9/final-replay-8602eda95abdd5e9a4b831a4c93a6abccfe8d373/manifest.json](file:///Users/hoojinguyen/.gemini/antigravity/brain/fa161507-b8d0-4447-ba9a-fef03545bbe9/final-replay-8602eda95abdd5e9a4b831a4c93a6abccfe8d373/manifest.json)
+  - Advisor independent review evidence (`8602eda`): [/Users/hoojinguyen/.codex/review-artifacts/songphang-r11ab-8602eda/](file:///Users/hoojinguyen/.codex/review-artifacts/songphang-r11ab-8602eda/)
+  - Advisor PASS report: [review-r11-ab-final.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/review-r11-ab-final.md)
+
+## Status (historical run start)
 
 Date: 2026-11-18. The owner approved the Phase 4 spec (including section 14, amendment 2026-11-18) and plan, and authorized continuous execution from Task 0 through Task 4D.4 on branch `phase-4`, created by the advisor from local `main` at `b3cf730`. Implementation agent: Antigravity. Advisor and reviewer: Claude. Checks with a real AI provider are deferred by the owner until all phases, including iOS, are done; use `AI_PROVIDER=fake` where the AI path is exercised.
 
