@@ -31,6 +31,7 @@ export function createTelegramSender(botToken: string): ChatSender {
 					signal: AbortSignal.timeout(TELEGRAM_TIMEOUT_MS),
 				},
 			);
+			await response.text().catch(() => {});
 			if (!response.ok) {
 				console.error(
 					JSON.stringify({

@@ -1,3 +1,4 @@
+import { z } from "@hono/zod-openapi";
 import {
 	SplitTransactionRequest,
 	TransactionResponse,
@@ -29,6 +30,9 @@ export async function decideTransactionApproval(
 	},
 ) {
 	const now = deps.now();
+	if (!z.uuid().safeParse(input.id).success) {
+		throw new AppError(404, "NOT_FOUND", "Resource not found");
+	}
 	const trimmedNote = input.note?.trim() ? input.note.trim() : null;
 	const result = await deps.db.transaction(async (executor) => {
 		await lockGroup(executor, input.groupId);
@@ -59,6 +63,8 @@ export async function decideTransactionApproval(
 				approvalDecidedBy: input.userId,
 				approvalDecidedAt: now,
 				approvalNote: trimmedNote,
+				version: row.version + 1,
+				updatedBy: input.userId,
 				updatedAt: now,
 			},
 		});
@@ -109,6 +115,37 @@ export async function decideTransactionApproval(
 				now,
 				enqueue: deps.enqueue,
 			});
+		}
+		if (input.decision === "approved" && transaction.type === "expense") {
+			const creatorName = row.createdBy?.name ?? actorName;
+			const shareByMember = new Map(
+				transaction.shares.map((s) => [s.memberId, s.amount]),
+			);
+			const participantMemberIds = [
+				...new Set([
+					...transaction.payers.map((p) => p.memberId),
+					...transaction.shares.map((s) => s.memberId),
+				]),
+			];
+			for (const memberId of participantMemberIds) {
+				const share = shareByMember.get(memberId) ?? 0;
+				await notify(executor, {
+					groupId: input.groupId,
+					actorUserId: row.createdBy?.id ?? input.userId,
+					kind: "expense_added",
+					payload: {
+						kind: "expense_added",
+						actorName: creatorName,
+						groupName: group.name,
+						transactionId: input.id,
+						description: transaction.description,
+						share,
+					},
+					toMemberIds: [memberId],
+					now,
+					enqueue: deps.enqueue,
+				});
+			}
 		}
 		let warnings: Awaited<ReturnType<typeof transactionWarnings>> = [];
 		if (input.decision === "approved" && transaction.type !== "transfer") {

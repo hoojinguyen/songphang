@@ -69,6 +69,19 @@ export async function upsertChatLink(
 		now: Date;
 	},
 ) {
+	const existing = await executor
+		.select({ id: chatLinks.id, groupId: chatLinks.groupId })
+		.from(chatLinks)
+		.where(
+			and(
+				eq(chatLinks.platform, input.platform),
+				eq(chatLinks.chatId, input.chatId),
+			),
+		)
+		.limit(1);
+	if (existing[0] && existing[0].groupId !== input.groupId) {
+		await executor.delete(chatLinks).where(eq(chatLinks.id, existing[0].id));
+	}
 	const [row] = await executor
 		.insert(chatLinks)
 		.values({
@@ -297,6 +310,20 @@ export async function clearBotDraftSaved(
 	draftId: string,
 ): Promise<void> {
 	await executor.delete(botDrafts).where(eq(botDrafts.id, draftId));
+}
+
+export async function deleteBotUpdate(
+	executor: DbExecutor,
+	input: { platform: ChatPlatform; updateId: string },
+): Promise<void> {
+	await executor
+		.delete(botUpdates)
+		.where(
+			and(
+				eq(botUpdates.platform, input.platform),
+				eq(botUpdates.updateId, input.updateId),
+			),
+		);
 }
 
 export async function pruneBotRecords(

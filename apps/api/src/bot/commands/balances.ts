@@ -42,5 +42,18 @@ export async function handleBalancesCommand(
 			amount: transfer.amount,
 		})),
 	});
-	await sender.send(input.chatId, text);
+	const maxChunkLength = 4000;
+	let current = "";
+	for (const line of text.split("\n")) {
+		const next = current ? `${current}\n${line}` : line;
+		if (next.length > maxChunkLength && current) {
+			await sender.send(input.chatId, current);
+			current = line;
+		} else {
+			current = next;
+		}
+	}
+	if (current) {
+		await sender.send(input.chatId, current);
+	}
 }

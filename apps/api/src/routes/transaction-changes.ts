@@ -146,7 +146,15 @@ export function registerTransactionChangeRoutes(
 				method: "post",
 				path: `/api/v1/groups/{groupId}/transactions/{id}/${decision}`,
 				middleware: ownerWrite,
-				request: { params },
+				request: {
+					params,
+					body: {
+						required: false,
+						content: {
+							"application/json": { schema: ApproveRejectTransactionRequest },
+						},
+					},
+				},
 				responses: { 200: response },
 			}),
 			async (c) => {

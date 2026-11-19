@@ -214,7 +214,10 @@ export async function deleteAttachment(
 		return deleted;
 	});
 	await deps.fileStore.delete(row.storageKey).catch(() => {});
-	if (row.transactionId !== null) {
-		deps.events.publishChanged(input.groupId, ["transactions", "activity"]);
-	}
+	deps.events.publishChanged(
+		input.groupId,
+		row.transactionId !== null
+			? ["transactions", "activity", "receiptScans"]
+			: ["receiptScans"],
+	);
 }

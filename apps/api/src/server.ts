@@ -28,20 +28,27 @@ try {
 	process.exit(1);
 }
 
+let closeDb: (() => Promise<void>) | null = null;
+let stopQueue: (() => Promise<void>) | null = null;
+let stopEvents: (() => Promise<void>) | null = null;
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 try {
 	await runMigrations(config.databaseUrl);
 	const { db, close } = createDb(config.databaseUrl);
+	closeDb = close;
 	const events = createEventHub();
 	const queue = createApiQueue(config.databaseUrl);
 	await queue.start();
+	stopQueue = () => queue.stop();
 	const eventListener = listenForGroupEvents(config.databaseUrl, events);
+	stopEvents = () => eventListener.stop();
 	const cleanIdempotencyKeys = () =>
 		deleteExpiredIdempotencyKeys(
 			db,
 			new Date(Date.now() - 24 * 60 * 60 * 1000),
 		);
 	await cleanIdempotencyKeys();
-	const cleanupTimer = setInterval(
+	cleanupTimer = setInterval(
 		() => {
 			cleanIdempotencyKeys().catch(() => {
 				console.error("Idempotency cleanup failed");
@@ -80,12 +87,20 @@ try {
 		process.exitCode = 1;
 	});
 	const shutdown = () => {
-		clearInterval(cleanupTimer);
+		if (cleanupTimer !== null) clearInterval(cleanupTimer);
 		server.close(closeDatabase);
 	};
 	process.once("SIGINT", shutdown);
 	process.once("SIGTERM", shutdown);
 } catch {
+	if (cleanupTimer !== null) clearInterval(cleanupTimer);
+	await Promise.allSettled([
+		stopEvents ? stopEvents() : Promise.resolve(),
+		stopQueue ? stopQueue() : Promise.resolve(),
+	]);
+	if (closeDb !== null) {
+		await closeDb().catch(() => {});
+	}
 	console.error(
 		"API startup failed: check database availability and migrations",
 	);

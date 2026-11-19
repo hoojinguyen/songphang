@@ -67,7 +67,11 @@ const CONFIG_SCHEMA = z
 		),
 		TELEGRAM_WEBHOOK_SECRET: z.preprocess(
 			EMPTY_TO_UNDEFINED,
-			z.string().max(512).optional(),
+			z
+				.string()
+				.max(256)
+				.regex(/^[A-Za-z0-9_-]+$/)
+				.optional(),
 		),
 		TELEGRAM_BOT_USERNAME: z.preprocess(
 			EMPTY_TO_UNDEFINED,

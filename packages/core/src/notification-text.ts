@@ -55,6 +55,7 @@ export function formatNotificationText(dto: {
 		}
 		case "expense_changed":
 			if (!transactionId) return fallback;
+			if (p.action !== "deleted" && p.action !== "edited") return fallback;
 			return {
 				text:
 					p.action === "deleted"
@@ -116,6 +117,9 @@ export function formatNotificationText(dto: {
 		}
 		case "approval_decided":
 			if (!transactionId) return fallback;
+			if (p.decision !== "approved" && p.decision !== "rejected") {
+				return fallback;
+			}
 			return {
 				text:
 					p.decision === "approved"
@@ -124,6 +128,7 @@ export function formatNotificationText(dto: {
 				href: txHref,
 			};
 		case "budget_state":
+			if (p.state !== "over" && p.state !== "near") return fallback;
 			return {
 				text:
 					p.state === "over"

@@ -28,8 +28,10 @@ function mapNameToRef(
 	members: ReadonlyArray<{ ref: string; name: string }>,
 ): string {
 	const normalized = normalizeKey(name);
-	const found = members.find((m) => normalizeKey(m.name) === normalized);
-	return found ? found.ref : `foreign:${name}`;
+	const matches = members.filter((m) => normalizeKey(m.name) === normalized);
+	return matches.length === 1 && matches[0]
+		? matches[0].ref
+		: `foreign:${name}`;
 }
 
 export function createFakeSentenceAi(): SentenceAi {

@@ -126,7 +126,7 @@ export async function anthropicMessages(
 			} catch {
 				errorType = undefined;
 			}
-			const retryable = response.status === 429 || response.status >= 500;
+			const retryable = response.status >= 500;
 			throw new AnthropicTransportError({
 				status: response.status,
 				retryable,
@@ -134,7 +134,16 @@ export async function anthropicMessages(
 			});
 		}
 
-		const json: unknown = await response.json();
+		let json: unknown;
+		try {
+			json = await response.json();
+		} catch {
+			throw new AnthropicTransportError({
+				status: response.status,
+				retryable: false,
+				errorType: "invalid_shape",
+			});
+		}
 		const usage = readUsage(json, deps.model);
 		const parsed = MESSAGES_RESPONSE_SCHEMA.safeParse(json);
 		if (!parsed.success) {

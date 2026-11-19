@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { recordBotUpdateIfNew } from "@songphang/db";
+import { deleteBotUpdate, recordBotUpdateIfNew } from "@songphang/db";
 import type { AppDeps, AppEnv } from "../app.js";
 import { createChatSender } from "../bot/chat-sender.js";
 import { dispatchWebhookUpdate } from "../bot/dispatch.js";
@@ -53,6 +53,7 @@ export function registerTelegramWebhookRoute(
 			return context.json({}, 200);
 		}
 
+		let recorded = false;
 		try {
 			const isNew = await recordBotUpdateIfNew(deps.db, {
 				platform: "telegram",
@@ -62,6 +63,7 @@ export function registerTelegramWebhookRoute(
 			if (!isNew) {
 				return context.json({}, 200);
 			}
+			recorded = true;
 
 			const chatId = extractChatId(parsed.data);
 			if (chatId !== null) {
@@ -81,12 +83,19 @@ export function registerTelegramWebhookRoute(
 
 			await dispatchWebhookUpdate(deps, sender, parsed.data);
 		} catch {
+			if (recorded) {
+				await deleteBotUpdate(deps.db, {
+					platform: "telegram",
+					updateId: String(parsed.data.update_id),
+				}).catch(() => {});
+			}
 			console.error(
 				JSON.stringify({
 					event: "telegram.webhook.error",
 					requestId: context.var.requestId,
 				}),
 			);
+			return context.json({}, 500);
 		}
 		return context.json({}, 200);
 	});

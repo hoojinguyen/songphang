@@ -27,6 +27,9 @@ export function checkReceipt(reading: ReceiptCheckInput): ReceiptCheckResult {
 	for (const item of reading.items) {
 		assertSafeNonnegativeInt(item.amount);
 		itemsSum += item.amount;
+		if (!Number.isSafeInteger(itemsSum)) {
+			throw new RangeError("Receipt computed total exceeds safe integer");
+		}
 	}
 	let extrasNet = 0;
 	for (const extra of reading.extras) {
@@ -35,6 +38,9 @@ export function checkReceipt(reading: ReceiptCheckInput): ReceiptCheckResult {
 			extrasNet -= extra.amount;
 		} else {
 			extrasNet += extra.amount;
+		}
+		if (!Number.isSafeInteger(extrasNet)) {
+			throw new RangeError("Receipt computed total exceeds safe integer");
 		}
 	}
 	const computed = itemsSum + extrasNet;

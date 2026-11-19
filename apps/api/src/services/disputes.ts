@@ -145,7 +145,7 @@ export async function resolveDispute(
 			input.groupId,
 			input.transactionId,
 		);
-		if (transaction === null)
+		if (transaction === null || transaction.deletedAt !== null)
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
 		const open = await findOpenDisputeForTransaction(
 			executor,

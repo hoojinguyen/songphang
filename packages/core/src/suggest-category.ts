@@ -15,7 +15,11 @@ export function suggestCategory(
 	const padded = ` ${words.join(" ")} `;
 
 	for (const item of custom) {
-		const normalizedKey = foldVietnamese(item.nameKey.trim())
+		const foldedKey = foldVietnamese(item.nameKey.trim()).replace(/\s+/g, " ");
+		if (foldedKey.length > 0 && cleaned === foldedKey) {
+			return { categoryId: item.id };
+		}
+		const normalizedKey = foldedKey
 			.split(/[^a-z0-9]+/)
 			.filter((word) => word.length > 0)
 			.join(" ");
