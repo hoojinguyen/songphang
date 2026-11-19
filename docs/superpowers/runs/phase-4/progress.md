@@ -388,15 +388,15 @@ None.
 - [x] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
 - [x] **R7 [P2]** — Persist stable `occurredAt` in bot draft and make transaction creation, idempotency state, and `markBotDraftSaved` atomic with save/drop serialization
 - [x] **R8 [P3]** — Store decision-time amount in approval/rejection activity snapshots
-- [ ] **README & Runbook** — Fix unsupported 5s delay / 7-day bot retention claims and update operational docs for R1/R2/R3/R4/R5
-- [ ] **Gate 1: Static & Build** — `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `git diff --check main..phase-4`
-- [ ] **Gate 2: 87 Quick-Entry Samples** — Full 87 rows of `docs/08-quick-entry-samples.md` over HTTP `/transactions/parse`
-- [ ] **Gate 3: Earlier-Phase Acceptance Replay** — Representative per-stage replay across Stages 1A–1E, 2A–2D, 3A–3D (with `AI_PROVIDER=fake` and unset)
-- [ ] **Gate 4: Full Permission Matrix** — Every endpoint across Phases 1–4 for Owner, Editor, Viewer, Outsider, Cross-group ID, Unauthenticated, Unverified, and Token-public routes
-- [ ] **Gate 5: Phase 4 Stage Gates & 4D Money Variants** — Stages 4A, 4B, 4C (R1/R7), 4D.1 all money variants + `rg` inventory, 4D.2 13-row table + `pnpm db:check-balances`
-- [ ] **Gate 6: Capability-Off & Production Config Guards** — All 6 feature flags `false` + 404 on disabled endpoints; production startup refusals
-- [ ] **Gate 7: Browser, Keyboard/A11y, Contrast, & 1,000-Notification Perf** — Two-context Chrome checks, keyboard-only S20/S19/S11/pairing, contrast/overflow/44px targets, and `< 300ms` + `EXPLAIN (ANALYZE, BUFFERS)`
-- [ ] **Gate 8: Security Review & Final Clean Checks** — `security-review` on final diff, fresh `pnpm check`, `pnpm build`, `pnpm db:check-balances`
+- [x] **README & Runbook** — Fix unsupported 5s delay / 7-day bot retention claims and update operational docs for R1/R2/R3/R4/R5
+- [x] **Gate 1: Static & Build** — `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `git diff --check main..phase-4`
+- [x] **Gate 2: 87 Quick-Entry Samples** — Full 87 rows of `docs/08-quick-entry-samples.md` over HTTP `/transactions/parse`
+- [x] **Gate 3: Earlier-Phase Acceptance Replay** — Representative per-stage replay across Stages 1A–1E, 2A–2D, 3A–3D (with `AI_PROVIDER=fake` and unset)
+- [x] **Gate 4: Full Permission Matrix** — Every endpoint across Phases 1–4 for Owner, Editor, Viewer, Outsider, Cross-group ID, Unauthenticated, Unverified, and Token-public routes
+- [x] **Gate 5: Phase 4 Stage Gates & 4D Money Variants** — Stages 4A, 4B, 4C (R1/R7), 4D.1 all money variants + `rg` inventory, 4D.2 13-row table + `pnpm db:check-balances`
+- [x] **Gate 6: Capability-Off & Production Config Guards** — All 6 feature flags `false` + 404 on disabled endpoints; production startup refusals
+- [x] **Gate 7: Browser, Keyboard/A11y, Contrast, & 1,000-Notification Perf** — Two-context Chrome checks, keyboard-only S20/S19/S11/pairing, contrast/overflow/44px targets, and `< 300ms` + `EXPLAIN (ANALYZE, BUFFERS)`
+- [x] **Gate 8: Security Review & Final Clean Checks** — `security-review` on final diff, fresh `pnpm check`, `pnpm build`, `pnpm db:check-balances`
 
 ### R1 [P1] — approach
 
@@ -505,6 +505,29 @@ None.
     - Reject (no note): `after: {"amount":900000}` -> `Minh không duyệt Thuê xe · 900.000 đ`.
   - No historical rows were fabricated or backfilled.
 - **Security review:** Integer amount copied from the locked transaction row inside `decideTransactionApproval`; no new user input or surface change.
+
+### Full Gate Reconstruction & Replay — Pre-Execution Coverage Matrix
+
+Disposable database: `songphang_phase4_fix_20261119` (verified via `SELECT current_database()` before every reset; never touching `songphang`, `songphang_phase4_gate`, or `songphang_phase4_review_20261119`; never running `docker compose down -v`). Isolated uploads: `/tmp/songphang-gate-uploads`. Free ports: API `4020`, Web `3020`.
+
+| Gate | Source Document / Stage | Cases & Fixtures | Expected Result | Invocation | Status |
+|---|---|---|---|---|---|
+| **Gate 1** | Static / build / diff | `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `git diff --check main..phase-4` | 0 lint/type errors, clean production build, 0 whitespace/conflict markers | Shell commands | **PASS** (485 files, 0 errors, 8 typechecks Done, Next.js build Done, `git diff --check` clean) |
+| **Gate 2** | `docs/08-quick-entry-samples.md` (87 rows) | All 87 quick-entry samples (Vietnamese expenses, splits, payers, dates, categories, refusals) via HTTP `POST /api/v1/groups/{id}/transactions/parse` | Exact match on status (200 vs 422), description, amount, payers, shares, and refusal issue codes for all 87 rows | `task0_samples.mts` + `gate2_http_87.mts` | **PASS** (`ALL_87_QUICK_ENTRY_SAMPLES_PASSED` & `GATE2_HTTP_ALL_87_QUICK_ENTRY_SAMPLES_PASSED`) |
+| **Gate 3** | Earlier merged phases (`1A`–`1E`, `2A`–`2D`, `3A`–`3D`) | Representative per-stage replay: accounts/sessions/invites/revocation (`1A`–`1E`), settlement/fund/stats/budget/export (`2A`–`2D`), uploads/receipt/items/explicit AI opt-in with fake adapter (`3A`–`3D`) | All stage behaviors pass and `pnpm db:check-balances` ends with `All groups balanced` | `gate3_earlier_phases.mts` + `pnpm db:check-balances` | **PASS** (`GATE3_EARLIER_PHASES_PASSED` & `All groups balanced`) |
+| **Gate 4** | Full Permission Matrix (Phase 1–4) | Owner, Editor, Viewer, Outsider, Cross-group UUID, Unauth (401), Unverified (403), public token routes across all Phase 1–4 endpoints with valid fixtures | Exact expected HTTP status per endpoint & caller (outsiders & cross-group receive 404; viewers blocked from writes; owner-only routes reject editors; author/opener checks enforced) | `gate4_permission_matrix.mts` | **PASS** (`GATE4_PERMISSION_MATRIX_PASSED {"totalChecks":44,"allMatched":true}`) |
+| **Gate 5** | Phase 4 Stages `4A`, `4B`, `4C` (with R1/R7), `4D.1`, `4D.2` | Comments/disputes (`4A`), notifications/mute/mail/unsubscribe/reminders (`4B`), Telegram group link + R1 two-sided pairing + `/chi`/`/sodu`/`/huy` + R7 (`4C`), all 4D.1 money variants (balances min on/off, pairwise, stats, budget, fund, CSV, reminders, `/sodu`, items, fake receipt) + `transaction_shares`/`transaction_payers` inventory, full 4D.2 table + `pnpm db:check-balances` checkpoints | All assertions pass; `pnpm db:check-balances` reports `All groups balanced` at every checkpoint | `gate5_phase4_stages.mts` + `rg` inventory + `pnpm db:check-balances` | **PASS** (`GATE5_4D1_4D2_ALL_CHECKS_PASSED`, all SQL money refs audited, `All groups balanced`) |
+| **Gate 6** | Capability-off & Production refusals | Unset `AI_PROVIDER` & `TELEGRAM_PROVIDER` -> `GET /api/v1/features` (all 6 flags false) + disabled endpoints return 404; `APP_ENV=production` refuses `AI_PROVIDER=fake`, `AI_FAKE_RECEIPT_FIXTURE`, `TELEGRAM_PROVIDER=console`, `DEV_LOGIN=true` | All 6 flags false, disabled endpoints 404, all unsafe prod configs refused | `gate6_capabilities_prod.mts` | **PASS** (`GATE6_CAPABILITIES_PROD_PASSED`: 6 false flags, `[404,404,404]`, 5 prod refusals verified) |
+| **Gate 7** | 1,000-notification perf & Browser checks | 1,000 notifications: page 1 & cursor page 2 `< 300ms`, `EXPLAIN (ANALYZE, BUFFERS)`, membership loss hides private content; Chrome DevTools MCP checks (S20, S19 + live debtor bell update on reminder, S5, S11, S13, R1 `/link/telegram` + legacy `?code=`, R2 signed-out `/notifications/unsubscribe`, offline, 44px targets, 375px mobile overflow, WCAG AA contrast) | Perf `< 300ms` + index plan + privacy verified; browser checks verified with real observations | `gate7_perf_1000.mts` + Chrome DevTools MCP (`http://localhost:3020` / `4020`) | **PASS** (`page1Ms: 5.18`, `page2Ms: 3.61`, `leakedAfterRemoval: 0`, live bell `46 -> 47`, R1 browser pairing completed, S20 contrast `15.47`/`17.08`, 48px/64px targets, `overflow: false`, offline revert verified) |
+| **Gate 8** | Final `security-review`, manifest check & final clean checks | Full `security-review` checklist on `git diff main..phase-4` and `git diff 7f99fc6..HEAD`, `git diff main..phase-4 -- pnpm-lock.yaml`, fresh `pnpm check`, `API_ORIGIN=http://localhost:4020 pnpm build`, `pnpm db:check-balances` | 0 security violations, lockfile unchanged, all final checks green | Shell commands | **PASS** (`CLEAN_SECURITY_SCAN`, lockfile unchanged, no trigger residue, `All groups balanced`) |
+
+### Not verified (explicitly deferred by project owner)
+
+- Real SMTP provider delivery and real mail-client `List-Unsubscribe-Post` callbacks (verified locally via console mailer + simulated HTTP `POST` to `/notifications/unsubscribe`).
+- Real Telegram Bot API (`api.telegram.org`) and HTTPS webhook registration (verified locally via `TELEGRAM_PROVIDER=console` and authenticated webhook POSTs).
+- Real AI providers (`AI_PROVIDER=gemini` / `openai`) and real receipt OCR (deferred by owner until all phases including iOS are done).
+- Real Google OAuth login and owner-device manual checks.
+
 
 
 

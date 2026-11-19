@@ -66,7 +66,11 @@ Confirm `"url"` matches your HTTPS endpoint and `"allowed_updates"` lists `["mes
 
 1. Add `@songphang_bot` to your Telegram group chat.
 2. As the group **owner** on Sòng Phẳng, open **Cài đặt nhóm → Liên kết nhóm Telegram**, tap **Tạo mã liên kết**, copy the `/lienket XXXXXXXX` command, and send it inside the Telegram group within 10 minutes.
-3. Any group member running `/chi`, `/sodu`, or `/huy` for the first time receives a private account-linking button (`Liên kết tài khoản`) opening `WEB_ORIGIN/link/telegram?code=...`; tap **Liên kết** while signed into Sòng Phẳng to bind their Telegram account.
+3. Any group member running `/chi`, `/sodu`, or `/huy` for the first time receives a generic link (`WEB_ORIGIN/link/telegram`, containing no secret or account-specific code). To pair their Telegram account safely (two-sided confirmation):
+   - Sign in on `WEB_ORIGIN/link/telegram` with a verified Sòng Phẳng account and tap **Bắt đầu liên kết Telegram** (starts a 10-minute pairing attempt bound to the current web session).
+   - Tap **Mở Telegram để xác nhận** (or send `/start <mã>` in a **private chat** with `@songphang_bot`; never send the pairing code in a group chat — group `/start` messages reject and cancel the attempt without echoing it).
+   - In the private Telegram chat, the bot replies with the Sòng Phẳng display name and masked email plus **Xác nhận liên kết** / **Hủy**. Only that exact Telegram user can tap **Xác nhận liên kết**.
+   - Return to the initiating browser tab on `WEB_ORIGIN/link/telegram`, verify the shown Telegram identity, and tap **Hoàn tất liên kết** to activate the mapping.
 4. Remove access anytime from Sòng Phẳng:
    - Owner unlinks a chat in **Cài đặt nhóm → Liên kết nhóm Telegram → Bỏ liên kết**.
    - Any member unlinks their personal Telegram identity in **Tài khoản → Telegram → Bỏ liên kết**.
@@ -79,6 +83,7 @@ Confirm `"url"` matches your HTTPS endpoint and `"allowed_updates"` lists `["mes
 | `/sodu` | Any group member | Replies with fund remaining (if active), member balances, and suggested transfers |
 | `/huy` | Editor / Owner | Soft-deletes the sender's most recent bot-saved expense in this chat within 10 minutes |
 | `/lienket <mã>` | Telegram group | Consumes 10-minute owner code to link chat to the Sòng Phẳng group |
+| `/start <mã ghép nối>` | Private chat with bot | Stages a web-initiated 10-minute pairing attempt and replies with Confirm/Cancel buttons (rejected and cancelled if sent in a group chat) |
 | `/trogiup`, `/start` | Linked group chat | Prints command summary |
 
 ## 6. Rotate secrets
