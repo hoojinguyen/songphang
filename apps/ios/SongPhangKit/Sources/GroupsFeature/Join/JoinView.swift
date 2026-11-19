@@ -29,7 +29,7 @@ public struct JoinView: View {
           LoadingSkeleton(rowCount: 3, rowHeight: 110)
 
         case .failed(let error):
-          if case .api("INVITE_INVALID", _) = error {
+          if Self.isInvalidInviteError(error) {
             VStack(spacing: 20) {
               Text(L10n.tr("join.invalidTitle"))
                 .font(Typography.pageTitle)
@@ -65,6 +65,11 @@ public struct JoinView: View {
     .task {
       await model.load()
     }
+  }
+
+  private static func isInvalidInviteError(_ error: AppError) -> Bool {
+    guard case .api(let code, let status) = error else { return false }
+    return code == "INVITE_INVALID" || code == "VALIDATION_FAILED" || status == 404
   }
 
   @ViewBuilder

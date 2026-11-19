@@ -115,7 +115,8 @@ public struct MembersView: View {
 
   @ViewBuilder
   private func loadedContent(_ data: MembersModel.ScreenData) -> some View {
-    let canWrite = isEmailVerified && data.group.role.canWrite
+    let isOffline = model.refreshError == .offline
+    let canWrite = isEmailVerified && data.group.role.canWrite && !isOffline
 
     SPScreenHeader(
       title: data.group.name,

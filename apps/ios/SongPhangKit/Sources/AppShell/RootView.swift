@@ -31,10 +31,15 @@ public struct RootView: View {
   @State private var groupListModel: GroupListModel
   @State private var signInModel: SignInModel
   @State private var path: [Route] = []
+  @State private var pendingRoute: Route?
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
   @State private var isShowingDebugPanel = false
   @State private var hasCompletedInitialAppear = false
+
+  private var linkRouter: LinkRouter {
+    LinkRouter(webBaseURL: dependencies.webBaseURL)
+  }
 
   public init(dependencies: AppDependencies? = nil, configuration: APIConfiguration? = nil) {
     #if DEBUG
@@ -147,7 +152,7 @@ public struct RootView: View {
   private static func bundleConfiguration() -> APIConfiguration {
     let info = Bundle.main.infoDictionary
     let apiString = (info?["API_BASE_URL"] as? String) ?? "http://127.0.0.1:4000/api/v1"
-    let webString = (info?["WEB_BASE_URL"] as? String) ?? "http://127.0.0.1:3000"
+    let webString = (info?["WEB_BASE_URL"] as? String) ?? "http://localhost:3000"
     var version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
     #if DEBUG
       let args = ProcessInfo.processInfo.arguments
@@ -266,18 +271,26 @@ public struct RootView: View {
           liveConfiguration: dependencies.liveConfiguration,
           sessionModel: sessionModel,
           onOpenJoinToken: { token in
-            path.append(.joinGroup(token: token))
+            routeValidated(.joinGroup(token: token))
+          },
+          onOpenLinkURL: { url in
+            handleIncomingURL(url)
           },
           onOpenGallery: {
             path.append(.debugGallery)
           },
           onDismiss: {
             isShowingDebugPanel = false
-            Task { await groupListModel.load() }
+            if case .signedIn = sessionModel.state {
+              Task { await groupListModel.load() }
+            }
           }
         )
       }
     #endif
+    .onOpenURL { url in
+      _ = handleIncomingURL(url)
+    }
     .task {
       for await _ in dependencies.makeSessionInvalidations() {
         resetToSignedOut()
@@ -310,6 +323,7 @@ public struct RootView: View {
           statusNotice = nil
         }
         groupListModel = GroupListModel(repository: dependencies.groups)
+        consumePendingRouteIfSignedIn()
       }
     }
     .task {
@@ -397,8 +411,34 @@ public struct RootView: View {
     }
   }
 
+  private func handleIncomingURL(_ url: URL) -> Bool {
+    guard let route = linkRouter.route(for: url) else {
+      return false
+    }
+    routeValidated(route)
+    return true
+  }
+
+  private func routeValidated(_ route: Route) {
+    if case .signedIn = sessionModel.state {
+      pendingRoute = nil
+      path.append(route)
+    } else {
+      pendingRoute = route
+    }
+  }
+
+  private func consumePendingRouteIfSignedIn() {
+    guard case .signedIn = sessionModel.state, let route = pendingRoute else {
+      return
+    }
+    pendingRoute = nil
+    path.append(route)
+  }
+
   private func resetToSignedOut() {
     path.removeAll()
+    pendingRoute = nil
     statusNotice = nil
     groupListModel = GroupListModel(repository: dependencies.groups)
     signInModel = SignInModel(

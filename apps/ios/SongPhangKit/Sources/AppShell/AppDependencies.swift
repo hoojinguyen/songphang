@@ -17,6 +17,7 @@ public struct AppDependencies: Sendable {
   public let quickEntry: any QuickEntryRepository
   public let groupEvents: any GroupEventsRepository
   public let liveConfiguration: APIConfiguration?
+  public let webBaseURL: URL
   public let appVersion: String
   public let appStoreURL: URL?
   public let makeSessionInvalidations: @Sendable () -> AsyncStream<Void>
@@ -28,15 +29,16 @@ public struct AppDependencies: Sendable {
       let environment = LiveAPIEnvironment(configuration: configuration)
       return AppDependencies(
         auth: LiveAuthRepository(environment: environment),
-        groups: GatedGroupsRepository(),
-        members: GatedMembersRepository(),
-        invites: GatedInvitesRepository(),
+        groups: LiveGroupsRepository(environment: environment),
+        members: LiveMembersRepository(environment: environment),
+        invites: LiveInvitesRepository(environment: environment),
         transactions: GatedTransactionsRepository(),
         balances: GatedBalancesRepository(),
         activity: GatedActivityRepository(),
         quickEntry: GatedQuickEntryRepository(),
         groupEvents: GatedGroupEventsRepository(),
         liveConfiguration: configuration,
+        webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
         appStoreURL: configuration.appStoreURL,
         makeSessionInvalidations: { environment.sessionInvalidations() },
@@ -46,6 +48,7 @@ public struct AppDependencies: Sendable {
 
     public static func scripted(
       world: FakeWorld,
+      webBaseURL: URL = URL(string: "http://localhost:3000") ?? URL(filePath: "/"),
       appVersion: String = "1.0.0"
     ) -> AppDependencies {
       AppDependencies(
@@ -59,6 +62,7 @@ public struct AppDependencies: Sendable {
         quickEntry: FakeQuickEntryRepository(world: world),
         groupEvents: FakeGroupEventsRepository(world: world),
         liveConfiguration: nil,
+        webBaseURL: webBaseURL,
         appVersion: appVersion,
         appStoreURL: nil,
         makeSessionInvalidations: { AsyncStream { _ in } },

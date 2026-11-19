@@ -10,6 +10,7 @@
     private let liveConfiguration: APIConfiguration?
     private let sessionModel: SessionModel
     private let onOpenJoinToken: (String) -> Void
+    private let onOpenLinkURL: (URL) -> Bool
     private let onOpenGallery: () -> Void
     private let onDismiss: () -> Void
 
@@ -20,6 +21,8 @@
     @State private var selectedRole: RoleChoice = .owner
     @State private var unverifiedEmail: Bool = false
     @State private var joinTokenText: String = TripScenario.invite.token
+    @State private var linkURLText: String = "http://localhost:3000/join/"
+    @State private var linkStatusMessage: String?
 
     enum FailureKind: String, CaseIterable, Identifiable {
       case none = "None"
@@ -68,6 +71,7 @@
       liveConfiguration: APIConfiguration?,
       sessionModel: SessionModel,
       onOpenJoinToken: @escaping (String) -> Void,
+      onOpenLinkURL: @escaping (URL) -> Bool,
       onOpenGallery: @escaping () -> Void,
       onDismiss: @escaping () -> Void
     ) {
@@ -75,6 +79,7 @@
       self.liveConfiguration = liveConfiguration
       self.sessionModel = sessionModel
       self.onOpenJoinToken = onOpenJoinToken
+      self.onOpenLinkURL = onOpenLinkURL
       self.onOpenGallery = onOpenGallery
       self.onDismiss = onDismiss
     }
@@ -196,13 +201,33 @@
           }
 
           Section("Invite Link & Gallery") {
-            TextField("Invite Token", text: $joinTokenText)
+            TextField("Invite URL (LinkRouter)", text: $linkURLText)
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
-            Button("Open Join Screen (S12)") {
-              let token = joinTokenText
-              onDismiss()
-              onOpenJoinToken(token)
+              .keyboardType(.URL)
+            Button("Open URL via LinkRouter") {
+              let trimmed = linkURLText.trimmingCharacters(in: .whitespacesAndNewlines)
+              if let url = URL(string: trimmed), onOpenLinkURL(url) {
+                linkStatusMessage = nil
+                onDismiss()
+              } else {
+                linkStatusMessage = "Rejected by LinkRouter (invalid host, scheme, port or path)"
+              }
+            }
+            if let linkStatusMessage {
+              Text(linkStatusMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            if world != nil {
+              TextField("Scripted Invite Token", text: $joinTokenText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              Button("Open Scripted Join Screen (S12)") {
+                let token = joinTokenText
+                onDismiss()
+                onOpenJoinToken(token)
+              }
             }
             Button("Open Design System Gallery") {
               onDismiss()

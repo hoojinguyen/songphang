@@ -62,13 +62,29 @@ public final class MembersModel {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedMembers = membersRepository.members(groupId: groupId)
       async let fetchedUsers = membersRepository.groupUsers(groupId: groupId)
-      async let fetchedBalances = balancesRepository.balances(groupId: groupId)
+      async let fetchedBalances: Result<GroupBalances, AppError> = {
+        do throws(AppError) {
+          return .success(try await balancesRepository.balances(groupId: groupId))
+        } catch {
+          return .failure(error)
+        }
+      }()
       async let fetchedInvite = invitesRepository.invite(groupId: groupId)
 
       let g = try await fetchedGroup
       let m = try await fetchedMembers
       let u = try await fetchedUsers
-      let b = try await fetchedBalances
+      let b: GroupBalances
+      switch await fetchedBalances {
+      case .success(let fetched):
+        b = fetched
+      case .failure(let error):
+        if case .api("STAGE_5B4_PENDING", 501) = error {
+          b = GroupBalances(balances: [], transfers: [])
+        } else {
+          throw error
+        }
+      }
       let inv = try? await fetchedInvite
       state = .loaded(ScreenData(group: g, members: m, users: u, balances: b, invite: inv))
       refreshError = nil

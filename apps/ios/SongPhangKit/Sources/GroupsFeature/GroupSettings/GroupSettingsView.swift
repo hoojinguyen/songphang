@@ -127,6 +127,7 @@ public struct GroupSettingsView: View {
           .foregroundStyle(Tokens.ink)
       }
     } else {
+      let isOffline = model.refreshError == .offline
       let trimmed = model.nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
 
       VStack(alignment: .leading, spacing: 8) {
@@ -153,7 +154,8 @@ public struct GroupSettingsView: View {
         L10n.tr("settings.saveName"),
         variant: .primary,
         isFullWidth: true,
-        isDisabled: model.isPerformingAction || trimmed.isEmpty || trimmed == data.group.name
+        isDisabled: isOffline || model.isPerformingAction || trimmed.isEmpty
+          || trimmed == data.group.name
       ) {
         Task { await model.saveName() }
       }
@@ -171,7 +173,7 @@ public struct GroupSettingsView: View {
         SPSwitch(
           checked: data.group.minimizeDebts,
           label: L10n.tr("settings.minimizeTitle"),
-          isDisabled: model.isPerformingAction
+          isDisabled: isOffline || model.isPerformingAction
         ) { newValue in
           Task { await model.setMinimizeDebts(newValue) }
         }
@@ -195,7 +197,7 @@ public struct GroupSettingsView: View {
             SPSegmentedControl.Option(value: "viewer", label: L10n.tr("members.roleViewer")),
           ],
           value: data.group.defaultRole.code,
-          isDisabled: model.isPerformingAction
+          isDisabled: isOffline || model.isPerformingAction
         ) { selected in
           let role: Role = selected == "viewer" ? .viewer : .editor
           Task { await model.setDefaultRole(role) }

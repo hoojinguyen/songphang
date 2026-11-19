@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5B in progress (5B.2 complete; continuing to 5B.3). Owner checkpoint, final acceptance and merge are pending.
+- Status: Stage 5B in progress (5B.3 complete; continuing to 5B.4). Owner checkpoint, final acceptance and merge are pending.
 
 ## Tasks
 
@@ -15,7 +15,7 @@
 - [x] 5A.3 — API gate
 - [x] 5B.1 — Generated client and live composition
 - [x] 5B.2 — Account lifecycle and snapshots
-- [ ] 5B.3 — Groups, members and local invite routing
+- [x] 5B.3 — Groups, members and local invite routing
 - [ ] 5B.4 — Ledger and realtime
 - [ ] 5B.5 — Early iOS/web Simulator acceptance and owner handoff
 - [ ] 5C.1 — Native Google exchange
@@ -194,6 +194,27 @@
   - `CAROL_SWITCH_AND_DELETE_PASS`: signed in `carol.5b2@local.songphang.test`, confirmed Bob's snapshot folder absent, deleted Carol's account (`DELETE /me`), confirmed Keychain and `SongPhangSnapshots/` wiped.
   - `UNKNOWN_ENUM_FIXTURE_PASS`: disposable response fixture with `"client": "desktop"` and extra top-level & nested fields decoded cleanly via `LiveAuthRepository.sessions()` with `client == .unknown("desktop")` and all readable fields preserved.
 - Security review: checked relevant items 1, 2, 4, 6, 8; tokens stay inside internal `TokenStore` Keychain item (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`), snapshots protected until first unlock and excluded from backup, full snapshot directory wiped before signed-out UI on 401/sign-out/delete/current-session-revoke, specific 409 error codes (`OWNER_REQUIRED`, etc.) preserved while `VERSION_CONFLICT` maps to `.conflict`, no secrets logged.
+
+### Task 5B.3 — Groups, members, settings and invites (S2, S3, S10–S12)
+
+**Approach**
+- Files created/modified: `Repositories/Groups/{GroupMapping,LiveGroupsRepository}.swift`, `Repositories/Members/{MemberMapping,LiveMembersRepository}.swift`, `Repositories/Invites/{InviteMapping,LiveInvitesRepository}.swift`, `Repositories/Transport/UnconnectedRepositories.swift`, `AppShell/Routing/LinkRouter.swift`, `AppShell/{AppDependencies,RootView,Debug/DebugPanel}.swift`, `GroupsFeature/Members/{MembersModel,MembersView}.swift`, `GroupsFeature/GroupSettings/GroupSettingsView.swift`, `GroupsFeature/Join/JoinView.swift`, `apps/ios/Config/Debug.xcconfig`.
+- Approach: Connect `LiveGroupsRepository`, `LiveMembersRepository`, and `LiveInvitesRepository` to `/groups`, `/members`, `/users`, `/me/member`, `/leave`, `/transfer-ownership`, `/invite`, and `/invites/{token}`. Persist only allowed snapshot resources (group list, group detail, members, group users; invite tokens explicitly excluded via `lastKnownInvite == nil`), guarded by `(userId, sessionGeneration)` and per-group `groupGeneration`, with resilient unknown-enum fallbacks. Implement `LinkRouter.route(for: URL) -> Route?` validating scheme (HTTPS forced in Release), host, port, and `/join/{token}` shape; wire it to `.onOpenURL` and a Debug URL input in `DebugPanel`, holding validated pending join routes in memory through sign-in and clearing them on consumption or sign-out. Disable write controls when offline in `MembersView` and `GroupSettingsView`.
+- Why this is the simplest approach: Reuses existing 5U screens (`SPQRCodeView`, `ShareLink`, role controls, claim flow) with zero feature-to-feature imports and one centralized URL validator.
+- Rejected alternative: Persisting invite links to disk or validating URLs loosely by path suffix only.
+- Questions: None.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: no output (exit 0).
+  - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -configuration Debug -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build`: `** BUILD SUCCEEDED **`.
+- Live iOS ↔ web Simulator exercise (isolated API `:4000`, disposable DB `songphang_phase5_5b3`, 2 verified password accounts Minh & Lan):
+  - `LINK_ROUTER_PASS`: local Debug router accepted `http://localhost:3000/join/tok_ABC-123` and rejected foreign host, wrong port, empty token, extra path segment, unknown path, and malformed characters; Release HTTPS mode accepted `https://app.songphang.vn/join/tok_99` and rejected `http://`.
+  - `MINH_CREATE_AND_SNAPSHOT_PASS`: Minh created `Da Lat iOS` (`["Lan", "Hung"]` + creator = 3 members) and fetched invite on iOS (`lastKnownInvite == nil`, zero invite files on disk); verified `groups.json` and `members.json` have `isExcludedFromBackup == true` and `FileProtectionType.completeUntilFirstUserAuthentication`; simulated offline interruption (snapshot retained while `groups()` threw `.offline`); corrupted `groups.json` (auto-deleted on `lastKnownGroups() -> nil`, recovered from live API and re-persisted cleanly).
+  - `WEB_LAN_JOINED_GROUP_A_PASS` & `MINH_JOIN_ROLES_ROTATE_TRANSFER_PASS`: Lan joined Group A on web claiming `Lan` and created `Phu Quoc Web` on web; signed-out Minh validated web invite URL via `LinkRouter`, signed in, previewed and joined Group B on iOS; exercised role change to `.viewer`, invite disable (`INVITE_INVALID`), re-enable, rotate (old token `INVITE_INVALID`), malformed token refusal, `leaveGroup` clearing Group B snapshot, and `transferOwnership` to Lan.
+  - `LAN_SWITCH_AND_SETTINGS_PASS` & `VIEWER_WRITE_REFUSED_PASS`: revoked Minh's iOS session from Minh's web session, observed 401 wiping Minh's snapshot directory, signed in as Lan confirming Minh's directory was absent, updated group settings, demoted Minh to viewer, and confirmed Minh's `role.canWrite == false` and API `403` refusal on member creation.
+- Security review: checked relevant items 1, 2, 3, 4, 7; `LinkRouter` enforces exact configured origin + HTTPS in Release + strict token alphabet, invite tokens are never written to disk snapshots, group snapshots are cleared on 404/delete/leave/session-invalidation, and viewer writes are gated both in UI and server-side.
 
 ## Gate Not Passed
 
