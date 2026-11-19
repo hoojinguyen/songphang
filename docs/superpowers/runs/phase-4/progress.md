@@ -528,13 +528,27 @@ Disposable database: `songphang_phase4_fix_20261119` (verified via `SELECT curre
 - Real AI providers (`AI_PROVIDER=gemini` / `openai`) and real receipt OCR (deferred by owner until all phases including iOS are done).
 - Real Google OAuth login and owner-device manual checks.
 
+---
 
+## Advisor Review Round 2 Correction Run (2026-11-19)
 
+- **Baseline:** Branch `phase-4`, local HEAD `7078c00` (remote PR #1 remained at `7f99fc6`; no push performed). Untracked advisor review `docs/superpowers/runs/phase-4/review-round-2.md` preserved unchanged and included in the documentation commit; advisor prompts preserved untracked.
+- **Disposable DB & Isolated Ports:** `songphang_phase4_r2_20261119` (`postgres://songphang:songphang@localhost:54329/songphang_phase4_r2_20261119`), API port `4040`, Web port `3040`, isolated `STORAGE_DIR=/tmp/songphang-r2-uploads`.
 
+### Round 2 correction checklist
 
+- [x] **R9 [P1]** — Revalidate digest authorization per recipient at delivery (`8882307`)
+- [x] **R10 [P2]** — Restore comments and open-dispute resolution on soft-deleted transactions (`70cc66e`)
+- [x] **Cast observation** — Remove redundant forced cast in `apps/api/src/services/transaction-changes.ts` (`63840a4`)
+- [x] **Whitespace observation** — Fix trailing blank lines in `progress.md` (`git diff --check` clean)
+- [x] **R11 [P2]** — Complete 99-route / 309-case permission matrix, 87 quick-entry samples, earlier-phase representative replay, Phase 4 stage/regression suite, capability-off/prod refusals, 1,000-notification perf/privacy gate, and Chrome DevTools MCP browser gates ([gate-inventory-round-2.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/gate-inventory-round-2.md), [review-round-2-fixes.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/review-round-2-fixes.md))
 
+### Round 2 verification summary (pre-freeze pass)
 
-
-
-
-
+- `pnpm check`: passed (485 files, 0 errors, 3 pre-existing `noImgElement` warnings, 8/8 workspace typechecks Done).
+- `API_ORIGIN=http://127.0.0.1:4040 pnpm build`: passed (`3.1s`, all routes + `ƒ Proxy (Middleware)` compiled cleanly).
+- `git diff --check main..HEAD` and `git diff --check 7078c00..HEAD`: exit 0 (clean).
+- **R9:** Pre-fix `R9_REPRO` confirmed `privateDataMailedAfterRemoval: true`. Post-fix `R9_EXERCISE_ALL_PASSED` verified inter-recipient removal of only group, removal of 1 of 2 groups with >20 overflow (`2` not `7`, no removed-group text/name/prefix), opt-out, partial/full read, email unverification, email change, multi-group >20 overflow, and immediate repeat run (`0`).
+- **R10:** `R10_EXERCISE_ALL_PASSED` verified HTTP comment before/after deletion (`201`), not auto-restored, opener/owner resolve open dispute on deleted tx (`200`), editor resolve (`403`), open new dispute on deleted tx (`404`), restore retains comments, author/owner delete (`204`), non-author (`403`), outsider/cross-group (`404`), unauth (`401`), unverified (`403`), invalid input (`400`), rate limit (`429`), balances identical. Browser S20 verified live SSE comment on soft-deleted tx with literal `<script>alert(1)</script>` (`scriptTagsInMain: 0`).
+- **R11 Complete Gate Set:** `99/99` actual Hono routes covered, `309/309` permission cases PASS, `87/87` quick-entry samples PASS (`over300Status: 400`), `15/15` earlier-phase representative cases PASS, `7/7` Phase 4 stage/R1-R10 suites PASS, `18/18` capability-off/prod checks PASS, 1,000-notification perf `8.6ms`/`4.58ms` (`<300ms`, 0 leaked after removal), `10/10` Chrome DevTools MCP browser checks PASS (0 console errors), `pnpm db:check-balances` `All groups balanced`, temporary DB triggers/functions verified absent, `pnpm-lock.yaml` unchanged.
+- **Security review:** checked relevant items 1–8 on `git diff 7078c00..HEAD` and `git diff main..HEAD`; no security issues found (no secrets, parameterized Drizzle queries, strict Zod boundaries, shared group authorization with outsider 404, hash-only tokens, no `dangerouslySetInnerHTML`/`eval`, no new dependencies).

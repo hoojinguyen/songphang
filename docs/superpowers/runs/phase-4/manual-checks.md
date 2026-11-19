@@ -11,6 +11,7 @@ Checks are appended by screen and flow as tasks complete, plus a section **After
 5. Delete one of your own comments with `Xoá bình luận` -> removed from both windows live; verify a viewer cannot delete another member's comment (no delete button except author or group admin/owner).
 6. Tap `Khoản này chưa đúng`, enter an empty/whitespace reason -> `Gửi` stays disabled; enter a reason and submit -> coral card appears (`{Name} cho rằng khoản này chưa đúng`), and the stream row shows the `đang hỏi lại` tag plus `{N} bình luận`.
 7. Tap `Đã giải quyết` -> snackbar `Đã giải quyết.` appears, card returns to `Khoản này chưa đúng`, and `đang hỏi lại` disappears live from the stream row.
+8. Soft-deleted transaction check (R10): open a dispute on an expense as a viewer, delete the expense as owner, open the deleted expense's `/view` page in both windows -> confirm the deleted banner appears, the viewer can still post a comment (which appears live via SSE in the owner's window without auto-restoring the transaction), the opener/owner can resolve the already-open dispute (`Đã giải quyết`), opening a **new** dispute on the deleted transaction is rejected, and restoring the transaction retains all comments.
 
 ## S19 — Notification bell, list, and group mute (Stage 4B)
 

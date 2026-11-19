@@ -134,3 +134,19 @@ Each entry: problem, options, choice, reason; for a library also license, mainte
   - `docs/05-database-design.md`: document `notification_unsubscribe_tokens` (`id`, `user_id` FK cascade, `token_hash` unique, `created_at`).
   - `docs/05-api-spec.md`: document `POST /notifications/unsubscribe` (proxied to `POST /api/v1/notifications/unsubscribe`) accepting RFC 8058 `application/x-www-form-urlencoded` (`List-Unsubscribe=One-Click`), query `?token=`, or JSON `{ token }`, intentionally exempt from `requireSameOrigin` and protected by 256-bit token + 30/min/IP rate limit.
   - `docs/04-adr.md` and `docs/superpowers/specs/2026-11-15-phase-4-collaboration-design.md`: record durable multi-token hash retention replacing `D4B.1`'s in-memory rotation approach.
+
+## Round 2 Review Corrections Decisions (2026-11-19)
+
+### DR9 — Per-recipient send-time revalidation in `send-digest` (R9)
+
+- **Problem:** `runSendDigest` loaded all eligible notifications for all recipients in one upfront query and sent emails from that snapshot. Removing a later recipient from a group (or changing opt-out/read/verification/email state) during an earlier recipient's send could leak private data from the removed group.
+- **Options:** (a) check membership only against an in-memory snapshot; (b) query distinct candidate `userId`s up front and re-query each recipient's currently eligible rows via `listUnreadDigestNotifications(db, { since, until: now, userId })` immediately before building and sending that recipient's email.
+- **Choice:** Option (b).
+- **Reason:** Revalidates membership, unread state, verified email, current email address, and digest preference atomically against authoritative DB state for each recipient, rebuilds single/multi-group formatting and overflow counts cleanly without leaking removed-group data or counts, holds no DB transaction or lock across mailer I/O, and requires no schema change.
+
+### DR10 — Comments and dispute resolution on soft-deleted transactions (R10)
+
+- **Problem:** Commit `e2e4be7` rejected both `createComment` and `resolveDispute` on soft-deleted transactions (`404`), conflicting with Plan `4a-comments.md` Task 4A.1 (comments readable and writable on soft-deleted transactions) and preventing closure of an already-open dispute after transaction deletion.
+- **Options:** (a) allow both `createComment` and `openDispute` on deleted transactions; (b) restore `createComment` and `resolveDispute` on soft-deleted transactions while keeping `openDispute` forbidden (`404`) on soft-deleted transactions.
+- **Choice:** Option (b).
+- **Reason:** Matches Plan 4A.1 ("Comments are readable and writable on a soft-deleted transaction") and Spec 3.2 ("Editing/deleting a transaction does not implicitly resolve a dispute; the opener or owner resolves it"), while preserving the narrow rule against opening a brand-new dispute on an already-deleted transaction and never auto-restoring the transaction.
