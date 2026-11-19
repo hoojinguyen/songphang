@@ -174,8 +174,8 @@ function LinkTelegramScreen() {
 	}
 
 	return (
-		<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-5 px-5 py-6">
-			<h1 className="break-words text-[24px] font-black">
+		<main className="mx-auto grid min-h-dvh w-full max-w-[430px] content-center gap-5 px-5 py-6">
+			<h1 className="min-w-0 [overflow-wrap:anywhere] text-[24px] font-black">
 				{t(vi.telegram.linkConfirm, { email: me.data.email })}
 			</h1>
 			<p className="text-sm text-muted">{vi.telegram.startPairingHint}</p>
