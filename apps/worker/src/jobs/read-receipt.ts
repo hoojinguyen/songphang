@@ -34,6 +34,7 @@ export async function runReadReceiptJob(
 		return;
 	}
 	if (!scan.createdBy) {
+		await finishFailedAttempt(deps, data.reservationId);
 		await failAndNotify(deps, scan.groupId, scan.id, "READ_FAILED");
 		return;
 	}

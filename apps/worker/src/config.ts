@@ -27,7 +27,7 @@ const WORKER_CONFIG_SCHEMA = z
 			z
 				.url({ protocol: /^https?$/, hostname: /.+/ })
 				.max(2048)
-				.default("http://localhost:3000"),
+				.optional(),
 		),
 		STORAGE_DIR: z.string().min(1).max(1024).default("./.data/uploads"),
 		AI_PROVIDER: z.preprocess(
@@ -96,12 +96,19 @@ const WORKER_CONFIG_SCHEMA = z
 					message: "AI_FAKE_RECEIPT_FIXTURE is forbidden in production",
 				});
 			}
+			if (!env.WEB_ORIGIN) {
+				context.addIssue({
+					code: "custom",
+					path: ["WEB_ORIGIN"],
+					message: "WEB_ORIGIN is required in production",
+				});
+			}
 		}
 	})
 	.transform((env) => ({
 		appEnv: env.APP_ENV,
 		databaseUrl: env.DATABASE_URL,
-		webOrigin: env.WEB_ORIGIN,
+		webOrigin: env.WEB_ORIGIN ?? "http://localhost:3000",
 		storageDir: path.resolve(REPO_ROOT, env.STORAGE_DIR),
 		aiProvider: env.AI_PROVIDER,
 		anthropicApiKey: env.ANTHROPIC_API_KEY,

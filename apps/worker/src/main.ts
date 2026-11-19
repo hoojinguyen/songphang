@@ -23,6 +23,9 @@ import {
 let config: WorkerConfig;
 try {
 	config = loadWorkerConfig(process.env);
+	if (config.appEnv === "production") {
+		throw new Error("Mailer is not configured for production");
+	}
 } catch (error) {
 	console.error(
 		error instanceof Error
@@ -32,14 +35,18 @@ try {
 	process.exit(1);
 }
 
+let closeDb: (() => Promise<void>) | null = null;
+let stopBoss: (() => Promise<void>) | null = null;
 try {
 	await runMigrations(config.databaseUrl);
 	const { db, close } = createDb(config.databaseUrl);
+	closeDb = close;
 	const boss = createWorkerQueue(config.databaseUrl);
 	boss.on("error", () => {
 		console.error("Worker queue error");
 	});
 	await boss.start();
+	stopBoss = () => boss.stop({ graceful: false });
 	const deps: WorkerDeps = {
 		config,
 		db,
@@ -83,6 +90,12 @@ try {
 		void shutdown();
 	});
 } catch {
+	if (stopBoss !== null) {
+		await stopBoss().catch(() => {});
+	}
+	if (closeDb !== null) {
+		await closeDb().catch(() => {});
+	}
 	console.error(
 		"Worker startup failed: check database availability and migrations",
 	);

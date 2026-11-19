@@ -4,6 +4,7 @@ import {
 	NotificationPayload,
 } from "@songphang/contract";
 import {
+	findGroup,
 	findLatestDebtReminder,
 	insertDebtReminder,
 	insertNotificationRows,
@@ -27,16 +28,18 @@ export async function runAutoReminders(deps: WorkerDeps): Promise<number> {
 	let remindedCount = 0;
 
 	for (const group of groups) {
-		const intervalDays = group.reminderIntervalDays;
-		if (intervalDays === null) continue;
-		const intervalMs = intervalDays * DAY_MS;
+		if (group.reminderIntervalDays === null) continue;
 
 		const createdIds = await deps.db.transaction(async (executor) => {
 			await lockGroup(executor, group.id);
+			const freshGroup = await findGroup(executor, group.id);
+			const intervalDays = freshGroup?.reminderIntervalDays ?? null;
+			if (freshGroup === null || intervalDays === null) return [];
+			const intervalMs = intervalDays * DAY_MS;
 			const [{ transfers }, members] = await Promise.all([
 				suggestGroupTransfers(executor, {
 					groupId: group.id,
-					minimizeDebts: group.minimizeDebts,
+					minimizeDebts: freshGroup.minimizeDebts,
 				}),
 				listGroupMembers(executor, group.id),
 			]);
