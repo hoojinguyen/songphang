@@ -14,7 +14,11 @@ import {
 import { registerSendDigestJob } from "./jobs/send-digest.js";
 import { registerSendNotificationMailJob } from "./jobs/send-notification-mail.js";
 import { createConsoleMailer } from "./mailer.js";
-import { createWorkerQueue, type WorkerDeps } from "./queue.js";
+import {
+	createWorkerEnqueue,
+	createWorkerQueue,
+	type WorkerDeps,
+} from "./queue.js";
 
 let config: WorkerConfig;
 try {
@@ -42,6 +46,7 @@ try {
 		fileStore: diskFileStore(config.storageDir),
 		now: () => new Date(),
 		mailer: createConsoleMailer(),
+		enqueue: createWorkerEnqueue(boss),
 	};
 	await registerHeartbeatJob(boss, deps);
 	await registerCleanupAttachmentsJob(boss, deps);

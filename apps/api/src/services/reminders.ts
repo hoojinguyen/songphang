@@ -84,7 +84,7 @@ export async function sendReminders(
 	input: { groupId: string; userId: string; request: SendReminderRequest },
 ): Promise<SendReminderResponse> {
 	const now = deps.now();
-	return deps.db.transaction(async (executor) => {
+	const response = await deps.db.transaction(async (executor) => {
 		await lockGroup(executor, input.groupId);
 		const access = await getGroupAccess(executor, {
 			groupId: input.groupId,
@@ -217,4 +217,8 @@ export async function sendReminders(
 		}
 		return SendReminderResponse.parse({ reminded, skipped });
 	});
+	if (response.reminded.length > 0) {
+		deps.events.publishChanged(input.groupId, ["balances"]);
+	}
+	return response;
 }

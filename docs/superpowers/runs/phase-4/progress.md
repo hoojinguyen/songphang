@@ -383,8 +383,8 @@ None.
 - [x] **R1 [P1]** — Replace public bearer identity linking with two-sided web+Telegram pairing (`fix(api,web): require two-sided confirmation for Telegram identity pairing`)
 - [x] **R2 [P2]** — Server-side one-click `List-Unsubscribe-Post` handling at `/notifications/unsubscribe`
 - [x] **R3 [P2]** — Durable hash-only unsubscribe token storage preserving previously emailed links across restarts and concurrent sends
-- [ ] **R4 [P2]** — Enqueue automatic reminder `send-notification-mail` jobs transactionally inside the reminder/notification transaction
-- [ ] **R5 [P2]** — Publish group SSE resource events (`["balances"]`) for manual and automatic debt reminders so open notification bells update live
+- [x] **R4 [P2]** — Enqueue automatic reminder `send-notification-mail` jobs transactionally inside the reminder/notification transaction
+- [x] **R5 [P2]** — Publish group SSE resource events (`["balances"]`) for manual and automatic debt reminders so open notification bells update live
 - [ ] **R6 [P2]** — Apply prospective approval status in `previewTransaction` / `transactionWarnings` so preview matches create/edit
 - [ ] **R7 [P2]** — Persist stable `occurredAt` in bot draft and make transaction creation, idempotency state, and `markBotDraftSaved` atomic with save/drop serialization
 - [ ] **R8 [P3]** — Store decision-time amount in approval/rejection activity snapshots
@@ -436,5 +436,25 @@ None.
   - Real output (raw token redacted): `R2_R3_ALL_CHECKS_PASSED {"postProviderStatus":204,"getPageStatus":200,"postForeignOriginWebStatus":204,"repeatFormStatus":204,"jsonValidStatus":204,"legacyHashStatus":204,"invalidStatuses":[404,404,404,404],"rateLimited429":true}`
   - Verified: advertised `List-Unsubscribe` + `List-Unsubscribe-Post: List-Unsubscribe=One-Click` headers; server-side form `POST` with no cookies/Origin/JS disables both switches; browser `GET` returns HTML page; foreign `Origin` POST succeeds on unsubscribe without relaxing global `requireSameOrigin`; repeated `POST` stays `204`; JSON `{ token }` succeeds; bad/missing/mismatched tokens return uniform `404`; two independent users isolated; concurrent & simulated multi-worker / post-restart issuance preserves all older links; legacy `notification_settings.unsubscribe_token_hash` remains accepted; account deletion cascades `notification_unsubscribe_tokens`; IP rate limit triggers `429` after 30/min; zero raw tokens persisted in Postgres or structured logs.
 - **Security review:** Boundary Zod validation on token/body; non-enumerating 404 on invalid/missing tokens; `requireSameOrigin` removed only on token-authorized `POST /api/v1/notifications/unsubscribe`; 256-bit random tokens stored as SHA-256 hashes only; parameterized Drizzle queries; cascade delete on `users.id`.
+
+### R4 & R5 [P2] — approach
+
+- **Files to change:** `apps/worker/src/queue.ts`, `apps/worker/src/main.ts`, `apps/worker/src/jobs/auto-reminders.ts`, `apps/worker/src/jobs/send-notification-mail.ts`, `apps/api/src/services/reminders.ts`.
+- **Plan:** Add a `WorkerEnqueueFn` + `createWorkerEnqueue(boss)` helper in `apps/worker/src/queue.ts` using pg-boss's `fromDrizzle(executor, drizzleSql)` (matching `apps/api/src/queue.ts` without cross-app imports), wire it in `apps/worker/src/main.ts`, and in `apps/worker/src/jobs/auto-reminders.ts` enqueue `JOB_NAMES.sendNotificationMail` (`{ notificationId: row.id }`, `{ singletonKey: row.id }`) AND call `notifyGroup(executor, group.id, ["balances"])` inside each group's database transaction. Also emit `notifyGroup(deps.db, row.groupId, ["balances"])` inside `runSendNotificationMail` when `row !== null && row.inGroup && row.kind === "debt_reminder"` so durable job execution/retry guarantees refresh delivery after process interruption. In `apps/api/src/services/reminders.ts`, publish `deps.events.publishChanged(input.groupId, ["balances"])` after transaction commit when `response.reminded.length > 0`.
+- **Why simplest:** Reuses the existing `pg-boss` transactional adapter, `send-notification-mail` job, `songphang_events` Postgres LISTEN/NOTIFY bridge, and `["balances"]` invalidation key (which `apps/web/src/lib/use-group-events.ts` already maps to `["notifications"]`), with zero new tables, streams, or libraries.
+- **Alternative considered:** Creating a separate `emit-group-event` pg-boss job type; rejected because `send-notification-mail` is already durably enqueued transactionally per notification row and handles retry/restart recovery cleanly.
+- **Reproduction on `0616f9d` (`songphang_phase4_fix_20261119`):** `R4_R5_REPRO {"manualStatus":200,"manualReminded":1,"manualPublishedCount":0,"mailThrowCaught":false,"notifsAfterFail":1,"cooldownsAfterFail":1,"rerunReminded":0,"retrySent":0,"autoPublishedCount":0}` (0 manual SSE events, 0 auto Postgres events, and rerun blocked by cooldown without queued mail).
+
+### R4 & R5 [P2] — verification & security review
+
+- **Grouping rationale:** R4 (transactional `send-notification-mail` enqueue in `runAutoReminders`) and R5 (emitting `["balances"]` group invalidation events for manual and automatic reminders + durable job refresh) share the same automatic reminder transaction in `apps/worker/src/jobs/auto-reminders.ts` and `send-notification-mail.ts`.
+- **Checks:**
+  - `pnpm check`: 485 files checked, 0 errors (3 pre-existing `noImgElement` warnings), 8 typechecks Done.
+- **Exercise (`exercise_r4_r5.mts` with real HTTP API, real `pg-boss` worker queue, and `songphang_events` Postgres listener on `songphang_phase4_fix_20261119`):**
+  - Real output: `R4_R5_ALL_CHECKS_PASSED {"manualEvent":true,"manualCooldown429":true,"rollbackSilent":true,"autoReminded":2,"autoEventFromTx":true,"rerunWithin3Days":0,"lanAttempts":2,"deliveredTo":["lan@dev.songphang.local"],"durableEventFromJob":true,"removedUserBlocked":true,"balancesUnchanged":true}`
+  - Verified: manual reminder publishes `["balances"]` after commit; 24h cooldown returns `429` with zero events; rolled-back tx emits zero `songphang_events`; automatic reminders enqueue `send-notification-mail` transactionally with `{ singletonKey: row.id }` and emit `notifyGroup(executor, group.id, ["balances"])`; rerun within 3-day interval emits 0 duplicates; simulated transient mailer failure retries via `pg-boss` (`lanAttempts: 2`) and succeeds; muted user (`Hung`) receives no mail while in-app notification is recorded; removed user (`Lan` removed from `group_users`) receives neither mail nor event; balances unchanged.
+- **Security review:** No cross-app imports; `notifyGroup` validates payload via `GroupEventNotification` (<=500B) and uses parameterized `pg_notify`; removed users are blocked at send time (`!row.inGroup`); no private notification content is placed in `pg_notify` payloads (only `groupId` and `["balances"]`).
+
+
 
 

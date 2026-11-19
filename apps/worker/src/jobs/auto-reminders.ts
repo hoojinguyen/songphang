@@ -14,6 +14,7 @@ import {
 	suggestGroupTransfers,
 } from "@songphang/db";
 import type { PgBoss } from "pg-boss";
+import { notifyGroup } from "../notify.js";
 import { registerJob, type WorkerDeps } from "../queue.js";
 import { runSendNotificationMail } from "./send-notification-mail.js";
 
@@ -88,15 +89,30 @@ export async function runAutoReminders(deps: WorkerDeps): Promise<number> {
 						createdAt: now,
 					})),
 				);
-				for (const row of rows) ids.push(row.id);
+				for (const row of rows) {
+					ids.push(row.id);
+					if (deps.enqueue) {
+						await deps.enqueue(
+							executor,
+							JOB_NAMES.sendNotificationMail,
+							{ notificationId: row.id },
+							{ singletonKey: row.id },
+						);
+					}
+				}
+			}
+			if (ids.length > 0) {
+				await notifyGroup(executor, group.id, ["balances"]);
 			}
 			return ids;
 		});
 		notificationIds.push(...createdIds);
 	}
 
-	for (const id of notificationIds) {
-		await runSendNotificationMail(deps, id);
+	if (!deps.enqueue) {
+		for (const id of notificationIds) {
+			await runSendNotificationMail(deps, id);
+		}
 	}
 	return remindedCount;
 }

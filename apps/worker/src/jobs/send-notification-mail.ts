@@ -4,6 +4,7 @@ import { findNotificationForImmediateMail } from "@songphang/db";
 import type { PgBoss } from "pg-boss";
 import { immediateNotificationMail } from "../mail-templates.js";
 import { createConsoleMailer, issueUnsubscribeToken } from "../mailer.js";
+import { notifyGroup } from "../notify.js";
 import { registerJob, type WorkerDeps } from "../queue.js";
 
 export async function runSendNotificationMail(
@@ -11,6 +12,9 @@ export async function runSendNotificationMail(
 	notificationId: string,
 ): Promise<boolean> {
 	const row = await findNotificationForImmediateMail(deps.db, notificationId);
+	if (row?.inGroup && row.kind === "debt_reminder") {
+		await notifyGroup(deps.db, row.groupId, ["balances"]);
+	}
 	if (
 		row === null ||
 		row.readAt !== null ||

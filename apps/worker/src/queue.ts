@@ -1,10 +1,17 @@
-import type { Db } from "@songphang/db";
+import { type Db, type DbExecutor, drizzleSql } from "@songphang/db";
 import type { FileStore } from "@songphang/storage";
-import { PgBoss } from "pg-boss";
+import { fromDrizzle, PgBoss } from "pg-boss";
 import type { ZodType } from "zod";
 import type { ReceiptReader } from "./ai/receipt-reader.js";
 import type { WorkerConfig } from "./config.js";
 import type { Mailer } from "./mailer.js";
+
+export type WorkerEnqueueFn = <T extends object>(
+	executor: DbExecutor,
+	name: string,
+	data: T,
+	options?: { singletonKey?: string; startAfter?: Date },
+) => Promise<string | null>;
 
 export type WorkerDeps = {
 	config: WorkerConfig;
@@ -13,7 +20,18 @@ export type WorkerDeps = {
 	now: () => Date;
 	receiptReader?: ReceiptReader | null;
 	mailer?: Mailer;
+	enqueue?: WorkerEnqueueFn;
 };
+
+export function createWorkerEnqueue(boss: PgBoss): WorkerEnqueueFn {
+	return async (executor, name, data, options) => {
+		return boss.send(name, data, {
+			db: fromDrizzle(executor, drizzleSql),
+			...(options?.singletonKey ? { singletonKey: options.singletonKey } : {}),
+			...(options?.startAfter ? { startAfter: options.startAfter } : {}),
+		});
+	};
+}
 
 export function createWorkerQueue(connectionString: string): PgBoss {
 	return new PgBoss({
