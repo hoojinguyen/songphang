@@ -4,6 +4,7 @@ import {
 	useUnlinkChatIdentity,
 } from "../../lib/chat-links";
 import { useFeatures } from "../../lib/features";
+import { useSessionGuard } from "../../lib/use-session-guard";
 import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
 import { LoadError } from "../ui/LoadError";
@@ -13,6 +14,7 @@ export function TelegramIdentityCard() {
 	const telegramEnabled = features.data?.telegram === true;
 	const identities = useMyChatIdentities(telegramEnabled);
 	const unlink = useUnlinkChatIdentity();
+	useSessionGuard(identities.error ?? unlink.error);
 
 	if (!telegramEnabled) return null;
 	if (identities.isPending) {

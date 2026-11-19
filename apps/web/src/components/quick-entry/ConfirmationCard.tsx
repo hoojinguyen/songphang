@@ -138,7 +138,9 @@ export function ConfirmationCard({
 					</span>
 				)}
 			</div>
-			{(categoryLabel !== null || pickerOpen) && (
+			{(categoryLabel !== null ||
+				pickerOpen ||
+				(onChangeCategory !== undefined && groupId !== undefined)) && (
 				<div className="grid gap-2">
 					<div className="flex flex-wrap items-center gap-2">
 						{onChangeCategory && groupId ? (

@@ -20,6 +20,8 @@ export async function prepareImage(file: File): Promise<Blob> {
 		if (!ctx) {
 			throw new Error("Canvas 2D context unavailable");
 		}
+		ctx.fillStyle = "#ffffff";
+		ctx.fillRect(0, 0, width, height);
 		ctx.drawImage(bitmap, 0, 0, width, height);
 		return await new Promise<Blob>((resolve, reject) => {
 			canvas.toBlob(

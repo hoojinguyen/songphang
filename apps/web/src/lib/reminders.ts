@@ -56,7 +56,12 @@ export function canRemindTransfer(input: {
 }): boolean {
 	if (!input.verified) return false;
 	if (input.transfer.pendingRequest) return false;
-	if (input.from.kind !== "person" || !input.from.claimed) return false;
+	if (
+		input.from.kind !== "person" ||
+		!input.from.claimed ||
+		input.to.kind !== "person"
+	)
+		return false;
 	if (input.from.id === input.myMemberId) return false;
 	return input.role !== "viewer" || input.myMemberId === input.to.id;
 }

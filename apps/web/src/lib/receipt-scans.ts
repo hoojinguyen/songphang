@@ -100,6 +100,8 @@ export function usePreviewItems(
 		current:
 			serialized === JSON.stringify(debounced) &&
 			!query.isFetching &&
-			!query.isPlaceholderData,
+			!query.isPlaceholderData &&
+			query.isSuccess &&
+			!query.isError,
 	};
 }

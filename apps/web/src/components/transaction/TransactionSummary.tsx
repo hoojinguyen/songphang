@@ -84,10 +84,16 @@ export function TransactionSummary({
 								})
 							: transaction.split.method === "items"
 								? vi.split.methodItems
-								: t(equal ? vi.compose.equal : vi.compose.equalUneven, {
-										count: String(transaction.shares.length),
-										amount: formatAmount(transaction.shares[0]?.amount ?? 0),
-									})}
+								: transaction.split.method === "shares"
+									? vi.split.methodShares
+									: transaction.split.method === "percent"
+										? vi.split.methodPercent
+										: t(equal ? vi.compose.equal : vi.compose.equalUneven, {
+												count: String(transaction.shares.length),
+												amount: formatAmount(
+													transaction.shares[0]?.amount ?? 0,
+												),
+											})}
 					</span>
 				)}
 			</div>
@@ -119,6 +125,11 @@ export function TransactionSummary({
 								>
 									<span className="min-w-0 break-words font-semibold">
 										{item.name}
+										{item.memberIds.length > 0 && (
+											<span className="ml-1.5 font-normal text-muted">
+												({item.memberIds.map(name).join(", ")})
+											</span>
+										)}
 									</span>
 									<span className="shrink-0 font-bold">
 										{formatAmount(item.amount)} {vi.common.currency}
@@ -137,7 +148,7 @@ export function TransactionSummary({
 					})}
 				/>
 			)}
-			{transaction.attachments.length > 0 && (
+			{transaction.deletedAt === null && transaction.attachments.length > 0 && (
 				<PhotoRow
 					groupId={groupId}
 					attachments={transaction.attachments}

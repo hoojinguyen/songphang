@@ -69,10 +69,9 @@ export function ReceiptLoadingView({ groupId }: { groupId: string }) {
 
 export function ReceiptLoadErrorView({
 	groupId,
-	notFound,
 }: {
 	groupId: string;
-	notFound: boolean;
+	notFound?: boolean;
 }) {
 	return (
 		<div className="grid gap-4">
@@ -82,7 +81,7 @@ export function ReceiptLoadErrorView({
 				backLabel={vi.common.back}
 			/>
 			<p role="alert" className="text-sm font-bold text-ink">
-				{notFound ? vi.common.groupNotFound : vi.common.loadError}
+				{vi.common.loadError}
 			</p>
 		</div>
 	);
@@ -163,6 +162,7 @@ export function ReceiptFailedView({
 					<Button
 						type="button"
 						variant="surface"
+						disabled={retake.busy}
 						onClick={() =>
 							router.push(
 								`/g/${groupId}/tx/new?form&attachmentId=${attachmentId}`,

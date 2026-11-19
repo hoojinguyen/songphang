@@ -18,7 +18,8 @@ export default function NotificationsPage() {
 
 	const items =
 		notifications.data?.pages.flatMap((page) => page.notifications) ?? [];
-	const hasUnread = items.some((item) => !item.read);
+	const hasUnread =
+		items.some((item) => !item.read) || Boolean(notifications.hasNextPage);
 
 	const handleOpen = (notification: NotificationDto) => {
 		if (!notification.read) {

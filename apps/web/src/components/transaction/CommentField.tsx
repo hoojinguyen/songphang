@@ -52,9 +52,16 @@ export function CommentField({
 					maxLength={1000}
 					rows={1}
 					disabled={!online}
-					onChange={(event) => setBody(event.target.value)}
+					onChange={(event) => {
+						setBody(event.target.value);
+						keyRef.current = crypto.randomUUID();
+					}}
 					onKeyDown={(event) => {
-						if (event.key === "Enter" && !event.shiftKey) {
+						if (
+							event.key === "Enter" &&
+							!event.shiftKey &&
+							!event.nativeEvent.isComposing
+						) {
 							event.preventDefault();
 							submit();
 						}
