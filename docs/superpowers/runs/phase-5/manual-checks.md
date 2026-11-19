@@ -1,5 +1,60 @@
 # Phase 5 — Owner Manual Checks
 
+## Isolated Local Startup Recipe (Phase 5 Baseline)
+
+This recipe uses a **fresh disposable database** (never touching the primary `songphang` database or running `docker compose down -v`), an isolated upload directory, clean-environment commands bypassing `.env`-loading scripts, console mail, `AI_PROVIDER=fake`, and `TELEGRAM_PROVIDER=console`. Default ports are API `4000` and Web `3000` (matching `apps/ios/Config/Debug.xcconfig`); if ports change, update `API_PORT`, `WEB_ORIGIN`, `API_ORIGIN`, and `API_BASE_URL` consistently.
+
+1. **Create, migrate, and seed a disposable database:**
+   ```sh
+   docker compose up -d --wait db
+   docker compose exec -T db psql -U songphang -d postgres -c "CREATE DATABASE songphang_phase5_local;"
+   DATABASE_URL="postgres://songphang:songphang@localhost:54329/songphang_phase5_local" \
+     pnpm --filter @songphang/db exec tsx src/migrate.ts
+   DATABASE_URL="postgres://songphang:songphang@localhost:54329/songphang_phase5_local" \
+     pnpm --filter @songphang/db exec tsx src/seed.ts
+   ```
+2. **Start API, Worker, and Web in separate terminals from a clean environment:**
+   - **Terminal 1 — API (`http://127.0.0.1:4000`):**
+     ```sh
+     env -i PATH="$PATH" HOME="$HOME" \
+       APP_ENV=development \
+       DATABASE_URL="postgres://songphang:songphang@localhost:54329/songphang_phase5_local" \
+       API_PORT=4000 \
+       WEB_ORIGIN="http://127.0.0.1:3000" \
+       DEV_LOGIN=true \
+       STORAGE_DIR="/tmp/songphang-phase5-uploads" \
+       AI_PROVIDER=fake \
+       TELEGRAM_PROVIDER=console \
+       TELEGRAM_WEBHOOK_SECRET="local_phase5_secret_32_chars_minimum" \
+       TELEGRAM_BOT_USERNAME="SongPhangLocalBot" \
+       pnpm --filter @songphang/api exec tsx src/server.ts
+     ```
+   - **Terminal 2 — Worker:**
+     ```sh
+     env -i PATH="$PATH" HOME="$HOME" \
+       APP_ENV=development \
+       DATABASE_URL="postgres://songphang:songphang@localhost:54329/songphang_phase5_local" \
+       WEB_ORIGIN="http://127.0.0.1:3000" \
+       STORAGE_DIR="/tmp/songphang-phase5-uploads" \
+       AI_PROVIDER=fake \
+       pnpm --filter @songphang/worker exec tsx src/main.ts
+     ```
+   - **Terminal 3 — Web (`http://127.0.0.1:3000`):**
+     ```sh
+     env -i PATH="$PATH" HOME="$HOME" \
+       API_ORIGIN="http://127.0.0.1:4000" \
+       pnpm --filter @songphang/web exec next dev --hostname 127.0.0.1 --port 3000
+     ```
+3. **Establish two verified password accounts for 5B (the dev seed creates no password identities):**
+   - Register two accounts (`POST /api/v1/auth/register` or `/register` on web), copy each verification token printed by the console mailer in Terminal 1, and verify each via `POST /api/v1/auth/verify-email` (or by opening the printed `/verify-email?token=...` link).
+4. **Verify balances and clean up when finished:**
+   ```sh
+   DATABASE_URL="postgres://songphang:songphang@localhost:54329/songphang_phase5_local" \
+     pnpm --filter @songphang/db exec tsx src/check-balances.ts
+   docker compose exec -T db psql -U songphang -d postgres -c "DROP DATABASE IF EXISTS songphang_phase5_local;"
+   rm -rf /tmp/songphang-phase5-uploads
+   ```
+
 ## Early iOS/Web Simulator Checkpoint
 
 Pending implementation of 5B. Antigravity records the tested code revision, isolated startup recipe, steps, exact expected and observed results, and screenshots in `handoff-5b.md`.
@@ -19,3 +74,5 @@ Pending 5E. Antigravity records the final code revision, results by journey in `
 ## Physical iPhone, Providers and TestFlight
 
 Pending owner-led verification with the required configuration. Preserve the approved deferral for the real AI provider.
+
+- **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.
