@@ -552,3 +552,15 @@ Disposable database: `songphang_phase4_fix_20261119` (verified via `SELECT curre
 - **R10:** `R10_EXERCISE_ALL_PASSED` verified HTTP comment before/after deletion (`201`), not auto-restored, opener/owner resolve open dispute on deleted tx (`200`), editor resolve (`403`), open new dispute on deleted tx (`404`), restore retains comments, author/owner delete (`204`), non-author (`403`), outsider/cross-group (`404`), unauth (`401`), unverified (`403`), invalid input (`400`), rate limit (`429`), balances identical. Browser S20 verified live SSE comment on soft-deleted tx with literal `<script>alert(1)</script>` (`scriptTagsInMain: 0`).
 - **R11 Complete Gate Set:** `99/99` actual Hono routes covered, `309/309` permission cases PASS, `87/87` quick-entry samples PASS (`over300Status: 400`), `15/15` earlier-phase representative cases PASS, `7/7` Phase 4 stage/R1-R10 suites PASS, `18/18` capability-off/prod checks PASS, 1,000-notification perf `8.6ms`/`4.58ms` (`<300ms`, 0 leaked after removal), `10/10` Chrome DevTools MCP browser checks PASS (0 console errors), `pnpm db:check-balances` `All groups balanced`, temporary DB triggers/functions verified absent, `pnpm-lock.yaml` unchanged.
 - **Security review:** checked relevant items 1–8 on `git diff 7078c00..HEAD` and `git diff main..HEAD`; no security issues found (no secrets, parameterized Drizzle queries, strict Zod boundaries, shared group authorization with outsider 404, hash-only tokens, no `dangerouslySetInnerHTML`/`eval`, no new dependencies).
+
+---
+
+## Round 3 — R11 Completion Run (2026-11-19)
+
+- **Baseline:** Branch `phase-4`, Round 3 reviewed HEAD `f0b5da5f07a26fd17ef456ba5e16b6549618928a` (`review-round-3.md`: R9 PASS, R10 PASS, R11 CHANGES NEEDED). Zero product-code defects were uncovered by the expanded R11 coverage; no product files modified.
+- **Disposable DB & Isolated Ports:** `songphang_phase4_r11_20261119`, `STORAGE_DIR=/tmp/songphang-r11-uploads`, API `4070` (`4071`–`4077`), Web `3070`.
+- **Expanded Inventory & Protocol:** [r11-completion.md](file:///Users/hoojinguyen/Projects/songphang/docs/superpowers/runs/phase-4/r11-completion.md) (supersedes `gate-inventory-round-2.md` with explicit links).
+- **Pre-Freeze Expanded Verification:**
+  - Permission Matrix (`PM-001`–`PM-353`): `99/99` registered Hono routes, `353/353` cases PASS, **0 missing group-role combinations** across all 62 group routes (closing `POST /reminders`, `POST /transactions/:id/restore`, `POST /leave`, and all 14 other previously partial group routes).
+  - Complete 4D.1 Money Matrix (`M4D-001`–`M4D-031`): `31/31` cases PASS across `pending`/`rejected`/`approved` for both debt modes (`PATCH minimizeDebts` true/false), stats breakdowns, budget & `FUND_OVERDRAWN` warnings, fund cash/contributions, parsed CSV rows, reminders, Telegram `/sodu`, and `items` + fake-receipt threshold saves.
+  - Final-SHA post-freeze replay (all backend, money, regression, perf, and all 16 browser cases `BR-01`–`BR-16`) is executed on this frozen commit and archived outside the repository under `final-replay-<FULL_SHA>/` with `manifest.json`.
