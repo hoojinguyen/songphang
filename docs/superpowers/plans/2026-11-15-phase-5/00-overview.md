@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans for the continuous phase run described in AGENTS.md §12. Use the project's execute-task and security-review skills for each implementation task. Track the checkboxes in the run record.
 >
-> **Status (2026-11-19):** The owner approved the design at `d40c649`. This implementation plan awaits owner approval and run authorization.
+> **Status (2026-11-19):** The owner approved the design at `d40c649` and this plan at `eac8aa7`. Antigravity owns implementation. Codex owns advisor review. The owner owns acceptance and merge.
 
 **Goal:** Deliver the shared iOS/web expense-splitting journey on a local iPhone Simulator after 5B, then bring iOS to feature parity with the web and prepare Release for owner-led TestFlight verification.
 
