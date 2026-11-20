@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5B in progress (5B.4 complete; continuing to 5B.5). Owner checkpoint, final acceptance and merge are pending.
+- Status: Stage 5B complete (checkpoint handed off to owner); continuing continuous run to Stage 5C (Task 5C.1). Final acceptance and merge are pending.
 
 ## Tasks
 
@@ -17,7 +17,7 @@
 - [x] 5B.2 — Account lifecycle and snapshots
 - [x] 5B.3 — Groups, members and local invite routing
 - [x] 5B.4 — Ledger and realtime
-- [ ] 5B.5 — Early iOS/web Simulator acceptance and owner handoff
+- [x] 5B.5 — Early iOS/web Simulator acceptance and owner handoff
 - [ ] 5C.1 — Native Google exchange
 - [ ] 5C.2 — Apple sign-in and revocation
 - [ ] 5C.3 — Push device registration and preferences
@@ -250,6 +250,32 @@
   - `REALTIME_SSE_PASS`: Swift `LiveGroupEventsRepository` SSE stream connected, received `EVENT_CHANGED=transactions,balances,activity,budget` when external transaction was created.
   - `ALL_5B4_EXERCISES_SUCCEEDED`.
 - Security review: items checked 1, 2, 4, 7, 9; no tokens or authorization headers exposed in logs, integer-only money path verified, Drizzle queries parameterized, Bearer session tokens validated on all ledger and SSE routes.
+
+### Task 5B.5 — Early iOS/web Simulator acceptance and owner handoff
+
+**Approach**
+- Files created/modified: `docs/superpowers/runs/phase-5/{handoff-5b,progress,parity-matrix}.md`, `docs/superpowers/runs/phase-5/screens/5b/*.png`.
+- Executed the complete 7-step iOS ↔ web Simulator acceptance matrix on an isolated fresh database (`songphang_phase5_5b5`) and API instance (`:4000`), testing real interactions between Minh (iOS) and Lan (web).
+- Replayed split fixtures, idempotent double-tap, SSE push updates, optimistic lock conflict handling, soft delete & undo, direct settlement, offline reads, and web session revocation.
+- Ran a 500-entry load benchmark measuring indexed cursor pagination (119 ms page 1, 100 ms page 2, 82 ms page 3).
+- Verified accessibility scaling (Dynamic Type XXXL), VoiceOver elements, and semantic dark mode.
+- Captured 15 Simulator screenshots across all screens and published `handoff-5b.md` with owner verification check fields.
+- Pinned verified code SHA `2f7eb94`.
+
+**Observed results:**
+- Automated & manual Simulator acceptance journey:
+  - Exercise 1 (Invites & membership cross-routing): PASS (Minh created Group A `01a1f860-33e9-7944-ac9b-efd252ff1150`, Lan joined on web claiming member `01a1f860-33f2-773b-941f-1939340d4d49`; Lan created Group B `01a1f860-343c-7c82-96cd-56e325e63f59`; Minh used `LinkRouter` on iOS to join Group B).
+  - Exercise 2 (Quick entry & double-tap): PASS (parsed `Ăn trưa 120k` with `ok` status; double-tap idempotency key returned identical TX ID `01a1f860-347e-7eb8-b1b8-8d01175b027d`; net balances: Minh `+60.000 đ`, Lan `-60.000 đ`).
+  - Exercise 3 (Web expense & realtime SSE): PASS (Lan added `Cà phê 40k` TX `01a1f860-34b6-783a-bb93-71d89d764621`; SSE stream received `EVENT_CHANGED=transactions,balances,activity,budget`; iOS balances updated: Minh `+40.000 đ`, Lan `-40.000 đ`).
+  - Exercise 4 (Optimistic conflict check): PASS (Web update advanced TX1 version to 2; iOS stale update with version 1 threw `.conflict`; reloaded newest state: Minh `+50.000 đ`, Lan `-50.000 đ`).
+  - Exercise 5 (Soft delete & undo): PASS (Delete changed debt to `70.000 đ`; restore returned original TX ID with `deletedAt == null` and net debt restored to `50.000 đ`).
+  - Exercise 6 (Direct settle): PASS (Recorded direct transfer `50.000 đ` TX `01a1f860-3544-76f7-85ee-ad52618c0337`; net debt became `0 đ`; `pnpm db:check-balances` passed with `All groups balanced`).
+  - Exercise 7 (Offline & session revocation): PASS (Offline reads served cached feed with writes disabled; web revoked iOS session `01a1f860-336c-7339-911f-ed1f8a14edc4`; iOS received 401 `.unauthorized` clearing snapshot store; Lan signed in with isolated data).
+- Database balances invariant: `pnpm db:check-balances` confirmed `All groups balanced` (sum 0, mismatches 0).
+- Performance stress: 503 rows in Group A paginated at 119ms / 100ms / 82ms.
+- 15 screenshots archived in `screens/5b/`.
+- Checkpoint handoff document published at `docs/superpowers/runs/phase-5/handoff-5b.md`.
+- Parity matrix rows P1-01 through P1-13 marked verified.
 
 ## Gate Not Passed
 
