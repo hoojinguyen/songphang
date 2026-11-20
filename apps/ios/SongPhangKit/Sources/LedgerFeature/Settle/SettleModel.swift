@@ -114,10 +114,21 @@ public final class SettleModel {
     isSubmitting = true
     submitError = nil
 
+    let targetDate: Date
+    switch daySelection {
+    case .today:
+      targetDate = Date.now
+    case .yesterday:
+      targetDate = Calendar.current.date(byAdding: .day, value: -1, to: Date.now) ?? Date.now
+    case .other:
+      targetDate = customDate
+    }
+    let occurredAt = Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(targetDate)
+
     let draft = TransactionDraft.transfer(
       TransactionDraft.TransferPayload(
         amount: amt,
-        occurredAt: "2026-11-16T15:05:00.000Z",
+        occurredAt: occurredAt,
         fromMemberId: fromMemberId,
         toMemberId: toMemberId
       )

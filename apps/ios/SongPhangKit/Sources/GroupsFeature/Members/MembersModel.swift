@@ -74,17 +74,7 @@ public final class MembersModel {
       let g = try await fetchedGroup
       let m = try await fetchedMembers
       let u = try await fetchedUsers
-      let b: GroupBalances
-      switch await fetchedBalances {
-      case .success(let fetched):
-        b = fetched
-      case .failure(let error):
-        if case .api("STAGE_5B4_PENDING", 501) = error {
-          b = GroupBalances(balances: [], transfers: [])
-        } else {
-          throw error
-        }
-      }
+      let b = try await fetchedBalances.get()
       let inv = try? await fetchedInvite
       state = .loaded(ScreenData(group: g, members: m, users: u, balances: b, invite: inv))
       refreshError = nil

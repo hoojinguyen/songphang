@@ -254,7 +254,8 @@ public final class ExpenseFormModel {
     let amt = amount
     guard amt.isPositive else { return nil }
     let occurredAtIso =
-      state.value?.editingTransaction?.occurredAt ?? "2026-11-16T14:23:26.466Z"
+      state.value?.editingTransaction?.occurredAt
+      ?? Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(occurredAtDate)
 
     if transactionType == .transfer {
       guard let from = transferFrom, let to = transferTo, from != to else {

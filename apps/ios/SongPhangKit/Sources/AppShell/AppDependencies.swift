@@ -24,19 +24,21 @@ public struct AppDependencies: Sendable {
 
   #if DEBUG
     public let world: FakeWorld?
+  #endif
 
-    public static func live(configuration: APIConfiguration) -> AppDependencies {
-      let environment = LiveAPIEnvironment(configuration: configuration)
+  public static func live(configuration: APIConfiguration) -> AppDependencies {
+    let environment = LiveAPIEnvironment(configuration: configuration)
+    #if DEBUG
       return AppDependencies(
         auth: LiveAuthRepository(environment: environment),
         groups: LiveGroupsRepository(environment: environment),
         members: LiveMembersRepository(environment: environment),
         invites: LiveInvitesRepository(environment: environment),
-        transactions: GatedTransactionsRepository(),
-        balances: GatedBalancesRepository(),
-        activity: GatedActivityRepository(),
-        quickEntry: GatedQuickEntryRepository(),
-        groupEvents: GatedGroupEventsRepository(),
+        transactions: LiveTransactionsRepository(environment: environment),
+        balances: LiveBalancesRepository(environment: environment),
+        activity: LiveActivityRepository(environment: environment),
+        quickEntry: LiveQuickEntryRepository(environment: environment),
+        groupEvents: LiveGroupEventsRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -44,8 +46,27 @@ public struct AppDependencies: Sendable {
         makeSessionInvalidations: { environment.sessionInvalidations() },
         world: nil
       )
-    }
+    #else
+      return AppDependencies(
+        auth: LiveAuthRepository(environment: environment),
+        groups: LiveGroupsRepository(environment: environment),
+        members: LiveMembersRepository(environment: environment),
+        invites: LiveInvitesRepository(environment: environment),
+        transactions: LiveTransactionsRepository(environment: environment),
+        balances: LiveBalancesRepository(environment: environment),
+        activity: LiveActivityRepository(environment: environment),
+        quickEntry: LiveQuickEntryRepository(environment: environment),
+        groupEvents: LiveGroupEventsRepository(environment: environment),
+        liveConfiguration: configuration,
+        webBaseURL: configuration.webBaseURL,
+        appVersion: configuration.appVersion,
+        appStoreURL: configuration.appStoreURL,
+        makeSessionInvalidations: { environment.sessionInvalidations() }
+      )
+    #endif
+  }
 
+  #if DEBUG
     public static func scripted(
       world: FakeWorld,
       webBaseURL: URL = URL(string: "http://localhost:3000") ?? URL(filePath: "/"),
@@ -69,7 +90,5 @@ public struct AppDependencies: Sendable {
         world: world
       )
     }
-  #else
-    #error("Live repositories arrive in the integration stage")
   #endif
 }

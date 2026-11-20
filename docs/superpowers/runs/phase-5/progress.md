@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5B in progress (5B.3 complete; continuing to 5B.4). Owner checkpoint, final acceptance and merge are pending.
+- Status: Stage 5B in progress (5B.4 complete; continuing to 5B.5). Owner checkpoint, final acceptance and merge are pending.
 
 ## Tasks
 
@@ -16,7 +16,7 @@
 - [x] 5B.1 — Generated client and live composition
 - [x] 5B.2 — Account lifecycle and snapshots
 - [x] 5B.3 — Groups, members and local invite routing
-- [ ] 5B.4 — Ledger and realtime
+- [x] 5B.4 — Ledger and realtime
 - [ ] 5B.5 — Early iOS/web Simulator acceptance and owner handoff
 - [ ] 5C.1 — Native Google exchange
 - [ ] 5C.2 — Apple sign-in and revocation
@@ -215,6 +215,41 @@
   - `WEB_LAN_JOINED_GROUP_A_PASS` & `MINH_JOIN_ROLES_ROTATE_TRANSFER_PASS`: Lan joined Group A on web claiming `Lan` and created `Phu Quoc Web` on web; signed-out Minh validated web invite URL via `LinkRouter`, signed in, previewed and joined Group B on iOS; exercised role change to `.viewer`, invite disable (`INVITE_INVALID`), re-enable, rotate (old token `INVITE_INVALID`), malformed token refusal, `leaveGroup` clearing Group B snapshot, and `transferOwnership` to Lan.
   - `LAN_SWITCH_AND_SETTINGS_PASS` & `VIEWER_WRITE_REFUSED_PASS`: revoked Minh's iOS session from Minh's web session, observed 401 wiping Minh's snapshot directory, signed in as Lan confirming Minh's directory was absent, updated group settings, demoted Minh to viewer, and confirmed Minh's `role.canWrite == false` and API `403` refusal on member creation.
 - Security review: checked relevant items 1, 2, 3, 4, 7; `LinkRouter` enforces exact configured origin + HTTPS in Release + strict token alphabet, invite tokens are never written to disk snapshots, group snapshots are cleared on 404/delete/leave/session-invalidation, and viewer writes are gated both in UI and server-side.
+
+### Task 5B.4 — Ledger and realtime
+
+**Approach**
+- Files created/modified:
+  - `Repositories/Transactions/LiveTransactionsRepository.swift`
+  - `Repositories/Balances/LiveBalancesRepository.swift`
+  - `Repositories/QuickEntry/LiveQuickEntryRepository.swift`
+  - `Repositories/Realtime/LiveGroupEventsRepository.swift`
+  - `Repositories/Activity/LiveActivityRepository.swift`
+  - `AppShell/AppDependencies.swift`
+  - `LedgerFeature/{ExpenseForm/ExpenseFormModel,QuickEntry/QuickEntryModel,Settle/SettleModel}.swift`
+  - `GroupsFeature/Members/MembersModel.swift`
+  - `packages/contract/src/transaction.ts` and `packages/contract/openapi.json`
+- Approach: Wire live ledger operations to OpenAPI generated endpoints (`/groups/{id}/transactions`, `/balances`, `/transactions/parse`, `/activity`, `/events`). Preserve strict integer money (`Money` wraps `Int64`, zero floating point or device share calculations). Persist first-page transactions and balances into `SnapshotStore` protected under `(userId, sessionGeneration, groupGeneration)`. Implement optimistic updates with rollback on failure, optimistic lock conflict detection (`.conflict` throws version error), and live SSE stream invalidation via `AsyncStream` that dispatches immediate chunked newline frames. Set `category` default to `null` in contract schema so Swift optional nil fields omit cleanly without triggering validation failure.
+- Why this is the simplest approach: Reuses domain repository protocols, replaces remaining unconnected stub implementations, and binds existing 5U ledger screens to live data with zero schema drift.
+- Rejected alternative: Calculating participant splits on-device in Swift or falling back to floating-point division.
+- Questions: None (recorded D7 in `decisions.md`).
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --recursive apps/ios`: clean (exit 0).
+  - Xcode build: `** BUILD SUCCEEDED **` for Debug configuration.
+- Live Simulator exercise suite on isolated database `songphang_phase5_5b4`:
+  - `MINH_REGISTER_PASS` & `SETUP_MINH_PASS`: Minh registered, email verified, group "Chuyến đi Đà Lạt 5B4" created with members Minh, Lan, An.
+  - `QUICK_ENTRY_PARSER_PASS`: Valid phrase parsed successfully (`status: .ok`, draft expense populated); gibberish phrases returned `.unparsed`.
+  - `SPLITS_AND_BALANCES_PASS`: Created 4 split fixtures (T1 equal split, T2 exact split with remainder, T3 shares split, T4 percent split). Server balances returned net balances matching exact integer arithmetic: Minh = +140,000, Lan = -40,000, An = -100,000 VND.
+  - `PAGINATION_PASS`: Page 1 returned 20 items + `nextCursor`; page 2 returned 5 items; item IDs were completely disjoint; verified `SnapshotStore` populated with first 20 items.
+  - `CONFLICT_DETECTED_PASS`: Stale transaction update threw `.conflict` on version mismatch.
+  - `DELETE_AND_RESTORE_PASS`: Soft delete altered member balances; restore returned transaction to active state and restored net balances to original.
+  - `SETTLE_PASS`: Direct Settle transfer (Lan transfers 10,000 VND to Minh) recorded with transaction ID, updating balances correctly.
+  - `REALTIME_SSE_PASS`: Swift `LiveGroupEventsRepository` SSE stream connected, received `EVENT_CHANGED=transactions,balances,activity,budget` when external transaction was created.
+  - `ALL_5B4_EXERCISES_SUCCEEDED`.
+- Security review: items checked 1, 2, 4, 7, 9; no tokens or authorization headers exposed in logs, integer-only money path verified, Drizzle queries parameterized, Bearer session tokens validated on all ledger and SSE routes.
 
 ## Gate Not Passed
 

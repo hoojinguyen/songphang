@@ -94,6 +94,12 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 - **Choice:** Option 2.
 - **Reason:** Guarantees strict Debug/Release separation verified by inspecting the Release bundle's `Info.plist`.
 
+### D7 — Ledger contract optional category defaulting & transaction page sizing (Task 5B.4)
+- **Problem:** Swift's default `JSONEncoder` omits optional properties with `nil` values. In `packages/contract/src/transaction.ts`, `category` was defined as `TransactionCategory.nullable()`. Without a default, Zod rejected native transaction payloads omitting `"category"`, failing with `VALIDATION_FAILED` (400). In addition, `LiveTransactionsRepository.page` had a hardcoded default limit of 50 while the Phase 5B plan specifies first 20 items + nextCursor.
+- **Options:** (1) Custom Swift encoding container writing explicit nulls on every optional field; (2) In `packages/contract/src/transaction.ts`, define `category: TransactionCategory.nullable().default(null)`, re-generate `openapi.json`, and set `limit: 20` in `LiveTransactionsRepository.page`.
+- **Choice:** Option 2.
+- **Reason:** Clean, standard Zod practice that allows native Swift Codable clients to safely omit nil fields without payload bloat, preserves backward compatibility with web, and aligns client page sizing with the Phase 5B verification requirement.
+
 ## Standing Documentation Follow-ups
 
 - Codex reconciles the approved design §9 changes (`docs/04-adr.md` ADR-014/029/030/032, `docs/05-api-spec.md`, `docs/05-database-design.md`, `docs/03-srs.md`, root `AGENTS.md`) with the reviewed implementation before merge.

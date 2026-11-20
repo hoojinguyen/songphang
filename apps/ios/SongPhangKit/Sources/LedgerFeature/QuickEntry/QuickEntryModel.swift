@@ -157,12 +157,13 @@ public final class QuickEntryModel {
       key = newKey
     }
 
+    let occurredAt = Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(Date.now)
     let draft = TransactionDraft.split(
       TransactionDraft.SplitPayload(
         isIncome: false,
         description: description,
         amount: amount,
-        occurredAt: "2026-11-16T15:00:00.000Z",
+        occurredAt: occurredAt,
         category: nil,
         payers: target.draft.payers,
         split: split

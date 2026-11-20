@@ -145,7 +145,27 @@ public struct RootView: View {
         )
       )
     #else
-      fatalError("Live repositories arrive in the integration stage")
+      let resolved =
+        dependencies
+        ?? .live(configuration: configuration ?? Self.bundleConfiguration())
+      self.dependencies = resolved
+      let session = SessionModel(
+        authRepository: resolved.auth,
+        appVersion: resolved.appVersion,
+        initialState: .loading
+      )
+      self._sessionModel = State(initialValue: session)
+      self._groupListModel = State(
+        initialValue: GroupListModel(repository: resolved.groups)
+      )
+      self._signInModel = State(
+        initialValue: SignInModel(
+          repository: resolved.auth,
+          onSignedIn: { user in
+            session.didSignIn(user)
+          }
+        )
+      )
     #endif
   }
 
