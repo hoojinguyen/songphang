@@ -169,6 +169,13 @@
 			"when": 1795105028861,
 			"tag": "0023_useful_morlun",
 			"breakpoints": true
+		},
+		{
+			"idx": 24,
+			"version": "7",
+			"when": 1795337213333,
+			"tag": "0024_fixed_strong_guy",
+			"breakpoints": true
 		}
 	]
 }

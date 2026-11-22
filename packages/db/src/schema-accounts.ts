@@ -50,9 +50,11 @@ export const authTokens = pgTable(
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
 		purpose: text("purpose")
-			.$type<"verify_email" | "reset_password">()
+			.$type<"verify_email" | "reset_password" | "mobile_exchange">()
 			.notNull(),
 		tokenHash: text("token_hash").notNull().unique(),
+		codeChallenge: text("code_challenge"),
+		client: text("client").$type<"ios" | "android">(),
 		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 		usedAt: timestamp("used_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
@@ -62,7 +64,11 @@ export const authTokens = pgTable(
 	(table) => [
 		check(
 			"auth_tokens_purpose_check",
-			sql`${table.purpose} in ('verify_email','reset_password')`,
+			sql`${table.purpose} in ('verify_email','reset_password','mobile_exchange')`,
+		),
+		check(
+			"auth_tokens_mobile_exchange_check",
+			sql`(${table.purpose} = 'mobile_exchange' and ${table.codeChallenge} is not null and ${table.client} in ('ios','android')) or (${table.purpose} <> 'mobile_exchange' and ${table.codeChallenge} is null and ${table.client} is null)`,
 		),
 	],
 );

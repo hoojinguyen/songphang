@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5B complete (checkpoint handed off to owner); continuing continuous run to Stage 5C (Task 5C.1). Final acceptance and merge are pending.
+- Status: Stage 5C in progress (5C.1 complete; continuing to 5C.2). Final acceptance and merge are pending.
 
 ## Tasks
 
@@ -18,7 +18,7 @@
 - [x] 5B.3 — Groups, members and local invite routing
 - [x] 5B.4 — Ledger and realtime
 - [x] 5B.5 — Early iOS/web Simulator acceptance and owner handoff
-- [ ] 5C.1 — Native Google exchange
+- [x] 5C.1 — Native Google exchange
 - [ ] 5C.2 — Apple sign-in and revocation
 - [ ] 5C.3 — Push device registration and preferences
 - [ ] 5C.4 — Push delivery worker
@@ -276,6 +276,26 @@
 - 15 screenshots archived in `screens/5b/`.
 - Checkpoint handoff document published at `docs/superpowers/runs/phase-5/handoff-5b.md`.
 - Parity matrix rows P1-01 through P1-13 marked verified.
+
+### Task 5C.1 — Native Google exchange
+
+**Approach**
+- Files created/modified: `packages/db/src/{schema-accounts,accounts}.ts`, `packages/db/drizzle/0024_fixed_strong_guy.sql`, `packages/contract/src/auth.ts`, `packages/contract/openapi.json`, `apps/api/src/services/{google-sign-in,mobile-auth}.ts`, `apps/api/src/routes/{google,mobile-auth}.ts`, `apps/ios/App/Info.plist`, `apps/ios/Config/Info-Debug.plist`, `Repositories/Auth/{GoogleAuthCoordinator,LiveAuthRepository}.swift`, `AuthFeature/{AuthErrorMessages,SignIn/SignInModel}.swift`.
+- Approach: Extend `auth_tokens` with `mobile_exchange` purpose, `code_challenge`, and `client` constraint; split `resolveGoogleUserId` so native `/auth/google?client=ios&code_challenge=...` binds the 43-char S256 challenge and native client into HttpOnly OAuth state cookies, issues a hashed 60s single-use code redirecting to `songphang://auth?code=...` without setting session cookies, and `POST /auth/exchange` atomically consumes the code against `sha256(codeVerifier)` and client context with `Cache-Control: no-store`. On iOS, `GoogleAuthCoordinator` initiates an ephemeral `ASWebAuthenticationSession` against `webBaseURL` and validates the `songphang://auth` callback strictly; tokens remain confined to `Repositories`.
+- Why this is the simplest approach: Reuses the existing Google OAuth verification and one-time hash token table with atomic SQL `UPDATE ... RETURNING`, preserving the web cookie/redirect contract untouched and avoiding third-party SDKs.
+- Rejected alternative: Minting a session token directly in the browser callback redirect URL.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: clean (exit 0).
+  - Xcode Debug build: `** BUILD SUCCEEDED **` with warnings treated as errors.
+- Live disposable exercise (`songphang_phase5_5c1`, isolated API `:4000` with test Google client credentials + Simulator `Exercise5C1.app`):
+  - `PROVIDERS={"google":true,"devLogin":false}` verified.
+  - `API_AND_SERVICE_5C1_PASS`: rejected missing/short `code_challenge` (`400`), preserved web `sp_google_redirect` while clearing native cookies on web authorize, isolated native error redirects to `songphang://auth?error=google` with no `sp_session` cookie, refused wrong verifier (`400 TOKEN_INVALID`), wrong client `android` (`400 TOKEN_INVALID`), and 61s-expired code (`400 TOKEN_INVALID`); 5 concurrent valid `/auth/exchange` calls produced exactly 1 `200` (`Cache-Control: no-store`) and 4 `400` responses (`CONCURRENT_EXCHANGE_SESSION_COUNT=1`), and subsequent replay returned `400 TOKEN_INVALID`.
+  - `VERIFY_ROUTING_PASS`: `GoogleAuthCallback.parse` accepted valid `code`, `google`, and `google_unverified` URLs and rejected foreign schemes, wrong hosts, extra path segments, malformed codes, extra query params, and unknown errors; `LinkRouter` rejected `songphang://auth` and `/api/v1/auth/google/callback`.
+  - `SIMULATOR_EXCHANGE_PASS`: Simulator `LiveAuthRepository.exchangeGoogleCode` exchanged a locally issued code for Minh (`minh.5c1@local.songphang.test`), persisted the Bearer token in Keychain, resolved `GET /me`, populated user snapshot, and cleaned up on `signOut()`.
+- Security review: checked items 1, 2, 4, 7, 9; no exchange codes, verifiers, or session tokens are logged (`api-5c1.log` clean), query/body inputs validated by Zod, PKCE verifier retained only for the active authorization flow, atomic single-use DB update prevents concurrent session multiplication.
 
 ## Gate Not Passed
 

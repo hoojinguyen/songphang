@@ -102,7 +102,58 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
   }
 
   public func signInWithGoogle() async throws(AppError) -> User {
-    throw .api(code: "NOT_CONNECTED", status: 501)
+    let authResult = try await GoogleAuthCoordinator.authorize(
+      webBaseURL: environment.configuration.webBaseURL
+    )
+    return try await exchangeGoogleCode(
+      code: authResult.code,
+      codeVerifier: authResult.codeVerifier
+    )
+  }
+
+  public func exchangeGoogleCode(code: String, codeVerifier: String) async throws(AppError) -> User
+  {
+    do {
+      let body = Components.Schemas.MobileExchangeRequest(
+        client: .ios,
+        code: code,
+        codeVerifier: codeVerifier,
+        deviceName: environment.configuration.deviceName
+      )
+      let output = try await environment.client.post_sol_api_sol_v1_sol_auth_sol_exchange(
+        .init(body: .json(body))
+      )
+      switch output {
+      case .ok(let ok):
+        let response = try ok.body.json
+        let user = AuthMapping.mapUser(response.user)
+        try await environment.tokenStore.write(response.token)
+        let scope = await environment.snapshots.beginSession(userId: user.id.rawValue)
+        if let encoded = AuthMapping.encodeCachedUser(user) {
+          await environment.snapshots.writeData(encoded, for: .me, scope: scope)
+        }
+        return user
+      case .badRequest(let badRequest):
+        let code = try? badRequest.body.json.error.code.rawValue
+        throw await environment.errorMapper.mapStatus(
+          statusCode: 400,
+          code: code ?? "TOKEN_INVALID",
+          clearSessionOnUnauthorized: false
+        )
+      case .tooManyRequests:
+        throw AppError.rateLimited
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(
+          statusCode: status,
+          payload: payload,
+          clearSessionOnUnauthorized: false
+        )
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
   }
 
   public func signInWithApple() async throws(AppError) -> User {

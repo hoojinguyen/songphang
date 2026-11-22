@@ -118,3 +118,20 @@ export const SessionsResponse = z
 	})
 	.openapi("SessionsResponse");
 export type SessionsResponse = z.infer<typeof SessionsResponse>;
+
+export const PkceCodeChallenge = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+export const PkceCodeVerifier = z
+	.string()
+	.min(43)
+	.max(128)
+	.regex(/^[A-Za-z0-9._~-]+$/);
+
+export const MobileExchangeRequest = z
+	.object({
+		code: z.string().min(1).max(256),
+		codeVerifier: PkceCodeVerifier,
+		client: NativeClient,
+		deviceName: DeviceName,
+	})
+	.openapi("MobileExchangeRequest");
+export type MobileExchangeRequest = z.infer<typeof MobileExchangeRequest>;
