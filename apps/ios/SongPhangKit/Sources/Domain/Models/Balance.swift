@@ -14,11 +14,24 @@ public struct SuggestedTransfer: Sendable, Hashable, Identifiable {
   public let fromMemberId: Member.ID
   public let toMemberId: Member.ID
   public let amount: Money
+  public let paymentMethods: [PaymentMethod]
+  public let purpose: String?
+  public let pendingSettlement: PendingSettlement?
 
-  public init(fromMemberId: Member.ID, toMemberId: Member.ID, amount: Money) {
+  public init(
+    fromMemberId: Member.ID,
+    toMemberId: Member.ID,
+    amount: Money,
+    paymentMethods: [PaymentMethod] = [],
+    purpose: String? = nil,
+    pendingSettlement: PendingSettlement? = nil
+  ) {
     self.fromMemberId = fromMemberId
     self.toMemberId = toMemberId
     self.amount = amount
+    self.paymentMethods = paymentMethods
+    self.purpose = purpose
+    self.pendingSettlement = pendingSettlement
   }
 }
 

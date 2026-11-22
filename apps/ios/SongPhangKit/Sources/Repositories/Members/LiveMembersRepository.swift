@@ -157,6 +157,48 @@ public final class LiveMembersRepository: MembersRepository, Sendable {
     }
   }
 
+  public func replacePaymentMethods(
+    groupId: ExpenseGroup.ID,
+    memberId: Member.ID,
+    methods: [PaymentMethod]
+  ) async throws(AppError) {
+    typealias Input = Operations
+      .put_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_members_sol__lcub_memberId_rcub__sol_payment_hyphen_methods
+      .Input
+    let payload = methods.map { method -> Input.Body.jsonPayload.methodsPayloadPayload in
+      switch method {
+      case .bank(let bank):
+        .case1(
+          .init(
+            accountName: bank.accountName, accountNumber: bank.accountNumber,
+            bankBin: bank.bin, kind: .bank
+          ))
+      case .momo(let phone):
+        .case2(.init(kind: .momo, phone: phone))
+      case .zalopay(let phone):
+        .case3(.init(kind: .zalopay, phone: phone))
+      }
+    }
+    do {
+      let output = try await environment.client
+        .put_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_members_sol__lcub_memberId_rcub__sol_payment_hyphen_methods(
+          .init(
+            path: .init(groupId: groupId.rawValue, memberId: memberId.rawValue),
+            body: .json(.init(methods: payload)))
+        )
+      switch output {
+      case .ok:
+        return
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
   public func delete(groupId: ExpenseGroup.ID, memberId: Member.ID) async throws(AppError) {
     do {
       let output = try await environment.client

@@ -14,6 +14,7 @@ public struct MembersView: View {
   private let onBack: () -> Void
   private let onOpenActivity: (ExpenseGroup.ID) -> Void
   private let onOpenSettings: (ExpenseGroup.ID) -> Void
+  private let onEditPaymentDetails: ((Member) -> Void)?
   private let onLeftGroup: () -> Void
 
   @State private var editingNames: [Member.ID: String] = [:]
@@ -28,6 +29,7 @@ public struct MembersView: View {
     onBack: @escaping () -> Void,
     onOpenActivity: @escaping (ExpenseGroup.ID) -> Void,
     onOpenSettings: @escaping (ExpenseGroup.ID) -> Void,
+    onEditPaymentDetails: ((Member) -> Void)? = nil,
     onLeftGroup: @escaping () -> Void
   ) {
     self.model = model
@@ -35,6 +37,7 @@ public struct MembersView: View {
     self.onBack = onBack
     self.onOpenActivity = onOpenActivity
     self.onOpenSettings = onOpenSettings
+    self.onEditPaymentDetails = onEditPaymentDetails
     self.onLeftGroup = onLeftGroup
   }
 
@@ -129,12 +132,23 @@ public struct MembersView: View {
       let isExpanded = model.expandedMemberId == member.id
 
       VStack(alignment: .leading, spacing: 8) {
-        memberRow(member: member, role: memberRole, canEdit: canWrite, isExpanded: isExpanded)
+        memberRow(member: member, role: memberRole, canExpand: true, isExpanded: isExpanded)
 
         if canWrite && isExpanded {
           let memberBalance =
             data.balances.balances.first(where: { $0.memberId == member.id })?.balance ?? .zero
           memberEditor(member: member, balance: memberBalance)
+        }
+
+        if isExpanded {
+          let canEditPayment =
+            isEmailVerified
+            && model.hasCurrentPaymentDetails
+            && !isOffline
+            && (data.group.role.canWrite || member.isMe)
+          if !member.paymentMethods.isEmpty || (canEditPayment && onEditPaymentDetails != nil) {
+            paymentMethodsCard(member: member, canEdit: canEditPayment)
+          }
         }
 
         if isEmailVerified && member.active && !member.claimed {
@@ -242,7 +256,7 @@ public struct MembersView: View {
   private func memberRow(
     member: Member,
     role: Role?,
-    canEdit: Bool,
+    canExpand: Bool,
     isExpanded: Bool
   ) -> some View {
     let statusTag =
@@ -296,7 +310,7 @@ public struct MembersView: View {
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
     return Group {
-      if canEdit {
+      if canExpand {
         Button {
           if isExpanded {
             model.expandedMemberId = nil
@@ -314,6 +328,50 @@ public struct MembersView: View {
         content
       }
     }
+  }
+
+  private func paymentMethodsCard(member: Member, canEdit: Bool) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text(L10n.tr("payment.title"))
+        .font(Typography.bodyBold)
+        .foregroundStyle(Tokens.ink)
+
+      Text(L10n.t("payment.hint", ["name": member.name]))
+        .font(Typography.caption)
+        .foregroundStyle(Tokens.muted)
+
+      ForEach(member.paymentMethods, id: \.self) { method in
+        switch method {
+        case .bank(let bank):
+          VStack(alignment: .leading, spacing: 2) {
+            Text("\(bank.name) · \(bank.accountNumber)")
+              .font(Typography.subheadlineBold)
+              .foregroundStyle(Tokens.ink)
+            Text(bank.accountName)
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.muted)
+          }
+        case .momo(let phone):
+          Text(L10n.t("pay.momoRow", ["phone": phone]))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+        case .zalopay(let phone):
+          Text(L10n.t("pay.zalopayRow", ["phone": phone]))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+        }
+      }
+
+      if canEdit, let onEditPaymentDetails {
+        SPButton(L10n.tr("payment.title"), variant: .surface, isFullWidth: true) {
+          onEditPaymentDetails(member)
+        }
+      }
+    }
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
   }
 
   private func memberEditor(member: Member, balance: Money) -> some View {

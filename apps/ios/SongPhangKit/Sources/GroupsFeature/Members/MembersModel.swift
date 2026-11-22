@@ -15,6 +15,7 @@ public final class MembersModel {
   public let groupId: ExpenseGroup.ID
   public private(set) var state: Loadable<ScreenData> = .loading
   public private(set) var refreshError: AppError?
+  private(set) var hasCurrentPaymentDetails = false
   public private(set) var actionError: AppError?
   public private(set) var isPerformingAction = false
   public var expandedMemberId: Member.ID?
@@ -40,6 +41,7 @@ public final class MembersModel {
   }
 
   public func load() async {
+    hasCurrentPaymentDetails = false
     async let cachedGroup = groupsRepository.lastKnownGroup(id: groupId)
     async let cachedMembers = membersRepository.lastKnownMembers(groupId: groupId)
     async let cachedUsers = membersRepository.lastKnownGroupUsers(groupId: groupId)
@@ -78,6 +80,7 @@ public final class MembersModel {
       let inv = try? await fetchedInvite
       state = .loaded(ScreenData(group: g, members: m, users: u, balances: b, invite: inv))
       refreshError = nil
+      hasCurrentPaymentDetails = true
     } catch let error as AppError {
       if case .loaded = state {
         refreshError = error

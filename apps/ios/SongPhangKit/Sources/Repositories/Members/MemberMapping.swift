@@ -13,8 +13,29 @@ enum MemberMapping {
       shape: MemberShape(code: dto.shape.rawValue),
       color: MemberColor(code: dto.color.rawValue),
       isMe: dto.isMe,
-      claimed: dto.claimed
+      claimed: dto.claimed,
+      paymentMethods: (dto.paymentMethods ?? []).map(mapPaymentMethod)
     )
+  }
+
+  private static func mapPaymentMethod(
+    _ method: Components.Schemas.MemberDto.paymentMethodsPayloadPayload
+  ) -> PaymentMethod {
+    switch method {
+    case .case1(let bank):
+      .bank(
+        BankPayment(
+          bin: bank.bankBin,
+          name: bank.bankShortName,
+          accountNumber: bank.accountNumber,
+          accountName: bank.accountName
+        )
+      )
+    case .case2(let wallet):
+      .momo(phone: wallet.phone)
+    case .case3(let wallet):
+      .zalopay(phone: wallet.phone)
+    }
   }
 
   static func mapGroupUser(_ dto: Components.Schemas.GroupUserDto) -> GroupUser {
@@ -39,6 +60,7 @@ enum MemberMapping {
     let color: String
     let isMe: Bool
     let claimed: Bool
+    let paymentMethods: [BalanceMapping.RawPaymentMethod]?
 
     func toDomain() -> Member {
       Member(
@@ -50,7 +72,8 @@ enum MemberMapping {
         shape: MemberShape(code: shape),
         color: MemberColor(code: color),
         isMe: isMe,
-        claimed: claimed
+        claimed: claimed,
+        paymentMethods: (paymentMethods ?? []).compactMap { $0.toDomain() }
       )
     }
   }
@@ -105,7 +128,8 @@ enum MemberMapping {
           shape: m.shape.code,
           color: m.color.code,
           isMe: m.isMe,
-          claimed: m.claimed
+          claimed: m.claimed,
+          paymentMethods: m.paymentMethods.map(BalanceMapping.RawPaymentMethod.init)
         )
       }
     )

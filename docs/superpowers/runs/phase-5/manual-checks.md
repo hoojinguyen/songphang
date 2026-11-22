@@ -75,4 +75,9 @@ Pending 5E. Antigravity records the final code revision, results by journey in `
 
 Pending owner-led verification with the required configuration. Preserve the approved deferral for the real AI provider.
 
+- **Payment details, VietQR & settlement requests (5D.1):**
+  1. Open a group's `Thành viên và lời mời`, expand a member, tap `Thông tin nhận tiền`, pick a bank + enter account number/name + MoMo/ZaloPay, save → persists cleanly across reload; verify viewer can edit only their own member (`403` otherwise).
+  2. Open `Số dư` as debtor and tap `Trả` → S14 shows VietQR ≥240pt, copy amount/bank/phone buttons toggle `Đã sao chép`, `Lưu mã QR` requests add-only Photos access and shows `Đã lưu mã QR.`, and scanning with a real Vietnamese banking app fills bank/account/amount/purpose accurately.
+  3. Tap `Tôi đã chuyển` → ledger debt remains unchanged while pending; receiver taps `Đã nhận` → creates 1 transfer settlement and updates net balance to `0 đ`; test `Chưa nhận`, `Huỷ báo`, duplicate/409 `Yêu cầu này đã được xử lý.`, and `Ghi nhận luôn`.
+
 - **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.

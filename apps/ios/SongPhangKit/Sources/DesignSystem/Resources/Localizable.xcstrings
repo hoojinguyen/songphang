@@ -1,6 +1,380 @@
 {
   "sourceLanguage": "vi",
   "strings": {
+    "ios.pay.saveQRSucceeded": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu mã QR."
+          }
+        }
+      }
+    },
+    "ios.pay.saveQRFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không lưu được mã QR."
+          }
+        }
+      }
+    },
+    "ios.pay.saveQR": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu mã QR"
+          }
+        }
+      }
+    },
+    "payment.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu."
+          }
+        }
+      }
+    },
+    "payment.invalidPhone": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số điện thoại chưa đúng."
+          }
+        }
+      }
+    },
+    "payment.invalidAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tài khoản chỉ gồm chữ và số."
+          }
+        }
+      }
+    },
+    "payment.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cả nhóm thấy thông tin này để chuyển tiền cho {name}."
+          }
+        }
+      }
+    },
+    "payment.zalopay": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số ZaloPay"
+          }
+        }
+      }
+    },
+    "payment.momo": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số MoMo"
+          }
+        }
+      }
+    },
+    "payment.accountName": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên tài khoản"
+          }
+        }
+      }
+    },
+    "payment.accountNumber": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tài khoản"
+          }
+        }
+      }
+    },
+    "payment.bank": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngân hàng"
+          }
+        }
+      }
+    },
+    "payment.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông tin nhận tiền"
+          }
+        }
+      }
+    },
+    "pay.partialNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trả trước {amount} trên tổng nợ {total}."
+          }
+        }
+      }
+    },
+    "pay.alreadyResolved": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yêu cầu này đã được xử lý."
+          }
+        }
+      }
+    },
+    "pay.rejectedNotice": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã báo lại là chưa nhận."
+          }
+        }
+      }
+    },
+    "pay.confirmedNotice": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã ghi nhận {amount} từ {from}."
+          }
+        }
+      }
+    },
+    "pay.cancelReport": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huỷ báo"
+          }
+        }
+      }
+    },
+    "pay.pendingWaiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chờ {to} xác nhận"
+          }
+        }
+      }
+    },
+    "pay.rejectReceived": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa nhận"
+          }
+        }
+      }
+    },
+    "pay.pendingConfirmText": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{from} báo đã chuyển {amount}"
+          }
+        }
+      }
+    },
+    "pay.recordDirect": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi nhận luôn"
+          }
+        }
+      }
+    },
+    "pay.addDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm thông tin"
+          }
+        }
+      }
+    },
+    "pay.noDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{to} chưa có thông tin nhận tiền."
+          }
+        }
+      }
+    },
+    "pay.reportedNotice": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã báo cho {to}. Sổ sẽ ghi nhận khi {to} xác nhận."
+          }
+        }
+      }
+    },
+    "pay.reportedButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi đã chuyển"
+          }
+        }
+      }
+    },
+    "pay.copyAmount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép số tiền"
+          }
+        }
+      }
+    },
+    "pay.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã sao chép"
+          }
+        }
+      }
+    },
+    "pay.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép"
+          }
+        }
+      }
+    },
+    "pay.zalopayRow": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZaloPay {phone}"
+          }
+        }
+      }
+    },
+    "pay.momoRow": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MoMo {phone}"
+          }
+        }
+      }
+    },
+    "pay.qrHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quét bằng app ngân hàng. Số tiền và nội dung đã điền sẵn."
+          }
+        }
+      }
+    },
+    "pay.purpose": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nội dung"
+          }
+        }
+      }
+    },
+    "pay.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trả {to}"
+          }
+        }
+      }
+    },
     "account.changePassword": {
       "extractionState": "manual",
       "localizations": {

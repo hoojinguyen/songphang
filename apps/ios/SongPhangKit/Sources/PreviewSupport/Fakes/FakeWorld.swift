@@ -51,14 +51,15 @@
       ),
     ]
 
-    private var groupsById: [ExpenseGroup.ID: ExpenseGroup] = [:]
+    internal var groupsById: [ExpenseGroup.ID: ExpenseGroup] = [:]
     private var groupOrder: [ExpenseGroup.ID] = []
-    private var membersByGroup: [ExpenseGroup.ID: [Member]] = [:]
+    internal var membersByGroup: [ExpenseGroup.ID: [Member]] = [:]
     private var usersByGroup: [ExpenseGroup.ID: [GroupUser]] = [:]
     private var invitesByGroup: [ExpenseGroup.ID: Invite] = [:]
     internal var transactionsByGroup: [ExpenseGroup.ID: [LedgerTransaction]] = [:]
     internal var balancesByGroup: [ExpenseGroup.ID: GroupBalances] = [:]
     internal var activityByGroup: [ExpenseGroup.ID: [ActivityItem]] = [:]
+    internal var settlementRequestsByGroup: [ExpenseGroup.ID: [SettlementRequest]] = [:]
     internal var seenIdempotencyKeys: Set<IdempotencyKey> = []
     internal var deletedTransactionsByGroup:
       [ExpenseGroup.ID: [LedgerTransaction.ID: LedgerTransaction]] = [:]

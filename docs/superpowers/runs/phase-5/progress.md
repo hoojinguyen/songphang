@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5C complete (5C.1–5C.6 verified); ready for Stage 5D. Final acceptance and merge are pending.
+- Status: Stage 5D in progress (5D.1 verified; continuing through 5D.2–5E.2).
 
 ## Tasks
 
@@ -24,7 +24,7 @@
 - [x] 5C.4 — Push delivery worker
 - [x] 5C.5 — Native push registration and routing
 - [x] 5C.6 — Associated domains and gate
-- [ ] 5D.1 — Payments and settlement requests
+- [x] 5D.1 — Payments and settlement requests
 - [ ] 5D.2 — Search, categories, statistics and CSV
 - [ ] 5D.3 — Funds and budgets
 - [ ] 5D.4 — Receipts, item splits and assisted entry
@@ -402,6 +402,28 @@
   - `GATE_5C6_PASS`: `routes=38 cases=58 balances=All_groups_balanced` covering Google PKCE (`no challenge -> 400`, `302`, `wrong verifier -> 400`, `exchange -> 200 no-store`, `replay -> 400`), Apple Sign-In (`bad aud -> 401`, `good JWT -> 200`, `DELETE /me -> 204` logging `apple.revoke.simulated`), push device/session boundary (`Cookie -> 403`, `Mixed -> 403`, `Web Bearer -> 403`, foreign delete `404`, 10-device cap -> 11th `422 LIMIT_REACHED`, logout cascade deletes devices, `hideContent: true` persisted in `GET /me`), role boundaries (Owner/Editor/Viewer `403`/Outsider `404` across group endpoints/Unverified `403`), Phase 2–4 regression (payment methods, settlement request confirm, custom categories, stats, UTF-8 BOM CSV bytes `EF BB BF`, fund, budget, comments, disputes), and live worker `pg-boss` emitting sanitized `push.sent.console` (`"Có cập nhật trong nhóm Nhóm Gate 5C"`) with zero leaked tokens/verifiers in `api-5c6.log` or `worker-5c6.log`.
 - Security review: checked items 1, 2, 4, 6, 7, 8; `APPLE_APP_ID` strictly validated before serving AASA JSON (`404` otherwise, no redirects), `.xcconfig`/entitlements contain placeholder `example.invalid` without real keys/secrets, universal link router enforces exact scheme/host/port + strict invite token format and excludes `/link/telegram`, email/reset, and OAuth callbacks, zero tokens/verifiers leaked in logs, no third-party packages added.
 - External verification gap (5C.6): Live `applinks:<domain>` HTTPS domain association on a physical iPhone (`swcutil` / CDN-served AASA over HTTPS) requires the owner's production domain, Team ID, and provisioning profile.
+
+### Task 5D.1 — Payment methods, QR and settlement requests
+
+**Approach**
+- Files created/modified: `apps/ios/SongPhangKit/Package.swift`, `apps/ios/App/Info.plist`, `apps/ios/Config/Info-Debug.plist`, `Domain/Models/{Balance,Member,PaymentMethod}.swift`, `Domain/Repositories/{MembersRepository,SettlementRequestsRepository}.swift`, `DesignSystem/Components/PendingSettlementCard.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `Repositories/Balances/{BalanceMapping,LiveSettlementRequestsRepository}.swift`, `Repositories/Members/{MemberMapping,LiveMembersRepository}.swift`, `PaymentsFeature/Pay/{PayModel,PayView,PaymentQRCode}.swift`, `PaymentsFeature/PaymentDetails/{PaymentBanks,PaymentDetailsModel,PaymentDetailsView}.swift`, `GroupsFeature/Members/{MembersModel,MembersView}.swift`, `LedgerFeature/Balances/{BalancesModel,BalancesView}.swift`, `PreviewSupport/Fakes/{FakeRepositories,FakeSettlementRequestsRepository,FakeWorld,FakeWorld+Payments}.swift`, `AppShell/{AppDependencies,RouteDestination}.swift`.
+- Approach: Add `PaymentsFeature` (S14 `PayView` + `PaymentDetailsView`) and `PendingSettlementCard` in `DesignSystem` without adding feature-to-feature imports. Map `paymentMethods`, `purpose`, `qrPayload`, and `pendingRequest` from `/balances` and `/members`, preserving them across resilient snapshot encoding/decoding (`BalanceMapping` and `MemberMapping` skip unknown method kinds safely), and fetch pending requests via `GET /settlement-requests`. Render server `qrPayload` via Core Image `CIFilter.qrCodeGenerator()` (240pt minimum, 4-module white quiet zone) with `Lưu mã QR` (`PHPhotoLibrary.requestAuthorization(for: .addOnly)`), copyable bank/wallet details, `PendingSettlementCard` inline on `BalancesView` and `PayView`, and `PaymentDetailsView` with searchable 76-bank picker and Vietnamese uppercase/phone normalization.
+- Why this is the simplest approach: Keeps all UI inside `PaymentsFeature`/`DesignSystem`, keeps money server-authoritative with integer `Money`, and isolates OpenAPI DTOs inside `Repositories`.
+- Rejected alternative: Keeping `MemberPaymentEditor` inside `GroupsFeature`, which conflicted with AD §5 feature ownership.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .` — 512 files, 0 errors; 8 workspace typechecks; `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: PASS (exit 0).
+  - `apps/ios/Scripts/check-strings.sh`: `0` `DIFFERING` and `0` `EXTRA` keys.
+  - Debug `xcodebuild` (`generic/platform=iOS Simulator`) & Release `xcodebuild` (`generic/platform=iOS Simulator`, `CODE_SIGNING_ALLOWED=NO`): both `** BUILD SUCCEEDED **`.
+- Live Simulator & API exercise (`songphang_phase5_5d1`, clean-env API `:4000`, `Exercise5D1.app` on `iPhone 17 Pro`):
+  - `EXERCISE_5D1_API_PASS`: verified viewer editing other member payment details refused (`403`), viewer editing own payment details accepted (`200`, phone `+84 912.345.678` -> `0912345678`), owner saving 3 methods (`bank`, `momo`, `zalopay`) returned `200`, `GET /balances` returned `qrPayload` + `purpose` (`SP Lan tra Minh`), `POST /settlement-requests` kept ledger unchanged while pending, duplicate idempotency key returned identical request, new key returned `409 REQUEST_ALREADY_PENDING`, viewer confirm refused (`403`), `reject` & `cancel` succeeded, `confirm` created 1 settlement transfer (`01a203d3-85cc-7d7e-8001-5590fdd3f168`) clearing debt to `0`, and re-confirming returned `409 REQUEST_NOT_PENDING`.
+  - `SIM_EXERCISE_5D1_READY`: `LiveMembersRepository` & `LiveBalancesRepository` snapshot round-trips retained `paymentMethods`, `purpose`, and `pendingSettlement`; `LiveSettlementRequestsRepository` idempotent double-tap & `list(status: .pending)` succeeded.
+  - Simulator QR screenshot (`docs/superpowers/runs/phase-5/screens/5d/pay-qr.png`) decoded with Apple Vision (`VNDetectBarcodesRequest`): `DECODED_COUNT=1`, `QR_BYTE_EXACT_MATCH=true length=123` matching server `qrPayload` (`00020101021238540010A00000072701240006970436011001234567890208QRIBFTTA53037045405600005802VN62190815SP Lan tra Minh6304227A`) byte for byte.
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`sum 0; mismatches 0`).
+- Security review: checked relevant items 1, 2, 4, 7, 8; no secrets or tokens in logs/diffs, `NSPhotoLibraryAddUsageDescription` uses add-only access, all writes gated by server group role + verified email + `hasCurrentPaymentDetails` / online checks, `PendingSettlementCard` & `PayView` accept only server-supplied `qrPayload`, no third-party dependencies added.
+- External verification gap (5D.1): Physical iPhone banking-app QR scan and live Photos save authorization prompt belong to owner device checks.
 
 ## Gate Not Passed
 

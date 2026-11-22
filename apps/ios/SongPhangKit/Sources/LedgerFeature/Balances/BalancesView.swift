@@ -8,22 +8,28 @@ public import SwiftUI
 
 public struct BalancesView: View {
   @Bindable private var model: BalancesModel
+  private let currentUserId: User.ID?
   private let isEmailVerified: Bool
   private let onBack: () -> Void
   private let onBackToGroups: () -> Void
+  private let onOpenPay: ((SuggestedTransfer, Member, Member) -> Void)?
   private let onOpenSettle: (SuggestedTransfer) -> Void
 
   public init(
     model: BalancesModel,
+    currentUserId: User.ID? = nil,
     isEmailVerified: Bool = true,
     onBack: @escaping () -> Void,
     onBackToGroups: @escaping () -> Void,
+    onOpenPay: ((SuggestedTransfer, Member, Member) -> Void)? = nil,
     onOpenSettle: @escaping (SuggestedTransfer) -> Void
   ) {
     self.model = model
+    self.currentUserId = currentUserId
     self.isEmailVerified = isEmailVerified
     self.onBack = onBack
     self.onBackToGroups = onBackToGroups
+    self.onOpenPay = onOpenPay
     self.onOpenSettle = onOpenSettle
   }
 
@@ -81,6 +87,20 @@ public struct BalancesView: View {
       onBack: onBack
     )
 
+    if let noticeText = noticeMessage {
+      SPCard(tone: .accent, padding: 14) {
+        Text(noticeText)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
+      }
+    }
+
+    if let error = model.settlementError {
+      Text(errorMessage(for: error))
+        .font(Typography.captionBold)
+        .foregroundStyle(Tokens.ink)
+    }
+
     let hasTransactions = !data.transactions.isEmpty
     let myMemberId = data.group.myMemberId
     let sortedTransfers = data.balances.transfers.sorted { first, second in
@@ -91,10 +111,13 @@ public struct BalancesView: View {
     }
     let ownTransfers = sortedTransfers.filter { $0.fromMemberId == myMemberId }
     let otherTransfers = sortedTransfers.filter { $0.fromMemberId != myMemberId }
-    let canEdit =
-      isEmailVerified
-      && data.group.role.canWrite
-      && model.refreshError != .offline
+    let isOffline = model.refreshError == .offline
+    let canWrite = isEmailVerified && data.group.role.canWrite && !isOffline
+
+    let matchedPendingIds = Set(sortedTransfers.compactMap { $0.pendingSettlement?.id })
+    let unmatchedPending = data.pendingRequests.filter {
+      $0.status == .pending && !matchedPendingIds.contains($0.id)
+    }
 
     if !hasTransactions {
       VStack(alignment: .leading, spacing: 12) {
@@ -144,16 +167,48 @@ public struct BalancesView: View {
           OwnSettlementCardView(
             transfer: transfer,
             members: data.members,
-            canEdit: canEdit,
-            onSettle: { onOpenSettle(transfer) }
+            group: data.group,
+            isEmailVerified: isEmailVerified,
+            isOffline: isOffline,
+            canOpenAction: !isOffline
+              && (onOpenPay != nil ? model.hasCurrentPaymentDetails : canWrite),
+            opensPay: onOpenPay != nil,
+            isResolvingSettlement: model.isResolvingSettlement,
+            onSettle: { openTransfer(transfer, members: data.members) },
+            onResolvePending: { pending, fromName, decision in
+              Task {
+                await model.resolveSettlement(
+                  requestId: pending.id,
+                  amount: pending.amount,
+                  fromName: fromName,
+                  decision: decision
+                )
+              }
+            }
           )
         }
         if !otherTransfers.isEmpty {
           OtherSettlementsSection(
             transfers: otherTransfers,
             members: data.members,
-            canEdit: canEdit,
-            onSettle: onOpenSettle
+            group: data.group,
+            isEmailVerified: isEmailVerified,
+            isOffline: isOffline,
+            canOpenAction: !isOffline
+              && (onOpenPay != nil ? model.hasCurrentPaymentDetails : canWrite),
+            opensPay: onOpenPay != nil,
+            isResolvingSettlement: model.isResolvingSettlement,
+            onSettle: { openTransfer($0, members: data.members) },
+            onResolvePending: { pending, fromName, decision in
+              Task {
+                await model.resolveSettlement(
+                  requestId: pending.id,
+                  amount: pending.amount,
+                  fromName: fromName,
+                  decision: decision
+                )
+              }
+            }
           )
         }
       } else {
@@ -161,9 +216,24 @@ public struct BalancesView: View {
           SettlementCardView(
             transfer: transfer,
             members: data.members,
-            myMemberId: myMemberId,
-            canEdit: canEdit,
-            onSettle: { onOpenSettle(transfer) }
+            group: data.group,
+            isEmailVerified: isEmailVerified,
+            isOffline: isOffline,
+            canOpenAction: !isOffline
+              && (onOpenPay != nil ? model.hasCurrentPaymentDetails : canWrite),
+            opensPay: onOpenPay != nil,
+            isResolvingSettlement: model.isResolvingSettlement,
+            onSettle: { openTransfer(transfer, members: data.members) },
+            onResolvePending: { pending, fromName, decision in
+              Task {
+                await model.resolveSettlement(
+                  requestId: pending.id,
+                  amount: pending.amount,
+                  fromName: fromName,
+                  decision: decision
+                )
+              }
+            }
           )
         }
       }
@@ -174,17 +244,162 @@ public struct BalancesView: View {
       )
       .id("balance-bars")
     }
+
+    if !unmatchedPending.isEmpty {
+      unmatchedPendingSection(
+        requests: unmatchedPending,
+        data: data,
+        isOffline: isOffline
+      )
+    }
   }
+
+  private var noticeMessage: String? {
+    switch model.settlementNotice {
+    case .confirmed(let amount, let fromName):
+      L10n.t("pay.confirmedNotice", ["amount": MoneyFormat.full(amount), "from": fromName])
+    case .rejected:
+      L10n.tr("pay.rejectedNotice")
+    case .alreadyResolved:
+      L10n.tr("pay.alreadyResolved")
+    case .none:
+      nil
+    }
+  }
+
+  private func errorMessage(for error: AppError) -> String {
+    if case .api(_, 403) = error {
+      return L10n.tr("common.forbidden")
+    }
+    return L10n.tr("common.saveError")
+  }
+
+  private func openTransfer(_ transfer: SuggestedTransfer, members: [Member]) {
+    if let onOpenPay,
+      let fromMember = members.first(where: { $0.id == transfer.fromMemberId }),
+      let toMember = members.first(where: { $0.id == transfer.toMemberId })
+    {
+      onOpenPay(transfer, fromMember, toMember)
+    } else {
+      onOpenSettle(transfer)
+    }
+  }
+
+  private func unmatchedPendingSection(
+    requests: [SettlementRequest],
+    data: BalancesViewData,
+    isOffline: Bool
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      ForEach(requests) { request in
+        if let from = data.members.first(where: { $0.id == request.fromMemberId }),
+          let to = data.members.first(where: { $0.id == request.toMemberId })
+        {
+          let canResolve =
+            data.group.role.isOwner
+            || data.group.myMemberId == to.id
+            || (data.group.role == .editor && !to.claimed)
+          let canCancel =
+            (currentUserId != nil && request.createdByUserId == currentUserId)
+            || data.group.myMemberId == from.id
+          PendingSettlementCard(
+            amount: request.amount,
+            fromName: from.name,
+            toName: to.name,
+            canResolve: canResolve,
+            canCancel: canCancel,
+            isDisabled: !isEmailVerified || isOffline,
+            isPending: model.isResolvingSettlement,
+            onConfirm: {
+              Task {
+                await model.resolveSettlement(
+                  requestId: request.id,
+                  amount: request.amount,
+                  fromName: from.name,
+                  decision: .confirm
+                )
+              }
+            },
+            onReject: {
+              Task {
+                await model.resolveSettlement(
+                  requestId: request.id,
+                  amount: request.amount,
+                  fromName: from.name,
+                  decision: .reject
+                )
+              }
+            },
+            onCancel: {
+              Task {
+                await model.resolveSettlement(
+                  requestId: request.id,
+                  amount: request.amount,
+                  fromName: from.name,
+                  decision: .cancel
+                )
+              }
+            }
+          )
+        }
+      }
+    }
+    .padding(20)
+    .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+  }
+}
+
+private func transferActionLabel(
+  transfer: SuggestedTransfer,
+  myMemberId: Member.ID?,
+  role: Role,
+  opensPay: Bool
+) -> String {
+  if !opensPay {
+    if transfer.fromMemberId == myMemberId { return L10n.tr("balances.paid") }
+    return transfer.toMemberId == myMemberId
+      ? L10n.tr("balances.received")
+      : L10n.tr("balances.record")
+  }
+  if transfer.fromMemberId == myMemberId {
+    return L10n.tr("feed.pay")
+  }
+  return role.canWrite ? L10n.tr("balances.record") : L10n.tr("feed.view")
+}
+
+private func canResolvePending(
+  toMember: Member,
+  group: ExpenseGroup
+) -> Bool {
+  group.role.isOwner
+    || group.myMemberId == toMember.id
+    || (group.role == .editor && !toMember.claimed)
+}
+
+private func canCancelPending(
+  pending: PendingSettlement,
+  fromMember: Member,
+  group: ExpenseGroup
+) -> Bool {
+  pending.createdByMe || group.myMemberId == fromMember.id
 }
 
 private struct OwnSettlementCardView: View {
   let transfer: SuggestedTransfer
   let members: [Member]
-  let canEdit: Bool
+  let group: ExpenseGroup
+  let isEmailVerified: Bool
+  let isOffline: Bool
+  let canOpenAction: Bool
+  let opensPay: Bool
+  let isResolvingSettlement: Bool
   let onSettle: () -> Void
+  let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
 
   var body: some View {
-    if let toMember = members.first(where: { $0.id == transfer.toMemberId }) {
+    if let fromMember = members.first(where: { $0.id == transfer.fromMemberId }),
+      let toMember = members.first(where: { $0.id == transfer.toMemberId })
+    {
       VStack(spacing: 12) {
         MemberShapeView(
           shape: toMember.shape,
@@ -201,9 +416,27 @@ private struct OwnSettlementCardView: View {
           font: Typography.heroNumber,
           color: Tokens.ink
         )
-        if canEdit {
+        if let pending = transfer.pendingSettlement {
+          PendingSettlementCard(
+            amount: pending.amount,
+            fromName: fromMember.name,
+            toName: toMember.name,
+            canResolve: canResolvePending(toMember: toMember, group: group),
+            canCancel: canCancelPending(pending: pending, fromMember: fromMember, group: group),
+            isDisabled: !isEmailVerified || isOffline,
+            isPending: isResolvingSettlement,
+            onConfirm: { onResolvePending(pending, fromMember.name, .confirm) },
+            onReject: { onResolvePending(pending, fromMember.name, .reject) },
+            onCancel: { onResolvePending(pending, fromMember.name, .cancel) }
+          )
+        } else if canOpenAction {
           SPButton(
-            L10n.tr("balances.paid"),
+            transferActionLabel(
+              transfer: transfer,
+              myMemberId: group.myMemberId,
+              role: group.role,
+              opensPay: opensPay
+            ),
             variant: .accent,
             size: .lg,
             isFullWidth: true,
@@ -221,15 +454,21 @@ private struct OwnSettlementCardView: View {
 private struct SettlementCardView: View {
   let transfer: SuggestedTransfer
   let members: [Member]
-  let myMemberId: Member.ID?
-  let canEdit: Bool
+  let group: ExpenseGroup
+  let isEmailVerified: Bool
+  let isOffline: Bool
+  let canOpenAction: Bool
+  let opensPay: Bool
+  let isResolvingSettlement: Bool
   let onSettle: () -> Void
+  let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     if let fromMember = members.first(where: { $0.id == transfer.fromMemberId }),
       let toMember = members.first(where: { $0.id == transfer.toMemberId })
     {
+      let myMemberId = group.myMemberId
       let rowLayout =
         dynamicTypeSize.isAccessibilitySize
         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
@@ -268,11 +507,27 @@ private struct SettlementCardView: View {
             )
           }
         }
-        if canEdit {
+        if let pending = transfer.pendingSettlement {
+          PendingSettlementCard(
+            amount: pending.amount,
+            fromName: fromMember.name,
+            toName: toMember.name,
+            canResolve: canResolvePending(toMember: toMember, group: group),
+            canCancel: canCancelPending(pending: pending, fromMember: fromMember, group: group),
+            isDisabled: !isEmailVerified || isOffline,
+            isPending: isResolvingSettlement,
+            onConfirm: { onResolvePending(pending, fromMember.name, .confirm) },
+            onReject: { onResolvePending(pending, fromMember.name, .reject) },
+            onCancel: { onResolvePending(pending, fromMember.name, .cancel) }
+          )
+        } else if canOpenAction {
           SPButton(
-            transfer.toMemberId == myMemberId
-              ? L10n.tr("balances.received")
-              : L10n.tr("balances.record"),
+            transferActionLabel(
+              transfer: transfer,
+              myMemberId: myMemberId,
+              role: group.role,
+              opensPay: opensPay
+            ),
             variant: .accent,
             size: .lg,
             isFullWidth: true,
@@ -290,8 +545,14 @@ private struct SettlementCardView: View {
 private struct OtherSettlementsSection: View {
   let transfers: [SuggestedTransfer]
   let members: [Member]
-  let canEdit: Bool
+  let group: ExpenseGroup
+  let isEmailVerified: Bool
+  let isOffline: Bool
+  let canOpenAction: Bool
+  let opensPay: Bool
+  let isResolvingSettlement: Bool
   let onSettle: (SuggestedTransfer) -> Void
+  let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -303,41 +564,66 @@ private struct OtherSettlementsSection: View {
         if let fromMember = members.first(where: { $0.id == transfer.fromMemberId }),
           let toMember = members.first(where: { $0.id == transfer.toMemberId })
         {
-          HStack(spacing: 8) {
-            MemberShapeView(
-              shape: fromMember.shape,
-              color: fromMember.color,
-              name: fromMember.name,
-              size: 28,
-              showInitial: false
-            )
-            Text(
-              L10n.t(
-                "balances.memberPaysMember",
-                ["from": fromMember.name, "to": toMember.name]
+          VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+              MemberShapeView(
+                shape: fromMember.shape,
+                color: fromMember.color,
+                name: fromMember.name,
+                size: 28,
+                showInitial: false
               )
-            )
-            .font(Typography.caption)
-            .foregroundStyle(Tokens.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            MoneyText(
-              transfer.amount,
-              style: .full,
-              font: Typography.subheadlineBold,
-              color: Tokens.ink
-            )
-
-            if canEdit {
-              Button(L10n.tr("balances.record")) {
-                onSettle(transfer)
-              }
-              .font(Typography.captionBold)
+              Text(
+                L10n.t(
+                  "balances.memberPaysMember",
+                  ["from": fromMember.name, "to": toMember.name]
+                )
+              )
+              .font(Typography.caption)
               .foregroundStyle(Tokens.ink)
-              .padding(.horizontal, 12)
-              .frame(minHeight: 44)
-              .background(Tokens.sunken, in: Capsule())
-              .buttonStyle(.plain)
+              .frame(maxWidth: .infinity, alignment: .leading)
+
+              MoneyText(
+                transfer.amount,
+                style: .full,
+                font: Typography.subheadlineBold,
+                color: Tokens.ink
+              )
+
+              if transfer.pendingSettlement == nil, canOpenAction {
+                Button(
+                  transferActionLabel(
+                    transfer: transfer,
+                    myMemberId: group.myMemberId,
+                    role: group.role,
+                    opensPay: opensPay
+                  )
+                ) {
+                  onSettle(transfer)
+                }
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.ink)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .background(Tokens.sunken, in: Capsule())
+                .buttonStyle(.plain)
+              }
+            }
+
+            if let pending = transfer.pendingSettlement {
+              PendingSettlementCard(
+                amount: pending.amount,
+                fromName: fromMember.name,
+                toName: toMember.name,
+                canResolve: canResolvePending(toMember: toMember, group: group),
+                canCancel: canCancelPending(
+                  pending: pending, fromMember: fromMember, group: group),
+                isDisabled: !isEmailVerified || isOffline,
+                isPending: isResolvingSettlement,
+                onConfirm: { onResolvePending(pending, fromMember.name, .confirm) },
+                onReject: { onResolvePending(pending, fromMember.name, .reject) },
+                onCancel: { onResolvePending(pending, fromMember.name, .cancel) }
+              )
             }
           }
         }

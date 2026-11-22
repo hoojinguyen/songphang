@@ -147,6 +147,14 @@
       try await world.updateMember(groupId: groupId, memberId: memberId, input: input)
     }
 
+    public func replacePaymentMethods(
+      groupId: ExpenseGroup.ID,
+      memberId: Member.ID,
+      methods: [PaymentMethod]
+    ) async throws(AppError) {
+      try await world.replacePaymentMethods(groupId: groupId, memberId: memberId, methods: methods)
+    }
+
     public func delete(groupId: ExpenseGroup.ID, memberId: Member.ID) async throws(AppError) {
       try await world.deleteMember(groupId: groupId, memberId: memberId)
     }

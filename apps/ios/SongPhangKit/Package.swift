@@ -29,6 +29,7 @@ let package = Package(
     .library(name: "GroupsFeature", targets: ["GroupsFeature"]),
     .library(name: "LedgerFeature", targets: ["LedgerFeature"]),
     .library(name: "AccountFeature", targets: ["AccountFeature"]),
+    .library(name: "PaymentsFeature", targets: ["PaymentsFeature"]),
     .library(name: "AppShell", targets: ["AppShell"]),
   ],
   dependencies: [
@@ -98,6 +99,11 @@ let package = Package(
       swiftSettings: mainActorSwiftSettings
     ),
     .target(
+      name: "PaymentsFeature",
+      dependencies: ["Domain", "DesignSystem", "PreviewSupport"],
+      swiftSettings: mainActorSwiftSettings
+    ),
+    .target(
       name: "AppShell",
       dependencies: [
         "Domain",
@@ -108,6 +114,7 @@ let package = Package(
         "GroupsFeature",
         "LedgerFeature",
         "AccountFeature",
+        "PaymentsFeature",
       ],
       swiftSettings: mainActorSwiftSettings
     ),

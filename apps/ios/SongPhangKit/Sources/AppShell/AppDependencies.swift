@@ -12,6 +12,7 @@ public struct AppDependencies: Sendable {
   public let members: any MembersRepository
   public let invites: any InvitesRepository
   public let transactions: any TransactionsRepository
+  public let settlementRequests: any SettlementRequestsRepository
   public let balances: any BalancesRepository
   public let activity: any ActivityRepository
   public let quickEntry: any QuickEntryRepository
@@ -36,6 +37,7 @@ public struct AppDependencies: Sendable {
         members: LiveMembersRepository(environment: environment),
         invites: LiveInvitesRepository(environment: environment),
         transactions: LiveTransactionsRepository(environment: environment),
+        settlementRequests: LiveSettlementRequestsRepository(environment: environment),
         balances: LiveBalancesRepository(environment: environment),
         activity: LiveActivityRepository(environment: environment),
         quickEntry: LiveQuickEntryRepository(environment: environment),
@@ -55,6 +57,7 @@ public struct AppDependencies: Sendable {
         members: LiveMembersRepository(environment: environment),
         invites: LiveInvitesRepository(environment: environment),
         transactions: LiveTransactionsRepository(environment: environment),
+        settlementRequests: LiveSettlementRequestsRepository(environment: environment),
         balances: LiveBalancesRepository(environment: environment),
         activity: LiveActivityRepository(environment: environment),
         quickEntry: LiveQuickEntryRepository(environment: environment),
@@ -81,6 +84,7 @@ public struct AppDependencies: Sendable {
         members: FakeMembersRepository(world: world),
         invites: FakeInvitesRepository(world: world),
         transactions: FakeTransactionsRepository(world: world),
+        settlementRequests: FakeSettlementRequestsRepository(world: world),
         balances: FakeBalancesRepository(world: world),
         activity: FakeActivityRepository(world: world),
         quickEntry: FakeQuickEntryRepository(world: world),

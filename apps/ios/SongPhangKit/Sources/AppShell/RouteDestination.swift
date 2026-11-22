@@ -4,6 +4,7 @@ import DesignSystem
 public import Domain
 import GroupsFeature
 import LedgerFeature
+import PaymentsFeature
 public import SwiftUI
 
 #if DEBUG
@@ -22,6 +23,15 @@ public struct RouteDestination: View {
   private let onExpenseSaved: () -> Void
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
+  private struct PaymentSheet: Identifiable {
+    var id: SuggestedTransfer.ID { transfer.id }
+    let transfer: SuggestedTransfer
+    let fromMember: Member
+    let toMember: Member
+  }
+
+  @State private var paymentSheet: PaymentSheet?
+  @State private var editingPaymentMember: Member?
   @State private var registerModel: RegisterModel?
   @State private var forgotPasswordModel: ForgotPasswordModel?
   @State private var accountModel: AccountModel?
@@ -156,6 +166,7 @@ public struct RouteDestination: View {
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
+          settlementRequests: dependencies.settlementRequests,
           onUnauthorized: {
             onPopToRoot(nil)
             Task { await sessionModel.signOut() }
@@ -286,7 +297,7 @@ public struct RouteDestination: View {
           onBackToGroups: { onPopToRoot(nil) }
         )
       }
-    case .groupMembers:
+    case .groupMembers(let groupId):
       if let membersModel {
         MembersView(
           model: membersModel,
@@ -294,7 +305,33 @@ public struct RouteDestination: View {
           onBack: onPop,
           onOpenActivity: { id in onNavigate(.groupActivity(groupId: id)) },
           onOpenSettings: { id in onNavigate(.groupSettings(groupId: id)) },
+          onEditPaymentDetails: { member in editingPaymentMember = member },
           onLeftGroup: { onPopToRoot(nil) }
+        )
+        .sheet(
+          item: $editingPaymentMember,
+          onDismiss: {
+            Task { await membersModel.load() }
+          },
+          content: { member in
+            PaymentDetailsView(
+              model: PaymentDetailsModel(
+                groupId: groupId,
+                member: member,
+                repository: dependencies.members,
+                onSaved: {
+                  Task { await membersModel.load() }
+                },
+                onUnauthorized: {
+                  editingPaymentMember = nil
+                  onPopToRoot(nil)
+                  Task { await sessionModel.signOut() }
+                }
+              ),
+              isOffline: membersModel.refreshError == .offline,
+              onDismiss: { editingPaymentMember = nil }
+            )
+          }
         )
       }
     case .groupSettings:
@@ -333,9 +370,17 @@ public struct RouteDestination: View {
       if let balancesModel {
         BalancesView(
           model: balancesModel,
+          currentUserId: currentUser?.id,
           isEmailVerified: currentUser?.emailVerified ?? true,
           onBack: onPop,
           onBackToGroups: { onPopToRoot(nil) },
+          onOpenPay: { transfer, fromMember, toMember in
+            paymentSheet = PaymentSheet(
+              transfer: transfer,
+              fromMember: fromMember,
+              toMember: toMember
+            )
+          },
           onOpenSettle: { transfer in
             onNavigate(
               .settle(
@@ -344,6 +389,60 @@ public struct RouteDestination: View {
                 toMemberId: transfer.toMemberId,
                 initialAmount: transfer.amount
               )
+            )
+          }
+        )
+        .sheet(
+          item: $paymentSheet,
+          onDismiss: {
+            Task { await balancesModel.load() }
+          },
+          content: { selection in
+            let group = balancesModel.state.value?.group
+            let isVerified = currentUser?.emailVerified == true
+            let isOffline = balancesModel.refreshError == .offline
+            let role = group?.role ?? .viewer
+            let myMemberId = group?.myMemberId
+            let canEdit = isVerified && role.canWrite
+            let payModel = PayModel(
+              transfer: selection.transfer,
+              fromMember: selection.fromMember,
+              toMember: selection.toMember,
+              groupId: groupId,
+              myMemberId: myMemberId,
+              role: role,
+              isEmailVerified: isVerified,
+              repository: dependencies.settlementRequests,
+              onReload: { await balancesModel.load() },
+              onUnauthorized: {
+                paymentSheet = nil
+                onPopToRoot(nil)
+                Task { await sessionModel.signOut() }
+              }
+            )
+            PayView(
+              model: payModel,
+              isOffline: isOffline,
+              onBack: { paymentSheet = nil },
+              onAddDetails: payModel.canAddDetails
+                ? {
+                  paymentSheet = nil
+                  onNavigate(.groupMembers(groupId: groupId))
+                } : nil,
+              onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
+                ? {
+                  paymentSheet = nil
+                  onNavigate(
+                    .settle(
+                      groupId: groupId,
+                      fromMemberId: selection.transfer.fromMemberId,
+                      toMemberId: selection.transfer.toMemberId,
+                      initialAmount: selection.transfer.amount
+                    ))
+                } : nil,
+              onFinished: { _ in
+                paymentSheet = nil
+              }
             )
           }
         )

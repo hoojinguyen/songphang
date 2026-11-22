@@ -13,6 +13,7 @@ public struct Member: Sendable, Hashable, Identifiable {
   public var color: MemberColor
   public var isMe: Bool
   public var claimed: Bool
+  public var paymentMethods: [PaymentMethod]
 
   public init(
     id: ID,
@@ -23,7 +24,8 @@ public struct Member: Sendable, Hashable, Identifiable {
     shape: MemberShape,
     color: MemberColor,
     isMe: Bool,
-    claimed: Bool
+    claimed: Bool,
+    paymentMethods: [PaymentMethod] = []
   ) {
     self.id = id
     self.name = name
@@ -34,6 +36,7 @@ public struct Member: Sendable, Hashable, Identifiable {
     self.color = color
     self.isMe = isMe
     self.claimed = claimed
+    self.paymentMethods = paymentMethods
   }
 }
 
