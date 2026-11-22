@@ -335,6 +335,22 @@
   - `ZERO_TOKEN_EXPOSURE_IN_LOGS`: confirmed `api-5c3.log` contains zero device tokens.
 - Security review: checked items 1, 2, 4, 7, 9; raw device tokens never echoed or logged, native Bearer + non-web client enforced (`403`), foreign device deletion returns `404`, transactional lock prevents cap race.
 
+### Task 5C.4 — Push sender and delivery guard
+
+**Approach**
+- Files created/modified: `packages/contract/src/jobs.ts`, `packages/db/src/notifications.ts`, `apps/api/src/services/{notify,approval,disputes,settlement-requests,reminders,transaction-changes,transactions,comments}.ts`, `apps/api/src/routes/{settlement-requests,transactions,comments}.ts`, `apps/api/src/bot/callbacks.ts`, `apps/worker/src/{queue,main}.ts`, `apps/worker/src/jobs/{auto-reminders,send-push}.ts`, `apps/worker/src/push/{types,console,apns-token,apns,index}.ts`, `README.md`.
+- Approach: Add `JOB_NAMES.sendPush = "send-push"` deduplicated by `singletonKey: row.id`; enqueue it transactionally on notification writes when `PUSH_PROVIDER` is configured for immediate notification kinds plus `expense_added` and `comment_added` (excluding `budget_state` and `expense_changed`). Before dispatch, `runSendPush` verifies unread state, active membership, unmuted status, and active non-expired device sessions; renders `groupName` title and either `formatNotificationText` inbox wording or `"Có cập nhật trong nhóm {groupName}"` when `hide_push_content` is enabled; sanitizes deep-link targets against an allowlist; uses cached 50-minute ES256 provider JWTs over `node:http2` (APNs adapter) or sanitized structured logging (`console` adapter); and prunes `"gone"` tokens only if `(id, user_id, session_id, token, last_seen_at)` matches atomically (`deletePushDeviceIfUnchanged`).
+- Why this is the simplest approach: Reuses `packages/core/src/notification-text.ts`, Node built-ins (`node:crypto`, `node:http2`), and PostgreSQL `pg-boss` `singletonKey` deduplication with optimistic CAS deletion against concurrent token rebinding.
+- Rejected alternative: Adding external push/HTTP2 client libraries or storing duplicated notification text in job payloads.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+- Live disposable exercise (`songphang_phase5_5c4`, offline checks + live `apps/api` and `apps/worker` with `PUSH_PROVIDER=console`):
+  - `ALL_5C4_UNIT_AND_GUARDS_PASS`: verified disposable P-256 ES256 JWT signing & 50-minute caching/rotation; verified worker production config refuses `PUSH_PROVIDER=console` and disabled config leaves sender `null`; verified allowlist sanitizer strips foreign/mismatched targets; verified 0 `send-push` jobs queued when push is disabled or for `budget_state`/`expense_changed`, and 1 deduplicated `send-push` job queued for `expense_added`, `comment_added`, and `runAutoReminders`; verified 2 active devices received 2 sanitized JSON console logs matching exact Vietnamese wording and `"Có cập nhật trong nhóm Đà Lạt 5C4"` when `hide_push_content` is enabled; verified 0 deliveries on muted group, read notification, and removed member; verified remaining active device still receives push after sign-out of device 1; verified concurrently rebound device survives a stale `"gone"` response while unchanged `"gone"` deletes cleanly.
+  - `LIVE_PG_BOSS_PUSH_PASS`: live API expense creation (`Phở bò sáng`) triggered `pg-boss` dispatch in `apps/worker`, emitting `{"event":"push.sent.console",...,"title":"Sài Gòn Live 5C4","body":"Minh Live thêm Phở bò sáng · phần bạn 50.000 đ"}` with zero raw device tokens in `worker-5c4.log`.
+- Security review: checked items 1, 2, 4, 7, 9; zero device tokens logged, ES256 key material loaded only from server config, target paths allowlisted per group UUID, worker checks live membership/session state right before send.
+
 ## Gate Not Passed
 
 None.

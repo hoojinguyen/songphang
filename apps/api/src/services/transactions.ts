@@ -256,6 +256,7 @@ export async function createTransaction(
 		request: CreateTransactionRequest;
 		now: Date;
 		enqueue?: EnqueueFn;
+		pushEnabled?: boolean;
 	},
 ) {
 	await lockGroup(executor, input.groupId);
@@ -274,6 +275,8 @@ async function notifyExpenseAdded(
 		payers: Array<{ memberId: string }>;
 		shares: Array<{ memberId: string; amount: number }>;
 		now: Date;
+		enqueue?: EnqueueFn;
+		pushEnabled?: boolean;
 	},
 ) {
 	const shareByMember = new Map<string, number>();
@@ -295,6 +298,10 @@ async function notifyExpenseAdded(
 			},
 			toMemberIds: [memberId],
 			now: input.now,
+			...(input.enqueue ? { enqueue: input.enqueue } : {}),
+			...(input.pushEnabled === undefined
+				? {}
+				: { pushEnabled: input.pushEnabled }),
 		});
 	}
 }
@@ -307,6 +314,7 @@ export async function createTransactionIn(
 		request: CreateTransactionRequest;
 		now: Date;
 		enqueue?: EnqueueFn;
+		pushEnabled?: boolean;
 	},
 ) {
 	const shares = await calculateShares(executor, input.groupId, input.request);
@@ -403,6 +411,9 @@ export async function createTransactionIn(
 				toUserIds: [owner.userId],
 				now: input.now,
 				...(input.enqueue ? { enqueue: input.enqueue } : {}),
+				...(input.pushEnabled === undefined
+					? {}
+					: { pushEnabled: input.pushEnabled }),
 			});
 		}
 		return TransactionResponse.parse({ transaction, warnings });
@@ -418,6 +429,10 @@ export async function createTransactionIn(
 			payers: request.payers,
 			shares,
 			now: input.now,
+			...(input.enqueue ? { enqueue: input.enqueue } : {}),
+			...(input.pushEnabled === undefined
+				? {}
+				: { pushEnabled: input.pushEnabled }),
 		});
 	}
 	await notifyBudgetWarnings(executor, {

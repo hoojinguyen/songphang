@@ -17,7 +17,7 @@ import {
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { comments } from "./schema-comments.js";
-import { groupUsers } from "./schema-groups.js";
+import { groups, groupUsers } from "./schema-groups.js";
 import {
 	jobCheckpoints,
 	notificationSettings,
@@ -362,6 +362,50 @@ export async function findNotificationForImmediateMail(
 		emailImmediate: row.emailImmediate ?? true,
 		unsubscribeTokenHash: row.unsubscribeTokenHash ?? null,
 		inGroup: row.memberUserId !== null,
+	};
+}
+
+export async function findNotificationForPush(
+	executor: DbExecutor,
+	notificationId: string,
+) {
+	const [row] = await executor
+		.select({
+			id: notifications.id,
+			userId: notifications.userId,
+			groupId: notifications.groupId,
+			groupName: groups.name,
+			kind: notifications.kind,
+			payload: notifications.payload,
+			readAt: notifications.readAt,
+			memberUserId: groupUsers.userId,
+			muted: groupUsers.muted,
+			hidePushContent: users.hidePushContent,
+		})
+		.from(notifications)
+		.innerJoin(users, eq(users.id, notifications.userId))
+		.innerJoin(groups, eq(groups.id, notifications.groupId))
+		.leftJoin(
+			groupUsers,
+			and(
+				eq(groupUsers.groupId, notifications.groupId),
+				eq(groupUsers.userId, notifications.userId),
+			),
+		)
+		.where(eq(notifications.id, notificationId))
+		.limit(1);
+	if (!row) return null;
+	return {
+		id: row.id,
+		userId: row.userId,
+		groupId: row.groupId,
+		groupName: row.groupName,
+		kind: row.kind,
+		payload: row.payload,
+		readAt: row.readAt,
+		inGroup: row.memberUserId !== null,
+		muted: row.muted ?? false,
+		hidePushContent: row.hidePushContent,
 	};
 }
 

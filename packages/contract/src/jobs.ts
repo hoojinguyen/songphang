@@ -6,6 +6,7 @@ export const JOB_NAMES = {
 	deleteFiles: "delete-files",
 	readReceipt: "read-receipt",
 	sendNotificationMail: "send-notification-mail",
+	sendPush: "send-push",
 	sendDigest: "send-digest",
 	pruneNotifications: "prune-notifications",
 	autoReminders: "auto-reminders",
@@ -37,6 +38,11 @@ export const SendNotificationMailPayload = z.object({
 export type SendNotificationMailPayload = z.infer<
 	typeof SendNotificationMailPayload
 >;
+
+export const SendPushPayload = z.object({
+	notificationId: z.uuid(),
+});
+export type SendPushPayload = z.infer<typeof SendPushPayload>;
 
 export const SendDigestPayload = z.object({});
 export type SendDigestPayload = z.infer<typeof SendDigestPayload>;

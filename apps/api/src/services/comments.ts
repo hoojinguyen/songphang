@@ -25,6 +25,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import type { EnqueueFn } from "../queue.js";
 import { notify } from "./notify.js";
 
 const CURSOR_SCHEMA = z.object({ createdAt: z.iso.datetime(), id: z.uuid() });
@@ -121,6 +122,8 @@ export async function createComment(
 		user: UserDto;
 		request: CreateCommentRequest;
 		now: Date;
+		enqueue?: EnqueueFn;
+		pushEnabled?: boolean;
 	},
 ): Promise<CommentResponse> {
 	await lockGroup(executor, input.groupId);
@@ -171,6 +174,10 @@ export async function createComment(
 			...shares.map((share) => share.memberId),
 		],
 		now: input.now,
+		...(input.enqueue ? { enqueue: input.enqueue } : {}),
+		...(input.pushEnabled === undefined
+			? {}
+			: { pushEnabled: input.pushEnabled }),
 	});
 	return CommentResponse.parse({ comment: toCommentDto(row, input.user.id) });
 }

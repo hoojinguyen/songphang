@@ -35,6 +35,7 @@ async function recordPairReminder(
 		amount: number;
 		now: Date;
 		enqueue: EnqueueFn;
+		pushEnabled?: boolean;
 	},
 ): Promise<void> {
 	await insertDebtReminder(executor, {
@@ -59,6 +60,9 @@ async function recordPairReminder(
 		toMemberIds: [input.fromMemberId],
 		now: input.now,
 		enqueue: input.enqueue,
+		...(input.pushEnabled === undefined
+			? {}
+			: { pushEnabled: input.pushEnabled }),
 	});
 }
 
@@ -156,6 +160,7 @@ export async function sendReminders(
 				amount: transfer.amount,
 				now,
 				enqueue: deps.enqueue,
+				pushEnabled: Boolean(deps.config.pushProvider),
 			});
 			return SendReminderResponse.parse({
 				reminded: [
@@ -209,6 +214,7 @@ export async function sendReminders(
 				amount: transfer.amount,
 				now,
 				enqueue: deps.enqueue,
+				pushEnabled: Boolean(deps.config.pushProvider),
 			});
 			reminded.push({
 				fromMemberId: transfer.fromMemberId,

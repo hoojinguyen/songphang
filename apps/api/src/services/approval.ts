@@ -114,6 +114,7 @@ export async function decideTransactionApproval(
 				toUserIds: [row.createdBy.id],
 				now,
 				enqueue: deps.enqueue,
+				pushEnabled: Boolean(deps.config.pushProvider),
 			});
 		}
 		if (input.decision === "approved" && transaction.type === "expense") {
@@ -144,6 +145,7 @@ export async function decideTransactionApproval(
 					toMemberIds: [memberId],
 					now,
 					enqueue: deps.enqueue,
+					pushEnabled: Boolean(deps.config.pushProvider),
 				});
 			}
 		}

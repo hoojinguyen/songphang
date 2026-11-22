@@ -113,6 +113,7 @@ export async function openDispute(
 			],
 			now,
 			enqueue: deps.enqueue,
+			pushEnabled: Boolean(deps.config.pushProvider),
 		});
 		return DisputeResponse.parse({
 			dispute: toDisputeDto(row, input.user.id),
@@ -199,6 +200,7 @@ export async function resolveDispute(
 			],
 			now,
 			enqueue: deps.enqueue,
+			pushEnabled: Boolean(deps.config.pushProvider),
 		});
 		return DisputeResponse.parse({ dispute: null });
 	});

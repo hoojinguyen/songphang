@@ -274,6 +274,7 @@ export async function editTransaction(
 					toUserIds: [owner.userId],
 					now,
 					enqueue: deps.enqueue,
+					pushEnabled: Boolean(deps.config.pushProvider),
 				});
 			}
 			return { transaction: after, warnings };
