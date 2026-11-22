@@ -93,7 +93,7 @@ public struct BalancesView: View {
       onBack: onBack
     )
 
-    if let noticeText = noticeMessage {
+    if let noticeText = model.reminderNotice ?? noticeMessage {
       SPCard(tone: .accent, padding: 14) {
         Text(noticeText)
           .font(Typography.subheadlineBold)
@@ -181,6 +181,33 @@ public struct BalancesView: View {
         .foregroundStyle(Tokens.muted)
       }
 
+      let remindableCount = sortedTransfers.filter { transfer in
+        guard let from = data.members.first(where: { $0.id == transfer.fromMemberId }),
+          let to = data.members.first(where: { $0.id == transfer.toMemberId })
+        else { return false }
+        return canRemindTransfer(
+          transfer: transfer,
+          from: from,
+          to: to,
+          myMemberId: myMemberId,
+          role: data.group.role,
+          verified: isEmailVerified
+        )
+      }.count
+
+      if remindableCount >= 2 {
+        SPButton(
+          L10n.tr("reminders.remindAll"),
+          variant: .surface,
+          size: .md,
+          isFullWidth: true,
+          isDisabled: isOffline || !model.hasCurrentPaymentDetails,
+          isPending: model.isSendingReminder
+        ) {
+          Task { await model.sendAllReminders() }
+        }
+      }
+
       if !ownTransfers.isEmpty {
         ForEach(ownTransfers) { transfer in
           OwnSettlementCardView(
@@ -217,6 +244,8 @@ public struct BalancesView: View {
               && (onOpenPay != nil ? model.hasCurrentPaymentDetails : canWrite),
             opensPay: onOpenPay != nil,
             isResolvingSettlement: model.isResolvingSettlement,
+            hasCurrentPaymentDetails: model.hasCurrentPaymentDetails,
+            isSendingReminder: model.isSendingReminder,
             onSettle: { openTransfer($0, members: data.members) },
             onResolvePending: { pending, fromName, decision in
               Task {
@@ -227,6 +256,9 @@ public struct BalancesView: View {
                   decision: decision
                 )
               }
+            },
+            onRemind: { from, to in
+              Task { await model.sendReminder(fromMember: from, toMember: to) }
             }
           )
         }
@@ -242,6 +274,8 @@ public struct BalancesView: View {
               && (onOpenPay != nil ? model.hasCurrentPaymentDetails : canWrite),
             opensPay: onOpenPay != nil,
             isResolvingSettlement: model.isResolvingSettlement,
+            hasCurrentPaymentDetails: model.hasCurrentPaymentDetails,
+            isSendingReminder: model.isSendingReminder,
             onSettle: { openTransfer(transfer, members: data.members) },
             onResolvePending: { pending, fromName, decision in
               Task {
@@ -252,6 +286,9 @@ public struct BalancesView: View {
                   decision: decision
                 )
               }
+            },
+            onRemind: { from, to in
+              Task { await model.sendReminder(fromMember: from, toMember: to) }
             }
           )
         }
@@ -511,8 +548,11 @@ private struct SettlementCardView: View {
   let canOpenAction: Bool
   let opensPay: Bool
   let isResolvingSettlement: Bool
+  let hasCurrentPaymentDetails: Bool
+  let isSendingReminder: Bool
   let onSettle: () -> Void
   let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
+  let onRemind: (Member, Member) -> Void
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
@@ -565,19 +605,55 @@ private struct SettlementCardView: View {
             onReject: { onResolvePending(pending, fromMember.name, .reject) },
             onCancel: { onResolvePending(pending, fromMember.name, .cancel) }
           )
-        } else if canOpenAction {
-          SPButton(
-            transferActionLabel(
-              transfer: transfer,
-              myMemberId: myMemberId,
-              role: group.role,
-              opensPay: opensPay
-            ),
-            variant: .accent,
-            size: .lg,
-            isFullWidth: true,
-            action: onSettle
+        } else {
+          let showRemind = canRemindTransfer(
+            transfer: transfer,
+            from: fromMember,
+            to: toMember,
+            myMemberId: myMemberId,
+            role: group.role,
+            verified: isEmailVerified
           )
+          if showRemind {
+            HStack(spacing: 8) {
+              if canOpenAction {
+                SPButton(
+                  transferActionLabel(
+                    transfer: transfer,
+                    myMemberId: myMemberId,
+                    role: group.role,
+                    opensPay: opensPay
+                  ),
+                  variant: .accent,
+                  size: .lg,
+                  isFullWidth: true,
+                  action: onSettle
+                )
+              }
+              SPButton(
+                L10n.tr("reminders.remind"),
+                variant: .surface,
+                size: .lg,
+                isFullWidth: !canOpenAction,
+                isDisabled: isOffline || !hasCurrentPaymentDetails,
+                isPending: isSendingReminder,
+                action: { onRemind(fromMember, toMember) }
+              )
+            }
+          } else if canOpenAction {
+            SPButton(
+              transferActionLabel(
+                transfer: transfer,
+                myMemberId: myMemberId,
+                role: group.role,
+                opensPay: opensPay
+              ),
+              variant: .accent,
+              size: .lg,
+              isFullWidth: true,
+              action: onSettle
+            )
+          }
         }
       }
       .padding(20)
@@ -596,8 +672,11 @@ private struct OtherSettlementsSection: View {
   let canOpenAction: Bool
   let opensPay: Bool
   let isResolvingSettlement: Bool
+  let hasCurrentPaymentDetails: Bool
+  let isSendingReminder: Bool
   let onSettle: (SuggestedTransfer) -> Void
   let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
+  let onRemind: (Member, Member) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -637,23 +716,47 @@ private struct OtherSettlementsSection: View {
                 color: Tokens.ink
               )
 
-              if transfer.pendingSettlement == nil, canOpenAction {
-                Button(
-                  transferActionLabel(
-                    transfer: transfer,
-                    myMemberId: group.myMemberId,
-                    role: group.role,
-                    opensPay: opensPay
-                  )
-                ) {
-                  onSettle(transfer)
+              let showRemind = canRemindTransfer(
+                transfer: transfer,
+                from: fromMember,
+                to: toMember,
+                myMemberId: group.myMemberId,
+                role: group.role,
+                verified: isEmailVerified
+              )
+
+              if transfer.pendingSettlement == nil {
+                if canOpenAction {
+                  Button(
+                    transferActionLabel(
+                      transfer: transfer,
+                      myMemberId: group.myMemberId,
+                      role: group.role,
+                      opensPay: opensPay
+                    )
+                  ) {
+                    onSettle(transfer)
+                  }
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.ink)
+                  .padding(.horizontal, 12)
+                  .frame(minHeight: 44)
+                  .background(Tokens.sunken, in: Capsule())
+                  .buttonStyle(.plain)
                 }
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.ink)
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
-                .background(Tokens.sunken, in: Capsule())
-                .buttonStyle(.plain)
+
+                if showRemind {
+                  Button(L10n.tr("reminders.remind")) {
+                    onRemind(fromMember, toMember)
+                  }
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.ink)
+                  .padding(.horizontal, 12)
+                  .frame(minHeight: 44)
+                  .background(Tokens.sunken, in: Capsule())
+                  .buttonStyle(.plain)
+                  .disabled(isOffline || !hasCurrentPaymentDetails || isSendingReminder)
+                }
               }
             }
 

@@ -31,6 +31,7 @@ let package = Package(
     .library(name: "AccountFeature", targets: ["AccountFeature"]),
     .library(name: "PaymentsFeature", targets: ["PaymentsFeature"]),
     .library(name: "StatisticsFeature", targets: ["StatisticsFeature"]),
+    .library(name: "NotificationsFeature", targets: ["NotificationsFeature"]),
     .library(name: "AppShell", targets: ["AppShell"]),
   ],
   dependencies: [
@@ -110,6 +111,11 @@ let package = Package(
       swiftSettings: mainActorSwiftSettings
     ),
     .target(
+      name: "NotificationsFeature",
+      dependencies: ["Domain", "DesignSystem", "PreviewSupport"],
+      swiftSettings: mainActorSwiftSettings
+    ),
+    .target(
       name: "AppShell",
       dependencies: [
         "Domain",
@@ -122,6 +128,7 @@ let package = Package(
         "AccountFeature",
         "PaymentsFeature",
         "StatisticsFeature",
+        "NotificationsFeature",
       ],
       swiftSettings: mainActorSwiftSettings
     ),

@@ -10,9 +10,11 @@ public struct GroupListView: View {
   private let model: GroupListModel
   private let user: User
   private let statusNotice: String?
+  private let unreadNotificationCount: Int
   private let onOpenGroup: (ExpenseGroup.ID) -> Void
   private let onOpenCreateGroup: () -> Void
   private let onOpenAccount: () -> Void
+  private let onOpenNotifications: (() -> Void)?
   private let onResendVerification: () async throws(AppError) -> Void
 
   @State private var isResendingVerification = false
@@ -23,17 +25,21 @@ public struct GroupListView: View {
     model: GroupListModel,
     user: User,
     statusNotice: String? = nil,
+    unreadNotificationCount: Int = 0,
     onOpenGroup: @escaping (ExpenseGroup.ID) -> Void,
     onOpenCreateGroup: @escaping () -> Void,
     onOpenAccount: @escaping () -> Void,
+    onOpenNotifications: (() -> Void)? = nil,
     onResendVerification: @escaping () async throws(AppError) -> Void = {}
   ) {
     self.model = model
     self.user = user
     self.statusNotice = statusNotice
+    self.unreadNotificationCount = unreadNotificationCount
     self.onOpenGroup = onOpenGroup
     self.onOpenCreateGroup = onOpenCreateGroup
     self.onOpenAccount = onOpenAccount
+    self.onOpenNotifications = onOpenNotifications
     self.onResendVerification = onResendVerification
   }
 
@@ -88,16 +94,21 @@ public struct GroupListView: View {
           .foregroundStyle(Tokens.ink)
       }
       Spacer()
-      Button(action: onOpenAccount) {
-        MemberShapeView(
-          shape: .circle,
-          color: .mint,
-          name: user.name,
-          size: 52
-        )
+      HStack(spacing: 8) {
+        if let onOpenNotifications {
+          NotificationBellButton(unreadCount: unreadNotificationCount, onOpen: onOpenNotifications)
+        }
+        Button(action: onOpenAccount) {
+          MemberShapeView(
+            shape: .circle,
+            color: .mint,
+            name: user.name,
+            size: 52
+          )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L10n.tr("account.title"))
       }
-      .buttonStyle(.plain)
-      .accessibilityLabel(L10n.tr("account.title"))
     }
   }
 

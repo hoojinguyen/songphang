@@ -215,4 +215,20 @@ public final class MembersModel {
       actionError = error
     }
   }
+
+  public func setMuted(_ muted: Bool) async {
+    guard !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      _ = try await groupsRepository.setMuted(id: groupId, muted: muted)
+      if case .loaded(var current) = state {
+        current.group.muted = muted
+        state = .loaded(current)
+      }
+    } catch {
+      actionError = error
+    }
+  }
 }

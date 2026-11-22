@@ -207,6 +207,37 @@ public struct GroupSettingsView: View {
       .background(Tokens.surface)
       .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
+      VStack(alignment: .leading, spacing: 12) {
+        Text(L10n.tr("reminders.settingTitle"))
+          .font(Typography.bodyBold)
+          .foregroundStyle(Tokens.ink)
+
+        SPSegmentedControl(
+          label: L10n.tr("reminders.settingTitle"),
+          options: [
+            SPSegmentedControl.Option(value: "off", label: L10n.tr("reminders.intervalOff")),
+            SPSegmentedControl.Option(value: "3", label: L10n.tr("reminders.interval3")),
+            SPSegmentedControl.Option(value: "7", label: L10n.tr("reminders.interval7")),
+            SPSegmentedControl.Option(value: "14", label: L10n.tr("reminders.interval14")),
+          ],
+          value: data.group.reminderIntervalDays.map(String.init) ?? "off",
+          isDisabled: isOffline || model.isPerformingAction
+        ) { selected in
+          let interval: Int? = {
+            switch selected {
+            case "3": return 3
+            case "7": return 7
+            case "14": return 14
+            default: return nil
+            }
+          }()
+          Task { await model.setReminderInterval(interval) }
+        }
+      }
+      .padding(20)
+      .background(Tokens.surface)
+      .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+
       inviteLinkCard(invite: data.invite)
       CategoryManagementSection(
         groupId: model.groupId,

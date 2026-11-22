@@ -231,6 +231,28 @@ public struct MembersView: View {
         .foregroundStyle(Tokens.ink)
     }
 
+    HStack {
+      Text(L10n.tr("notifications.muteGroup"))
+        .font(Typography.bodyBold)
+        .foregroundStyle(Tokens.ink)
+      Spacer()
+      Toggle(
+        "",
+        isOn: Binding(
+          get: { data.group.muted },
+          set: { newValue in
+            Task { await model.setMuted(newValue) }
+          }
+        )
+      )
+      .labelsHidden()
+      .tint(Tokens.ink)
+      .disabled(model.isPerformingAction)
+    }
+    .padding(20)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+
     if !data.group.role.isOwner && isEmailVerified {
       SPButton(
         L10n.tr("members.leave"),

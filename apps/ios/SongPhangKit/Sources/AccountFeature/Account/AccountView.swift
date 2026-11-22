@@ -83,6 +83,8 @@ public struct AccountView: View {
       pushSettingsCard(user)
     }
 
+    notificationSettingsCard
+
     SessionsSectionView(
       sessions: model.sessions,
       revokingSessionId: model.revokingSessionId,
@@ -221,6 +223,63 @@ public struct AccountView: View {
 
       if let pushSettingsError = model.pushSettingsError {
         Text(pushSettingsError)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+  }
+
+  private var notificationSettingsCard: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(L10n.tr("notifications.emailSettingsTitle"))
+        .font(Typography.sectionTitle)
+        .foregroundStyle(Tokens.ink)
+
+      switch model.notificationSettings {
+      case .loading:
+        LoadingSkeleton(rowCount: 2, rowHeight: 40)
+      case .failed:
+        LoadError {
+          Task { await model.load() }
+        }
+      case .loaded(let settings):
+        Toggle(
+          isOn: Binding(
+            get: { settings.emailImmediate },
+            set: { newValue in
+              Task { await model.updateNotificationSettings(emailImmediate: newValue) }
+            }
+          )
+        ) {
+          Text(L10n.tr("notifications.emailImmediate"))
+            .font(Typography.subheadline)
+            .foregroundStyle(Tokens.ink)
+        }
+        .tint(Tokens.ink)
+        .disabled(model.isOffline || model.isUpdatingNotificationSettings)
+
+        Toggle(
+          isOn: Binding(
+            get: { settings.emailDigest },
+            set: { newValue in
+              Task { await model.updateNotificationSettings(emailDigest: newValue) }
+            }
+          )
+        ) {
+          Text(L10n.tr("notifications.emailDigest"))
+            .font(Typography.subheadline)
+            .foregroundStyle(Tokens.ink)
+        }
+        .tint(Tokens.ink)
+        .disabled(model.isOffline || model.isUpdatingNotificationSettings)
+      }
+
+      if let error = model.notificationSettingsError {
+        Text(error)
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
       }

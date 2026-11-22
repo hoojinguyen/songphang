@@ -99,4 +99,11 @@ Pending owner-led verification with the required configuration. Preserve the app
   4. For a receipt with mismatched printed total vs item sum, the yellow mismatch banner appears (`Tổng hoá đơn ghi ... nhưng cộng món là ...`); tap `Dùng tổng ghi trên hoá đơn` → automatically adds an adjustment extra (`Điều chỉnh chênh lệch`) to balance the total.
   5. In Quick Entry (`Nhập nhanh`), type multi-item text ("cà phê 180k và bánh 50k") and tap send (`Gửi`) → AI parser splits the sentence into two queued drafts (`1/2`), with category chips, payer attribution, and a `Lưu & tiếp tục` action to save drafts sequentially to the ledger.
 
+- **Notifications, reminders, mute & settings (5D.5):**
+  1. Open `Tài khoản` → verify `Thông báo email` card shows two switches for `Nhận ngay khi có thay đổi` (`emailImmediate`) and `Bản tin định kỳ` (`emailDigest`); toggle switches → persists across app restart and profile reloads.
+  2. In `Thành viên và lời mời`, verify `Tắt thông báo nhóm này` switch (`notifications.muteGroup`); turn on → group activity/reminder notifications are suppressed for the current user; check `Cài đặt nhóm` as owner → `Tự động nhắc nợ` segmented control allows choosing `Tắt`, `Mỗi 3 ngày`, `Mỗi tuần`, `Mỗi 2 tuần`, persisting `reminderIntervalDays` cleanly.
+  3. In `Số dư`, verify `Nhắc` button appears on eligible debtor rows where debtor is claimed and current user is creditor or owner; tap `Nhắc` → sends reminder notification and toast shows `Đã gửi nhắc nợ cho ...`.
+  4. Tap `Nhắc` again immediately on the same debtor → returns rate limit toast (`Bạn vừa nhắc người này gần đây. Có thể nhắc lại sau ...`). When ≥2 debtors are remindable, tap `Nhắc cả nhóm` → sends to all debtors not on cooldown and reports count.
+  5. Tap the bell icon in group feed or group list header → S19 `Thông báo` opens showing notification rows with bold actor, kind-specific formatted text, relative timestamp, and unread dot; tap `Đánh dấu đã đọc tất cả` → clears badge and updates list.
+
 - **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.

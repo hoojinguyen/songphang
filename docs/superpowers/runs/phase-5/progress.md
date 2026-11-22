@@ -493,6 +493,32 @@
   - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a20434-7a4e-772c-9d34-8405bbbf0d73 Đà Lạt 5D4: sum 0; mismatches 0`).
 - Security review: checked relevant items 1, 2, 4, 7, 8; no secrets or tokens in logs/diffs, `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` documented, EXIF/GPS stripped prior to upload, authenticated content download gated by group membership, outsider receives 404, integer-only money calculations.
 
+### Task 5D.5 — Notification center, settings, mute and reminders
+
+**Approach**
+- Files created/modified: `apps/ios/SongPhangKit/Package.swift`, `apps/ios/SongPhangKit/Sources/Domain/Models/{AppNotification,ExpenseGroup}.swift`, `apps/ios/SongPhangKit/Sources/Domain/Repositories/{NotificationsRepository,RemindersRepository,GroupsRepository}.swift`, `apps/ios/SongPhangKit/Sources/Domain/AppError.swift`, `apps/ios/SongPhangKit/Sources/Repositories/{Notifications,Reminders,Groups}/`, `apps/ios/SongPhangKit/Sources/DesignSystem/{Components/NotificationBellButton.swift,Resources/Localizable.xcstrings}`, `apps/ios/SongPhangKit/Sources/NotificationsFeature/`, `apps/ios/SongPhangKit/Sources/AccountFeature/Account/{AccountModel,AccountView}.swift`, `apps/ios/SongPhangKit/Sources/GroupsFeature/{GroupList,GroupSettings,Members}/`, `apps/ios/SongPhangKit/Sources/LedgerFeature/{Balances,GroupFeed}/`, `apps/ios/SongPhangKit/Sources/AppShell/{AppDependencies,SessionModel,RootView,Route,RouteDestination}.swift`, `apps/ios/SongPhangKit/Sources/PreviewSupport/Fakes/{FakeWorld+Notifications,FakeRepositories}.swift`.
+- Approach: Added 38 Vietnamese localization strings matching web notification/reminder text. Implemented `AppNotification` domain models with 12 structured payloads and safe fallback. Added `NotificationsRepository` and `RemindersRepository` calling `/me/notifications`, `/me/notifications/unread-count`, `/me/notifications/read`, `/me/notification-settings`, and `/groups/{id}/reminders` (handling 429 `REMINDER_TOO_SOON` with extracted `nextAt`). Built `NotificationBellButton` with unread count badge on group list and feed headers. Built `NotificationsView` (S19 screen) with load-more pagination, mark one read on tap, and mark all read. Added email notification settings card to `AccountView`. Added `setMuted` switch to `MembersView`. Added `Tự động nhắc nợ` segmented picker to `GroupSettingsView`. Added manual `Nhắc` and `Nhắc cả nhóm` buttons to `BalancesView` with eligibility rules (`canRemindTransfer`) and formatted cooldown feedback (`formatReminderNextAt`).
+- Why this is the simplest approach: Reuses established `@Observable` patterns, keeps notifications domain layer clean without third-party dependencies, wires directly into the AppShell route hierarchy, and validates server-enforced reminder rate limiting.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .` — 512 files, 0 errors; 8 workspace typechecks; `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: PASS (exit 0).
+  - `check-strings.sh`: 0 missing strings for notifications and reminders.
+  - Debug `xcodebuild` (`generic/platform=iOS Simulator`) & Release `xcodebuild` (`generic/platform=iOS Simulator`, `CODE_SIGNING_ALLOWED=NO`): both `** BUILD SUCCEEDED **`.
+- Live Simulator & API exercise (`songphang_phase5_5d5`, clean-env API `:4010`, worker `AI_PROVIDER=fake`, `Exercise5D5.app` on `iPhone 17 Pro`):
+  - `EXERCISE_5D5_SETUP_PASS`: verified registration & login for Minh, Lan, Hoa, Nam; created "Hội An 5D5"; invite & join with member claim; set Hoa as viewer.
+  - Verified notification settings: `GET /me/notification-settings` defaults (`immediate=true, digest=true`), `PUT /me/notification-settings` persist (`immediate=false, digest=false`), restored.
+  - Verified group mute: `PUT /groups/{id}/me/muted` toggles `muted: true` and `muted: false`.
+  - Verified reminder interval: `PATCH /groups/{id}` sets `reminderIntervalDays: 7` and clears to `null`.
+  - Verified reminders: single reminder sent from Minh to Lan; immediate retry caught expected `429 REMINDER_TOO_SOON` with `nextAt`; `remindAll` reminded Hoa and skipped Lan (cooldown).
+  - Verified notifications inbox for Lan: `unread-count > 0`, `list` contains `debt_reminder` notification, `markOneRead` marks single notification, `markAllRead` clears unread count to 0.
+  - Verified outsider 404 refusal for both reminders and mute.
+  - Swift Simulator execution: `[5D.5] Minh signed in`, `Settings updated and verified`, `Group mute/unmute verified`, `Reminder interval verified`, `Caught expected reminderTooSoon: nextAt=2026-11-23T18:00:31.649Z`, `Send all reminders: reminded=0, skipped=2`, `Lan signed in`, `Lan unread count: 0`, `Lan notifications count: 2`, `SIM_EXERCISE_5D5_READY`.
+  - Captured and verified Simulator screenshot: `docs/superpowers/runs/phase-5/screens/5d/notifications.png`.
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a2046a-b426-7ba1-b2a3-ff06412f566e Hội An 5D5: sum 0; mismatches 0`).
+- Security review: checked relevant items 1, 2, 4, 7, 8; no tokens/passwords in code/logs, notifications scoped to authenticated user, outsider receives 404 on group mute & reminders, integer-only money in notification payloads and reminder debt formatting, no HTML injection in notification text.
+
 ## Gate Not Passed
 
 None.

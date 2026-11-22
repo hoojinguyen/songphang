@@ -1,3 +1,4 @@
+import DesignSystem
 public import Domain
 import Foundation
 public import Observation
@@ -38,6 +39,7 @@ public final class BalancesModel {
   private let balancesRepository: any BalancesRepository
   private let transactionsRepository: any TransactionsRepository
   private let settlementRequests: (any SettlementRequestsRepository)?
+  private let remindersRepository: (any RemindersRepository)?
   private let onUnauthorized: () -> Void
 
   public private(set) var state: Loadable<BalancesViewData> = .loading
@@ -47,6 +49,8 @@ public final class BalancesModel {
   public private(set) var isResolvingSettlement = false
   public private(set) var settlementError: AppError?
   public private(set) var settlementNotice: SettlementNotice?
+  public private(set) var isSendingReminder = false
+  public private(set) var reminderNotice: String?
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -55,6 +59,7 @@ public final class BalancesModel {
     balancesRepository: any BalancesRepository,
     transactionsRepository: any TransactionsRepository,
     settlementRequests: (any SettlementRequestsRepository)? = nil,
+    remindersRepository: (any RemindersRepository)? = nil,
     onUnauthorized: @escaping () -> Void = {}
   ) {
     self.groupId = groupId
@@ -63,6 +68,7 @@ public final class BalancesModel {
     self.balancesRepository = balancesRepository
     self.transactionsRepository = transactionsRepository
     self.settlementRequests = settlementRequests
+    self.remindersRepository = remindersRepository
     self.onUnauthorized = onUnauthorized
   }
 
@@ -159,6 +165,49 @@ public final class BalancesModel {
     }
   }
 
+  public func sendReminder(fromMember: Member, toMember: Member) async {
+    guard hasCurrentPaymentDetails, let remindersRepository, !isSendingReminder else { return }
+    isSendingReminder = true
+    reminderNotice = nil
+    defer { isSendingReminder = false }
+    do throws(AppError) {
+      _ = try await remindersRepository.sendReminder(
+        groupId: groupId,
+        fromMemberId: fromMember.id,
+        toMemberId: toMember.id
+      )
+      reminderNotice = L10n.t("reminders.remindedOne", ["name": fromMember.name])
+    } catch {
+      if case .reminderTooSoon(let nextAt) = error {
+        let timeStr = formatReminderNextAt(nextAt)
+        reminderNotice = L10n.t("reminders.tooSoon", ["name": fromMember.name, "time": timeStr])
+      } else if case .api("REMINDER_TOO_SOON", _) = error {
+        reminderNotice = L10n.t("reminders.tooSoon", ["name": fromMember.name, "time": ""])
+      } else if error == .unauthorized {
+        onUnauthorized()
+      } else {
+        reminderNotice = L10n.tr("common.saveError")
+      }
+    }
+  }
+
+  public func sendAllReminders() async {
+    guard hasCurrentPaymentDetails, let remindersRepository, !isSendingReminder else { return }
+    isSendingReminder = true
+    reminderNotice = nil
+    defer { isSendingReminder = false }
+    do throws(AppError) {
+      let result = try await remindersRepository.sendAllReminders(groupId: groupId)
+      reminderNotice = L10n.t("reminders.remindedMany", ["count": String(result.reminded.count)])
+    } catch {
+      if error == .unauthorized {
+        onUnauthorized()
+      } else {
+        reminderNotice = L10n.tr("common.saveError")
+      }
+    }
+  }
+
   private func fetchPendingRequests() async throws(AppError) -> [SettlementRequest] {
     guard let settlementRequests else { return [] }
     return try await settlementRequests.list(groupId: groupId, status: .pending)
@@ -184,5 +233,53 @@ public final class BalancesModel {
     } else {
       state = .failed(error)
     }
+  }
+}
+
+public func canRemindTransfer(
+  transfer: SuggestedTransfer,
+  from: Member,
+  to: Member,
+  myMemberId: Member.ID?,
+  role: Role,
+  verified: Bool
+) -> Bool {
+  guard verified else { return false }
+  guard transfer.pendingSettlement == nil else { return false }
+  guard from.kind == .person && from.claimed && to.kind == .person else { return false }
+  guard from.id != myMemberId else { return false }
+  return role != .viewer || myMemberId == to.id
+}
+
+func formatReminderNextAt(_ nextAtIso: String, now: Date = Date()) -> String {
+  let iso = ISO8601DateFormatter()
+  iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+  var target = iso.date(from: nextAtIso)
+  if target == nil {
+    iso.formatOptions = [.withInternetDateTime]
+    target = iso.date(from: nextAtIso)
+  }
+  guard let target else { return nextAtIso }
+
+  var cal = Calendar(identifier: .gregorian)
+  if let tz = TimeZone(identifier: "Asia/Ho_Chi_Minh") {
+    cal.timeZone = tz
+  }
+  let targetComponents = cal.dateComponents([.year, .month, .day, .hour, .minute], from: target)
+  let nowComponents = cal.dateComponents([.year, .month, .day], from: now)
+
+  let hour = String(format: "%02d", targetComponents.hour ?? 0)
+  let minute = String(format: "%02d", targetComponents.minute ?? 0)
+  let timeStr = "\(hour):\(minute)"
+
+  if targetComponents.year == nowComponents.year,
+    targetComponents.month == nowComponents.month,
+    targetComponents.day == nowComponents.day
+  {
+    return timeStr
+  } else {
+    let day = String(format: "%02d", targetComponents.day ?? 0)
+    let month = String(format: "%02d", targetComponents.month ?? 0)
+    return "\(timeStr) ngày \(day)/\(month)"
   }
 }

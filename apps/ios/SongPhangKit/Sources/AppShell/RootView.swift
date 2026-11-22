@@ -291,6 +291,8 @@ public struct RootView: View {
               initialAmount: Money(210_000)
             )
           ]
+        } else if args.contains("--route-notifications") {
+          path = [.notifications]
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
@@ -348,6 +350,7 @@ public struct RootView: View {
       if newPhase == .active, hasCompletedInitialAppear {
         Task {
           await sessionModel.refreshOnForeground()
+          await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
           _ = await pushCoordinator.refreshAuthorizationStatus()
         }
       }
@@ -378,7 +381,10 @@ public struct RootView: View {
         }
         groupListModel = GroupListModel(repository: dependencies.groups)
         consumePendingRouteIfSignedIn()
-        Task { await consumePendingPushIfSignedIn() }
+        Task {
+          await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+          await consumePendingPushIfSignedIn()
+        }
       }
     }
     .task {
@@ -391,6 +397,7 @@ public struct RootView: View {
       if case .loading = sessionModel.state {
         await sessionModel.loadSession()
       }
+      await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
       await consumePendingPushIfSignedIn()
       hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
@@ -628,6 +635,7 @@ public struct RootView: View {
           model: groupListModel,
           user: user,
           statusNotice: statusNotice,
+          unreadNotificationCount: sessionModel.unreadNotificationCount,
           onOpenGroup: { groupId in
             statusNotice = nil
             path.append(.groupFeed(groupId: groupId))
@@ -639,6 +647,10 @@ public struct RootView: View {
           onOpenAccount: {
             statusNotice = nil
             path.append(.account)
+          },
+          onOpenNotifications: {
+            statusNotice = nil
+            path.append(.notifications)
           },
           onResendVerification: { () async throws(AppError) in
             try await dependencies.auth.resendVerification()

@@ -29,5 +29,6 @@ public enum Route: Hashable, Sendable {
     toMemberId: Member.ID,
     initialAmount: Money
   )
+  case notifications
   case debugGallery
 }

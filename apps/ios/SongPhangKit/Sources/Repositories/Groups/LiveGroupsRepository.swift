@@ -136,6 +136,20 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
   ) async throws(AppError) -> ExpenseGroup {
     let scope = await environment.snapshots.currentScope()
     let groupGen = await environment.snapshots.groupGeneration(for: id.rawValue)
+
+    if input.reminderInterval != .unchanged {
+      let detail = try await patchGroupRaw(id: id, input: input)
+      if let scope, let encoded = GroupMapping.encodeGroupSnapshot(detail) {
+        await environment.snapshots.writeData(
+          encoded,
+          for: .group(id.rawValue),
+          scope: scope,
+          groupGeneration: groupGen
+        )
+      }
+      return detail
+    }
+
     let defaultRolePayload: Components.Schemas.UpdateGroupRequest.defaultRolePayload? = {
       switch input.defaultRole {
       case .editor: return .editor
@@ -179,6 +193,70 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
         )
       }
       return detail
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func setMuted(id: ExpenseGroup.ID, muted: Bool) async throws(AppError) -> Bool {
+    do {
+      let output = try await environment.client
+        .put_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_me_sol_muted(
+          .init(
+            path: .init(groupId: id.rawValue),
+            body: .json(.init(muted: muted))
+          )
+        )
+      switch output {
+      case .ok(let ok):
+        return try ok.body.json.muted
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  private func patchGroupRaw(
+    id: ExpenseGroup.ID,
+    input: UpdateGroupInput
+  ) async throws(AppError) -> ExpenseGroup {
+    var payload: [String: Any] = [:]
+    if let name = input.name { payload["name"] = name }
+    if let min = input.minimizeDebts { payload["minimizeDebts"] = min }
+    if let def = input.defaultRole { payload["defaultRole"] = def.code }
+    switch input.reminderInterval {
+    case .unchanged: break
+    case .off: payload["reminderIntervalDays"] = NSNull()
+    case .interval(let days): payload["reminderIntervalDays"] = days
+    }
+
+    let url = environment.configuration.apiBaseURL
+      .appendingPathComponent("groups")
+      .appendingPathComponent(id.rawValue)
+    var request = URLRequest(url: url)
+    request.httpMethod = "PATCH"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue(environment.configuration.appVersion, forHTTPHeaderField: "X-App-Version")
+    if let token = await environment.tokenStore.read() {
+      request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+    do {
+      request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+      let (data, response) = try await environment.urlSession.data(for: request)
+      guard let http = response as? HTTPURLResponse else {
+        throw AppError.unexpected
+      }
+      guard http.statusCode == 200 else {
+        let code = (try? JSONDecoder().decode(APIErrorPayload.self, from: data))?.error.code
+        throw await environment.errorMapper.mapStatus(statusCode: http.statusCode, code: code)
+      }
+      return try GroupMapping.decodeResilientGroup(from: data)
     } catch let error as AppError {
       throw error
     } catch {

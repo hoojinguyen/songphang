@@ -19,6 +19,10 @@ public final class AccountModel {
   public private(set) var pushStatus: PushStatus = .notDetermined
   public private(set) var isSavingPushSettings = false
   public private(set) var pushSettingsError: String?
+
+  public private(set) var notificationSettings: Loadable<NotificationSettings> = .loading
+  public private(set) var isUpdatingNotificationSettings = false
+  public private(set) var notificationSettingsError: String?
   public var currentPassword = ""
   public var newPassword = ""
   public var revokeOtherSessions = false
@@ -37,6 +41,7 @@ public final class AccountModel {
 
   private let repository: any AuthRepository
   private let devicesRepository: (any DevicesRepository)?
+  private let notificationsRepository: (any NotificationsRepository)?
   private let onSignedOut: () -> Void
   private let onUserUpdated: ((User) -> Void)?
   private let checkPushStatus: @Sendable () async -> PushStatus
@@ -45,6 +50,7 @@ public final class AccountModel {
   public init(
     repository: any AuthRepository,
     devicesRepository: (any DevicesRepository)? = nil,
+    notificationsRepository: (any NotificationsRepository)? = nil,
     initialUser: User? = nil,
     onSignedOut: @escaping () -> Void,
     onUserUpdated: ((User) -> Void)? = nil,
@@ -53,6 +59,7 @@ public final class AccountModel {
   ) {
     self.repository = repository
     self.devicesRepository = devicesRepository
+    self.notificationsRepository = notificationsRepository
     if let initialUser {
       self.user = .loaded(initialUser)
     } else {
@@ -86,12 +93,21 @@ public final class AccountModel {
     }()
     async let featuresTask: ServerFeatures? = try? await repository.serverFeatures()
     async let pushStatusTask: PushStatus = await checkPushStatus()
+    async let notifTask: Result<NotificationSettings, AppError>? = {
+      guard let notificationsRepository else { return nil }
+      do throws(AppError) {
+        return .success(try await notificationsRepository.settings())
+      } catch {
+        return .failure(error)
+      }
+    }()
 
-    let (userResult, sessionsResult, serverFeatures, currentPushStatus) = await (
+    let (userResult, sessionsResult, serverFeatures, currentPushStatus, notifResult) = await (
       userTask,
       sessionsTask,
       featuresTask,
-      pushStatusTask
+      pushStatusTask,
+      notifTask
     )
     if let serverFeatures {
       pushFeatureEnabled = serverFeatures.push
@@ -131,6 +147,55 @@ public final class AccountModel {
         refreshError = refreshError ?? error
       } else {
         sessions = .failed(error)
+      }
+    }
+
+    if let notifResult {
+      switch notifResult {
+      case .success(let settings):
+        notificationSettings = .loaded(settings)
+      case .failure(let error):
+        if error == .unauthorized {
+          onSignedOut()
+          return
+        }
+        if case .loaded = notificationSettings {
+          refreshError = refreshError ?? error
+        } else {
+          notificationSettings = .failed(error)
+        }
+      }
+    }
+  }
+
+  public func updateNotificationSettings(
+    emailImmediate: Bool? = nil,
+    emailDigest: Bool? = nil
+  ) async {
+    guard let notificationsRepository,
+      case .loaded(let current) = notificationSettings,
+      !isUpdatingNotificationSettings,
+      !isOffline
+    else { return }
+    let nextImmediate = emailImmediate ?? current.emailImmediate
+    let nextDigest = emailDigest ?? current.emailDigest
+    let updated = NotificationSettings(emailImmediate: nextImmediate, emailDigest: nextDigest)
+    notificationSettings = .loaded(updated)
+    notificationSettingsError = nil
+    isUpdatingNotificationSettings = true
+    defer { isUpdatingNotificationSettings = false }
+    do throws(AppError) {
+      let persisted = try await notificationsRepository.updateSettings(
+        emailImmediate: nextImmediate,
+        emailDigest: nextDigest
+      )
+      notificationSettings = .loaded(persisted)
+    } catch {
+      notificationSettings = .loaded(current)
+      if error == .unauthorized {
+        onSignedOut()
+      } else {
+        notificationSettingsError = L10n.tr("common.saveError")
       }
     }
   }

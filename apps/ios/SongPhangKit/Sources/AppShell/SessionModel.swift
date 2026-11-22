@@ -13,6 +13,7 @@ public final class SessionModel {
   public private(set) var isUpgradeRequired = false
   public private(set) var isOffline = false
   public private(set) var latestFeatures: ServerFeatures?
+  public private(set) var unreadNotificationCount: Int = 0
 
   private let authRepository: any AuthRepository
   private let appVersion: String
@@ -78,6 +79,17 @@ public final class SessionModel {
   public func didSignIn(_ user: User) {
     state = .signedIn(user)
     isOffline = false
+  }
+
+  public func refreshUnreadNotificationCount(using repo: any NotificationsRepository) async {
+    guard case .signedIn = state else { return }
+    if let count = try? await repo.unreadCount() {
+      unreadNotificationCount = count
+    }
+  }
+
+  public func setUnreadNotificationCount(_ count: Int) {
+    unreadNotificationCount = count
   }
 
   public func handleError(_ error: AppError) {

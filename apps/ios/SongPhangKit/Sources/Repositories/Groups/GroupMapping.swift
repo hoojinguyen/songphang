@@ -37,6 +37,8 @@ enum GroupMapping {
       defaultRole: Role(code: dto.defaultRole.rawValue),
       role: Role(code: dto.role.rawValue),
       myMemberId: dto.myMemberId.map(Member.ID.init),
+      muted: dto.muted,
+      reminderIntervalDays: nil,
       createdAt: formatISO(dto.createdAt)
     )
   }
@@ -89,6 +91,8 @@ enum GroupMapping {
     let defaultRole: String
     let role: String
     let myMemberId: String?
+    let muted: Bool?
+    let reminderIntervalDays: Int?
     let createdAt: String
 
     func toDomain() -> ExpenseGroup {
@@ -103,6 +107,8 @@ enum GroupMapping {
         defaultRole: Role(code: defaultRole),
         role: Role(code: role),
         myMemberId: myMemberId.map(Member.ID.init),
+        muted: muted ?? false,
+        reminderIntervalDays: reminderIntervalDays,
         createdAt: createdAt
       )
     }
@@ -153,6 +159,8 @@ enum GroupMapping {
         defaultRole: group.defaultRole.code,
         role: group.role.code,
         myMemberId: group.myMemberId?.rawValue,
+        muted: group.muted,
+        reminderIntervalDays: group.reminderIntervalDays,
         createdAt: group.createdAt
       )
     )

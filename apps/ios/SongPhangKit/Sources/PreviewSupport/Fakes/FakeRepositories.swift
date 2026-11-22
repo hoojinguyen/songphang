@@ -113,6 +113,10 @@
       try await world.updateGroup(id: id, input: input)
     }
 
+    public func setMuted(id: ExpenseGroup.ID, muted: Bool) async throws(AppError) -> Bool {
+      await world.setGroupMuted(id: id, muted: muted)
+    }
+
     public func delete(id: ExpenseGroup.ID, confirmName: String) async throws(AppError) {
       try await world.deleteGroup(id: id, confirmName: confirmName)
     }
@@ -546,6 +550,59 @@
       id: ReceiptScan.ID
     ) async throws(AppError) -> ReceiptScan {
       try await world.receiptScan(groupId: groupId, id: id)
+    }
+  }
+
+  public nonisolated struct FakeNotificationsRepository: NotificationsRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func list(cursor: String?, limit: Int) async throws(AppError) -> (
+      notifications: [AppNotification], nextCursor: String?
+    ) {
+      await world.listNotifications(cursor: cursor, limit: limit)
+    }
+
+    public func unreadCount() async throws(AppError) -> Int {
+      await world.unreadNotificationCount()
+    }
+
+    public func markRead(ids: [AppNotification.ID]) async throws(AppError) {
+      await world.markNotificationsRead(ids: ids)
+    }
+
+    public func markAllRead() async throws(AppError) {
+      await world.markAllNotificationsRead()
+    }
+
+    public func settings() async throws(AppError) -> NotificationSettings {
+      await world.getNotificationSettings()
+    }
+
+    public func updateSettings(emailImmediate: Bool?, emailDigest: Bool?) async throws(AppError)
+      -> NotificationSettings
+    {
+      await world.updateNotificationSettings(
+        emailImmediate: emailImmediate, emailDigest: emailDigest)
+    }
+  }
+
+  public nonisolated struct FakeRemindersRepository: RemindersRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func sendReminder(
+      groupId: ExpenseGroup.ID,
+      fromMemberId: Member.ID,
+      toMemberId: Member.ID
+    ) async throws(AppError) -> SendReminderResult {
+      await world.sendReminder(groupId: groupId, fromMemberId: fromMemberId, toMemberId: toMemberId)
+    }
+
+    public func sendAllReminders(groupId: ExpenseGroup.ID) async throws(AppError)
+      -> SendReminderResult
+    {
+      await world.sendAllReminders(groupId: groupId)
     }
   }
 #endif

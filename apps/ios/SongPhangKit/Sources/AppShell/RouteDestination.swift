@@ -4,6 +4,7 @@ import DesignSystem
 public import Domain
 import GroupsFeature
 import LedgerFeature
+import NotificationsFeature
 import PaymentsFeature
 import StatisticsFeature
 public import SwiftUI
@@ -51,6 +52,7 @@ public struct RouteDestination: View {
   @State private var expenseFormModel: ExpenseFormModel?
   @State private var receiptReviewModel: ReceiptReviewModel?
   @State private var settleModel: SettleModel?
+  @State private var notificationsModel: NotificationsModel?
 
   public init(
     route: Route,
@@ -97,6 +99,7 @@ public struct RouteDestination: View {
         initialValue: AccountModel(
           repository: dependencies.auth,
           devicesRepository: dependencies.devices,
+          notificationsRepository: dependencies.notifications,
           initialUser: hasSnap ? currentUser : nil,
           onSignedOut: {
             sessionModel.markSignedOut()
@@ -207,6 +210,7 @@ public struct RouteDestination: View {
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           settlementRequests: dependencies.settlementRequests,
+          remindersRepository: dependencies.reminders,
           onUnauthorized: {
             onPopToRoot(nil)
             Task { await sessionModel.signOut() }
@@ -337,6 +341,16 @@ public struct RouteDestination: View {
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           onSaved: onPop
+        )
+      )
+    case .notifications:
+      self._notificationsModel = State(
+        initialValue: NotificationsModel(
+          repository: dependencies.notifications,
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
         )
       )
     default:
@@ -478,6 +492,7 @@ public struct RouteDestination: View {
         GroupFeedView(
           model: feedModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
+          unreadNotificationCount: sessionModel.unreadNotificationCount,
           onBack: onPop,
           onOpenMembers: { id in onNavigate(.groupMembers(groupId: id)) },
           onOpenBalances: { id in onNavigate(.groupBalances(groupId: id)) },
@@ -494,6 +509,7 @@ public struct RouteDestination: View {
           onOpenReceiptCapture: sessionModel.latestFeatures?.receiptReading == true
             ? { _ in isReceiptCaptureOpen = true }
             : nil,
+          onOpenNotifications: { onNavigate(.notifications) },
           onRemovedFromGroup: {
             onPopToRoot(L10n.tr("common.removed"))
           }
@@ -662,6 +678,38 @@ public struct RouteDestination: View {
           isEmailVerified: currentUser?.emailVerified ?? true,
           onCancel: onPop,
           onBackToGroups: { onPopToRoot(nil) }
+        )
+      }
+    case .notifications:
+      if let notificationsModel {
+        NotificationsView(
+          model: notificationsModel,
+          onBack: {
+            Task {
+              await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+            }
+            onPop()
+          },
+          onSelectTarget: { target in
+            Task {
+              await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+            }
+            switch target {
+            case .transaction(let groupId, let txId):
+              onNavigate(
+                .editTransaction(
+                  groupId: groupId,
+                  transactionId: LedgerTransaction.ID(txId)
+                )
+              )
+            case .balances(let groupId):
+              onNavigate(.groupBalances(groupId: groupId))
+            case .stats(let groupId):
+              onNavigate(.groupStats(groupId: groupId))
+            case .group(let groupId):
+              onNavigate(.groupFeed(groupId: groupId))
+            }
+          }
         )
       }
     case .debugGallery:

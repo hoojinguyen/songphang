@@ -24,6 +24,8 @@ public struct AppDependencies: Sendable {
   public let quickEntry: any QuickEntryRepository
   public let groupEvents: any GroupEventsRepository
   public let devices: any DevicesRepository
+  public let notifications: any NotificationsRepository
+  public let reminders: any RemindersRepository
   public let liveConfiguration: APIConfiguration?
   public let webBaseURL: URL
   public let appVersion: String
@@ -55,6 +57,8 @@ public struct AppDependencies: Sendable {
         quickEntry: LiveQuickEntryRepository(environment: environment),
         groupEvents: LiveGroupEventsRepository(environment: environment),
         devices: LiveDevicesRepository(environment: environment),
+        notifications: LiveNotificationsRepository(environment: environment),
+        reminders: LiveRemindersRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -81,6 +85,8 @@ public struct AppDependencies: Sendable {
         quickEntry: LiveQuickEntryRepository(environment: environment),
         groupEvents: LiveGroupEventsRepository(environment: environment),
         devices: LiveDevicesRepository(environment: environment),
+        notifications: LiveNotificationsRepository(environment: environment),
+        reminders: LiveRemindersRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -114,6 +120,8 @@ public struct AppDependencies: Sendable {
         quickEntry: FakeQuickEntryRepository(world: world),
         groupEvents: FakeGroupEventsRepository(world: world),
         devices: FakeDevicesRepository(world: world),
+        notifications: FakeNotificationsRepository(world: world),
+        reminders: FakeRemindersRepository(world: world),
         liveConfiguration: nil,
         webBaseURL: webBaseURL,
         appVersion: appVersion,

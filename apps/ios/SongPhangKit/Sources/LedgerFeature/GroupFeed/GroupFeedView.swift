@@ -9,6 +9,7 @@ public import SwiftUI
 public struct GroupFeedView: View {
   @Bindable private var model: GroupFeedModel
   private let isEmailVerified: Bool
+  private let unreadNotificationCount: Int
   private let onBack: () -> Void
   private let onOpenMembers: (ExpenseGroup.ID) -> Void
   private let onOpenBalances: (ExpenseGroup.ID) -> Void
@@ -17,12 +18,14 @@ public struct GroupFeedView: View {
   private let onOpenNewTransactionForm: (ExpenseGroup.ID) -> Void
   private let onOpenEditTransaction: (ExpenseGroup.ID, LedgerTransaction.ID) -> Void
   private let onOpenReceiptCapture: ((ExpenseGroup.ID) -> Void)?
+  private let onOpenNotifications: (() -> Void)?
   private let onRemovedFromGroup: () -> Void
   @State private var isFilterSheetOpen = false
 
   public init(
     model: GroupFeedModel,
     isEmailVerified: Bool = true,
+    unreadNotificationCount: Int = 0,
     onBack: @escaping () -> Void,
     onOpenMembers: @escaping (ExpenseGroup.ID) -> Void,
     onOpenBalances: @escaping (ExpenseGroup.ID) -> Void,
@@ -31,10 +34,12 @@ public struct GroupFeedView: View {
     onOpenNewTransactionForm: @escaping (ExpenseGroup.ID) -> Void,
     onOpenEditTransaction: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void,
     onOpenReceiptCapture: ((ExpenseGroup.ID) -> Void)? = nil,
+    onOpenNotifications: (() -> Void)? = nil,
     onRemovedFromGroup: @escaping () -> Void
   ) {
     self.model = model
     self.isEmailVerified = isEmailVerified
+    self.unreadNotificationCount = unreadNotificationCount
     self.onBack = onBack
     self.onOpenMembers = onOpenMembers
     self.onOpenBalances = onOpenBalances
@@ -43,6 +48,7 @@ public struct GroupFeedView: View {
     self.onOpenNewTransactionForm = onOpenNewTransactionForm
     self.onOpenEditTransaction = onOpenEditTransaction
     self.onOpenReceiptCapture = onOpenReceiptCapture
+    self.onOpenNotifications = onOpenNotifications
     self.onRemovedFromGroup = onRemovedFromGroup
   }
 
@@ -161,27 +167,35 @@ public struct GroupFeedView: View {
       title: data.group.name,
       onBack: onBack
     ) {
-      Button {
-        onOpenMembers(model.groupId)
-      } label: {
-        HStack(spacing: 2) {
-          ForEach(Array(data.members.prefix(4))) { member in
-            MemberShapeView(
-              shape: member.shape,
-              color: member.color,
-              name: member.name,
-              size: 24,
-              showInitial: false
-            )
-          }
+      HStack(spacing: 8) {
+        if let onOpenNotifications {
+          NotificationBellButton(
+            unreadCount: unreadNotificationCount,
+            onOpen: onOpenNotifications
+          )
         }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 48)
-        .background(Tokens.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        Button {
+          onOpenMembers(model.groupId)
+        } label: {
+          HStack(spacing: 2) {
+            ForEach(Array(data.members.prefix(4))) { member in
+              MemberShapeView(
+                shape: member.shape,
+                color: member.color,
+                name: member.name,
+                size: 24,
+                showInitial: false
+              )
+            }
+          }
+          .padding(.horizontal, 12)
+          .frame(minHeight: 48)
+          .background(Tokens.surface)
+          .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L10n.tr("feed.membersLink"))
       }
-      .buttonStyle(.plain)
-      .accessibilityLabel(L10n.tr("feed.membersLink"))
     }
     .padding(.horizontal, 20)
     .padding(.top, 8)
