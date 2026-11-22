@@ -16,6 +16,7 @@ public struct AppDependencies: Sendable {
   public let activity: any ActivityRepository
   public let quickEntry: any QuickEntryRepository
   public let groupEvents: any GroupEventsRepository
+  public let devices: any DevicesRepository
   public let liveConfiguration: APIConfiguration?
   public let webBaseURL: URL
   public let appVersion: String
@@ -39,6 +40,7 @@ public struct AppDependencies: Sendable {
         activity: LiveActivityRepository(environment: environment),
         quickEntry: LiveQuickEntryRepository(environment: environment),
         groupEvents: LiveGroupEventsRepository(environment: environment),
+        devices: LiveDevicesRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -57,6 +59,7 @@ public struct AppDependencies: Sendable {
         activity: LiveActivityRepository(environment: environment),
         quickEntry: LiveQuickEntryRepository(environment: environment),
         groupEvents: LiveGroupEventsRepository(environment: environment),
+        devices: LiveDevicesRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -82,6 +85,7 @@ public struct AppDependencies: Sendable {
         activity: FakeActivityRepository(world: world),
         quickEntry: FakeQuickEntryRepository(world: world),
         groupEvents: FakeGroupEventsRepository(world: world),
+        devices: FakeDevicesRepository(world: world),
         liveConfiguration: nil,
         webBaseURL: webBaseURL,
         appVersion: appVersion,

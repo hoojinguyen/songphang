@@ -19,6 +19,7 @@ public struct RouteDestination: View {
   private let onReplaceTop: (Route) -> Void
   private let onPop: () -> Void
   private let onPopToRoot: (String?) -> Void
+  private let onExpenseSaved: () -> Void
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
   @State private var registerModel: RegisterModel?
@@ -44,6 +45,7 @@ public struct RouteDestination: View {
     onReplaceTop: @escaping (Route) -> Void,
     onPop: @escaping () -> Void,
     onPopToRoot: @escaping (String?) -> Void,
+    onExpenseSaved: @escaping () -> Void = {},
     deletedTransactionId: Binding<LedgerTransaction.ID?>
   ) {
     self._deletedTransactionId = deletedTransactionId
@@ -55,6 +57,7 @@ public struct RouteDestination: View {
     self.onReplaceTop = onReplaceTop
     self.onPop = onPop
     self.onPopToRoot = onPopToRoot
+    self.onExpenseSaved = onExpenseSaved
 
     let args = ProcessInfo.processInfo.arguments
     switch route {
@@ -77,9 +80,13 @@ public struct RouteDestination: View {
       self._accountModel = State(
         initialValue: AccountModel(
           repository: dependencies.auth,
+          devicesRepository: dependencies.devices,
           initialUser: hasSnap ? currentUser : nil,
           onSignedOut: {
             sessionModel.markSignedOut()
+          },
+          onUserUpdated: { updated in
+            sessionModel.didSignIn(updated)
           }
         )
       )
@@ -178,7 +185,10 @@ public struct RouteDestination: View {
           membersRepository: dependencies.members,
           quickEntryRepository: dependencies.quickEntry,
           transactionsRepository: dependencies.transactions,
-          onSaved: onPop,
+          onSaved: {
+            onPop()
+            onExpenseSaved()
+          },
           onOpenManualForm: { reading in
             onReplaceTop(.newTransactionForm(groupId: groupId, initialReading: reading))
           }
@@ -194,7 +204,10 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           transactionsRepository: dependencies.transactions,
-          onSaved: onPop
+          onSaved: {
+            onPop()
+            onExpenseSaved()
+          }
         )
       )
     case .editTransaction(let groupId, let transactionId):

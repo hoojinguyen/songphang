@@ -14,7 +14,8 @@ enum AuthMapping {
       name: dto.name,
       avatarUrl: dto.avatarUrl,
       emailVerified: dto.emailVerified,
-      hasPassword: dto.hasPassword
+      hasPassword: dto.hasPassword,
+      hidePushContent: dto.hidePushContent ?? false
     )
   }
 
@@ -39,6 +40,7 @@ enum AuthMapping {
       let avatarUrl: String?
       let emailVerified: Bool
       let hasPassword: Bool
+      let hidePushContent: Bool?
     }
 
     let user: RawUser
@@ -50,7 +52,8 @@ enum AuthMapping {
         name: user.name,
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
-        hasPassword: user.hasPassword
+        hasPassword: user.hasPassword,
+        hidePushContent: user.hidePushContent ?? false
       )
     }
   }
@@ -95,7 +98,8 @@ enum AuthMapping {
         name: user.name,
         avatarUrl: user.avatarUrl,
         emailVerified: user.emailVerified,
-        hasPassword: user.hasPassword
+        hasPassword: user.hasPassword,
+        hidePushContent: user.hidePushContent
       )
     )
     return try? JSONEncoder().encode(payload)

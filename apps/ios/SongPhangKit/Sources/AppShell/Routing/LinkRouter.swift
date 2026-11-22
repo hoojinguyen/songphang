@@ -1,3 +1,4 @@
+public import Domain
 public import Foundation
 
 public struct LinkRouter: Sendable, Hashable {
@@ -51,6 +52,59 @@ public struct LinkRouter: Sendable, Hashable {
       return nil
     }
     return .joinGroup(token: token)
+  }
+
+  public enum PushDestination: Hashable, Sendable {
+    case groupFeed(groupId: ExpenseGroup.ID)
+    case groupBalances(groupId: ExpenseGroup.ID)
+  }
+
+  public func pushDestination(groupId: String?, target: String?) -> PushDestination? {
+    guard let groupId,
+      UUID(uuidString: groupId) != nil,
+      let target,
+      !target.isEmpty,
+      !target.contains(".."),
+      !target.contains("?"),
+      !target.contains("#")
+    else {
+      return nil
+    }
+
+    let expectedPrefix = "/g/\(groupId)"
+    guard target == expectedPrefix || target.hasPrefix("\(expectedPrefix)/") else {
+      return nil
+    }
+
+    let segments = target.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+    guard segments.count >= 2, segments[0] == "g", segments[1] == groupId else {
+      return nil
+    }
+
+    let id = ExpenseGroup.ID(groupId)
+    if segments.count == 2 {
+      return .groupFeed(groupId: id)
+    }
+    if segments.count == 3 {
+      switch segments[2] {
+      case "balances":
+        return .groupBalances(groupId: id)
+      case "stats":
+        // Stats detail destination arrives in Stage 5D; land on the authorized feed during 5C.
+        return .groupFeed(groupId: id)
+      default:
+        return nil
+      }
+    }
+    if segments.count == 5,
+      segments[2] == "tx",
+      UUID(uuidString: segments[3]) != nil,
+      segments[4] == "view"
+    {
+      // Transaction detail (S20) arrives in Stage 5D; land on the authorized feed during 5C.
+      return .groupFeed(groupId: id)
+    }
+    return nil
   }
 
   private static func effectivePort(for components: URLComponents, scheme: String) -> Int? {

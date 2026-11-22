@@ -1,12 +1,24 @@
 import DesignSystem
 public import Domain
 public import Observation
+import UIKit
+import UserNotifications
 
 @Observable
 public final class AccountModel {
+  public enum PushStatus: Sendable, Equatable {
+    case notDetermined
+    case authorized
+    case denied
+  }
+
   public private(set) var user: Loadable<User>
   public private(set) var sessions: Loadable<[UserSession]> = .loading
   public private(set) var refreshError: AppError?
+  public private(set) var pushFeatureEnabled = false
+  public private(set) var pushStatus: PushStatus = .notDetermined
+  public private(set) var isSavingPushSettings = false
+  public private(set) var pushSettingsError: String?
   public var currentPassword = ""
   public var newPassword = ""
   public var revokeOtherSessions = false
@@ -24,20 +36,33 @@ public final class AccountModel {
   public private(set) var signOutError: String?
 
   private let repository: any AuthRepository
+  private let devicesRepository: (any DevicesRepository)?
   private let onSignedOut: () -> Void
+  private let onUserUpdated: ((User) -> Void)?
+  private let checkPushStatus: @Sendable () async -> PushStatus
+  private let requestPushPermission: @Sendable () async -> PushStatus
 
   public init(
     repository: any AuthRepository,
+    devicesRepository: (any DevicesRepository)? = nil,
     initialUser: User? = nil,
-    onSignedOut: @escaping () -> Void
+    onSignedOut: @escaping () -> Void,
+    onUserUpdated: ((User) -> Void)? = nil,
+    checkPushStatus: (@Sendable () async -> PushStatus)? = nil,
+    requestPushPermission: (@Sendable () async -> PushStatus)? = nil
   ) {
     self.repository = repository
+    self.devicesRepository = devicesRepository
     if let initialUser {
       self.user = .loaded(initialUser)
     } else {
       self.user = .loading
     }
     self.onSignedOut = onSignedOut
+    self.onUserUpdated = onUserUpdated
+    self.checkPushStatus = checkPushStatus ?? { await AccountModel.systemPushStatus() }
+    self.requestPushPermission =
+      requestPushPermission ?? { await AccountModel.requestSystemPushPermission() }
   }
 
   public var isOffline: Bool {
@@ -59,8 +84,19 @@ public final class AccountModel {
         return .failure(error)
       }
     }()
+    async let featuresTask: ServerFeatures? = try? await repository.serverFeatures()
+    async let pushStatusTask: PushStatus = await checkPushStatus()
 
-    let (userResult, sessionsResult) = await (userTask, sessionsTask)
+    let (userResult, sessionsResult, serverFeatures, currentPushStatus) = await (
+      userTask,
+      sessionsTask,
+      featuresTask,
+      pushStatusTask
+    )
+    if let serverFeatures {
+      pushFeatureEnabled = serverFeatures.push
+    }
+    pushStatus = currentPushStatus
 
     switch userResult {
     case .success(let fetched):
@@ -210,5 +246,62 @@ public final class AccountModel {
         deleteError = L10n.tr("common.saveError")
       }
     }
+  }
+
+  public func enablePushNotifications() async {
+    pushStatus = await requestPushPermission()
+  }
+
+  public func setHidePushContent(_ hideContent: Bool) async {
+    guard let devicesRepository,
+      let current = user.value,
+      !isSavingPushSettings,
+      !isOffline
+    else { return }
+    let previous = current
+    var updated = current
+    updated.hidePushContent = hideContent
+    user = .loaded(updated)
+    pushSettingsError = nil
+    isSavingPushSettings = true
+    defer { isSavingPushSettings = false }
+    do throws(AppError) {
+      let persisted = try await devicesRepository.updateHidePushContent(hideContent)
+      updated.hidePushContent = persisted
+      user = .loaded(updated)
+      onUserUpdated?(updated)
+    } catch {
+      user = .loaded(previous)
+      if error == .unauthorized {
+        onSignedOut()
+      } else {
+        pushSettingsError = L10n.tr("common.saveError")
+      }
+    }
+  }
+
+  private static func systemPushStatus() async -> PushStatus {
+    let settings = await UNUserNotificationCenter.current().notificationSettings()
+    switch settings.authorizationStatus {
+    case .notDetermined:
+      return .notDetermined
+    case .authorized, .provisional, .ephemeral:
+      return .authorized
+    case .denied:
+      return .denied
+    @unknown default:
+      return .denied
+    }
+  }
+
+  private static func requestSystemPushPermission() async -> PushStatus {
+    _ = try? await UNUserNotificationCenter.current().requestAuthorization(
+      options: [.alert, .sound, .badge]
+    )
+    let status = await systemPushStatus()
+    if status == .authorized {
+      UIApplication.shared.registerForRemoteNotifications()
+    }
+    return status
   }
 }

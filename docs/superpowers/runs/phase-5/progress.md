@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5C in progress (5C.1 complete; continuing to 5C.2). Final acceptance and merge are pending.
+- Status: Stage 5C in progress (5C.1–5C.5 complete; continuing to 5C.6). Final acceptance and merge are pending.
 
 ## Tasks
 
@@ -19,10 +19,10 @@
 - [x] 5B.4 — Ledger and realtime
 - [x] 5B.5 — Early iOS/web Simulator acceptance and owner handoff
 - [x] 5C.1 — Native Google exchange
-- [ ] 5C.2 — Apple sign-in and revocation
-- [ ] 5C.3 — Push device registration and preferences
-- [ ] 5C.4 — Push delivery worker
-- [ ] 5C.5 — Native push registration and routing
+- [x] 5C.2 — Apple sign-in and revocation
+- [x] 5C.3 — Push device registration and preferences
+- [x] 5C.4 — Push delivery worker
+- [x] 5C.5 — Native push registration and routing
 - [ ] 5C.6 — Associated domains and gate
 - [ ] 5D.1 — Payments and settlement requests
 - [ ] 5D.2 — Search, categories, statistics and CSV
@@ -350,6 +350,29 @@
   - `ALL_5C4_UNIT_AND_GUARDS_PASS`: verified disposable P-256 ES256 JWT signing & 50-minute caching/rotation; verified worker production config refuses `PUSH_PROVIDER=console` and disabled config leaves sender `null`; verified allowlist sanitizer strips foreign/mismatched targets; verified 0 `send-push` jobs queued when push is disabled or for `budget_state`/`expense_changed`, and 1 deduplicated `send-push` job queued for `expense_added`, `comment_added`, and `runAutoReminders`; verified 2 active devices received 2 sanitized JSON console logs matching exact Vietnamese wording and `"Có cập nhật trong nhóm Đà Lạt 5C4"` when `hide_push_content` is enabled; verified 0 deliveries on muted group, read notification, and removed member; verified remaining active device still receives push after sign-out of device 1; verified concurrently rebound device survives a stale `"gone"` response while unchanged `"gone"` deletes cleanly.
   - `LIVE_PG_BOSS_PUSH_PASS`: live API expense creation (`Phở bò sáng`) triggered `pg-boss` dispatch in `apps/worker`, emitting `{"event":"push.sent.console",...,"title":"Sài Gòn Live 5C4","body":"Minh Live thêm Phở bò sáng · phần bạn 50.000 đ"}` with zero raw device tokens in `worker-5c4.log`.
 - Security review: checked items 1, 2, 4, 7, 9; zero device tokens logged, ES256 key material loaded only from server config, target paths allowlisted per group UUID, worker checks live membership/session state right before send.
+
+### Task 5C.5 — Native push registration and navigation
+
+**Approach**
+- Files created/modified: `apps/ios/App/{SongPhangApp.swift,SongPhang.entitlements}`, `apps/ios/Config/{Debug,Release}.xcconfig`, `Domain/{Models/User,Repositories/DevicesRepository}.swift`, `Repositories/{Auth/AuthMapping,Devices/LiveDevicesRepository}.swift`, `PreviewSupport/Fakes/{FakeRepositories,FakeWorld}.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `AccountFeature/Account/{AccountModel,AccountView}.swift`, `AppShell/{AppDependencies,RouteDestination,RootView,Debug/DebugPanel}.swift`, `AppShell/Push/{PushEventBridge,PushCoordinator,PushPermissionSheet}.swift`, `AppShell/Routing/LinkRouter.swift`.
+- Approach: Add `User.hidePushContent`, `DevicesRepository`/`LiveDevicesRepository`, `APS_ENVIRONMENT` entitlement (`development` in Debug, `production` in Release), `SongPhangAppDelegate` + cold-launch buffering `PushEventBridge`, and `PushCoordinator` storing only the per-user `"Để sau"` deferral flag in `UserDefaults` (no device tokens persisted locally). Trigger `PushPermissionSheet` after the first saved expense (`.quickEntry` / `.newTransactionForm`) when `features.push == true`, status is `.notDetermined`, and the user has not deferred; never prompt at launch. Expose later opt-in and `"Ẩn nội dung trên màn hình khoá"` (`PUT /me/push-settings`) in `AccountView`, hiding the entire section when `features.push == false`. Validate push `groupId` and `target` in `LinkRouter.pushDestination(groupId:target:)` (forwarding recognized 5D routes like `/stats` and `/tx/<id>/view` to `.groupFeed` during 5C, rejecting traversal/queries/mismatches) and confirm live API access via `dependencies.groups.group(id:)` before navigating on cold or warm push taps.
+- Why this is the simplest approach: Reuses existing `GroupListModel` / `AccountModel` / `LinkRouter` patterns with zero new dependencies and a single MainActor push bridge across `UIApplicationDelegate` and `RootView`.
+- Rejected alternative: Persisting APNs device tokens in UserDefaults or routing push notifications before checking live API membership.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: clean (exit 0).
+  - `apps/ios/Scripts/check-strings.sh`: `0` `DIFFERING` and `0` `EXTRA` keys (checked via `grep -E '^(DIFFERING|EXTRA):'`).
+  - Debug `xcodebuild` (`iPhone 17 Pro`) & Release `xcodebuild` (`generic/platform=iOS Simulator`, `CODE_SIGNING_ALLOWED=NO`): both `** BUILD SUCCEEDED **`.
+  - Embedded entitlements inspected via `plutil -p .../Debug-iphonesimulator/SongPhang.build/SongPhang.app-Simulated.xcent` (verified `aps-environment => development`, `com.apple.developer.applesignin => ["Default"]`).
+- Live Simulator exercise (`songphang_phase5_5c5`, isolated API `:4000`, `Exercise5C5.app` + `vn.songphang.app`):
+  - `ROUTER_AND_DEFER_5C5_PASS`: verified `LinkRouter.pushDestination` accepts valid feed/balances paths, routes 5D `/tx/<uuid>/view` and `/stats` to `.groupFeed` during 5C, and rejects mismatched group UUIDs, `..` traversal, query strings, non-UUID IDs, and unknown suffixes; verified `PushCoordinator.handleFirstExpenseSaved` hides sheet when `features.push == false`, presents sheet once when `true` + `.notDetermined`, persists per-user `"Để sau"` deferral flag, and skips re-prompting on subsequent saves.
+  - `LIVE_DISABLED_HIDDEN_5C5_PASS`: against live API with `PUSH_PROVIDER` unset, `AccountModel` kept `pushFeatureEnabled == false` (push settings hidden).
+  - `LIVE_CONSOLE_AND_ACCESS_5C5_PASS`: against live API with `PUSH_PROVIDER=console`, `LiveDevicesRepository.registerDevice` twice returned identical device IDs, `AccountModel` loaded `pushFeatureEnabled == true`, exercised later opt-in and `PUT /me/push-settings` `hidePushContent` `true`/`false` round-trip, removed device, confirmed live API group access (`200`) for member group and `404` block for nonexistent/removed group.
+  - `xcrun simctl push` to `vn.songphang.app`: delivered 4 simulated push payloads (`balances`, 5D `/tx/.../view` fallback, malformed/mismatched `target`, removed `groupId`), all exited 0 (`Notification sent to 'vn.songphang.app'`), outputting `SIMCTL_PUSH_AND_5C5_ALL_PASS` with zero `sim_5c5_device_token_` occurrences in `api-5c5.log`.
+- Security review: checked items 1, 2, 4, 7, 8; no device tokens persisted in `UserDefaults`, Keychain snapshots unaffected, zero device tokens logged in `api-5c5.log`, `LinkRouter.pushDestination` rejects traversal/queries/mismatched IDs before live API `groups.group(id:)` verification confirms current membership (`404` falls back to group list), and no third-party packages added.
+- External verification gap: Real iOS system push permission prompt behavior and real APNs token issuance/delivery require a physical iPhone with Apple Developer provisioning and APNs `.p8` key.
 
 ## Gate Not Passed
 

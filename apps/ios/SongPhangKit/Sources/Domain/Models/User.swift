@@ -10,6 +10,7 @@ public struct User: Sendable, Hashable, Identifiable {
   public var avatarUrl: String?
   public var emailVerified: Bool
   public var hasPassword: Bool
+  public var hidePushContent: Bool
 
   public init(
     id: ID,
@@ -17,7 +18,8 @@ public struct User: Sendable, Hashable, Identifiable {
     name: String,
     avatarUrl: String? = nil,
     emailVerified: Bool,
-    hasPassword: Bool
+    hasPassword: Bool,
+    hidePushContent: Bool = false
   ) {
     self.id = id
     self.email = email
@@ -25,5 +27,6 @@ public struct User: Sendable, Hashable, Identifiable {
     self.avatarUrl = avatarUrl
     self.emailVerified = emailVerified
     self.hasPassword = hasPassword
+    self.hidePushContent = hidePushContent
   }
 }

@@ -1,6 +1,7 @@
 import DesignSystem
 import Domain
 public import SwiftUI
+import UIKit
 
 #if DEBUG
   import PreviewSupport
@@ -78,6 +79,10 @@ public struct AccountView: View {
       changePasswordCard
     }
 
+    if model.pushFeatureEnabled {
+      pushSettingsCard(user)
+    }
+
     SessionsSectionView(
       sessions: model.sessions,
       revokingSessionId: model.revokingSessionId,
@@ -153,6 +158,71 @@ public struct AccountView: View {
         isPending: model.isSavingPassword
       ) {
         Task { await model.savePassword() }
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+  }
+
+  private func pushSettingsCard(_ user: User) -> some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(L10n.tr("ios.push.sectionTitle"))
+        .font(Typography.sectionTitle)
+        .foregroundStyle(Tokens.ink)
+
+      switch model.pushStatus {
+      case .notDetermined:
+        Text(L10n.tr("ios.push.promptBody"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.muted)
+        SPButton(
+          L10n.tr("ios.push.enable"),
+          variant: .primary,
+          isFullWidth: true,
+          isDisabled: model.isOffline
+        ) {
+          Task { await model.enablePushNotifications() }
+        }
+      case .authorized:
+        Text(L10n.tr("ios.push.enabledStatus"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.muted)
+      case .denied:
+        Text(L10n.tr("ios.push.deniedStatus"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.muted)
+        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+          SPButton(
+            L10n.tr("ios.push.openSettings"),
+            variant: .surface,
+            isFullWidth: true
+          ) {
+            UIApplication.shared.open(settingsURL)
+          }
+        }
+      }
+
+      Toggle(
+        isOn: Binding(
+          get: { user.hidePushContent },
+          set: { newValue in
+            Task { await model.setHidePushContent(newValue) }
+          }
+        )
+      ) {
+        Text(L10n.tr("ios.push.hideContent"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.ink)
+      }
+      .tint(Tokens.ink)
+      .disabled(model.isOffline || model.isSavingPushSettings)
+
+      if let pushSettingsError = model.pushSettingsError {
+        Text(pushSettingsError)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
       }
     }
     .padding(20)

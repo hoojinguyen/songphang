@@ -373,6 +373,28 @@
       currentUser = nil
     }
 
+    public func registerDevice(
+      token: String,
+      environment _: PushRegistrationEnvironment
+    ) async throws(AppError) -> String {
+      try await simulateNetwork()
+      _ = token
+      return "01930000-0000-7000-8000-0000000000d1"
+    }
+
+    public func removeDevice(id _: String) async throws(AppError) {
+      try await simulateNetwork()
+    }
+
+    public func updateHidePushContent(_ hideContent: Bool) async throws(AppError) -> Bool {
+      try await simulateNetwork()
+      if var user = currentUser {
+        user.hidePushContent = hideContent
+        currentUser = user
+      }
+      return hideContent
+    }
+
     // MARK: - Groups
 
     public func lastKnownGroups() -> [ExpenseGroup]? {

@@ -30,8 +30,10 @@ public struct RootView: View {
   @State private var sessionModel: SessionModel
   @State private var groupListModel: GroupListModel
   @State private var signInModel: SignInModel
+  @State private var pushCoordinator: PushCoordinator
   @State private var path: [Route] = []
   @State private var pendingRoute: Route?
+  @State private var pendingPushTap: PushTapPayload?
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
   @State private var isShowingDebugPanel = false
@@ -122,6 +124,9 @@ public struct RootView: View {
         initialState: initialSessionState
       )
       self._sessionModel = State(initialValue: session)
+      self._pushCoordinator = State(
+        initialValue: PushCoordinator(devicesRepository: resolved.devices)
+      )
       self._groupListModel = State(
         initialValue: GroupListModel(repository: resolved.groups)
       )
@@ -155,6 +160,9 @@ public struct RootView: View {
         initialState: .loading
       )
       self._sessionModel = State(initialValue: session)
+      self._pushCoordinator = State(
+        initialValue: PushCoordinator(devicesRepository: resolved.devices)
+      )
       self._groupListModel = State(
         initialValue: GroupListModel(repository: resolved.groups)
       )
@@ -290,11 +298,15 @@ public struct RootView: View {
           world: dependencies.world,
           liveConfiguration: dependencies.liveConfiguration,
           sessionModel: sessionModel,
+          pushCoordinator: pushCoordinator,
           onOpenJoinToken: { token in
             routeValidated(.joinGroup(token: token))
           },
           onOpenLinkURL: { url in
             handleIncomingURL(url)
+          },
+          onSimulatePushTap: { groupId, target in
+            Task { await handlePushTap(PushTapPayload(groupId: groupId, target: target)) }
           },
           onOpenGallery: {
             path.append(.debugGallery)
@@ -308,6 +320,18 @@ public struct RootView: View {
         )
       }
     #endif
+    .sheet(isPresented: $pushCoordinator.isPermissionSheetPresented) {
+      if case .signedIn(let user) = sessionModel.state {
+        PushPermissionSheet(
+          onEnable: {
+            Task { await pushCoordinator.enableFromPrompt() }
+          },
+          onLater: {
+            pushCoordinator.deferPrompt(userId: user.id)
+          }
+        )
+      }
+    }
     .onOpenURL { url in
       _ = handleIncomingURL(url)
     }
@@ -318,11 +342,16 @@ public struct RootView: View {
     }
     .onChange(of: scenePhase) { _, newPhase in
       if newPhase == .active, hasCompletedInitialAppear {
-        Task { await sessionModel.refreshOnForeground() }
+        Task {
+          await sessionModel.refreshOnForeground()
+          _ = await pushCoordinator.refreshAuthorizationStatus()
+        }
       }
     }
     .onChange(of: sessionModel.state) { oldState, newState in
       if case .signedOut = newState {
+        pushCoordinator.clearSessionState()
+        pendingPushTap = nil
         if case .signedIn = oldState {
           path.removeAll()
           statusNotice = nil
@@ -344,12 +373,20 @@ public struct RootView: View {
         }
         groupListModel = GroupListModel(repository: dependencies.groups)
         consumePendingRouteIfSignedIn()
+        Task { await consumePendingPushIfSignedIn() }
       }
     }
     .task {
+      PushEventBridge.shared.onDeviceTokenRegistered = { hexToken in
+        Task { await pushCoordinator.registerDeviceToken(hexToken) }
+      }
+      PushEventBridge.shared.onPushTapReceived = { payload in
+        Task { await handlePushTap(payload) }
+      }
       if case .loading = sessionModel.state {
         await sessionModel.loadSession()
       }
+      await consumePendingPushIfSignedIn()
       hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
@@ -457,8 +494,10 @@ public struct RootView: View {
   }
 
   private func resetToSignedOut() {
+    pushCoordinator.clearSessionState()
     path.removeAll()
     pendingRoute = nil
+    pendingPushTap = nil
     statusNotice = nil
     groupListModel = GroupListModel(repository: dependencies.groups)
     signInModel = SignInModel(
@@ -468,6 +507,68 @@ public struct RootView: View {
       }
     )
     sessionModel.markSignedOut()
+  }
+
+  private func handlePushTap(_ payload: PushTapPayload) async {
+    switch sessionModel.state {
+    case .loading:
+      pendingPushTap = payload
+    case .signedOut:
+      pendingPushTap = nil
+    case .signedIn:
+      pendingPushTap = nil
+      await applyPushTap(payload)
+    }
+  }
+
+  private func consumePendingPushIfSignedIn() async {
+    guard case .signedIn = sessionModel.state, let payload = pendingPushTap else {
+      return
+    }
+    pendingPushTap = nil
+    await applyPushTap(payload)
+  }
+
+  private func applyPushTap(_ payload: PushTapPayload) async {
+    guard
+      let destination = linkRouter.pushDestination(
+        groupId: payload.groupId,
+        target: payload.target
+      )
+    else {
+      statusNotice = nil
+      path.removeAll()
+      await groupListModel.load()
+      return
+    }
+
+    let groupId: ExpenseGroup.ID
+    switch destination {
+    case .groupFeed(let id), .groupBalances(let id):
+      groupId = id
+    }
+
+    do throws(AppError) {
+      _ = try await dependencies.groups.group(id: groupId)
+      statusNotice = nil
+      switch destination {
+      case .groupFeed(let id):
+        path = [.groupFeed(groupId: id)]
+      case .groupBalances(let id):
+        path = [.groupFeed(groupId: id), .groupBalances(groupId: id)]
+      }
+    } catch {
+      if error == .unauthorized {
+        await sessionModel.signOut()
+      } else if case .api(_, let status) = error, status == 404 {
+        statusNotice = L10n.tr("common.removed")
+        path.removeAll()
+        await groupListModel.load()
+      } else {
+        path.removeAll()
+        await groupListModel.load()
+      }
+    }
   }
 
   @ViewBuilder
@@ -588,6 +689,21 @@ public struct RootView: View {
         }
         path.removeAll()
         Task { await groupListModel.load() }
+      },
+      onExpenseSaved: {
+        guard case .signedIn(let signedInUser) = sessionModel.state else { return }
+        Task {
+          let features: ServerFeatures?
+          if let latest = sessionModel.latestFeatures {
+            features = latest
+          } else {
+            features = try? await dependencies.auth.serverFeatures()
+          }
+          await pushCoordinator.handleFirstExpenseSaved(
+            userId: signedInUser.id,
+            features: features
+          )
+        }
       },
       deletedTransactionId: $deletedTransactionId
     )

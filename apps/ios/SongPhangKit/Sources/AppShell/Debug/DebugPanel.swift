@@ -9,8 +9,10 @@
     private let world: FakeWorld?
     private let liveConfiguration: APIConfiguration?
     private let sessionModel: SessionModel
+    private let pushCoordinator: PushCoordinator
     private let onOpenJoinToken: (String) -> Void
     private let onOpenLinkURL: (URL) -> Bool
+    private let onSimulatePushTap: (String?, String?) -> Void
     private let onOpenGallery: () -> Void
     private let onDismiss: () -> Void
 
@@ -23,6 +25,10 @@
     @State private var joinTokenText: String = TripScenario.invite.token
     @State private var linkURLText: String = "http://localhost:3000/join/"
     @State private var linkStatusMessage: String?
+    @State private var debugPushToken: String = "sim_debug_device_token_5c5_0123456789abcdef"
+    @State private var pushGroupIdText: String = TripScenario.groupId.rawValue
+    @State private var pushTargetText: String = "/g/\(TripScenario.groupId.rawValue)/balances"
+    @State private var pushStatusMessage: String?
 
     enum FailureKind: String, CaseIterable, Identifiable {
       case none = "None"
@@ -70,16 +76,20 @@
       world: FakeWorld?,
       liveConfiguration: APIConfiguration?,
       sessionModel: SessionModel,
+      pushCoordinator: PushCoordinator,
       onOpenJoinToken: @escaping (String) -> Void,
       onOpenLinkURL: @escaping (URL) -> Bool,
+      onSimulatePushTap: @escaping (String?, String?) -> Void,
       onOpenGallery: @escaping () -> Void,
       onDismiss: @escaping () -> Void
     ) {
       self.world = world
       self.liveConfiguration = liveConfiguration
       self.sessionModel = sessionModel
+      self.pushCoordinator = pushCoordinator
       self.onOpenJoinToken = onOpenJoinToken
       self.onOpenLinkURL = onOpenLinkURL
+      self.onSimulatePushTap = onSimulatePushTap
       self.onOpenGallery = onOpenGallery
       self.onDismiss = onDismiss
     }
@@ -98,6 +108,54 @@
                   await sessionModel.signOut()
                   onDismiss()
                 }
+              }
+            }
+
+            Section("Push Registration & Routing") {
+              TextField("Debug Push Token", text: $debugPushToken)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              Button("Register Debug Token (Console)") {
+                Task {
+                  do throws(AppError) {
+                    let deviceId = try await pushCoordinator.registerDebugDeviceToken(
+                      debugPushToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                    )
+                    pushStatusMessage = "Registered device ID: \(deviceId)"
+                  } catch {
+                    pushStatusMessage = "Registration error: \(error)"
+                  }
+                }
+              }
+              if let deviceId = pushCoordinator.currentDeviceId {
+                Button("Remove Current Device (\(deviceId.prefix(8)))", role: .destructive) {
+                  Task {
+                    do throws(AppError) {
+                      try await pushCoordinator.removeCurrentDevice()
+                      pushStatusMessage = "Device removed"
+                    } catch {
+                      pushStatusMessage = "Removal error: \(error)"
+                    }
+                  }
+                }
+              }
+              TextField("Push groupId", text: $pushGroupIdText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              TextField("Push target", text: $pushTargetText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              Button("Simulate Push Tap") {
+                onDismiss()
+                onSimulatePushTap(
+                  pushGroupIdText.trimmingCharacters(in: .whitespacesAndNewlines),
+                  pushTargetText.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+              }
+              if let pushStatusMessage {
+                Text(pushStatusMessage)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
               }
             }
           }

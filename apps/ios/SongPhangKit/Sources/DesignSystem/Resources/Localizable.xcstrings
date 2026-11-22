@@ -2608,6 +2608,17 @@
         }
       }
     },
+    "ios.push.deniedStatus": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông báo đang tắt trong Cài đặt iPhone."
+          }
+        }
+      }
+    },
     "ios.push.enable": {
       "extractionState": "manual",
       "localizations": {
@@ -2615,6 +2626,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bật thông báo"
+          }
+        }
+      }
+    },
+    "ios.push.enabledStatus": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông báo đang bật trên thiết bị này."
+          }
+        }
+      }
+    },
+    "ios.push.hideContent": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn nội dung trên màn hình khoá"
           }
         }
       }
@@ -2630,6 +2663,17 @@
         }
       }
     },
+    "ios.push.openSettings": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Cài đặt"
+          }
+        }
+      }
+    },
     "ios.push.promptBody": {
       "extractionState": "manual",
       "localizations": {
@@ -2637,6 +2681,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bật thông báo để biết khi có khoản chi mới hoặc ai đó nhắc bạn."
+          }
+        }
+      }
+    },
+    "ios.push.promptTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận thông báo khi có khoản chi mới"
+          }
+        }
+      }
+    },
+    "ios.push.sectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông báo"
           }
         }
       }

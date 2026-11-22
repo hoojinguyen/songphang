@@ -327,4 +327,24 @@
       world.eventStream(for: groupId)
     }
   }
+
+  public nonisolated struct FakeDevicesRepository: DevicesRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func registerDevice(
+      token: String,
+      environment: PushRegistrationEnvironment
+    ) async throws(AppError) -> String {
+      try await world.registerDevice(token: token, environment: environment)
+    }
+
+    public func removeDevice(id: String) async throws(AppError) {
+      try await world.removeDevice(id: id)
+    }
+
+    public func updateHidePushContent(_ hideContent: Bool) async throws(AppError) -> Bool {
+      try await world.updateHidePushContent(hideContent)
+    }
+  }
 #endif
