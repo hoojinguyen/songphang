@@ -17,6 +17,7 @@ public struct GroupFeedView: View {
   private let onOpenQuickEntry: (ExpenseGroup.ID, String?) -> Void
   private let onOpenNewTransactionForm: (ExpenseGroup.ID) -> Void
   private let onOpenEditTransaction: (ExpenseGroup.ID, LedgerTransaction.ID) -> Void
+  private let onOpenTransactionDetail: ((ExpenseGroup.ID, LedgerTransaction.ID) -> Void)?
   private let onOpenReceiptCapture: ((ExpenseGroup.ID) -> Void)?
   private let onOpenNotifications: (() -> Void)?
   private let onRemovedFromGroup: () -> Void
@@ -33,6 +34,7 @@ public struct GroupFeedView: View {
     onOpenQuickEntry: @escaping (ExpenseGroup.ID, String?) -> Void,
     onOpenNewTransactionForm: @escaping (ExpenseGroup.ID) -> Void,
     onOpenEditTransaction: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void,
+    onOpenTransactionDetail: ((ExpenseGroup.ID, LedgerTransaction.ID) -> Void)? = nil,
     onOpenReceiptCapture: ((ExpenseGroup.ID) -> Void)? = nil,
     onOpenNotifications: (() -> Void)? = nil,
     onRemovedFromGroup: @escaping () -> Void
@@ -47,6 +49,7 @@ public struct GroupFeedView: View {
     self.onOpenQuickEntry = onOpenQuickEntry
     self.onOpenNewTransactionForm = onOpenNewTransactionForm
     self.onOpenEditTransaction = onOpenEditTransaction
+    self.onOpenTransactionDetail = onOpenTransactionDetail
     self.onOpenReceiptCapture = onOpenReceiptCapture
     self.onOpenNotifications = onOpenNotifications
     self.onRemovedFromGroup = onRemovedFromGroup
@@ -375,7 +378,11 @@ public struct GroupFeedView: View {
                 myMemberId: data.group.myMemberId,
                 canEdit: canEdit
               ) {
-                onOpenEditTransaction(model.groupId, tx.id)
+                if let onOpenTransactionDetail {
+                  onOpenTransactionDetail(model.groupId, tx.id)
+                } else {
+                  onOpenEditTransaction(model.groupId, tx.id)
+                }
               }
               .id(tx.id)
               .onAppear {

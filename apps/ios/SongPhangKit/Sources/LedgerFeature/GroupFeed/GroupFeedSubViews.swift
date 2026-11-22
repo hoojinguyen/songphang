@@ -69,17 +69,11 @@ struct FeedTransactionRowView: View {
   let onTap: () -> Void
 
   var body: some View {
-    Group {
-      if canEdit {
-        Button(action: onTap) {
-          rowContent
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L10n.t("feed.editRow", ["description": transaction.description]))
-      } else {
-        rowContent
-      }
+    Button(action: onTap) {
+      rowContent
     }
+    .buttonStyle(.plain)
+    .accessibilityLabel(L10n.t("feed.viewRow", ["description": transaction.description]))
   }
 
   @ViewBuilder
@@ -142,6 +136,31 @@ struct FeedTransactionRowView: View {
           )
         }
 
+        if transaction.approval.status == .pending {
+          Text(L10n.tr("approval.pendingTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        } else if transaction.approval.status == .rejected {
+          Text(L10n.tr("approval.rejectedTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+
+        if transaction.dispute != nil {
+          Text(L10n.tr("transactionView.disputeTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+
         if transaction.version > 1 {
           Text(L10n.tr("feed.edited"))
             .font(Typography.captionBold)
@@ -177,6 +196,19 @@ struct FeedTransactionRowView: View {
           }
           .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
           .accessibilityLabel(L10n.tr("attachments.hasPhotos"))
+        }
+
+        if transaction.commentCount > 0 {
+          HStack(spacing: 4) {
+            Image(systemName: "bubble.left")
+              .font(.system(size: 11, weight: .semibold))
+            Text(String(transaction.commentCount))
+              .font(Typography.captionBold)
+          }
+          .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
+          .accessibilityLabel(
+            L10n.t("transactionView.commentCount", ["count": String(transaction.commentCount)])
+          )
         }
 
         if isMine {
@@ -312,6 +344,38 @@ struct FeedTransactionRowView: View {
       Text(text)
         .font(Typography.captionBold)
         .foregroundStyle(Tokens.ink)
+      if transaction.approval.status == .pending {
+        Text(L10n.tr("approval.pendingTag"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.ink)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 2)
+          .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+      } else if transaction.approval.status == .rejected {
+        Text(L10n.tr("approval.rejectedTag"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.ink)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 2)
+          .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+      }
+      if transaction.dispute != nil {
+        Text(L10n.tr("transactionView.disputeTag"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.ink)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 2)
+          .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+      }
+      if transaction.commentCount > 0 {
+        HStack(spacing: 4) {
+          Image(systemName: "bubble.left")
+            .font(.system(size: 11, weight: .semibold))
+          Text(String(transaction.commentCount))
+            .font(Typography.captionBold)
+        }
+        .foregroundStyle(Tokens.muted)
+      }
       if transaction.version > 1 {
         Text(L10n.tr("feed.edited"))
           .font(Typography.captionBold)

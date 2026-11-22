@@ -174,6 +174,59 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     }
   }
 
+  public struct TransactionApproval: Sendable, Hashable {
+    public enum Status: String, Sendable, Hashable {
+      case none
+      case pending
+      case approved
+      case rejected
+    }
+
+    public var status: Status
+    public var note: String?
+    public var decidedByName: String?
+    public var decidedAt: String?
+
+    public init(
+      status: Status = .none,
+      note: String? = nil,
+      decidedByName: String? = nil,
+      decidedAt: String? = nil
+    ) {
+      self.status = status
+      self.note = note
+      self.decidedByName = decidedByName
+      self.decidedAt = decidedAt
+    }
+  }
+
+  public struct TransactionDispute: Sendable, Hashable {
+    public struct ID: Sendable, Hashable {
+      public let rawValue: String
+      public init(_ rawValue: String) { self.rawValue = rawValue }
+    }
+
+    public var id: ID
+    public var reason: String
+    public var openedByName: String
+    public var openedAt: String
+    public var mine: Bool
+
+    public init(
+      id: ID,
+      reason: String,
+      openedByName: String,
+      openedAt: String,
+      mine: Bool
+    ) {
+      self.id = id
+      self.reason = reason
+      self.openedByName = openedByName
+      self.openedAt = openedAt
+      self.mine = mine
+    }
+  }
+
   public let id: ID
   public var type: TransactionType
   public var description: String
@@ -194,6 +247,9 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var warnings: [TransactionWarning]
   public var attachments: [Attachment]
   public var attachmentCount: Int
+  public var approval: TransactionApproval
+  public var dispute: TransactionDispute?
+  public var commentCount: Int
 
   public init(
     id: ID,
@@ -215,7 +271,10 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     deletedAt: String? = nil,
     warnings: [TransactionWarning] = [],
     attachments: [Attachment] = [],
-    attachmentCount: Int? = nil
+    attachmentCount: Int? = nil,
+    approval: TransactionApproval = .init(),
+    dispute: TransactionDispute? = nil,
+    commentCount: Int = 0
   ) {
     self.id = id
     self.type = type
@@ -237,5 +296,8 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.warnings = warnings
     self.attachments = attachments
     self.attachmentCount = attachmentCount ?? attachments.count
+    self.approval = approval
+    self.dispute = dispute
+    self.commentCount = commentCount
   }
 }

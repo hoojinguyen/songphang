@@ -22,6 +22,7 @@ public enum Route: Hashable, Sendable {
     initialAttachmentId: Attachment.ID? = nil
   )
   case editTransaction(groupId: ExpenseGroup.ID, transactionId: LedgerTransaction.ID)
+  case transactionDetail(groupId: ExpenseGroup.ID, transactionId: LedgerTransaction.ID)
   case receiptReview(groupId: ExpenseGroup.ID, scanId: ReceiptScan.ID)
   case settle(
     groupId: ExpenseGroup.ID,

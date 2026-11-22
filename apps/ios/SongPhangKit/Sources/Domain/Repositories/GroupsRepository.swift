@@ -5,21 +5,30 @@ public struct UpdateGroupInput: Sendable, Hashable {
     case interval(Int)
   }
 
+  public enum ApprovalThresholdSetting: Sendable, Hashable {
+    case unchanged
+    case off
+    case threshold(Money)
+  }
+
   public var name: String?
   public var minimizeDebts: Bool?
   public var defaultRole: Role?
   public var reminderInterval: ReminderIntervalSetting
+  public var approvalThreshold: ApprovalThresholdSetting
 
   public init(
     name: String? = nil,
     minimizeDebts: Bool? = nil,
     defaultRole: Role? = nil,
-    reminderInterval: ReminderIntervalSetting = .unchanged
+    reminderInterval: ReminderIntervalSetting = .unchanged,
+    approvalThreshold: ApprovalThresholdSetting = .unchanged
   ) {
     self.name = name
     self.minimizeDebts = minimizeDebts
     self.defaultRole = defaultRole
     self.reminderInterval = reminderInterval
+    self.approvalThreshold = approvalThreshold
   }
 }
 

@@ -53,6 +53,7 @@ public struct RouteDestination: View {
   @State private var receiptReviewModel: ReceiptReviewModel?
   @State private var settleModel: SettleModel?
   @State private var notificationsModel: NotificationsModel?
+  @State private var transactionDetailModel: TransactionDetailModel?
 
   public init(
     route: Route,
@@ -301,6 +302,23 @@ public struct RouteDestination: View {
           }
         )
       )
+    case .transactionDetail(let groupId, let transactionId):
+      self._transactionDetailModel = State(
+        initialValue: TransactionDetailModel(
+          groupId: groupId,
+          transactionId: transactionId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          categoriesRepository: dependencies.categories,
+          transactionsRepository: dependencies.transactions,
+          attachmentsRepository: dependencies.attachments,
+          currentUserProvider: { sessionModel.currentUser },
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
+        )
+      )
     case .receiptReview(let groupId, let scanId):
       self._receiptReviewModel = State(
         initialValue: ReceiptReviewModel(
@@ -506,6 +524,9 @@ public struct RouteDestination: View {
           onOpenEditTransaction: { id, txId in
             onNavigate(.editTransaction(groupId: id, transactionId: txId))
           },
+          onOpenTransactionDetail: { id, txId in
+            onNavigate(.transactionDetail(groupId: id, transactionId: txId))
+          },
           onOpenReceiptCapture: sessionModel.latestFeatures?.receiptReading == true
             ? { _ in isReceiptCaptureOpen = true }
             : nil,
@@ -662,6 +683,19 @@ public struct RouteDestination: View {
           model: expenseFormModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
           onCancel: onPop
+        )
+      }
+    case .transactionDetail:
+      if let transactionDetailModel {
+        TransactionDetailView(
+          model: transactionDetailModel,
+          verifyEmailBanner: AnyView(
+            VerifyEmailBannerView(model: VerifyEmailBannerModel(repository: dependencies.auth))
+          ),
+          onBack: onPop,
+          onOpenEdit: { gid, tid in
+            onNavigate(.editTransaction(groupId: gid, transactionId: tid))
+          }
         )
       }
     case .receiptReview:

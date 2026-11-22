@@ -291,4 +291,194 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
       throw environment.errorMapper.mapTransportError(error)
     }
   }
+
+  public func comments(
+    groupId: ExpenseGroup.ID,
+    id: LedgerTransaction.ID,
+    cursor: String?,
+    limit: Int
+  ) async throws(AppError) -> (comments: [Comment], nextCursor: String?) {
+    do {
+      return try await ResponseBodyCapture.withCapture {
+        let output = try await environment.client
+          .get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub__sol_comments(
+            .init(
+              path: .init(groupId: groupId.rawValue, id: id.rawValue),
+              query: .init(cursor: cursor, limit: limit)
+            )
+          )
+        switch output {
+        case .ok(let ok):
+          let body = try ok.body.json
+          return (body.comments.map(TransactionMapping.mapComment), body.nextCursor)
+        case .undocumented(let status, let payload):
+          throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+        }
+      } fallback: { data in
+        try TransactionMapping.decodeResilientComments(from: data)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func addComment(
+    groupId: ExpenseGroup.ID,
+    id: LedgerTransaction.ID,
+    body: String,
+    key: IdempotencyKey
+  ) async throws(AppError) -> Comment {
+    do {
+      let output = try await environment.client
+        .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub__sol_comments(
+          .init(
+            path: .init(groupId: groupId.rawValue, id: id.rawValue),
+            headers: .init(idempotency_hyphen_key: key.rawValue),
+            body: .json(.init(body: body))
+          )
+        )
+      switch output {
+      case .created(let created):
+        let body = try created.body.json
+        return TransactionMapping.mapComment(body.comment)
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func deleteComment(
+    groupId: ExpenseGroup.ID,
+    id: LedgerTransaction.ID,
+    commentId: Comment.ID
+  ) async throws(AppError) {
+    do {
+      let output = try await environment.client
+        .delete_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub__sol_comments_sol__lcub_commentId_rcub_(
+          .init(
+            path: .init(groupId: groupId.rawValue, id: id.rawValue, commentId: commentId.rawValue))
+        )
+      switch output {
+      case .noContent:
+        return
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func openDispute(
+    groupId: ExpenseGroup.ID,
+    id: LedgerTransaction.ID,
+    reason: String
+  ) async throws(AppError) -> LedgerTransaction.TransactionDispute {
+    do {
+      let output = try await environment.client
+        .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub__sol_dispute(
+          .init(
+            path: .init(groupId: groupId.rawValue, id: id.rawValue),
+            body: .json(.init(reason: reason))
+          )
+        )
+      switch output {
+      case .created(let created):
+        let body = try created.body.json
+        guard let dispute = TransactionMapping.mapDispute(body.dispute) else {
+          throw AppError.unexpected
+        }
+        return dispute
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func resolveDispute(
+    groupId: ExpenseGroup.ID,
+    id: LedgerTransaction.ID
+  ) async throws(AppError) {
+    do {
+      let output = try await environment.client
+        .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub__sol_dispute_sol_resolve(
+          .init(path: .init(groupId: groupId.rawValue, id: id.rawValue))
+        )
+      switch output {
+      case .ok:
+        return
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func approve(
+    groupId: ExpenseGroup.ID,
+    id: LedgerTransaction.ID
+  ) async throws(AppError) -> LedgerTransaction {
+    do {
+      let output = try await environment.client
+        .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub__sol_approve(
+          .init(path: .init(groupId: groupId.rawValue, id: id.rawValue))
+        )
+      switch output {
+      case .ok(let ok):
+        let body = try ok.body.json
+        let warnings = (body.warnings ?? []).map { TransactionWarning(code: $0.rawValue) }
+        return TransactionMapping.mapDetail(body.transaction, warnings: warnings)
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func reject(
+    groupId: ExpenseGroup.ID,
+    id: LedgerTransaction.ID,
+    note: String?
+  ) async throws(AppError) -> LedgerTransaction {
+    do {
+      let body: Components.Schemas.ApproveRejectTransactionRequest? = note.map { .init(note: $0) }
+      let output = try await environment.client
+        .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub__sol_reject(
+          .init(
+            path: .init(groupId: groupId.rawValue, id: id.rawValue),
+            body: body.map { .json($0) }
+          )
+        )
+      switch output {
+      case .ok(let ok):
+        let body = try ok.body.json
+        let warnings = (body.warnings ?? []).map { TransactionWarning(code: $0.rawValue) }
+        return TransactionMapping.mapDetail(body.transaction, warnings: warnings)
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
 }

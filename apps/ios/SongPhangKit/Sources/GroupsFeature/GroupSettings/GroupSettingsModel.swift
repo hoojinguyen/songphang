@@ -159,6 +159,27 @@ public final class GroupSettingsModel {
     }
   }
 
+  public func setApprovalThreshold(_ threshold: Money?) async {
+    guard !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      let setting: UpdateGroupInput.ApprovalThresholdSetting =
+        (threshold != nil) ? .threshold(threshold!) : .off
+      _ = try await groupsRepository.update(
+        id: groupId,
+        input: UpdateGroupInput(approvalThreshold: setting)
+      )
+      if case .loaded(var current) = state {
+        current.group.approvalThreshold = threshold
+        state = .loaded(current)
+      }
+    } catch {
+      actionError = error
+    }
+  }
+
   public func setMuted(_ muted: Bool) async {
     guard !isPerformingAction else { return }
     isPerformingAction = true

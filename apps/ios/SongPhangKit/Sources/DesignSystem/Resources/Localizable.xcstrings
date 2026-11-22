@@ -6919,6 +6919,369 @@
           }
         }
       }
+    },
+    "activity.disputeOpen": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} cho rằng {summary} chưa đúng"
+          }
+        }
+      }
+    },
+    "activity.disputeResolve": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} đã giải quyết {summary}"
+          }
+        }
+      }
+    },
+    "activity.approve": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} duyệt {summary} · {amount}"
+          }
+        }
+      }
+    },
+    "activity.reject": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} không duyệt {summary} · {amount}"
+          }
+        }
+      }
+    },
+    "feed.viewRow": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem {description}"
+          }
+        }
+      }
+    },
+    "transactionView.editLink": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa"
+          }
+        }
+      }
+    },
+    "transactionView.commentPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Viết bình luận…"
+          }
+        }
+      }
+    },
+    "transactionView.send": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi"
+          }
+        }
+      }
+    },
+    "transactionView.noComments": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có bình luận"
+          }
+        }
+      }
+    },
+    "transactionView.deleteComment": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xoá bình luận"
+          }
+        }
+      }
+    },
+    "transactionView.openDispute": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoản này chưa đúng"
+          }
+        }
+      }
+    },
+    "transactionView.disputeTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoản này chưa đúng ở đâu?"
+          }
+        }
+      }
+    },
+    "transactionView.disputeReasonLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lý do"
+          }
+        }
+      }
+    },
+    "transactionView.disputeCancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thôi"
+          }
+        }
+      }
+    },
+    "transactionView.disputedBy": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{name} cho rằng khoản này chưa đúng"
+          }
+        }
+      }
+    },
+    "transactionView.resolveDispute": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã giải quyết"
+          }
+        }
+      }
+    },
+    "transactionView.disputeTag": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "đang hỏi lại"
+          }
+        }
+      }
+    },
+    "transactionView.disputeResolved": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã giải quyết."
+          }
+        }
+      }
+    },
+    "transactionView.commentCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count} bình luận"
+          }
+        }
+      }
+    },
+    "transactionView.loadMoreComments": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tải thêm bình luận"
+          }
+        }
+      }
+    },
+    "approval.settingsTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duyệt khoản chi lớn"
+          }
+        }
+      }
+    },
+    "approval.thresholdLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ số tiền"
+          }
+        }
+      }
+    },
+    "approval.settingsHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoản chi từ mức này chỉ được tính sau khi bạn duyệt."
+          }
+        }
+      }
+    },
+    "approval.pendingTag": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "chờ duyệt"
+          }
+        }
+      }
+    },
+    "approval.rejectedTag": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "không được duyệt"
+          }
+        }
+      }
+    },
+    "approval.pendingBanner": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoản này chờ {owner} duyệt. Chưa tính vào số dư."
+          }
+        }
+      }
+    },
+    "approval.approve": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duyệt"
+          }
+        }
+      }
+    },
+    "approval.reject": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không duyệt"
+          }
+        }
+      }
+    },
+    "approval.rejectTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vì sao không duyệt?"
+          }
+        }
+      }
+    },
+    "approval.rejectNoteLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú"
+          }
+        }
+      }
+    },
+    "approval.rejectCancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thôi"
+          }
+        }
+      }
+    },
+    "approval.rejectedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{owner} không duyệt khoản này."
+          }
+        }
+      }
+    },
+    "approval.savedPending": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu. Khoản này chờ {owner} duyệt."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

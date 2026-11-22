@@ -202,6 +202,48 @@ enum TransactionMapping {
     )
   }
 
+  static func mapApproval(_ dto: Components.Schemas.TransactionApprovalDto)
+    -> LedgerTransaction.TransactionApproval
+  {
+    let status: LedgerTransaction.TransactionApproval.Status = {
+      switch dto.status {
+      case .none: return .none
+      case .pending: return .pending
+      case .approved: return .approved
+      case .rejected: return .rejected
+      }
+    }()
+    return LedgerTransaction.TransactionApproval(
+      status: status,
+      note: dto.note,
+      decidedByName: dto.decidedByName,
+      decidedAt: dto.decidedAt.map(formatISO)
+    )
+  }
+
+  static func mapDispute(_ dto: Components.Schemas.TransactionDisputeDto?) -> LedgerTransaction
+    .TransactionDispute?
+  {
+    guard let dto else { return nil }
+    return LedgerTransaction.TransactionDispute(
+      id: LedgerTransaction.TransactionDispute.ID(dto.id),
+      reason: dto.reason,
+      openedByName: dto.openedByName,
+      openedAt: formatISO(dto.openedAt),
+      mine: dto.mine
+    )
+  }
+
+  static func mapComment(_ dto: Components.Schemas.CommentDto) -> Comment {
+    Comment(
+      id: Comment.ID(dto.id),
+      body: dto.body,
+      authorName: dto.authorName,
+      createdAt: formatISO(dto.createdAt),
+      mine: dto.mine
+    )
+  }
+
   static func mapListItem(_ dto: Components.Schemas.TransactionListItemDto) -> LedgerTransaction {
     LedgerTransaction(
       id: LedgerTransaction.ID(dto.id),
@@ -229,7 +271,10 @@ enum TransactionMapping {
       createdAt: formatISO(dto.createdAt),
       updatedAt: formatISO(dto.updatedAt),
       deletedAt: dto.deletedAt.map(formatISO),
-      attachmentCount: dto.attachmentCount
+      attachmentCount: dto.attachmentCount,
+      approval: mapApproval(dto.approval),
+      dispute: mapDispute(dto.dispute),
+      commentCount: dto.commentCount
     )
   }
 
@@ -264,7 +309,11 @@ enum TransactionMapping {
       updatedAt: formatISO(dto.updatedAt),
       deletedAt: dto.deletedAt.map(formatISO),
       warnings: warnings,
-      attachments: dto.attachments.map(ReceiptMapping.mapAttachment)
+      attachments: dto.attachments.map(ReceiptMapping.mapAttachment),
+      attachmentCount: dto.attachments.count,
+      approval: mapApproval(dto.approval),
+      dispute: mapDispute(dto.dispute),
+      commentCount: dto.commentCount
     )
   }
 
@@ -500,6 +549,63 @@ enum TransactionMapping {
     }
   }
 
+  struct RawApproval: Codable, Sendable {
+    let status: String
+    let note: String?
+    let decidedByName: String?
+    let decidedAt: String?
+
+    func toDomain() -> LedgerTransaction.TransactionApproval {
+      let statusEnum: LedgerTransaction.TransactionApproval.Status = {
+        switch status {
+        case "pending": return .pending
+        case "approved": return .approved
+        case "rejected": return .rejected
+        default: return .none
+        }
+      }()
+      return LedgerTransaction.TransactionApproval(
+        status: statusEnum,
+        note: note,
+        decidedByName: decidedByName,
+        decidedAt: decidedAt
+      )
+    }
+
+    init(approval: LedgerTransaction.TransactionApproval) {
+      self.status = approval.status.rawValue
+      self.note = approval.note
+      self.decidedByName = approval.decidedByName
+      self.decidedAt = approval.decidedAt
+    }
+  }
+
+  struct RawDispute: Codable, Sendable {
+    let id: String
+    let reason: String
+    let openedByName: String
+    let openedAt: String
+    let mine: Bool
+
+    func toDomain() -> LedgerTransaction.TransactionDispute {
+      LedgerTransaction.TransactionDispute(
+        id: LedgerTransaction.TransactionDispute.ID(id),
+        reason: reason,
+        openedByName: openedByName,
+        openedAt: openedAt,
+        mine: mine
+      )
+    }
+
+    init(dispute: LedgerTransaction.TransactionDispute) {
+      self.id = dispute.id.rawValue
+      self.reason = dispute.reason
+      self.openedByName = dispute.openedByName
+      self.openedAt = dispute.openedAt
+      self.mine = dispute.mine
+    }
+  }
+
   struct RawTransaction: Codable, Sendable {
     let id: String
     let type: String
@@ -520,6 +626,9 @@ enum TransactionMapping {
     let deletedAt: String?
     let attachments: [ReceiptMapping.RawAttachment]?
     let attachmentCount: Int?
+    let approval: RawApproval?
+    let dispute: RawDispute?
+    let commentCount: Int?
 
     func toDomain() -> LedgerTransaction {
       let decodedAttachments = (attachments ?? []).map { $0.toDomain() }
@@ -546,7 +655,10 @@ enum TransactionMapping {
         updatedAt: updatedAt,
         deletedAt: deletedAt,
         attachments: decodedAttachments,
-        attachmentCount: attachmentCount ?? decodedAttachments.count
+        attachmentCount: attachmentCount ?? decodedAttachments.count,
+        approval: approval?.toDomain() ?? .init(),
+        dispute: dispute?.toDomain(),
+        commentCount: commentCount ?? 0
       )
     }
 
@@ -575,6 +687,9 @@ enum TransactionMapping {
       self.attachments =
         tx.attachments.isEmpty ? nil : tx.attachments.map(ReceiptMapping.RawAttachment.init)
       self.attachmentCount = tx.attachmentCount
+      self.approval = RawApproval(approval: tx.approval)
+      self.dispute = tx.dispute.map(RawDispute.init)
+      self.commentCount = tx.commentCount
     }
   }
 
@@ -586,6 +701,29 @@ enum TransactionMapping {
   struct RawTransactionResponse: Codable, Sendable {
     let transaction: RawTransaction
     let warnings: [String]?
+  }
+
+  struct RawComment: Codable, Sendable {
+    let id: String
+    let body: String
+    let authorName: String
+    let createdAt: String
+    let mine: Bool
+
+    func toDomain() -> Comment {
+      Comment(
+        id: Comment.ID(id),
+        body: body,
+        authorName: authorName,
+        createdAt: createdAt,
+        mine: mine
+      )
+    }
+  }
+
+  struct RawCommentsResponse: Codable, Sendable {
+    let comments: [RawComment]
+    let nextCursor: String?
   }
 
   static func decodeResilientPage(from data: Data) throws -> Page<LedgerTransaction> {
@@ -606,5 +744,29 @@ enum TransactionMapping {
     var tx = raw.transaction.toDomain()
     tx.warnings = (raw.warnings ?? []).map { TransactionWarning(code: $0) }
     return tx
+  }
+
+  static func decodeResilientComments(from data: Data) throws -> (
+    comments: [Comment], nextCursor: String?
+  ) {
+    let raw = try JSONDecoder().decode(RawCommentsResponse.self, from: data)
+    return (raw.comments.map { $0.toDomain() }, raw.nextCursor)
+  }
+
+  static func decodeResilientComment(from data: Data) throws -> Comment {
+    struct SingleCommentResponse: Codable {
+      let comment: RawComment
+    }
+    let raw = try JSONDecoder().decode(SingleCommentResponse.self, from: data)
+    return raw.comment.toDomain()
+  }
+
+  static func decodeResilientDispute(from data: Data) throws -> LedgerTransaction.TransactionDispute
+  {
+    struct DisputeResponse: Codable {
+      let dispute: RawDispute
+    }
+    let raw = try JSONDecoder().decode(DisputeResponse.self, from: data)
+    return raw.dispute.toDomain()
   }
 }

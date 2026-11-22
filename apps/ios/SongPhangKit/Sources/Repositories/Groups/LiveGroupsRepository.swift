@@ -137,7 +137,7 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
     let scope = await environment.snapshots.currentScope()
     let groupGen = await environment.snapshots.groupGeneration(for: id.rawValue)
 
-    if input.reminderInterval != .unchanged {
+    if input.reminderInterval != .unchanged || input.approvalThreshold != .unchanged {
       let detail = try await patchGroupRaw(id: id, input: input)
       if let scope, let encoded = GroupMapping.encodeGroupSnapshot(detail) {
         await environment.snapshots.writeData(
@@ -234,6 +234,11 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
     case .unchanged: break
     case .off: payload["reminderIntervalDays"] = NSNull()
     case .interval(let days): payload["reminderIntervalDays"] = days
+    }
+    switch input.approvalThreshold {
+    case .unchanged: break
+    case .off: payload["approvalThreshold"] = NSNull()
+    case .threshold(let money): payload["approvalThreshold"] = money.amount
     }
 
     let url = environment.configuration.apiBaseURL

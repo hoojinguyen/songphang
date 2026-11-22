@@ -310,6 +310,62 @@
     ) async throws(AppError) -> LedgerTransaction {
       try await world.restoreTransaction(groupId: groupId, id: id)
     }
+
+    public func comments(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      cursor: String?,
+      limit: Int
+    ) async throws(AppError) -> (comments: [Comment], nextCursor: String?) {
+      try await world.fetchComments(groupId: groupId, id: id, cursor: cursor, limit: limit)
+    }
+
+    public func addComment(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      body: String,
+      key: IdempotencyKey
+    ) async throws(AppError) -> Comment {
+      try await world.addComment(groupId: groupId, id: id, body: body, key: key)
+    }
+
+    public func deleteComment(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      commentId: Comment.ID
+    ) async throws(AppError) {
+      try await world.deleteComment(groupId: groupId, id: id, commentId: commentId)
+    }
+
+    public func openDispute(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      reason: String
+    ) async throws(AppError) -> LedgerTransaction.TransactionDispute {
+      try await world.openDispute(groupId: groupId, id: id, reason: reason)
+    }
+
+    public func resolveDispute(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID
+    ) async throws(AppError) {
+      try await world.resolveDispute(groupId: groupId, id: id)
+    }
+
+    public func approve(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID
+    ) async throws(AppError) -> LedgerTransaction {
+      try await world.approveTransaction(groupId: groupId, id: id)
+    }
+
+    public func reject(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      note: String?
+    ) async throws(AppError) -> LedgerTransaction {
+      try await world.rejectTransaction(groupId: groupId, id: id, note: note)
+    }
   }
 
   public nonisolated struct FakeBalancesRepository: BalancesRepository {

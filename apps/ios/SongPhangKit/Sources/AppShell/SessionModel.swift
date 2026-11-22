@@ -15,6 +15,13 @@ public final class SessionModel {
   public private(set) var latestFeatures: ServerFeatures?
   public private(set) var unreadNotificationCount: Int = 0
 
+  public var currentUser: User? {
+    if case .signedIn(let user) = state {
+      return user
+    }
+    return nil
+  }
+
   private let authRepository: any AuthRepository
   private let appVersion: String
 

@@ -30,6 +30,8 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
   public var myMemberId: Member.ID?
   public var muted: Bool
   public var reminderIntervalDays: Int?
+  public var approvalThreshold: Money?
+  public var ownerName: String
   public var createdAt: String
 
   public init(
@@ -45,6 +47,8 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
     myMemberId: Member.ID? = nil,
     muted: Bool = false,
     reminderIntervalDays: Int? = nil,
+    approvalThreshold: Money? = nil,
+    ownerName: String = "",
     createdAt: String = "2026-11-16T14:23:26.244Z"
   ) {
     self.id = id
@@ -59,6 +63,8 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
     self.myMemberId = myMemberId
     self.muted = muted
     self.reminderIntervalDays = reminderIntervalDays
+    self.approvalThreshold = approvalThreshold
+    self.ownerName = ownerName
     self.createdAt = createdAt
   }
 }

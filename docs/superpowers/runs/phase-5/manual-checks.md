@@ -106,4 +106,13 @@ Pending owner-led verification with the required configuration. Preserve the app
   4. Tap `Nhắc` again immediately on the same debtor → returns rate limit toast (`Bạn vừa nhắc người này gần đây. Có thể nhắc lại sau ...`). When ≥2 debtors are remindable, tap `Nhắc cả nhóm` → sends to all debtors not on cooldown and reports count.
   5. Tap the bell icon in group feed or group list header → S19 `Thông báo` opens showing notification rows with bold actor, kind-specific formatted text, relative timestamp, and unread dot; tap `Đánh dấu đã đọc tất cả` → clears badge and updates list.
 
+- **Transaction detail, discussions, disputes & approvals (5D.6):**
+  1. In `Cài đặt nhóm`, as group Owner, verify `Duyệt khoản chi lớn` card appears with a toggle and amount input; turn on and set `500.000 đ` → verify Viewers and Editors cannot see or edit this card.
+  2. As an Editor (e.g. Lan), create an expense below 500k → appears on feed with no tag, counted in balances immediately. Create an expense of 600k (≥500k) → appears on feed with amber `Chờ duyệt` tag, and is excluded from balances.
+  3. Tap the transaction row in the feed → S20 `Chi tiết khoản chi` opens displaying full breakdown, split chips, category badge, and attachments.
+  4. For the pending transaction, as Owner, verify amber approval banner with `Duyệt` and `Từ chối` buttons; tap `Từ chối`, enter a note ("Thiếu hóa đơn"), submit → feed shows coral `Bị từ chối` tag and detail shows rejection note.
+  5. As Owner, tap `Duyệt` on a pending transaction → status updates to approved and balances immediately reflect the shares.
+  6. On an approved transaction, as any member, tap `Hỏi lại khoản này` → modal sheet prompts for reason; submit → coral dispute banner appears on detail and `Đang hỏi lại` tag appears on feed. Opener or Owner taps `Đã giải quyết xong` → dispute resolves and banner clears.
+  7. In `Bình luận`, type a comment and tap `Gửi` → comment appears with author and timestamp, and comment counter updates. Author or Owner can tap delete (`Xóa`) on their comments. Soft-delete the transaction and verify comments can still be posted/viewed without restoring the transaction.
+
 - **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.

@@ -39,6 +39,8 @@ enum GroupMapping {
       myMemberId: dto.myMemberId.map(Member.ID.init),
       muted: dto.muted,
       reminderIntervalDays: nil,
+      approvalThreshold: dto.approvalThreshold.map { Money(Int64($0)) },
+      ownerName: dto.ownerName,
       createdAt: formatISO(dto.createdAt)
     )
   }
@@ -93,6 +95,8 @@ enum GroupMapping {
     let myMemberId: String?
     let muted: Bool?
     let reminderIntervalDays: Int?
+    let approvalThreshold: Int64?
+    let ownerName: String?
     let createdAt: String
 
     func toDomain() -> ExpenseGroup {
@@ -109,6 +113,8 @@ enum GroupMapping {
         myMemberId: myMemberId.map(Member.ID.init),
         muted: muted ?? false,
         reminderIntervalDays: reminderIntervalDays,
+        approvalThreshold: approvalThreshold.map(Money.init),
+        ownerName: ownerName ?? "",
         createdAt: createdAt
       )
     }
@@ -161,6 +167,8 @@ enum GroupMapping {
         myMemberId: group.myMemberId?.rawValue,
         muted: group.muted,
         reminderIntervalDays: group.reminderIntervalDays,
+        approvalThreshold: group.approvalThreshold?.amount,
+        ownerName: group.ownerName,
         createdAt: group.createdAt
       )
     )

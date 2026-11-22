@@ -70,6 +70,7 @@
       [ExpenseGroup.ID: [LedgerTransaction.ID: LedgerTransaction]] = [:]
     internal var deletedPrevBalancesByGroup:
       [ExpenseGroup.ID: [LedgerTransaction.ID: GroupBalances]] = [:]
+    internal var commentsByTx: [LedgerTransaction.ID: [Comment]] = [:]
     private var eventContinuations: [UUID: AsyncStream<GroupEvent>.Continuation] = [:]
 
     private struct PresetState: Sendable {
@@ -592,6 +593,11 @@
       }
       if let defaultRole = input.defaultRole {
         group.defaultRole = defaultRole
+      }
+      switch input.approvalThreshold {
+      case .unchanged: break
+      case .off: group.approvalThreshold = nil
+      case .threshold(let money): group.approvalThreshold = money
       }
       groupsById[id] = group
       return group

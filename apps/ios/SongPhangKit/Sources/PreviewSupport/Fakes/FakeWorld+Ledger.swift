@@ -650,5 +650,136 @@
         && payload.payers == TripScenario.t4Transaction.payers
         && payload.split == TripScenario.t4Transaction.split
     }
+
+    public func fetchComments(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      cursor: String?,
+      limit: Int
+    ) async throws(AppError) -> (comments: [Comment], nextCursor: String?) {
+      try await simulateNetwork()
+      let all = commentsByTx[id] ?? []
+      let offset = cursor.flatMap(Int.init) ?? 0
+      guard offset < all.count else {
+        return ([], nil)
+      }
+      let end = min(offset + limit, all.count)
+      let slice = Array(all[offset..<end])
+      let nextCursor = end < all.count ? String(end) : nil
+      return (slice, nextCursor)
+    }
+
+    public func addComment(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      body: String,
+      key: IdempotencyKey
+    ) async throws(AppError) -> Comment {
+      try await simulateNetwork()
+      let comment = Comment(
+        id: Comment.ID(UUID().uuidString),
+        body: body,
+        authorName: "Minh",
+        createdAt: "2026-11-23T01:00:00.000Z",
+        mine: true
+      )
+      var list = commentsByTx[id] ?? []
+      list.insert(comment, at: 0)
+      commentsByTx[id] = list
+      if var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id }) {
+        txs[idx].commentCount += 1
+        transactionsByGroup[groupId] = txs
+      }
+      return comment
+    }
+
+    public func deleteComment(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      commentId: Comment.ID
+    ) async throws(AppError) {
+      try await simulateNetwork()
+      var list = commentsByTx[id] ?? []
+      if let idx = list.firstIndex(where: { $0.id == commentId }) {
+        list.remove(at: idx)
+        commentsByTx[id] = list
+        if var txs = transactionsByGroup[groupId],
+          let txIdx = txs.firstIndex(where: { $0.id == id })
+        {
+          txs[txIdx].commentCount = max(0, txs[txIdx].commentCount - 1)
+          transactionsByGroup[groupId] = txs
+        }
+      }
+    }
+
+    public func openDispute(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      reason: String
+    ) async throws(AppError) -> LedgerTransaction.TransactionDispute {
+      try await simulateNetwork()
+      let dispute = LedgerTransaction.TransactionDispute(
+        id: LedgerTransaction.TransactionDispute.ID(UUID().uuidString),
+        reason: reason,
+        openedByName: "Minh",
+        openedAt: "2026-11-23T01:00:00.000Z",
+        mine: true
+      )
+      if var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id }) {
+        txs[idx].dispute = dispute
+        transactionsByGroup[groupId] = txs
+      }
+      return dispute
+    }
+
+    public func resolveDispute(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID
+    ) async throws(AppError) {
+      try await simulateNetwork()
+      if var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id }) {
+        txs[idx].dispute = nil
+        transactionsByGroup[groupId] = txs
+      }
+    }
+
+    public func approveTransaction(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID
+    ) async throws(AppError) -> LedgerTransaction {
+      try await simulateNetwork()
+      guard var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id })
+      else {
+        throw .api(code: "NOT_FOUND", status: 404)
+      }
+      txs[idx].approval = LedgerTransaction.TransactionApproval(
+        status: .approved,
+        note: nil,
+        decidedByName: "Minh",
+        decidedAt: "2026-11-23T01:00:00.000Z"
+      )
+      transactionsByGroup[groupId] = txs
+      return txs[idx]
+    }
+
+    public func rejectTransaction(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      note: String?
+    ) async throws(AppError) -> LedgerTransaction {
+      try await simulateNetwork()
+      guard var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id })
+      else {
+        throw .api(code: "NOT_FOUND", status: 404)
+      }
+      txs[idx].approval = LedgerTransaction.TransactionApproval(
+        status: .rejected,
+        note: note,
+        decidedByName: "Minh",
+        decidedAt: "2026-11-23T01:00:00.000Z"
+      )
+      transactionsByGroup[groupId] = txs
+      return txs[idx]
+    }
   }
 #endif

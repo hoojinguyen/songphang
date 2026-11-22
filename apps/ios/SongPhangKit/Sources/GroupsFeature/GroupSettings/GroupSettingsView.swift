@@ -258,6 +258,14 @@ public struct GroupSettingsView: View {
           Task { await model.removeBudget() }
         }
       )
+      ApprovalCardView(
+        group: data.group,
+        isDisabled: isOffline || model.isPerformingAction,
+        isPending: model.isPerformingAction,
+        onSave: { threshold in
+          Task { await model.setApprovalThreshold(threshold) }
+        }
+      )
       transferOwnershipCard(users: data.users)
       deleteGroupCard()
 

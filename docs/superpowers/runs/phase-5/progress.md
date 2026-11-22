@@ -25,11 +25,11 @@
 - [x] 5C.5 — Native push registration and routing
 - [x] 5C.6 — Associated domains and gate
 - [x] 5D.1 — Payments and settlement requests
-- [ ] 5D.2 — Search, categories, statistics and CSV
-- [ ] 5D.3 — Funds and budgets
-- [ ] 5D.4 — Receipts, item splits and assisted entry
-- [ ] 5D.5 — Notification center and reminders
-- [ ] 5D.6 — Detail, discussion, disputes and approval
+- [x] 5D.2 — Search, categories, statistics and CSV
+- [x] 5D.3 — Funds and budgets
+- [x] 5D.4 — Receipts, item splits and assisted entry
+- [x] 5D.5 — Notification center and reminders
+- [x] 5D.6 — Detail, discussion, disputes and approval
 - [ ] 5D.7 — Telegram and parity gate
 - [ ] 5E.1 — Release metadata and assets
 - [ ] 5E.2 — Final parity evidence and owner handoff
@@ -518,6 +518,33 @@
   - Captured and verified Simulator screenshot: `docs/superpowers/runs/phase-5/screens/5d/notifications.png`.
   - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a2046a-b426-7ba1-b2a3-ff06412f566e Hội An 5D5: sum 0; mismatches 0`).
 - Security review: checked relevant items 1, 2, 4, 7, 8; no tokens/passwords in code/logs, notifications scoped to authenticated user, outsider receives 404 on group mute & reminders, integer-only money in notification payloads and reminder debt formatting, no HTML injection in notification text.
+
+### Task 5D.6 — Transaction detail, discussions, disputes and approval
+
+**Approach**
+- Files created/modified: `apps/ios/SongPhangKit/Sources/Domain/Models/{Comment,ExpenseGroup,LedgerTransaction}.swift`, `apps/ios/SongPhangKit/Sources/Domain/Repositories/{GroupsRepository,TransactionsRepository}.swift`, `apps/ios/SongPhangKit/Sources/Repositories/{Groups,Transactions}/`, `apps/ios/SongPhangKit/Sources/DesignSystem/Resources/Localizable.xcstrings`, `apps/ios/SongPhangKit/Sources/GroupsFeature/GroupSettings/{ApprovalCardView.swift,GroupSettingsModel.swift,GroupSettingsView.swift}`, `apps/ios/SongPhangKit/Sources/LedgerFeature/{TransactionDetail/,GroupFeed/}`, `apps/ios/SongPhangKit/Sources/AppShell/{Route,RouteDestination,SessionModel}.swift`, `apps/ios/SongPhangKit/Sources/PreviewSupport/Fakes/{FakeWorld,FakeWorld+Ledger,FakeRepositories}.swift`.
+- Approach: Added 33 Vietnamese localization keys for comments, disputes, and approvals. Implemented `Comment`, `TransactionApproval`, and `TransactionDispute` domain models. Added methods to `TransactionsRepository` and `GroupsRepository` calling `/transactions/{id}/comments`, `/dispute`, `/dispute/resolve`, `/approve`, `/reject`, and `/groups/{id}` (`approvalThreshold`). Built `ApprovalCardView` in `GroupSettingsView` with owner-only access. Built `TransactionDetailView` (S20 screen) with `TransactionSummaryView` (items breakdown, category chip, payer/split chips, remote photo attachments), `ApprovalBlockView` (pending amber / rejected coral banners with note, owner approve & reject action sheet), `DisputeBlockView` (coral dispute card, reason field sheet, resolve button), `CommentThreadView` (list, load more, delete button for author/owner), and `CommentFieldView` (bottom input bar). Wired transaction rows in `GroupFeedView` to navigate to S20 on tap, showing pending/rejected/dispute tags and comment counters.
+- Why this is the simplest approach: Keeps discussion and dispute flows cleanly encapsulated within `TransactionDetailModel`, prevents cross-module circular dependencies by injecting email verification banner from `RouteDestination`, and relies on server-authoritative balance calculation (pending and rejected transactions excluded).
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .` — 512 files, 0 errors, 3 pre-existing `noImgElement` warnings; 8 workspace typechecks; `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: PASS (exit 0).
+  - `check-strings.sh`: 0 missing strings for comments, disputes, and approvals (only 5D.7 Telegram keys remain).
+  - Debug & Test iOS scheme build (`SongPhang` on `iPhone 17 Pro` `607AC652-2E92-4BE7-BA18-1B888D79684B`): `** TEST BUILD SUCCEEDED **`.
+- Live Simulator & API exercise (`songphang_phase5_5d6`, clean-env API `:4010`, worker `AI_PROVIDER=fake`, `Exercise5D6.app` on `iPhone 17 Pro`):
+  - `EXERCISE_5D6_NODE_PASS`: verified registration & login for Minh, Lan, Hoa, Nam; created "Hội An 5D6"; invite & claim; set Hoa as viewer.
+  - Verified approval policy: non-owner (Lan) PATCH approvalThreshold returned 403; negative threshold (-50,000) returned 400; owner set 500,000 returned 200 and verified via `GET /groups/{id}`.
+  - Verified transaction below threshold (300k): `approval.status == "none"`, included in balances immediately (Lan balance = -150k).
+  - Verified transaction above threshold (600k) by Lan: `approval.status == "pending"`, excluded from balances (Lan balance remained -150k); non-owner (Lan) and viewer (Hoa) approve/reject returned 403; outsider returned 404; owner approved -> `approval.status == "approved"`, balances updated (Lan balance = +150k).
+  - Verified transaction rejected by owner (1.2M): `approval.status == "rejected"` with note "Khoản chi cá nhân không chia chung", excluded from balances (Lan balance remained +150k).
+  - Verified disputes: Lan opened dispute on 300k tx (`POST .../dispute` -> 201 with reason), outsider returned 404, non-opener viewer resolve returned 403, opener (Lan) resolved dispute -> `dispute: null` (200).
+  - Verified comments: posted 3 comments by Minh, Lan, Hoa (with `idempotency-key` >=8 chars); list returned 3 comments; non-author delete returned 403; author (Minh) deleted comment (204); remaining count = 2.
+  - Verified soft-delete comments: deleted rejected tx, posted comment on soft-deleted tx returned 201 without restoring transaction (`deletedAt != null`).
+  - Swift Simulator execution: `[5D.6] Minh signed in: Minh`, `[5D.6] Loaded txAbove: Hải sản Cửa Đại, approval=approved`, `[5D.6] Added comment via TransactionDetailModel, count=3`, `[5D.6] Swift model open dispute: true`, `[5D.6] Swift model resolve dispute completed`, `SIM_EXERCISE_5D6_READY`.
+  - Captured and verified Simulator screenshot: `docs/superpowers/runs/phase-5/screens/5d/transaction-detail.png` (215 KB).
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a20493-0418-7679-aecf-95dd2551af0b Hội An 5D6: sum 0; mismatches 0`).
+- Security review: checked relevant items 1, 2, 4, 7, 8; no tokens/passwords in code/logs, all routes enforce role and membership (outsider 404), owner-only approval policy and decisions (403 for non-owners), integer-only money calculations, plain SwiftUI text rendering preventing HTML injection.
 
 ## Gate Not Passed
 
