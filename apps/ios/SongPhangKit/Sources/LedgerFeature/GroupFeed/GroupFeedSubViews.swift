@@ -166,6 +166,19 @@ struct FeedTransactionRowView: View {
           }
         }
 
+        if transaction.attachmentCount > 0 {
+          HStack(spacing: 4) {
+            Image(systemName: "photo")
+              .font(.system(size: 11, weight: .semibold))
+            if transaction.attachmentCount > 1 {
+              Text(String(transaction.attachmentCount))
+                .font(Typography.captionBold)
+            }
+          }
+          .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
+          .accessibilityLabel(L10n.tr("attachments.hasPhotos"))
+        }
+
         if isMine {
           HStack(spacing: 4) {
             ForEach(Array(transaction.shares.prefix(4))) { share in
@@ -199,23 +212,35 @@ struct FeedTransactionRowView: View {
           .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
           .padding(.top, 4)
         } else {
-          let shareLine =
+          let methodLabel: String = {
+            switch transaction.split {
+            case .exact: return L10n.tr("feed.splitExact")
+            case .shares: return L10n.tr("feed.splitShares")
+            case .items: return L10n.tr("split.methodItems")
+            case .percent: return L10n.tr("feed.splitPercent")
+            case .equal: return ""
+            }
+          }()
+          let shareLine: String = {
+            let isEqual = if case .equal = transaction.split { true } else { false }
             if let myShare {
-              L10n.t(
-                "feed.equalSplitMine",
+              return L10n.t(
+                isEqual ? "feed.equalSplitMine" : "feed.splitMine",
                 [
+                  "method": methodLabel,
                   "count": String(transaction.shares.count),
                   "amount": MoneyFormat.amount(myShare.amount),
                 ]
               )
-            } else {
-              L10n.t(
-                "feed.equalSplitNotMine",
-                [
-                  "count": String(transaction.shares.count)
-                ]
-              )
             }
+            return L10n.t(
+              isEqual ? "feed.equalSplitNotMine" : "feed.splitNotMine",
+              [
+                "method": methodLabel,
+                "count": String(transaction.shares.count),
+              ]
+            )
+          }()
           Text(shareLine)
             .font(Typography.captionBold)
             .foregroundStyle(Tokens.muted)
@@ -566,6 +591,7 @@ struct FeedNoMatchView: View {
 struct FeedEntryBarView: View {
   let isOffline: Bool
   let isReadOnly: Bool
+  var onOpenReceiptCapture: (() -> Void)? = nil
   let onOpenManualForm: () -> Void
   let onOpenQuickEntry: () -> Void
 
@@ -599,6 +625,19 @@ struct FeedEntryBarView: View {
           .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         }
         .buttonStyle(.plain)
+
+        if let onOpenReceiptCapture {
+          Button(action: onOpenReceiptCapture) {
+            Image(systemName: "camera.fill")
+              .font(.system(size: 20, weight: .bold))
+              .foregroundStyle(Tokens.ink)
+              .frame(width: 64, height: 64)
+              .background(Tokens.surface)
+              .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(L10n.tr("receipts.cameraLabel"))
+        }
 
         Button(action: onOpenQuickEntry) {
           HStack {

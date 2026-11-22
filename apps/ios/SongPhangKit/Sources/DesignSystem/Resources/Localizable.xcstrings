@@ -1971,6 +1971,18 @@
         }
       }
     },
+    "compose.aiNote": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đọc bằng AI. Hãy xem lại." } } }
+    },
+    "compose.draftIndex": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Khoản {index}/{count}" } } }
+    },
+    "compose.reading": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đang đọc…" } } }
+    },
     "compose.save": {
       "extractionState": "manual",
       "localizations": {
@@ -1982,6 +1994,10 @@
         }
       }
     },
+    "compose.saveAndNext": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Lưu và sang khoản sau" } } }
+    },
     "compose.send": {
       "extractionState": "manual",
       "localizations": {
@@ -1992,6 +2008,10 @@
           }
         }
       }
+    },
+    "compose.skipDraft": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Bỏ khoản này" } } }
     },
     "compose.title": {
       "extractionState": "manual",
@@ -2927,6 +2947,30 @@
           }
         }
       }
+    },
+    "feed.splitExact": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo số tiền" } } }
+    },
+    "feed.splitMine": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "{method} {count} · phần bạn {amount}" } } }
+    },
+    "feed.splitNotMine": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "{method} {count} · bạn không có phần" } } }
+    },
+    "feed.splitPercent": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo phần trăm" } } }
+    },
+    "feed.splitShares": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo phần" } } }
+    },
+    "feed.tripTotal": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tổng chuyến đi" } } }
     },
     "feed.view": {
       "extractionState": "manual",
@@ -4919,6 +4963,10 @@
         }
       }
     },
+    "split.methodItems": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo món" } } }
+    },
     "split.methodShares": {
       "extractionState": "manual",
       "localizations": {
@@ -4951,6 +4999,10 @@
           }
         }
       }
+    },
+    "split.modeItems": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo món" } } }
     },
     "split.modePercent": {
       "extractionState": "manual",
@@ -5248,6 +5300,206 @@
           }
         }
       }
+    },
+    "attachments.label": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Ảnh hoá đơn" } } }
+    },
+    "attachments.add": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Thêm ảnh" } } }
+    },
+    "attachments.maxLimit": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tối đa 3 ảnh." } } }
+    },
+    "attachments.viewPhoto": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xem ảnh hoá đơn" } } }
+    },
+    "attachments.removePhoto": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xoá ảnh hoá đơn" } } }
+    },
+    "attachments.closePhoto": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đóng ảnh" } } }
+    },
+    "attachments.hasPhotos": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Có ảnh hoá đơn" } } }
+    },
+    "attachments.quotaExceeded": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Nhóm đã dùng hết dung lượng ảnh." } } }
+    },
+    "attachments.rateLimited": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Bạn tải ảnh quá nhanh. Hãy thử lại sau." } } }
+    },
+    "receipts.uploading": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đang tải ảnh lên…" } } }
+    },
+    "receipts.reading": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đang đọc hoá đơn…" } } }
+    },
+    "receipts.fileTooLarge": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Ảnh lớn quá. Hãy chọn ảnh dưới 5 MB." } } }
+    },
+    "receipts.notAnImage": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chỉ nhận ảnh JPG, PNG hoặc WebP." } } }
+    },
+    "receipts.cameraLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chụp hoá đơn" } } }
+    },
+    "receipts.takePhoto": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chụp ảnh" } } }
+    },
+    "receipts.pickLibrary": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chọn từ thư viện" } } }
+    },
+    "receipts.dailyLimit": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Hôm nay bạn đã chụp đủ số hoá đơn. Hãy nhập tay khoản này." } } }
+    },
+    "receipts.notAReceipt": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Không đọc được hoá đơn trong ảnh này." } } }
+    },
+    "receipts.failed": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đọc hoá đơn không thành công." } } }
+    },
+    "receipts.retake": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chụp lại" } } }
+    },
+    "receipts.retry": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Thử lại" } } }
+    },
+    "receipts.manualEntry": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Nhập tay" } } }
+    },
+    "receipts.title": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Hoá đơn" } } }
+    },
+    "receipts.nobody": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chưa ai" } } }
+    },
+    "receipts.splitRemainingEqual": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chia đều các món còn lại" } } }
+    },
+    "receipts.addItem": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Thêm món" } } }
+    },
+    "receipts.itemNameLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tên món" } } }
+    },
+    "receipts.itemAmountLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Số tiền món" } } }
+    },
+    "receipts.removeItem": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xoá món" } } }
+    },
+    "receipts.extrasKinds.tax": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Thuế" } } }
+    },
+    "receipts.extrasKinds.service": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Phí dịch vụ" } } }
+    },
+    "receipts.extrasKinds.discount": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Giảm giá" } } }
+    },
+    "receipts.extrasKinds.other": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Khác" } } }
+    },
+    "receipts.addExtra": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Thêm phụ phí" } } }
+    },
+    "receipts.removeExtra": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xoá phụ phí" } } }
+    },
+    "receipts.extraLabelLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tên khoản phụ" } } }
+    },
+    "receipts.extraAmountLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Số tiền phụ" } } }
+    },
+    "receipts.extrasHint": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Thuế và phí được chia theo phần ăn của mỗi người." } } }
+    },
+    "receipts.mismatch": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Các món cộng lại là {computed}, hoá đơn ghi {total}. Hãy kiểm tra trước khi lưu." } } }
+    },
+    "receipts.useAmount": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Dùng {amount}" } } }
+    },
+    "receipts.mismatchExtraLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chênh lệch" } } }
+    },
+    "receipts.maxExtras": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tối đa 6 khoản phụ." } } }
+    },
+    "receipts.maxItemMembers": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Mỗi món chọn tối đa 20 người." } } }
+    },
+    "receipts.saveBlocked": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Còn {count} món chưa có ai." } } }
+    },
+    "receipts.invalidTotal": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tổng số tiền phải lớn hơn 0." } } }
+    },
+    "receipts.paidBy": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Ai trả?" } } }
+    },
+    "receipts.aiNote": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đọc bằng AI. Hãy xem lại trước khi lưu." } } }
+    },
+    "receipts.save": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Lưu" } } }
+    },
+    "receipts.dateLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Ngày" } } }
+    },
+    "receipts.descriptionLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Mô tả" } } }
     }
   },
   "version": "1.0"

@@ -16,6 +16,7 @@ public struct GroupFeedView: View {
   private let onOpenQuickEntry: (ExpenseGroup.ID, String?) -> Void
   private let onOpenNewTransactionForm: (ExpenseGroup.ID) -> Void
   private let onOpenEditTransaction: (ExpenseGroup.ID, LedgerTransaction.ID) -> Void
+  private let onOpenReceiptCapture: ((ExpenseGroup.ID) -> Void)?
   private let onRemovedFromGroup: () -> Void
   @State private var isFilterSheetOpen = false
 
@@ -29,6 +30,7 @@ public struct GroupFeedView: View {
     onOpenQuickEntry: @escaping (ExpenseGroup.ID, String?) -> Void,
     onOpenNewTransactionForm: @escaping (ExpenseGroup.ID) -> Void,
     onOpenEditTransaction: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void,
+    onOpenReceiptCapture: ((ExpenseGroup.ID) -> Void)? = nil,
     onRemovedFromGroup: @escaping () -> Void
   ) {
     self.model = model
@@ -40,6 +42,7 @@ public struct GroupFeedView: View {
     self.onOpenQuickEntry = onOpenQuickEntry
     self.onOpenNewTransactionForm = onOpenNewTransactionForm
     self.onOpenEditTransaction = onOpenEditTransaction
+    self.onOpenReceiptCapture = onOpenReceiptCapture
     self.onRemovedFromGroup = onRemovedFromGroup
   }
 
@@ -286,6 +289,9 @@ public struct GroupFeedView: View {
       FeedEntryBarView(
         isOffline: model.isOffline,
         isReadOnly: !data.group.role.canWrite,
+        onOpenReceiptCapture: onOpenReceiptCapture.map { handler in
+          { handler(model.groupId) }
+        },
         onOpenManualForm: {
           onOpenNewTransactionForm(model.groupId)
         },

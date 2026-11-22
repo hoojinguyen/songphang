@@ -19,6 +19,8 @@ public struct AppDependencies: Sendable {
   public let categories: any CategoriesRepository
   public let statistics: any StatisticsRepository
   public let activity: any ActivityRepository
+  public let attachments: any AttachmentsRepository
+  public let receiptScans: any ReceiptScansRepository
   public let quickEntry: any QuickEntryRepository
   public let groupEvents: any GroupEventsRepository
   public let devices: any DevicesRepository
@@ -48,6 +50,8 @@ public struct AppDependencies: Sendable {
         categories: LiveCategoriesRepository(environment: environment),
         statistics: LiveStatisticsRepository(environment: environment),
         activity: LiveActivityRepository(environment: environment),
+        attachments: LiveAttachmentsRepository(environment: environment),
+        receiptScans: LiveReceiptScansRepository(environment: environment),
         quickEntry: LiveQuickEntryRepository(environment: environment),
         groupEvents: LiveGroupEventsRepository(environment: environment),
         devices: LiveDevicesRepository(environment: environment),
@@ -72,6 +76,8 @@ public struct AppDependencies: Sendable {
         categories: LiveCategoriesRepository(environment: environment),
         statistics: LiveStatisticsRepository(environment: environment),
         activity: LiveActivityRepository(environment: environment),
+        attachments: LiveAttachmentsRepository(environment: environment),
+        receiptScans: LiveReceiptScansRepository(environment: environment),
         quickEntry: LiveQuickEntryRepository(environment: environment),
         groupEvents: LiveGroupEventsRepository(environment: environment),
         devices: LiveDevicesRepository(environment: environment),
@@ -103,6 +109,8 @@ public struct AppDependencies: Sendable {
         categories: FakeCategoriesRepository(world: world),
         statistics: FakeStatisticsRepository(world: world),
         activity: FakeActivityRepository(world: world),
+        attachments: FakeAttachmentsRepository(world: world),
+        receiptScans: FakeReceiptScansRepository(world: world),
         quickEntry: FakeQuickEntryRepository(world: world),
         groupEvents: FakeGroupEventsRepository(world: world),
         devices: FakeDevicesRepository(world: world),

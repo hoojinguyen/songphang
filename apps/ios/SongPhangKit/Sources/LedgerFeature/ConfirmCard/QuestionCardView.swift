@@ -89,11 +89,15 @@ public struct QuestionCardView: View {
         description: resolvedDescription,
         amount: initialReading.draft.amount,
         payers: initialReading.draft.payers,
-        split: resolvedSplit
+        split: resolvedSplit,
+        category: initialReading.draft.category,
+        categoryId: initialReading.draft.categoryId
       ),
       shares: isComplete ? previewShares : initialReading.shares,
       spans: initialReading.spans,
-      issues: ready ? [] : initialReading.issues
+      issues: ready ? [] : initialReading.issues,
+      reader: initialReading.reader,
+      moreDrafts: initialReading.moreDrafts
     )
   }
 
@@ -194,7 +198,8 @@ public struct QuestionCardView: View {
         description: description,
         amount: amount,
         occurredAt: "2026-11-16T15:00:00.000Z",
-        category: nil,
+        category: current.draft.category,
+        categoryId: current.draft.categoryId,
         payers: current.draft.payers,
         split: split
       )

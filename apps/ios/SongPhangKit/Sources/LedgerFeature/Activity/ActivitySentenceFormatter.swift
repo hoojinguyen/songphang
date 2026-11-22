@@ -219,6 +219,8 @@ public enum ActivitySentenceFormatter {
       case .percent(let entries):
         return entries.map { "\(memberName($0.memberId)) \($0.percent)" }
           .joined(separator: " · ")
+      case .items(let items, _):
+        return items.map(\.name).joined(separator: " · ")
       }
     }
 

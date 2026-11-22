@@ -371,12 +371,52 @@
 
     public func parseSentence(
       groupId _: ExpenseGroup.ID,
-      text: String
+      text: String,
+      ai: Bool = false
     ) async throws(AppError) -> QuickEntryReading {
       try await simulateNetwork()
       let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
       if let reading = QuickEntryFixtures.readingsByText[trimmed] {
         return reading
+      }
+      if ai && trimmed == "cà phê 180k và bánh 50k" {
+        let allFour = [
+          TripScenario.minhId, TripScenario.lanId, TripScenario.hungId, TripScenario.thuId,
+        ]
+        let equal45k = allFour.map { MemberAmount(memberId: $0, amount: Money(45_000)) }
+        let equal12k5 = [
+          MemberAmount(memberId: TripScenario.minhId, amount: Money(12_500)),
+          MemberAmount(memberId: TripScenario.lanId, amount: Money(12_500)),
+          MemberAmount(memberId: TripScenario.hungId, amount: Money(12_500)),
+          MemberAmount(memberId: TripScenario.thuId, amount: Money(12_500)),
+        ]
+        return QuickEntryReading(
+          status: .ok,
+          text: trimmed,
+          draft: QuickEntryReading.Draft(
+            description: "cà phê",
+            amount: Money(180_000),
+            payers: [MemberAmount(memberId: TripScenario.minhId, amount: Money(180_000))],
+            split: .equal(members: allFour)
+          ),
+          shares: equal45k,
+          spans: [],
+          issues: [],
+          reader: .ai,
+          moreDrafts: [
+            QuickEntryReading.ParsedDraft(
+              status: .ok,
+              draft: QuickEntryReading.Draft(
+                description: "bánh",
+                amount: Money(50_000),
+                payers: [MemberAmount(memberId: TripScenario.minhId, amount: Money(50_000))],
+                split: .equal(members: allFour)
+              ),
+              issues: [],
+              shares: equal12k5
+            )
+          ]
+        )
       }
       return QuickEntryFixtures.unparsedReading(for: trimmed)
     }
@@ -399,6 +439,22 @@
           ids.count == 3
         {
           return ids.map { MemberAmount(memberId: $0, amount: Money(60_000)) }
+        }
+
+        if !payload.isIncome,
+          payload.amount == Money(340_000),
+          case .items = payload.split
+        {
+          return [
+            MemberAmount(memberId: TripScenario.minhId, amount: Money(170_000)),
+            MemberAmount(memberId: TripScenario.lanId, amount: Money(170_000)),
+          ]
+        }
+
+        if !payload.isIncome, payload.amount == Money(50_000),
+          case .equal(let ids) = payload.split, ids.count == 4
+        {
+          return ids.map { MemberAmount(memberId: $0, amount: Money(12_500)) }
         }
 
         for reading in QuickEntryFixtures.readingsByText.values {
@@ -458,6 +514,9 @@
           )
         }
         if let shares = scriptedShares(for: draft) {
+          let linked = (payload.attachmentIds ?? []).compactMap {
+            attachmentsByGroup[groupId]?[$0]
+          }
           let tx = LedgerTransaction(
             id: LedgerTransaction.ID("qe-\(UUID().uuidString)"),
             type: payload.isIncome ? .income : .expense,
@@ -466,12 +525,14 @@
             currency: "VND",
             occurredAt: payload.occurredAt,
             category: payload.category,
+            categoryId: payload.categoryId,
             payers: payload.payers,
             split: payload.split,
             shares: shares,
             version: 1,
             updatedBy: TripScenario.actorMinh,
-            createdBy: TripScenario.actorMinh
+            createdBy: TripScenario.actorMinh,
+            attachments: linked
           )
           let act = ActivityItem(
             id: ActivityItem.ID("act-\(UUID().uuidString)"),

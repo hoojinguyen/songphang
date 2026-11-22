@@ -108,9 +108,26 @@ public struct QuickEntryView: View {
         if let reading = model.reading,
           !model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         {
+          let isInteractive = QuickEntryModel.isRuleInteractiveQuestion(
+            status: reading.status,
+            issues: reading.issues,
+            reader: reading.reader
+          )
+          let indexLabel: String? =
+            model.isMultiDraft
+            ? L10n.t(
+              "compose.draftIndex",
+              [
+                "index": String(model.currentDraftIndex + 1),
+                "count": String(model.draftQueue.count),
+              ]
+            )
+            : nil
+          let saveLabel: String? =
+            (model.isMultiDraft && model.hasNextDraft) ? L10n.tr("compose.saveAndNext") : nil
+
           Group {
-            switch reading.status {
-            case .needsInput:
+            if isInteractive {
               QuestionCardView(
                 groupId: model.groupId,
                 reading: reading,
@@ -124,25 +141,27 @@ public struct QuickEntryView: View {
                   Task { await model.save(chosen: resolved, reduceMotion: reduceMotion) }
                 }
               )
-              .id(reading.text)
-
-            case .ok:
+              .id("\(reading.text):\(model.currentDraftIndex)")
+            } else if reading.status == .ok {
               ConfirmationCardView(
                 reading: reading,
                 members: activeMembers,
+                categories: data.categories,
                 isDisabled: !model.isCurrentReadingUpToDate || model.isSaving,
                 isBudgetOver: model.isCurrentReadingUpToDate
                   && model.previewWarnings.contains(.budgetOver),
+                indexLabel: indexLabel,
+                saveLabel: saveLabel,
+                skipLabel: model.isMultiDraft ? L10n.tr("compose.skipDraft") : nil,
                 onEdit: {
                   model.openManualEdit()
                 },
                 onSave: {
                   Task { await model.save(reduceMotion: reduceMotion) }
-                }
+                },
+                onSkip: model.isMultiDraft ? { model.skipDraft() } : nil
               )
-
-            case .unparsed, .unknown:
-              EmptyView()
+              .id("\(reading.text):\(model.currentDraftIndex)")
             }
           }
           .scaleEffect(model.isCollapsing ? 0.92 : 1.0)
@@ -155,6 +174,12 @@ public struct QuickEntryView: View {
             reduceMotion ? nil : .spring(duration: 0.28, bounce: 0.2),
             value: reading.text
           )
+        }
+
+        if model.isSlowReading {
+          Text(L10n.tr("compose.reading"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.muted)
         }
 
         if model.parseError != nil {
@@ -187,6 +212,7 @@ public struct QuickEntryView: View {
     HStack(alignment: .bottom, spacing: 12) {
       VStack(alignment: .leading, spacing: 6) {
         if let reading = model.reading,
+          reading.reader != .ai,
           reading.text == model.sentence.trimmingCharacters(in: .whitespacesAndNewlines),
           !reading.spans.isEmpty
         {

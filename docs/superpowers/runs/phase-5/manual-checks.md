@@ -92,4 +92,11 @@ Pending owner-led verification with the required configuration. Preserve the app
   3. Attempt closing/deleting the fund while non-empty or with transactions → refusal copy is shown (`Quỹ còn ...` / `Không thể xoá ...`); refund/contribute back to `0 đ`, then close (`Đóng quỹ`) and reopen (`Mở lại quỹ`); delete an unused fund successfully.
   4. As Owner in `Cài đặt nhóm`, set a `Tháng này` or `Toàn chuyến đi` budget (`Lưu hạn mức`); confirm Editors/Viewers cannot edit budget; add expenses reaching ≥80% and >100% → amber `Gần chạm hạn mức` / coral `Đã vượt hạn mức` banners appear on the feed & stats, and `Khoản này làm nhóm vượt hạn mức.` appears in preview/save before removing the budget.
 
+- **Receipt capture, review, item splits & assisted entry (5D.4):**
+  1. In the group feed entry bar, tap the camera icon (or on `Khoản chi mới`, tap `Chụp / chọn hoá đơn`) → system camera or photo picker opens with permission prompt; select or take a photo → detached re-encoding strips EXIF/GPS, resizes to <=2000px JPEG, and uploads to `/attachments`.
+  2. The review screen (S18) opens and polls `/receipt-scans` with a loading indicator; upon completion, merchant name fills the title, date fills occurrence date, and items and extras appear in editable rows.
+  3. Tap `Chia đều cho tất cả` (or assign members individually to each item) → unassigned warnings clear, total computes, and member breakdown updates in real-time via `/preview`.
+  4. For a receipt with mismatched printed total vs item sum, the yellow mismatch banner appears (`Tổng hoá đơn ghi ... nhưng cộng món là ...`); tap `Dùng tổng ghi trên hoá đơn` → automatically adds an adjustment extra (`Điều chỉnh chênh lệch`) to balance the total.
+  5. In Quick Entry (`Nhập nhanh`), type multi-item text ("cà phê 180k và bánh 50k") and tap send (`Gửi`) → AI parser splits the sentence into two queued drafts (`1/2`), with category chips, payer attribution, and a `Lưu & tiếp tục` action to save drafts sequentially to the ledger.
+
 - **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.

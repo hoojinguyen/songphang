@@ -5,30 +5,42 @@ public import SwiftUI
 public struct ConfirmationCardView<ExtraContent: View>: View {
   private let reading: QuickEntryReading
   private let members: [Member]
+  private let categories: [GroupCategory]
   private let isDisabled: Bool
   private let isBudgetOver: Bool
+  private let indexLabel: String?
   private let saveLabel: String?
+  private let skipLabel: String?
   private let onEdit: () -> Void
   private let onSave: () -> Void
+  private let onSkip: (() -> Void)?
   private let extraContent: ExtraContent
 
   public init(
     reading: QuickEntryReading,
     members: [Member],
+    categories: [GroupCategory] = [],
     isDisabled: Bool = false,
     isBudgetOver: Bool = false,
+    indexLabel: String? = nil,
     saveLabel: String? = nil,
+    skipLabel: String? = nil,
     onEdit: @escaping () -> Void,
     onSave: @escaping () -> Void,
+    onSkip: (() -> Void)? = nil,
     @ViewBuilder extraContent: () -> ExtraContent
   ) {
     self.reading = reading
     self.members = members
+    self.categories = categories
     self.isDisabled = isDisabled
     self.isBudgetOver = isBudgetOver
+    self.indexLabel = indexLabel
     self.saveLabel = saveLabel
+    self.skipLabel = skipLabel
     self.onEdit = onEdit
     self.onSave = onSave
+    self.onSkip = onSkip
     self.extraContent = extraContent()
   }
 
@@ -51,9 +63,30 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
     }()
 
     VStack(alignment: .leading, spacing: 14) {
-      Text(L10n.tr("compose.understood"))
-        .font(Typography.captionBold)
-        .foregroundStyle(Tokens.muted)
+      HStack(alignment: .center, spacing: 8) {
+        Text(L10n.tr("compose.understood"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.muted)
+        Spacer()
+        if let indexLabel {
+          Text(indexLabel)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 3)
+            .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+      }
+
+      if reading.reader == .ai {
+        Text(L10n.tr("compose.aiNote"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.ink)
+          .padding(.horizontal, 12)
+          .padding(.vertical, 8)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+      }
 
       if let description = draft.description, !description.isEmpty {
         Text(description)
@@ -81,7 +114,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
       VStack(alignment: .leading, spacing: 8) {
         if let payer {
           let payerText =
-            reading.spans.contains(where: { $0.kind == .payer })
+            (reading.reader == .ai || reading.spans.contains(where: { $0.kind == .payer }))
             ? L10n.t("compose.payer", ["name": payer.name])
             : L10n.tr("compose.payerDefault")
           Text(payerText)
@@ -146,6 +179,27 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
         }
       }
 
+      if let catDisplay = CategoryDisplay.label(
+        category: draft.category,
+        categoryId: draft.categoryId,
+        categories: categories,
+        includeArchivedTag: true
+      ) {
+        HStack(spacing: 6) {
+          if let dotColor = catDisplay.color {
+            Circle()
+              .fill(dotColor)
+              .frame(width: 10, height: 10)
+          }
+          Text(catDisplay.name)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      }
+
       if !shares.isEmpty {
         let shapeItems = shares.compactMap { share -> ShareShapeItem? in
           guard let member = members.first(where: { $0.id == share.memberId }) else {
@@ -178,22 +232,52 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
         .font(Typography.caption)
         .foregroundStyle(Tokens.muted)
 
-      HStack(spacing: 12) {
-        SPButton(
-          L10n.tr("compose.edit"),
-          variant: .surface,
-          size: .lg,
-          isFullWidth: true,
-          action: onEdit
-        )
-        SPButton(
-          saveLabel ?? L10n.tr("compose.save"),
-          variant: .accent,
-          size: .lg,
-          isFullWidth: true,
-          isDisabled: isDisabled,
-          action: onSave
-        )
+      if let onSkip {
+        VStack(spacing: 10) {
+          SPButton(
+            saveLabel ?? L10n.tr("compose.save"),
+            variant: .accent,
+            size: .lg,
+            isFullWidth: true,
+            isDisabled: isDisabled,
+            action: onSave
+          )
+          HStack(spacing: 12) {
+            SPButton(
+              L10n.tr("compose.edit"),
+              variant: .surface,
+              size: .lg,
+              isFullWidth: true,
+              action: onEdit
+            )
+            SPButton(
+              skipLabel ?? L10n.tr("compose.skipDraft"),
+              variant: .surface,
+              size: .lg,
+              isFullWidth: true,
+              isDisabled: isDisabled,
+              action: onSkip
+            )
+          }
+        }
+      } else {
+        HStack(spacing: 12) {
+          SPButton(
+            L10n.tr("compose.edit"),
+            variant: .surface,
+            size: .lg,
+            isFullWidth: true,
+            action: onEdit
+          )
+          SPButton(
+            saveLabel ?? L10n.tr("compose.save"),
+            variant: .accent,
+            size: .lg,
+            isFullWidth: true,
+            isDisabled: isDisabled,
+            action: onSave
+          )
+        }
       }
     }
     .padding(18)
@@ -205,20 +289,28 @@ extension ConfirmationCardView where ExtraContent == EmptyView {
   public init(
     reading: QuickEntryReading,
     members: [Member],
+    categories: [GroupCategory] = [],
     isDisabled: Bool = false,
     isBudgetOver: Bool = false,
+    indexLabel: String? = nil,
     saveLabel: String? = nil,
+    skipLabel: String? = nil,
     onEdit: @escaping () -> Void,
-    onSave: @escaping () -> Void
+    onSave: @escaping () -> Void,
+    onSkip: (() -> Void)? = nil
   ) {
     self.init(
       reading: reading,
       members: members,
+      categories: categories,
       isDisabled: isDisabled,
       isBudgetOver: isBudgetOver,
+      indexLabel: indexLabel,
       saveLabel: saveLabel,
+      skipLabel: skipLabel,
       onEdit: onEdit,
-      onSave: onSave
+      onSave: onSave,
+      onSkip: onSkip
     ) {
       EmptyView()
     }

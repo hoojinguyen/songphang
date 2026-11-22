@@ -7,6 +7,11 @@ public enum SplitMethod: String, Sendable, CaseIterable, Hashable {
   case exact
   case shares
   case percent
+  case items
+
+  public static func available(allowItems: Bool) -> [SplitMethod] {
+    allowItems ? [.equal, .exact, .shares, .percent, .items] : [.equal, .exact, .shares, .percent]
+  }
 
   public var modeLabel: String {
     switch self {
@@ -14,6 +19,7 @@ public enum SplitMethod: String, Sendable, CaseIterable, Hashable {
     case .exact: return L10n.tr("split.modeExact")
     case .shares: return L10n.tr("split.modeShares")
     case .percent: return L10n.tr("split.modePercent")
+    case .items: return L10n.tr("split.modeItems")
     }
   }
 
@@ -23,6 +29,7 @@ public enum SplitMethod: String, Sendable, CaseIterable, Hashable {
     case .exact: return L10n.tr("split.methodExact")
     case .shares: return L10n.tr("split.methodShares")
     case .percent: return L10n.tr("split.methodPercent")
+    case .items: return L10n.tr("split.methodItems")
     }
   }
 }
@@ -42,14 +49,22 @@ public struct SplitEditorState: Sendable, Equatable {
   public var ids: [Member.ID]
   public var values: [Member.ID: String]
   public var spread: Bool
+  public var itemsDraft: ItemsSplitDraft
+  public var hasCustomizedItems: Bool
 
-  public init(members: [Member], initial: SplitSpec? = nil) {
+  public init(
+    members: [Member],
+    initial: SplitSpec? = nil,
+    defaultItemTitle: String = "",
+    initialAmount: Money = .zero
+  ) {
     switch initial {
     case .equal(let memberIds):
       self.method = .equal
       self.ids = memberIds
       self.values = [:]
       self.spread = false
+      self.hasCustomizedItems = false
     case .exact(let memberIds, let entries, let remainder):
       self.method = .exact
       self.ids = memberIds
@@ -59,6 +74,7 @@ public struct SplitEditorState: Sendable, Equatable {
       }
       self.values = map
       self.spread = (remainder == .equalAmongAll)
+      self.hasCustomizedItems = false
     case .shares(let entries):
       self.method = .shares
       self.ids = entries.map(\.memberId)
@@ -68,6 +84,7 @@ public struct SplitEditorState: Sendable, Equatable {
       }
       self.values = map
       self.spread = false
+      self.hasCustomizedItems = false
     case .percent(let entries):
       self.method = .percent
       self.ids = entries.map(\.memberId)
@@ -77,12 +94,26 @@ public struct SplitEditorState: Sendable, Equatable {
       }
       self.values = map
       self.spread = false
+      self.hasCustomizedItems = false
+    case .items:
+      self.method = .items
+      self.ids = members.map(\.id)
+      self.values = [:]
+      self.spread = false
+      self.hasCustomizedItems = true
     case nil:
       self.method = .equal
       self.ids = members.map(\.id)
       self.values = [:]
       self.spread = false
+      self.hasCustomizedItems = false
     }
+    self.itemsDraft = ItemsSplitDraft(
+      initialSplit: initial,
+      fallbackTitle: defaultItemTitle,
+      totalAmount: initialAmount,
+      members: members
+    )
   }
 
   public func selectedMembers(from members: [Member]) -> [Member] {
@@ -158,10 +189,43 @@ public struct SplitEditorState: Sendable, Equatable {
         )
       }
       return .percent(entries: entries)
+
+    case .items:
+      guard let payload = itemsDraft.buildPayload(),
+        itemsDraft.unassignedCount == 0
+      else { return nil }
+      return .items(items: payload.items, extras: payload.extras)
     }
   }
 
-  public func status(from members: [Member], totalAmount: Money) -> SplitStatusInfo {
+  public func status(
+    from members: [Member],
+    totalAmount: Money,
+    itemsPreview: ItemsPreview? = nil,
+    isItemsPreviewCurrent: Bool = false
+  ) -> SplitStatusInfo {
+    if method == .items {
+      let unassigned = itemsDraft.unassignedCount
+      let valid =
+        isItemsPreviewCurrent
+        && (itemsPreview?.issues.isEmpty == true)
+        && !(itemsPreview?.shares.isEmpty ?? true)
+        && (itemsPreview?.computedAmount.isPositive == true)
+      if valid, let computed = itemsPreview?.computedAmount {
+        return SplitStatusInfo(
+          text: L10n.t("split.match", ["amount": MoneyFormat.full(computed)]),
+          matched: true
+        )
+      }
+      if unassigned > 0 {
+        return SplitStatusInfo(
+          text: L10n.t("receipts.saveBlocked", ["count": String(unassigned)]),
+          matched: false
+        )
+      }
+      return SplitStatusInfo(text: L10n.tr("receipts.invalidTotal"), matched: false)
+    }
+
     let split = resolvedSplit(from: members, totalAmount: totalAmount)
     let matched = (split != nil)
 
@@ -211,7 +275,30 @@ public struct SplitEditorState: Sendable, Equatable {
     )
   }
 
-  public mutating func changeMode(_ next: SplitMethod, members: [Member]) {
+  public mutating func changeMode(
+    _ next: SplitMethod,
+    members: [Member],
+    amount: Money = .zero,
+    defaultItemTitle: String = ""
+  ) {
+    if next == .items && !hasCustomizedItems {
+      let existingName = itemsDraft.items.first?.name.trimmingCharacters(
+        in: .whitespacesAndNewlines)
+      let name =
+        (existingName?.isEmpty == false) ? (existingName ?? defaultItemTitle) : defaultItemTitle
+      let defaultIds = members.count <= ItemsSplitDraft.maxItemMembers ? members.map(\.id) : []
+      itemsDraft = ItemsSplitDraft(
+        items: [
+          EditableReceiptItem(
+            id: itemsDraft.items.first?.id ?? UUID(),
+            name: name,
+            amountText: amount.isPositive ? String(amount.amount) : "0",
+            memberIds: defaultIds
+          )
+        ],
+        extras: []
+      )
+    }
     method = next
     spread = false
     if next == .shares {

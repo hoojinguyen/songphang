@@ -8,6 +8,7 @@ public enum TransactionDraft: Sendable, Hashable {
     public var categoryId: GroupCategory.ID?
     public var payers: [MemberAmount]
     public var split: SplitSpec
+    public var attachmentIds: [Attachment.ID]?
 
     public init(
       isIncome: Bool = false,
@@ -17,7 +18,8 @@ public enum TransactionDraft: Sendable, Hashable {
       category: TransactionCategory? = nil,
       categoryId: GroupCategory.ID? = nil,
       payers: [MemberAmount],
-      split: SplitSpec
+      split: SplitSpec,
+      attachmentIds: [Attachment.ID]? = nil
     ) {
       self.isIncome = isIncome
       self.description = description
@@ -27,6 +29,7 @@ public enum TransactionDraft: Sendable, Hashable {
       self.categoryId = categoryId
       self.payers = payers
       self.split = split
+      self.attachmentIds = attachmentIds
     }
   }
 
@@ -36,19 +39,22 @@ public enum TransactionDraft: Sendable, Hashable {
     public var fromMemberId: Member.ID
     public var toMemberId: Member.ID
     public var description: String?
+    public var attachmentIds: [Attachment.ID]?
 
     public init(
       amount: Money,
       occurredAt: String,
       fromMemberId: Member.ID,
       toMemberId: Member.ID,
-      description: String? = nil
+      description: String? = nil,
+      attachmentIds: [Attachment.ID]? = nil
     ) {
       self.amount = amount
       self.occurredAt = occurredAt
       self.fromMemberId = fromMemberId
       self.toMemberId = toMemberId
       self.description = description
+      self.attachmentIds = attachmentIds
     }
   }
 

@@ -11,7 +11,8 @@ public final class LiveQuickEntryRepository: QuickEntryRepository, Sendable {
 
   public func parse(
     groupId: ExpenseGroup.ID,
-    text: String
+    text: String,
+    ai: Bool
   ) async throws(AppError) -> QuickEntryReading {
     do {
       return try await ResponseBodyCapture.withCapture {
@@ -19,7 +20,7 @@ public final class LiveQuickEntryRepository: QuickEntryRepository, Sendable {
           .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol_parse(
             .init(
               path: .init(groupId: groupId.rawValue),
-              body: .json(.init(text: text))
+              body: .json(.init(ai: ai ? true : nil, text: text))
             )
           )
         switch output {

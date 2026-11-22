@@ -117,10 +117,35 @@ public enum SplitSpec: Sendable, Hashable {
     }
   }
 
+  public struct ItemEntry: Sendable, Hashable {
+    public let name: String
+    public let amount: Money
+    public let memberIds: [Member.ID]
+
+    public init(name: String, amount: Money, memberIds: [Member.ID]) {
+      self.name = name
+      self.amount = amount
+      self.memberIds = memberIds
+    }
+  }
+
+  public struct ItemsExtra: Sendable, Hashable {
+    public let kind: ReceiptExtraKind
+    public let label: String
+    public let amount: Money
+
+    public init(kind: ReceiptExtraKind, label: String, amount: Money) {
+      self.kind = kind
+      self.label = label
+      self.amount = amount
+    }
+  }
+
   case equal(members: [Member.ID])
   case exact(members: [Member.ID], entries: [ExactEntry], remainder: ExactRemainderMode)
   case shares(entries: [ShareWeightEntry])
   case percent(entries: [PercentEntry])
+  case items(items: [ItemEntry], extras: [ItemsExtra])
 }
 
 public struct MemberAmount: Sendable, Hashable, Identifiable {
@@ -167,6 +192,8 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var updatedAt: String
   public var deletedAt: String?
   public var warnings: [TransactionWarning]
+  public var attachments: [Attachment]
+  public var attachmentCount: Int
 
   public init(
     id: ID,
@@ -186,7 +213,9 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     createdAt: String = "2026-11-16T14:23:26.466Z",
     updatedAt: String = "2026-11-16T14:23:26.466Z",
     deletedAt: String? = nil,
-    warnings: [TransactionWarning] = []
+    warnings: [TransactionWarning] = [],
+    attachments: [Attachment] = [],
+    attachmentCount: Int? = nil
   ) {
     self.id = id
     self.type = type
@@ -206,5 +235,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.updatedAt = updatedAt
     self.deletedAt = deletedAt
     self.warnings = warnings
+    self.attachments = attachments
+    self.attachmentCount = attachmentCount ?? attachments.count
   }
 }

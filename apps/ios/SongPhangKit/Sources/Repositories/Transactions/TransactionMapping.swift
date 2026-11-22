@@ -42,8 +42,22 @@ enum TransactionMapping {
         }
       )
     case .case5(let items):
-      let uniqueIds = Array(Set(items.items.flatMap(\.memberIds))).sorted().map(Member.ID.init)
-      return .equal(members: uniqueIds)
+      return .items(
+        items: items.items.map {
+          SplitSpec.ItemEntry(
+            name: $0.name,
+            amount: Money(Int64($0.amount)),
+            memberIds: $0.memberIds.map(Member.ID.init)
+          )
+        },
+        extras: items.extras.map {
+          SplitSpec.ItemsExtra(
+            kind: ReceiptExtraKind(code: $0.kind.rawValue),
+            label: $0.label,
+            amount: Money(Int64($0.amount))
+          )
+        }
+      )
     }
   }
 
@@ -81,6 +95,31 @@ enum TransactionMapping {
         .init(
           entries: entries.map { .init(memberId: $0.memberId.rawValue, percent: $0.percent) },
           method: .percent
+        )
+      )
+    case .items(let items, let extras):
+      return .case5(
+        .init(
+          extras: extras.map { extra in
+            let kind: Components.Schemas.SplitInput.Case5Payload.extrasPayloadPayload.kindPayload =
+              {
+                switch extra.kind {
+                case .tax: return .tax
+                case .service: return .service
+                case .discount: return .discount
+                case .other, .unknown: return .other
+                }
+              }()
+            return .init(amount: Int(extra.amount.amount), kind: kind, label: extra.label)
+          },
+          items: items.map {
+            .init(
+              amount: Int($0.amount.amount),
+              memberIds: $0.memberIds.map(\.rawValue),
+              name: $0.name
+            )
+          },
+          method: .items
         )
       )
     }
@@ -189,7 +228,8 @@ enum TransactionMapping {
       },
       createdAt: formatISO(dto.createdAt),
       updatedAt: formatISO(dto.updatedAt),
-      deletedAt: dto.deletedAt.map(formatISO)
+      deletedAt: dto.deletedAt.map(formatISO),
+      attachmentCount: dto.attachmentCount
     )
   }
 
@@ -223,7 +263,8 @@ enum TransactionMapping {
       createdAt: formatISO(dto.createdAt),
       updatedAt: formatISO(dto.updatedAt),
       deletedAt: dto.deletedAt.map(formatISO),
-      warnings: warnings
+      warnings: warnings,
+      attachments: dto.attachments.map(ReceiptMapping.mapAttachment)
     )
   }
 
@@ -232,6 +273,7 @@ enum TransactionMapping {
   ) -> Components.Schemas.SplitTransactionRequest {
     Components.Schemas.SplitTransactionRequest(
       amount: Int(payload.amount.amount),
+      attachmentIds: payload.attachmentIds?.map(\.rawValue),
       category: payload.categoryId == nil ? encodeCategory(payload.category) : nil,
       categoryId: payload.categoryId?.rawValue,
       description: payload.description,
@@ -254,6 +296,7 @@ enum TransactionMapping {
     case .transfer(let payload):
       let transferReq = Components.Schemas.TransferRequest(
         amount: Int(payload.amount.amount),
+        attachmentIds: payload.attachmentIds?.map(\.rawValue),
         description: payload.description,
         fromMemberId: payload.fromMemberId.rawValue,
         occurredAt: parseISO(payload.occurredAt),
@@ -290,7 +333,14 @@ enum TransactionMapping {
       let percent: String
     }
     struct RawItem: Codable, Sendable {
+      let name: String?
+      let amount: Int64?
       let memberIds: [String]
+    }
+    struct RawExtra: Codable, Sendable {
+      let kind: String
+      let label: String
+      let amount: Int64
     }
 
     let method: String
@@ -300,9 +350,10 @@ enum TransactionMapping {
     let weightEntries: [RawWeight]?
     let percentEntries: [RawPercent]?
     let items: [RawItem]?
+    let extras: [RawExtra]?
 
     enum CodingKeys: String, CodingKey {
-      case method, members, remainder, entries, items
+      case method, members, remainder, entries, items, extras
     }
 
     init(from decoder: any Decoder) throws {
@@ -311,6 +362,7 @@ enum TransactionMapping {
       self.members = try c.decodeIfPresent([String].self, forKey: .members)
       self.remainder = try c.decodeIfPresent(String.self, forKey: .remainder)
       self.items = try c.decodeIfPresent([RawItem].self, forKey: .items)
+      self.extras = try c.decodeIfPresent([RawExtra].self, forKey: .extras)
       switch method {
       case "exact":
         self.exactEntries = try c.decodeIfPresent([RawExact].self, forKey: .entries)
@@ -341,6 +393,7 @@ enum TransactionMapping {
         self.weightEntries = nil
         self.percentEntries = nil
         self.items = nil
+        self.extras = nil
       case .exact(let members, let entries, let remainder):
         self.method = "exact"
         self.members = members.map(\.rawValue)
@@ -351,6 +404,7 @@ enum TransactionMapping {
         self.weightEntries = nil
         self.percentEntries = nil
         self.items = nil
+        self.extras = nil
       case .shares(let entries):
         self.method = "shares"
         self.members = nil
@@ -361,6 +415,7 @@ enum TransactionMapping {
         }
         self.percentEntries = nil
         self.items = nil
+        self.extras = nil
       case .percent(let entries):
         self.method = "percent"
         self.members = nil
@@ -371,6 +426,20 @@ enum TransactionMapping {
           RawPercent(memberId: $0.memberId.rawValue, percent: $0.percent)
         }
         self.items = nil
+        self.extras = nil
+      case .items(let entries, let extraEntries):
+        self.method = "items"
+        self.members = nil
+        self.remainder = nil
+        self.exactEntries = nil
+        self.weightEntries = nil
+        self.percentEntries = nil
+        self.items = entries.map {
+          RawItem(name: $0.name, amount: $0.amount.amount, memberIds: $0.memberIds.map(\.rawValue))
+        }
+        self.extras = extraEntries.map {
+          RawExtra(kind: $0.kind.code, label: $0.label, amount: $0.amount.amount)
+        }
       }
     }
 
@@ -383,6 +452,7 @@ enum TransactionMapping {
       if let weightEntries { try c.encode(weightEntries, forKey: .entries) }
       if let percentEntries { try c.encode(percentEntries, forKey: .entries) }
       if let items { try c.encode(items, forKey: .items) }
+      if let extras { try c.encode(extras, forKey: .extras) }
     }
 
     func toDomain() -> SplitSpec {
@@ -408,8 +478,22 @@ enum TransactionMapping {
           }
         )
       case "items":
-        let ids = Array(Set((items ?? []).flatMap(\.memberIds))).sorted().map(Member.ID.init)
-        return .equal(members: ids)
+        return .items(
+          items: (items ?? []).map {
+            SplitSpec.ItemEntry(
+              name: $0.name ?? "",
+              amount: Money($0.amount ?? 0),
+              memberIds: $0.memberIds.map(Member.ID.init)
+            )
+          },
+          extras: (extras ?? []).map {
+            SplitSpec.ItemsExtra(
+              kind: ReceiptExtraKind(code: $0.kind),
+              label: $0.label,
+              amount: Money($0.amount)
+            )
+          }
+        )
       default:
         return .equal(members: (members ?? []).map(Member.ID.init))
       }
@@ -434,9 +518,12 @@ enum TransactionMapping {
     let createdAt: String
     let updatedAt: String
     let deletedAt: String?
+    let attachments: [ReceiptMapping.RawAttachment]?
+    let attachmentCount: Int?
 
     func toDomain() -> LedgerTransaction {
-      LedgerTransaction(
+      let decodedAttachments = (attachments ?? []).map { $0.toDomain() }
+      return LedgerTransaction(
         id: LedgerTransaction.ID(id),
         type: TransactionType(code: type),
         description: description,
@@ -457,7 +544,9 @@ enum TransactionMapping {
         createdBy: createdBy.map { LedgerTransaction.ActorRef(id: User.ID($0.id), name: $0.name) },
         createdAt: createdAt,
         updatedAt: updatedAt,
-        deletedAt: deletedAt
+        deletedAt: deletedAt,
+        attachments: decodedAttachments,
+        attachmentCount: attachmentCount ?? decodedAttachments.count
       )
     }
 
@@ -483,6 +572,9 @@ enum TransactionMapping {
       self.createdAt = tx.createdAt
       self.updatedAt = tx.updatedAt
       self.deletedAt = tx.deletedAt
+      self.attachments =
+        tx.attachments.isEmpty ? nil : tx.attachments.map(ReceiptMapping.RawAttachment.init)
+      self.attachmentCount = tx.attachmentCount
     }
   }
 

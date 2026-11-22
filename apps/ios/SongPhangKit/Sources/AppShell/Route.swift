@@ -18,9 +18,11 @@ public enum Route: Hashable, Sendable {
     groupId: ExpenseGroup.ID,
     initialReading: QuickEntryReading? = nil,
     initialTransferFrom: Member.ID? = nil,
-    initialTransferTo: Member.ID? = nil
+    initialTransferTo: Member.ID? = nil,
+    initialAttachmentId: Attachment.ID? = nil
   )
   case editTransaction(groupId: ExpenseGroup.ID, transactionId: LedgerTransaction.ID)
+  case receiptReview(groupId: ExpenseGroup.ID, scanId: ReceiptScan.ID)
   case settle(
     groupId: ExpenseGroup.ID,
     fromMemberId: Member.ID,

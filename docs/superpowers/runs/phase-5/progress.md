@@ -469,6 +469,30 @@
   - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a20400-81a2-7831-8639-e953a9ad6280 Đà Lạt 5D3: sum 0; mismatches 0`, `01a20400-81ce-7b06-9a57-530559e1e7b8 Nhóm xoá quỹ 5D3: sum 0; mismatches 0`); disposable DB dropped and ports `3000`/`4000` verified free.
 - Security review: checked relevant items 1, 2, 4, 6, 8; no secrets/tokens in code or logs, `LiveFundRepository.patchClearingHolder` sends `Authorization: Bearer` + `X-App-Version` without logging tokens or bodies, server enforces `owner` on `/budget` writes (`403` editor/viewer) and `editor` on `/fund` writes (`403` viewer), no floating-point money conversions or third-party dependencies added.
 
+### Task 5D.4 — Receipt capture, attachments, item splitting, and assisted entry
+
+**Approach**
+- Files created/modified: `apps/ios/App/Info.plist`, `apps/ios/Config/Info-Debug.plist`, `apps/ios/SongPhangKit/Sources/Domain/Models/{Receipt,LedgerTransaction,TransactionDraft,QuickEntryReading}.swift`, `apps/ios/SongPhangKit/Sources/Domain/Repositories/{AttachmentsRepository,ReceiptScansRepository,QuickEntryRepository,TransactionsRepository}.swift`, `apps/ios/SongPhangKit/Sources/Repositories/{Attachments,ReceiptScans,Receipts,Transactions,QuickEntry}/`, `apps/ios/SongPhangKit/Sources/DesignSystem/{Components/PhotoAttachmentViews.swift,Resources/Localizable.xcstrings}`, `apps/ios/SongPhangKit/Sources/LedgerFeature/{ReceiptCapture,ReceiptReview,Shared/ItemsSplitDraft.swift,ConfirmCard,QuickEntry,ExpenseForm,SplitEditor,GroupFeed}`, `apps/ios/SongPhangKit/Sources/AppShell/{AppDependencies,Route,RouteDestination}.swift`, `apps/ios/SongPhangKit/Sources/PreviewSupport/Fakes/{FakeWorld,FakeWorld+Ledger,FakeWorld+Receipts,FakeRepositories}.swift`.
+- Approach: Added `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` to app plists. Implemented `ReceiptImageProcessor` stripping EXIF/GPS metadata and re-encoding to JPEG <=2000px longest edge in detached background task. Implemented `AttachmentsRepository` for multipart upload `POST /groups/{id}/attachments` and authenticated `GET .../content` download, and `ReceiptScansRepository` for scanning and polling. Built `ItemsSplitDraft` and `ReceiptReviewModel` (S18 screen) with 3s polling, timeout handling, member assignment (`splitRemainingEqual`), mismatch banner detection, and printed total adjustment (`applyPrintedTotal`). Enhanced Quick Entry with explicit-send AI parsing (`ai: true`), slow-reading banner, and multi-draft queue navigation.
+- Why this is the simplest approach: Keeps image re-encoding off the main actor, relies on server-authoritative item calculation and preview, and uses standard iOS PhotosPicker/Camera without third-party frameworks.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .` — 512 files, 0 errors; 8 workspace typechecks; `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: PASS (exit 0).
+  - `apps/ios/Scripts/check-strings.sh`: `0` `DIFFERING`, `0` `EXTRA`, and `0` missing keys across `attachments.*`, `receipts.*`, `compose.*`, `split.methodItems`, `split.modeItems`, and feed split captions.
+  - Debug `xcodebuild` (`generic/platform=iOS Simulator`) & Release `xcodebuild` (`generic/platform=iOS Simulator`, `CODE_SIGNING_ALLOWED=NO`): both `** BUILD SUCCEEDED **`.
+- Live Simulator & API exercise (`songphang_phase5_5d4`, clean-env API `:4010`, worker `AI_PROVIDER=fake`, `Exercise5D4.app` on `iPhone 17 Pro`):
+  - `EXERCISE_5D4_SETUP_PASS`: verified Group A setup, member invites, and viewer role on Hoa.
+  - Verified all 4 committed fixtures: `clean.jpg` -> `SIM_5D4_FIXTURE_CLEAN_PASS` (2 items, 440k total), `tax-service.jpg` -> `SIM_5D4_FIXTURE_TAX_SERVICE_PASS` (2 extras, 110k total), `mismatch.jpg` -> `SIM_5D4_FIXTURE_MISMATCH_PASS` (`TOTAL_MISMATCH` flag), `not-a-receipt.jpg` -> `SIM_5D4_FIXTURE_NOT_A_RECEIPT_PASS` (`errorCode: NOT_A_RECEIPT`).
+  - `SIM_5D4_ATTACHMENTS_SECURITY_PASS`: verified authenticated content download and outsider refusal 404.
+  - `SIM_5D4_ITEMS_TRANSACTION_PASS`: saved expense with items split, service extra, and attachment (attachment count = 1).
+  - `SIM_5D4_AI_QUICK_ENTRY_PASS`: verified multi-draft AI sentence parse ("cà phê 180k và bánh 50k" -> draft 180k + moreDrafts [50k]), rules fallback when `ai: false`, and saved both drafts to ledger.
+  - `SIM_5D4_ATTACHMENT_DOWNLOAD_PASS` (size 55000), `SIM_5D4_SCAN_FETCH_PASS` (items = 2), `SIM_5D4_MISMATCH_BANNER_ACTIVE` (`[totalMismatch]`), `SIM_5D4_UNASSIGNED_ISSUE_PASS` (`unassignedCount = 2`), `SIM_5D4_MISMATCH_INFO_DETECTED` (`computed = 442000, printed = 450000`), `SIM_5D4_TARGET_ADJUSTMENT_PASS` (`computed = 450000, canSave = true`), `SIM_EXERCISE_5D4_READY`.
+  - Captured and verified Simulator screenshot `docs/superpowers/runs/phase-5/screens/5d/receipt-review.png`.
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a20434-7a4e-772c-9d34-8405bbbf0d73 Đà Lạt 5D4: sum 0; mismatches 0`).
+- Security review: checked relevant items 1, 2, 4, 7, 8; no secrets or tokens in logs/diffs, `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription` documented, EXIF/GPS stripped prior to upload, authenticated content download gated by group membership, outsider receives 404, integer-only money calculations.
+
 ## Gate Not Passed
 
 None.

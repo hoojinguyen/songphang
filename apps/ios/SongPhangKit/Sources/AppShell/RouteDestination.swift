@@ -34,6 +34,7 @@ public struct RouteDestination: View {
   @State private var paymentSheet: PaymentSheet?
   @State private var editingPaymentMember: Member?
   @State private var isCreatingFund = false
+  @State private var isReceiptCaptureOpen = false
   @State private var registerModel: RegisterModel?
   @State private var forgotPasswordModel: ForgotPasswordModel?
   @State private var accountModel: AccountModel?
@@ -48,6 +49,7 @@ public struct RouteDestination: View {
   @State private var activityModel: ActivityModel?
   @State private var quickEntryModel: QuickEntryModel?
   @State private var expenseFormModel: ExpenseFormModel?
+  @State private var receiptReviewModel: ReceiptReviewModel?
   @State private var settleModel: SettleModel?
 
   public init(
@@ -230,14 +232,18 @@ public struct RouteDestination: View {
         initialValue: QuickEntryModel(
           groupId: groupId,
           initialSentence: initialSentence,
+          canUseAI: sessionModel.latestFeatures?.sentenceAi == true,
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
+          categoriesRepository: dependencies.categories,
           quickEntryRepository: dependencies.quickEntry,
           transactionsRepository: dependencies.transactions,
           onSaved: {
             onPop()
             onExpenseSaved()
           },
+          onDraftSaved: onExpenseSaved,
+          onSkippedToFeed: onPop,
           onOpenManualForm: { reading in
             onReplaceTop(.newTransactionForm(groupId: groupId, initialReading: reading))
           }
@@ -247,7 +253,8 @@ public struct RouteDestination: View {
       let groupId,
       let initialReading,
       let initialTransferFrom,
-      let initialTransferTo
+      let initialTransferTo,
+      let initialAttachmentId
     ):
       self._expenseFormModel = State(
         initialValue: ExpenseFormModel(
@@ -256,12 +263,14 @@ public struct RouteDestination: View {
           initialReading: initialReading,
           initialTransferFrom: initialTransferFrom,
           initialTransferTo: initialTransferTo,
+          initialAttachmentId: initialAttachmentId,
           initialSplitEditorOpen: args.contains("--open-split-editor"),
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           categoriesRepository: dependencies.categories,
+          attachmentsRepository: dependencies.attachments,
           onSaved: {
             onPop()
             onExpenseSaved()
@@ -280,10 +289,39 @@ public struct RouteDestination: View {
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           categoriesRepository: dependencies.categories,
+          attachmentsRepository: dependencies.attachments,
           onSaved: onPop,
           onDeleted: { id in
             deletedTransactionId.wrappedValue = id
             onPop()
+          }
+        )
+      )
+    case .receiptReview(let groupId, let scanId):
+      self._receiptReviewModel = State(
+        initialValue: ReceiptReviewModel(
+          groupId: groupId,
+          scanId: scanId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          attachmentsRepository: dependencies.attachments,
+          receiptScansRepository: dependencies.receiptScans,
+          transactionsRepository: dependencies.transactions,
+          onSaved: {
+            onPop()
+            onExpenseSaved()
+          },
+          onManualFallback: { attachmentId in
+            onReplaceTop(
+              .newTransactionForm(
+                groupId: groupId,
+                initialAttachmentId: attachmentId
+              )
+            )
+          },
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
           }
         )
       )
@@ -435,7 +473,7 @@ public struct RouteDestination: View {
           onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) }
         )
       }
-    case .groupFeed:
+    case .groupFeed(let groupId, _):
       if let feedModel {
         GroupFeedView(
           model: feedModel,
@@ -453,10 +491,34 @@ public struct RouteDestination: View {
           onOpenEditTransaction: { id, txId in
             onNavigate(.editTransaction(groupId: id, transactionId: txId))
           },
+          onOpenReceiptCapture: sessionModel.latestFeatures?.receiptReading == true
+            ? { _ in isReceiptCaptureOpen = true }
+            : nil,
           onRemovedFromGroup: {
             onPopToRoot(L10n.tr("common.removed"))
           }
         )
+        .sheet(isPresented: $isReceiptCaptureOpen) {
+          ReceiptCaptureSheet(
+            groupId: groupId,
+            attachmentsRepository: dependencies.attachments,
+            receiptScansRepository: dependencies.receiptScans,
+            onScanStarted: { scan in
+              isReceiptCaptureOpen = false
+              onNavigate(.receiptReview(groupId: groupId, scanId: scan.id))
+            },
+            onManualFallback: { attachmentId in
+              isReceiptCaptureOpen = false
+              onNavigate(
+                .newTransactionForm(
+                  groupId: groupId,
+                  initialAttachmentId: attachmentId
+                )
+              )
+            },
+            onDismiss: { isReceiptCaptureOpen = false }
+          )
+        }
       }
     case .groupStats(let groupId):
       if let statsModel {
@@ -584,6 +646,13 @@ public struct RouteDestination: View {
           model: expenseFormModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
           onCancel: onPop
+        )
+      }
+    case .receiptReview:
+      if let receiptReviewModel {
+        ReceiptReviewView(
+          model: receiptReviewModel,
+          onBack: onPop
         )
       }
     case .settle:

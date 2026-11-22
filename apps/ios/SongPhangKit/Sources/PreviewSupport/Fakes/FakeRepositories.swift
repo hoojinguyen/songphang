@@ -64,7 +64,13 @@
 
     public func serverFeatures() async throws(AppError) -> ServerFeatures {
       try await world.simulateNetwork()
-      return ServerFeatures(google: true, apple: true, devLogin: false)
+      return ServerFeatures(
+        google: true,
+        apple: true,
+        devLogin: false,
+        receiptReading: true,
+        sentenceAi: true
+      )
     }
 
     public func signOut() async throws(AppError) {
@@ -254,6 +260,20 @@
       try await world.previewTransaction(groupId: groupId, draft: draft)
     }
 
+    public func previewItems(
+      groupId: ExpenseGroup.ID,
+      items: [SplitSpec.ItemEntry],
+      extras: [SplitSpec.ItemsExtra],
+      targetTotal: Money?
+    ) async throws(AppError) -> ItemsPreview {
+      try await world.previewItems(
+        groupId: groupId,
+        items: items,
+        extras: extras,
+        targetTotal: targetTotal
+      )
+    }
+
     public func create(
       groupId: ExpenseGroup.ID,
       draft: TransactionDraft,
@@ -323,9 +343,10 @@
 
     public func parse(
       groupId: ExpenseGroup.ID,
-      text: String
+      text: String,
+      ai: Bool
     ) async throws(AppError) -> QuickEntryReading {
-      try await world.parseSentence(groupId: groupId, text: text)
+      try await world.parseSentence(groupId: groupId, text: text, ai: ai)
     }
   }
 
@@ -472,6 +493,59 @@
 
     public func deleteBudget(groupId: ExpenseGroup.ID) async throws(AppError) {
       try await world.deleteBudget(groupId: groupId)
+    }
+  }
+
+  public nonisolated struct FakeAttachmentsRepository: AttachmentsRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func upload(
+      groupId: ExpenseGroup.ID,
+      data: Data,
+      filename: String,
+      contentType: String
+    ) async throws(AppError) -> Attachment {
+      try await world.uploadAttachment(
+        groupId: groupId,
+        data: data,
+        filename: filename,
+        contentType: contentType
+      )
+    }
+
+    public func content(
+      groupId: ExpenseGroup.ID,
+      attachmentId: Attachment.ID
+    ) async throws(AppError) -> Data {
+      try await world.attachmentContent(groupId: groupId, attachmentId: attachmentId)
+    }
+
+    public func delete(
+      groupId: ExpenseGroup.ID,
+      attachmentId: Attachment.ID
+    ) async throws(AppError) {
+      try await world.deleteAttachment(groupId: groupId, attachmentId: attachmentId)
+    }
+  }
+
+  public nonisolated struct FakeReceiptScansRepository: ReceiptScansRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func start(
+      groupId: ExpenseGroup.ID,
+      attachmentId: Attachment.ID,
+      key: IdempotencyKey
+    ) async throws(AppError) -> ReceiptScan {
+      try await world.startReceiptScan(groupId: groupId, attachmentId: attachmentId, key: key)
+    }
+
+    public func scan(
+      groupId: ExpenseGroup.ID,
+      id: ReceiptScan.ID
+    ) async throws(AppError) -> ReceiptScan {
+      try await world.receiptScan(groupId: groupId, id: id)
     }
   }
 #endif

@@ -39,8 +39,12 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Chụp ảnh hoá đơn để tách tiền và lưu chứng từ.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Lưu mã QR vào Ảnh.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Chọn ảnh hoá đơn từ thư viện để tách tiền và lưu chứng từ.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

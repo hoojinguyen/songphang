@@ -62,6 +62,9 @@
     internal var categoriesByGroup: [ExpenseGroup.ID: [GroupCategory]] = [:]
     internal var budgetsByGroup: [ExpenseGroup.ID: GroupBudget] = [:]
     internal var settlementRequestsByGroup: [ExpenseGroup.ID: [SettlementRequest]] = [:]
+    internal var attachmentsByGroup: [ExpenseGroup.ID: [Attachment.ID: Attachment]] = [:]
+    internal var attachmentDataById: [Attachment.ID: Data] = [:]
+    internal var scansById: [ReceiptScan.ID: ReceiptScan] = [:]
     internal var seenIdempotencyKeys: Set<IdempotencyKey> = []
     internal var deletedTransactionsByGroup:
       [ExpenseGroup.ID: [LedgerTransaction.ID: LedgerTransaction]] = [:]

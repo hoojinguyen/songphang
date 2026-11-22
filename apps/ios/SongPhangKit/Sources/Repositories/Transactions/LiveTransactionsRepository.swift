@@ -133,6 +133,50 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
     }
   }
 
+  public func previewItems(
+    groupId: ExpenseGroup.ID,
+    items: [SplitSpec.ItemEntry],
+    extras: [SplitSpec.ItemsExtra],
+    targetTotal: Money?
+  ) async throws(AppError) -> ItemsPreview {
+    do {
+      let body = Components.Schemas.PreviewItemsRequest(
+        extras: extras.map {
+          .init(
+            amount: Int($0.amount.amount),
+            kind: ReceiptMapping.encodeExtraKind($0.kind),
+            label: $0.label
+          )
+        },
+        items: items.map {
+          .init(
+            amount: Int($0.amount.amount),
+            memberIds: $0.memberIds.map(\.rawValue),
+            name: $0.name
+          )
+        },
+        targetTotal: targetTotal.map { Int($0.amount) }
+      )
+      let output = try await environment.client
+        .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol_items_sol_preview(
+          .init(
+            path: .init(groupId: groupId.rawValue),
+            body: .json(body)
+          )
+        )
+      switch output {
+      case .ok(let ok):
+        return ReceiptMapping.mapItemsPreview(try ok.body.json)
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
   public func create(
     groupId: ExpenseGroup.ID,
     draft: TransactionDraft,

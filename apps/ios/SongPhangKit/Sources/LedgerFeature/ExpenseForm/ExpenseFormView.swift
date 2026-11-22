@@ -1,5 +1,6 @@
 import DesignSystem
 import Domain
+import PhotosUI
 public import SwiftUI
 
 #if DEBUG
@@ -12,6 +13,7 @@ public struct ExpenseFormView: View {
   private let onCancel: () -> Void
   @FocusState private var isDescriptionFocused: Bool
   @State private var isManagingCategories = false
+  @State private var pickedPhotoItem: PhotosPickerItem?
 
   public init(
     model: ExpenseFormModel,
@@ -98,14 +100,24 @@ public struct ExpenseFormView: View {
               set: {
                 model.splitState = $0
                 model.schedulePreview()
+                if $0.method == .items {
+                  model.scheduleItemsPreview()
+                }
               }
             ),
             members: active,
-            amount: model.amount,
+            amount: model.effectiveAmount,
             description: model.descriptionText.isEmpty ? model.headerTitle : model.descriptionText,
             payerLine: L10n.t("expenseForm.payerAmountLabel", ["name": payerNames]),
             shares: model.previewShares,
             isPreviewPending: model.isPreviewPending,
+            allowItems: model.transactionType == .expense,
+            itemsPreview: model.itemsPreview,
+            isItemsPreviewCurrent: model.isItemsPreviewCurrent,
+            itemsPreviewError: model.itemsPreviewError,
+            onItemsChange: {
+              model.scheduleItemsPreview()
+            },
             onDone: { model.isSplitEditorOpen = false }
           )
         } else {
@@ -352,6 +364,59 @@ public struct ExpenseFormView: View {
             .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
           }
 
+          PhotoRowView(
+            attachments: model.attachments,
+            readOnly: false,
+            isUploading: model.isUploadingAttachment,
+            errorMessage: photoRowErrorMessage,
+            loadContent: { attachmentId in
+              try await model.attachmentsRepository.content(
+                groupId: model.groupId,
+                attachmentId: attachmentId
+              )
+            },
+            onRemove: { attachmentId in
+              model.removeAttachment(id: attachmentId)
+            }
+          ) {
+            if model.attachments.count >= 3 {
+              Text("+ \(L10n.tr("attachments.add"))")
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.muted)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Tokens.sunken, in: Capsule())
+                .opacity(0.5)
+            } else {
+              PhotosPicker(
+                selection: $pickedPhotoItem,
+                matching: .images,
+                photoLibrary: .shared()
+              ) {
+                HStack(spacing: 6) {
+                  Image(systemName: "plus")
+                    .font(.system(size: 13, weight: .bold))
+                  Text(L10n.tr("attachments.add"))
+                    .font(Typography.captionBold)
+                }
+                .foregroundStyle(Tokens.ink)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Tokens.sunken, in: Capsule())
+              }
+              .disabled(model.isUploadingAttachment)
+            }
+          }
+          .onChange(of: pickedPhotoItem) { _, item in
+            guard let item else { return }
+            pickedPhotoItem = nil
+            Task {
+              if let rawData = try? await item.loadTransferable(type: Data.self) {
+                await model.uploadAttachment(rawImageData: rawData)
+              }
+            }
+          }
+
           if let submitError = model.submitError {
             Text(
               submitError == .api(code: "FORBIDDEN", status: 403)
@@ -388,7 +453,12 @@ public struct ExpenseFormView: View {
             }
 
             SplitStatusBannerView(
-              status: model.splitState.status(from: active, totalAmount: model.amount)
+              status: model.splitState.status(
+                from: active,
+                totalAmount: model.effectiveAmount,
+                itemsPreview: model.itemsPreview,
+                isItemsPreviewCurrent: model.isItemsPreviewCurrent
+              )
             )
           }
 
@@ -436,6 +506,19 @@ public struct ExpenseFormView: View {
 }
 
 extension ExpenseFormView {
+  private var photoRowErrorMessage: String? {
+    if model.isAttachmentLimitError {
+      return L10n.tr("attachments.maxLimit")
+    }
+    if let imgErr = model.attachmentImageError {
+      return UploadErrorFormatter.message(for: imgErr)
+    }
+    if let err = model.attachmentError {
+      return UploadErrorFormatter.message(for: err)
+    }
+    return nil
+  }
+
   private var saveButton: some View {
     SPButton(
       model.saveButtonTitle,
@@ -465,6 +548,7 @@ extension ExpenseFormView {
         balancesRepository: FakeBalancesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        attachmentsRepository: FakeAttachmentsRepository(world: world),
         onSaved: {}
       ),
       onCancel: {}
@@ -482,6 +566,7 @@ extension ExpenseFormView {
         balancesRepository: FakeBalancesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        attachmentsRepository: FakeAttachmentsRepository(world: world),
         onSaved: {}
       ),
       onCancel: {}

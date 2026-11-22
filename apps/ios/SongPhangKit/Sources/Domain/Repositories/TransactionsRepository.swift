@@ -13,6 +13,12 @@ public protocol TransactionsRepository: Sendable {
     groupId: ExpenseGroup.ID,
     draft: TransactionDraft
   ) async throws(AppError) -> SharePreview
+  func previewItems(
+    groupId: ExpenseGroup.ID,
+    items: [SplitSpec.ItemEntry],
+    extras: [SplitSpec.ItemsExtra],
+    targetTotal: Money?
+  ) async throws(AppError) -> ItemsPreview
   func create(
     groupId: ExpenseGroup.ID,
     draft: TransactionDraft,
@@ -37,5 +43,13 @@ extension TransactionsRepository {
     cursor: String?
   ) async throws(AppError) -> Page<LedgerTransaction> {
     try await page(groupId: groupId, filter: nil, cursor: cursor)
+  }
+
+  public func previewItems(
+    groupId: ExpenseGroup.ID,
+    items: [SplitSpec.ItemEntry],
+    extras: [SplitSpec.ItemsExtra]
+  ) async throws(AppError) -> ItemsPreview {
+    try await previewItems(groupId: groupId, items: items, extras: extras, targetTotal: nil)
   }
 }

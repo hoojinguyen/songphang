@@ -36,7 +36,9 @@ enum QuickEntryMapping {
       payers: dto.draft.payers.map {
         MemberAmount(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
       },
-      split: TransactionMapping.mapSplitInput(dto.draft.split)
+      split: TransactionMapping.mapSplitInput(dto.draft.split),
+      category: TransactionMapping.mapCategory(dto.draft.category?.rawValue),
+      categoryId: dto.draft.categoryId.map(GroupCategory.ID.init)
     )
     let shares = dto.shares?.map {
       MemberAmount(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
@@ -55,13 +57,44 @@ enum QuickEntryMapping {
         actual: issue.actual.flatMap { Int64(exactly: $0) }.map(Money.init)
       )
     }
+    let moreDrafts = (dto.moreDrafts ?? []).map { entry in
+      QuickEntryReading.ParsedDraft(
+        status: QuickEntryReading.Status(code: entry.status.rawValue),
+        draft: QuickEntryReading.Draft(
+          description: entry.draft.description,
+          amount: entry.draft.amount.map { Money(Int64($0)) },
+          payers: entry.draft.payers.map {
+            MemberAmount(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
+          },
+          split: TransactionMapping.mapSplitInput(entry.draft.split),
+          category: TransactionMapping.mapCategory(entry.draft.category?.rawValue),
+          categoryId: entry.draft.categoryId.map(GroupCategory.ID.init)
+        ),
+        issues: entry.issues.map { issue in
+          QuickEntryReading.Issue(
+            code: mapIssueCode(issue.code.rawValue),
+            start: issue.start,
+            end: issue.end,
+            candidates: issue.candidates.map(Member.ID.init),
+            count: issue.count.flatMap { Int(exactly: $0) },
+            expected: issue.expected.flatMap { Int64(exactly: $0) }.map(Money.init),
+            actual: issue.actual.flatMap { Int64(exactly: $0) }.map(Money.init)
+          )
+        },
+        shares: entry.shares?.map {
+          MemberAmount(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
+        }
+      )
+    }
     return QuickEntryReading(
       status: QuickEntryReading.Status(code: dto.status.rawValue),
       text: dto.text,
       draft: draft,
       shares: shares,
       spans: spans,
-      issues: issues
+      issues: issues,
+      reader: QuickEntryReading.ReaderKind(code: dto.reader?.rawValue ?? "rules"),
+      moreDrafts: moreDrafts
     )
   }
 
@@ -73,6 +106,21 @@ enum QuickEntryMapping {
       let amount: Int64?
       let payers: [TransactionMapping.RawMemberAmount]
       let split: TransactionMapping.RawSplitSpec?
+      let category: String?
+      let categoryId: String?
+
+      func toDomain() -> QuickEntryReading.Draft {
+        QuickEntryReading.Draft(
+          description: description,
+          amount: amount.map(Money.init),
+          payers: payers.map {
+            MemberAmount(memberId: Member.ID($0.memberId), amount: Money($0.amount))
+          },
+          split: split?.toDomain(),
+          category: TransactionMapping.mapCategory(category),
+          categoryId: categoryId.map(GroupCategory.ID.init)
+        )
+      }
     }
 
     struct RawSpan: Decodable, Sendable {
@@ -89,6 +137,36 @@ enum QuickEntryMapping {
       let count: Int?
       let expected: Int64?
       let actual: Int64?
+
+      func toDomain() -> QuickEntryReading.Issue {
+        QuickEntryReading.Issue(
+          code: QuickEntryMapping.mapIssueCode(code),
+          start: start,
+          end: end,
+          candidates: candidates.map(Member.ID.init),
+          count: count,
+          expected: expected.map(Money.init),
+          actual: actual.map(Money.init)
+        )
+      }
+    }
+
+    struct RawParsedDraft: Decodable, Sendable {
+      let status: String
+      let draft: RawDraft
+      let issues: [RawIssue]
+      let shares: [TransactionMapping.RawMemberAmount]?
+
+      func toDomain() -> QuickEntryReading.ParsedDraft {
+        QuickEntryReading.ParsedDraft(
+          status: QuickEntryReading.Status(code: status),
+          draft: draft.toDomain(),
+          issues: issues.map { $0.toDomain() },
+          shares: shares?.map {
+            MemberAmount(memberId: Member.ID($0.memberId), amount: Money($0.amount))
+          }
+        )
+      }
     }
 
     let status: String
@@ -97,19 +175,14 @@ enum QuickEntryMapping {
     let shares: [TransactionMapping.RawMemberAmount]?
     let spans: [RawSpan]
     let issues: [RawIssue]
+    let reader: String?
+    let moreDrafts: [RawParsedDraft]?
 
     func toDomain() -> QuickEntryReading {
       QuickEntryReading(
         status: QuickEntryReading.Status(code: status),
         text: text,
-        draft: QuickEntryReading.Draft(
-          description: draft.description,
-          amount: draft.amount.map(Money.init),
-          payers: draft.payers.map {
-            MemberAmount(memberId: Member.ID($0.memberId), amount: Money($0.amount))
-          },
-          split: draft.split?.toDomain()
-        ),
+        draft: draft.toDomain(),
         shares: shares?.map {
           MemberAmount(memberId: Member.ID($0.memberId), amount: Money($0.amount))
         },
@@ -120,17 +193,9 @@ enum QuickEntryMapping {
             kind: QuickEntryMapping.mapSpanKind($0.kind)
           )
         },
-        issues: issues.map {
-          QuickEntryReading.Issue(
-            code: QuickEntryMapping.mapIssueCode($0.code),
-            start: $0.start,
-            end: $0.end,
-            candidates: $0.candidates.map(Member.ID.init),
-            count: $0.count,
-            expected: $0.expected.map(Money.init),
-            actual: $0.actual.map(Money.init)
-          )
-        }
+        issues: issues.map { $0.toDomain() },
+        reader: QuickEntryReading.ReaderKind(code: reader ?? "rules"),
+        moreDrafts: (moreDrafts ?? []).map { $0.toDomain() }
       )
     }
   }
