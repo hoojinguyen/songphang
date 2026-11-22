@@ -5,3 +5,4 @@ CURRENT_PROJECT_VERSION = 1
 API_BASE_URL = https:/$()/example.invalid/api/v1
 WEB_BASE_URL = https:/$()/example.invalid
 APS_ENVIRONMENT = production
+ASSOCIATED_DOMAIN_HOST = example.invalid

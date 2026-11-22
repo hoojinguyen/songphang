@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5C in progress (5C.1–5C.5 complete; continuing to 5C.6). Final acceptance and merge are pending.
+- Status: Stage 5C complete (5C.1–5C.6 verified); ready for Stage 5D. Final acceptance and merge are pending.
 
 ## Tasks
 
@@ -23,7 +23,7 @@
 - [x] 5C.3 — Push device registration and preferences
 - [x] 5C.4 — Push delivery worker
 - [x] 5C.5 — Native push registration and routing
-- [ ] 5C.6 — Associated domains and gate
+- [x] 5C.6 — Associated domains and gate
 - [ ] 5D.1 — Payments and settlement requests
 - [ ] 5D.2 — Search, categories, statistics and CSV
 - [ ] 5D.3 — Funds and budgets
@@ -373,6 +373,35 @@
   - `xcrun simctl push` to `vn.songphang.app`: delivered 4 simulated push payloads (`balances`, 5D `/tx/.../view` fallback, malformed/mismatched `target`, removed `groupId`), all exited 0 (`Notification sent to 'vn.songphang.app'`), outputting `SIMCTL_PUSH_AND_5C5_ALL_PASS` with zero `sim_5c5_device_token_` occurrences in `api-5c5.log`.
 - Security review: checked items 1, 2, 4, 7, 8; no device tokens persisted in `UserDefaults`, Keychain snapshots unaffected, zero device tokens logged in `api-5c5.log`, `LinkRouter.pushDestination` rejects traversal/queries/mismatched IDs before live API `groups.group(id:)` verification confirms current membership (`404` falls back to group list), and no third-party packages added.
 - External verification gap: Real iOS system push permission prompt behavior and real APNs token issuance/delivery require a physical iPhone with Apple Developer provisioning and APNs `.p8` key.
+
+### Task 5C.6 — Associated domains and Stage 5C gate
+
+**Approach**
+- Files created/modified: `apps/web/src/app/.well-known/apple-app-site-association/route.ts`, `apps/ios/Config/{Debug,Release}.xcconfig`, `apps/ios/App/SongPhang.entitlements`, `apps/ios/SongPhangKit/Sources/AppShell/Routing/LinkRouter.swift`, `apps/ios/SongPhangKit/Sources/AppShell/RootView.swift`, `.env.example`, `README.md`.
+- Approach: Serve `/.well-known/apple-app-site-association` as a force-dynamic Next.js route validating `process.env.APPLE_APP_ID` with Zod (`/^[A-Z0-9]{10}\.[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/`): returning `404` (`Cache-Control: no-store`) when absent or invalid, and `200` `application/json` (`Cache-Control: public, max-age=3600`, no redirects) scoped strictly to `/join/*` when valid. Configure `ASSOCIATED_DOMAIN_HOST = example.invalid` in Debug/Release `.xcconfig` and `com.apple.developer.associated-domains` (`applinks:$(ASSOCIATED_DOMAIN_HOST)`) in `SongPhang.entitlements`. Add `PendingInviteState` in `LinkRouter.swift` and wire `.onContinueUserActivity(NSUserActivityTypeBrowsingWeb)` in `RootView.swift` so universal invite URLs follow the same 5B validator and resume after sign-in while clearing on `.signedIn -> .signedOut` (and preserving `.loading -> .signedOut` cold-launch links).
+- Why this is the simplest approach: Reuses Next.js Route Handlers (unaffected by existing `next.config.ts` `/api/*` rewrites or `proxy.ts`), xcconfig entitlement substitution, and the existing `LinkRouter` + pending-route pattern without third-party dependencies.
+- Rejected alternative: Placing a static AASA file in `public/.well-known/`, which cannot dynamically return `404` when `APPLE_APP_ID` is unset or reflect runtime `APPLE_APP_ID` changes cleanly after `next build`.
+
+**Observed results (Stage 5C boundary, pre-commit SHA `f8252fa` on branch `phase-5`):**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .` — 512 files, 0 errors; 8 workspace typechecks; `OpenAPI contract snapshot is up to date.`).
+  - `pnpm build`: PASS (`apps/web` Next.js 16.4.6 production build succeeded; `├ ƒ /.well-known/apple-app-site-association` compiled as dynamic route).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: clean (exit 0).
+  - `apps/ios/Scripts/check-strings.sh`: `0` `DIFFERING` and `0` `EXTRA` keys (`ZERO_DIFF_OR_EXTRA`).
+  - Debug `xcodebuild` (`iPhone 17 Pro`) & Release `xcodebuild` (`generic/platform=iOS Simulator`, `CODE_SIGNING_ALLOWED=NO`): both `** BUILD SUCCEEDED **`.
+  - Embedded entitlements inspected via `plutil -p .../Debug-iphonesimulator/SongPhang.build/SongPhang.app-Simulated.xcent`: verified `aps-environment => "development"`, `com.apple.developer.applesignin => ["Default"]`, `com.apple.developer.associated-domains => ["applinks:example.invalid"]`.
+- Live AASA HTTP checks (`pnpm --filter @songphang/web exec next start -p 3000 -H 127.0.0.1`):
+  - `APPLE_APP_ID` unset -> `HTTP/1.1 404` (`cache-control: no-store`, zero `Location` redirect).
+  - `APPLE_APP_ID=invalid-id` -> `HTTP/1.1 404` (zero `Location` redirect).
+  - `APPLE_APP_ID=ABCDE12345.vn.songphang.app` -> `HTTP/1.1 200`, `content-type: application/json`, zero `Location` redirect, body `{"applinks":{"details":[{"appIDs":["ABCDE12345.vn.songphang.app"],"components":[{"/":"/join/*"}]}]}}` (`AASA_LIVE_HTTP_5C6_PASS`).
+- AppShell Universal Link & Exclusion exercise (`Exercise5C6.app` on Simulator `607AC652-2E92-4BE7-BA18-1B888D79684B`):
+  - `ROUTER_AND_PENDING_5C6_PASS`: verified signed-in `/join/<token>` routes immediately without storing `pendingRoute`; signed-out holds `pendingRoute` and resumes upon sign-in; foreign host, wrong port, Release HTTP downgrade, `/link/telegram`, `/verify-email`, `/reset-password`, `/api/v1/auth/google/callback`, `songphang://auth`, `..` traversal, empty token, and extra segments are rejected without overwriting `pendingRoute`; sign-out clears `pendingRoute`.
+- Disposable DB Replay & Stage 5C Capability/Session/Device/Role Matrix (`songphang_phase5_5c_gate`, isolated `:4001` capability-off, isolated `:4000` capability-on + `apps/worker`):
+  - `CAPABILITY_OFF_5C6_PASS`: verified all capability booleans `false`, `providers.google === false`, and `404` on `/auth/apple`, `/me/devices`, `/me/push-settings`.
+  - `REPLAY_5B_HANDOFF_5C6_PASS`: replayed all 5B handoff core ledger exercises on live API (`Group A` & `Group B` invites + signed-out universal link resume, quick entry `120k` + idempotent double-tap, live SSE `changed`, stale `v1` `409 .conflict`, delete/undo restore, direct settlement to `0 đ`, remote iOS session revoke `401`, removed/deleted group `404`).
+  - `GATE_5C6_PASS`: `routes=38 cases=58 balances=All_groups_balanced` covering Google PKCE (`no challenge -> 400`, `302`, `wrong verifier -> 400`, `exchange -> 200 no-store`, `replay -> 400`), Apple Sign-In (`bad aud -> 401`, `good JWT -> 200`, `DELETE /me -> 204` logging `apple.revoke.simulated`), push device/session boundary (`Cookie -> 403`, `Mixed -> 403`, `Web Bearer -> 403`, foreign delete `404`, 10-device cap -> 11th `422 LIMIT_REACHED`, logout cascade deletes devices, `hideContent: true` persisted in `GET /me`), role boundaries (Owner/Editor/Viewer `403`/Outsider `404` across group endpoints/Unverified `403`), Phase 2–4 regression (payment methods, settlement request confirm, custom categories, stats, UTF-8 BOM CSV bytes `EF BB BF`, fund, budget, comments, disputes), and live worker `pg-boss` emitting sanitized `push.sent.console` (`"Có cập nhật trong nhóm Nhóm Gate 5C"`) with zero leaked tokens/verifiers in `api-5c6.log` or `worker-5c6.log`.
+- Security review: checked items 1, 2, 4, 6, 7, 8; `APPLE_APP_ID` strictly validated before serving AASA JSON (`404` otherwise, no redirects), `.xcconfig`/entitlements contain placeholder `example.invalid` without real keys/secrets, universal link router enforces exact scheme/host/port + strict invite token format and excludes `/link/telegram`, email/reset, and OAuth callbacks, zero tokens/verifiers leaked in logs, no third-party packages added.
+- External verification gap (5C.6): Live `applinks:<domain>` HTTPS domain association on a physical iPhone (`swcutil` / CDN-served AASA over HTTPS) requires the owner's production domain, Team ID, and provisioning profile.
 
 ## Gate Not Passed
 

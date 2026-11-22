@@ -32,7 +32,7 @@ public struct RootView: View {
   @State private var signInModel: SignInModel
   @State private var pushCoordinator: PushCoordinator
   @State private var path: [Route] = []
-  @State private var pendingRoute: Route?
+  @State private var pendingInviteState = PendingInviteState()
   @State private var pendingPushTap: PushTapPayload?
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
@@ -335,6 +335,10 @@ public struct RootView: View {
     .onOpenURL { url in
       _ = handleIncomingURL(url)
     }
+    .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+      guard let url = activity.webpageURL else { return }
+      _ = handleIncomingURL(url)
+    }
     .task {
       for await _ in dependencies.makeSessionInvalidations() {
         resetToSignedOut()
@@ -353,6 +357,7 @@ public struct RootView: View {
         pushCoordinator.clearSessionState()
         pendingPushTap = nil
         if case .signedIn = oldState {
+          pendingInviteState.clear()
           path.removeAll()
           statusNotice = nil
           groupListModel = GroupListModel(repository: dependencies.groups)
@@ -468,6 +473,11 @@ public struct RootView: View {
     }
   }
 
+  private var isSignedIn: Bool {
+    if case .signedIn = sessionModel.state { return true }
+    return false
+  }
+
   private func handleIncomingURL(_ url: URL) -> Bool {
     guard let route = linkRouter.route(for: url) else {
       return false
@@ -477,26 +487,21 @@ public struct RootView: View {
   }
 
   private func routeValidated(_ route: Route) {
-    if case .signedIn = sessionModel.state {
-      pendingRoute = nil
-      path.append(route)
-    } else {
-      pendingRoute = route
+    if let immediate = pendingInviteState.receiveValidated(route, isSignedIn: isSignedIn) {
+      path.append(immediate)
     }
   }
 
   private func consumePendingRouteIfSignedIn() {
-    guard case .signedIn = sessionModel.state, let route = pendingRoute else {
-      return
+    if let route = pendingInviteState.consumeIfSignedIn(isSignedIn) {
+      path.append(route)
     }
-    pendingRoute = nil
-    path.append(route)
   }
 
   private func resetToSignedOut() {
     pushCoordinator.clearSessionState()
     path.removeAll()
-    pendingRoute = nil
+    pendingInviteState.clear()
     pendingPushTap = nil
     statusNotice = nil
     groupListModel = GroupListModel(repository: dependencies.groups)

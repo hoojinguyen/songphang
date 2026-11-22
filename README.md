@@ -142,6 +142,7 @@ When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to A
 | `PUSH_PROVIDER`           | Leave empty to disable, `console` for local logs (refused in prod), or `apns` | _(unset)_                 |
 | `APNS_KEY_ID`             | Optional 10-character APNs `.p8` key ID overriding `APPLE_KEY_ID`             | _(unset)_                 |
 | `APNS_PRIVATE_KEY`        | Optional APNs `.p8` EC private key PEM overriding `APPLE_PRIVATE_KEY`         | _(unset)_                 |
+| `APPLE_APP_ID`            | Web AASA `<TeamID>.<BundleID>` for `/.well-known/apple-app-site-association`  | _(unset)_                 |
 
 ## Development mail and optional Google sign-in
 

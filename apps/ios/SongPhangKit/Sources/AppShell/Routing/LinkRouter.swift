@@ -129,3 +129,39 @@ public struct LinkRouter: Sendable, Hashable {
     }
   }
 }
+
+public struct PendingInviteState: Sendable, Equatable {
+  public private(set) var pendingRoute: Route?
+
+  public init(pendingRoute: Route? = nil) {
+    self.pendingRoute = pendingRoute
+  }
+
+  public mutating func receive(url: URL, router: LinkRouter, isSignedIn: Bool) -> Route? {
+    guard let route = router.route(for: url) else {
+      return nil
+    }
+    return receiveValidated(route, isSignedIn: isSignedIn)
+  }
+
+  public mutating func receiveValidated(_ route: Route, isSignedIn: Bool) -> Route? {
+    if isSignedIn {
+      pendingRoute = nil
+      return route
+    }
+    pendingRoute = route
+    return nil
+  }
+
+  public mutating func consumeIfSignedIn(_ isSignedIn: Bool) -> Route? {
+    guard isSignedIn, let route = pendingRoute else {
+      return nil
+    }
+    pendingRoute = nil
+    return route
+  }
+
+  public mutating func clear() {
+    pendingRoute = nil
+  }
+}
