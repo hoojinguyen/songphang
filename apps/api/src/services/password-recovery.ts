@@ -11,12 +11,15 @@ import {
 	deleteUserSessions,
 	findAccountByEmail,
 	findAccountById,
+	findUserAppleIdentity,
 	listUserGroups,
 	lockAccount,
 	updatePasswordHash,
 	verifyAccountEmail,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
+import { decryptSecret } from "../auth/apple/secret-box.js";
+import { createAppleTokenAdapter } from "../auth/apple/token-adapter.js";
 import { consumeToken, issueToken } from "../auth/one-time-tokens.js";
 import { hashPassword, verifyPassword } from "../auth/passwords.js";
 import { hashSessionToken } from "../auth/sessions.js";
@@ -115,6 +118,61 @@ export async function deleteAccount(
 			"VALIDATION_FAILED",
 			"Email confirmation does not match",
 		);
+	const preOwnedGroups = await countOwnedGroups(deps.db, input.user.id);
+	if (preOwnedGroups > 0) {
+		throw new AppError(
+			422,
+			"OWNER_REQUIRED",
+			"Transfer or delete owned groups first",
+			{ groupCount: preOwnedGroups },
+		);
+	}
+	const appleIdentity = await findUserAppleIdentity(deps.db, input.user.id);
+	if (appleIdentity !== null) {
+		if (!deps.config.appleProvider) {
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Apple provider is disabled; cannot revoke Apple authorization",
+			);
+		}
+		const adapter =
+			deps.appleTokenAdapter ?? createAppleTokenAdapter(deps.config, deps.now);
+		let refreshToken: string | null = null;
+		if (deps.config.appleProvider === "apple") {
+			if (!appleIdentity.providerSecret || !deps.config.dataEncryptionKey) {
+				throw new AppError(
+					503,
+					"APPLE_REVOCATION_FAILED",
+					"Missing Apple revocation material",
+				);
+			}
+			try {
+				refreshToken = decryptSecret(
+					appleIdentity.providerSecret,
+					deps.config.dataEncryptionKey,
+				);
+			} catch {
+				throw new AppError(
+					503,
+					"APPLE_REVOCATION_FAILED",
+					"Could not decrypt Apple revocation material",
+				);
+			}
+		}
+		try {
+			await adapter.revokeRefreshToken({
+				refreshToken,
+				userId: input.user.id,
+			});
+		} catch {
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Could not revoke Apple authorization",
+			);
+		}
+	}
 	const groups = await deps.db.transaction(async (transaction) => {
 		await lockAccount(transaction, input.user.id);
 		const groupCount = await countOwnedGroups(transaction, input.user.id);

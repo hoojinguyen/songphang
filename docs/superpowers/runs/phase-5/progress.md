@@ -297,6 +297,26 @@
   - `SIMULATOR_EXCHANGE_PASS`: Simulator `LiveAuthRepository.exchangeGoogleCode` exchanged a locally issued code for Minh (`minh.5c1@local.songphang.test`), persisted the Bearer token in Keychain, resolved `GET /me`, populated user snapshot, and cleaned up on `signOut()`.
 - Security review: checked items 1, 2, 4, 7, 9; no exchange codes, verifiers, or session tokens are logged (`api-5c1.log` clean), query/body inputs validated by Zod, PKCE verifier retained only for the active authorization flow, atomic single-use DB update prevents concurrent session multiplication.
 
+### Task 5C.2 — Apple sign-in and account deletion revocation
+
+**Approach**
+- Files created/modified: `packages/db/src/{schema-accounts,apple-accounts,index}.ts`, `packages/db/drizzle/0025_productive_tigra.sql`, `packages/contract/src/{auth,error}.ts`, `packages/contract/openapi.json`, `apps/api/src/{config,app,openapi/build}.ts`, `apps/api/src/auth/apple/{secret-box,key-set,verify,token-adapter}.ts`, `apps/api/src/services/{apple-sign-in,password-recovery}.ts`, `apps/api/src/routes/{features,me,mobile-auth}.ts`, `.env.example`, `README.md`, `apps/ios/App/SongPhang.entitlements`, `apps/ios/SongPhang.xcodeproj/project.pbxproj`, `Repositories/Auth/{AppleAuthCoordinator,LiveAuthRepository}.swift`.
+- Approach: Add `provider_secret` and `'apple'` provider constraints on `user_identities`, implement AES-256-GCM secret sealing (`v1:` + base64(12-byte IV + ciphertext + 16-byte tag)), 24-hour cached Apple JWKS loader with warm-cache 60s unknown-`kid` refresh cooldown and `APPLE_PROVIDER=fake` local JWKS support, strict RS256/iss/aud/iat/exp/SHA-256 nonce JWT verification, ES256 client-secret token exchange/revocation adapter, pre-delete account revocation in `DELETE /me`, and native `AuthenticationServices` UI/coordinator flow with `com.apple.developer.applesignin` entitlements (`Apple` above `Google` in `SignInView`).
+- Why this is the simplest approach: Uses Node `node:crypto` and native Apple `AuthenticationServices`/`CryptoKit` without adding any third-party dependency, while enforcing transactional non-orphan guarantees before storing identities.
+- Rejected alternative: Introducing a third-party JOSE/JWT library or storing unencrypted Apple refresh tokens.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: clean (exit 0).
+  - Xcode Debug build (`iPhone 17 Pro`) & Release build (`generic/platform=iOS Simulator`, `CODE_SIGNING_ALLOWED=NO`): both `** BUILD SUCCEEDED **`.
+  - Embedded entitlements inspected via `plutil -p .../Debug-iphonesimulator/SongPhang.build/SongPhang.app-Simulated.xcent`: confirmed `com.apple.developer.applesignin => ["Default"]`.
+- Live disposable exercise (`songphang_phase5_5c2`, isolated API `:4000` with `APPLE_PROVIDER=fake` + `Exercise5C2.app`):
+  - `UNIT_AND_SERVICE_5C2_PASS`: verified `encryptSecret`/`decryptSecret` (`v1:` round-trip, bit-flip tamper refusal, wrong-key refusal), disposable P-256 ES256 `createAppleClientSecret` signature + claims, disabled provider returning `appleSignIn: false` & `404` on `/auth/apple`, production config refusal of `APPLE_PROVIDER=fake`, 60s unknown-`kid` cooldown + key rotation (`k1` -> `k2` -> `k3`), relay-email first sign-in (`200`, `no-store`) and repeat login omitting `name`/`email` preserving `user.id`, verified password account linking (`200`), unverified password account refusal (`403 EMAIL_NOT_VERIFIED`), 8 invalid JWT rejections (`401`: bad `iss`, bad `aud`, bad `nonce`, expired `exp`, future `iat`, mismatched signature, `HS256`, unknown `kid`), production exchange failure returning `503` with zero orphan rows in `user_identities`, and production round-trip encrypting `"rt-prod-secret-value"` (`v1:`) and decrypting it on `DELETE /me` revocation.
+  - `SIMULATOR_APPLE_SIGNIN_PASS`: Simulator `LiveAuthRepository.signInWithAppleCredential` signed in against `APPLE_PROVIDER=fake` (`sim.apple.5c2@privaterelay.appleid.com`), persisted Keychain token, resolved `GET /me`, kept snapshot, and cleaned up on `signOut()`.
+  - `LIVE_DELETE_AND_REVOKE_5C2_PASS` & `REVOCATION_LOG_VERIFIED`: `DELETE /me` blocked while owning a group (`422 OWNER_REQUIRED`), succeeded (`204`) after group deletion, invalidated session (`401`), and emitted sanitized `{"event":"apple.revoke.simulated","userId":"..."}` with zero secrets in `api-5c2.log`.
+- Security review: checked items 1, 2, 4, 7, 9; no identity tokens, nonces, authorization codes, refresh tokens, `DATA_ENCRYPTION_KEY`, private keys, or session tokens appear in logs/errors; production startup rejects fake JWKS/provider; JWT `alg` pinned to `RS256` and constant-time nonce hash comparison enforced.
+
 ## Gate Not Passed
 
 None.

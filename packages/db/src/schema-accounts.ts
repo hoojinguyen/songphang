@@ -16,8 +16,11 @@ export const userIdentities = pgTable(
 		userId: uuid("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
-		provider: text("provider").$type<"google" | "password">().notNull(),
+		provider: text("provider")
+			.$type<"google" | "apple" | "password">()
+			.notNull(),
 		providerSubject: text("provider_subject"),
+		providerSecret: text("provider_secret"),
 		passwordHash: text("password_hash"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
@@ -34,11 +37,11 @@ export const userIdentities = pgTable(
 		),
 		check(
 			"user_identities_provider_check",
-			sql`${table.provider} in ('google','password')`,
+			sql`${table.provider} in ('google','apple','password')`,
 		),
 		check(
 			"user_identities_credentials_check",
-			sql`(${table.provider} = 'password' and ${table.passwordHash} is not null and ${table.providerSubject} is null) or (${table.provider} = 'google' and ${table.providerSubject} is not null and ${table.passwordHash} is null)`,
+			sql`(${table.provider} = 'password' and ${table.passwordHash} is not null and ${table.providerSubject} is null and ${table.providerSecret} is null) or (${table.provider} = 'google' and ${table.providerSubject} is not null and ${table.passwordHash} is null and ${table.providerSecret} is null) or (${table.provider} = 'apple' and ${table.providerSubject} is not null and ${table.passwordHash} is null)`,
 		),
 	],
 );

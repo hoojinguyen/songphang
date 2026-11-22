@@ -176,6 +176,13 @@
 			"when": 1795337213333,
 			"tag": "0024_fixed_strong_guy",
 			"breakpoints": true
+		},
+		{
+			"idx": 25,
+			"version": "7",
+			"when": 1795337510199,
+			"tag": "0025_productive_tigra",
+			"breakpoints": true
 		}
 	]
 }

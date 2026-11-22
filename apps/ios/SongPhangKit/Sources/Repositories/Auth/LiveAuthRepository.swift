@@ -71,13 +71,7 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
       switch output {
       case .ok(let ok):
         let response = try ok.body.json
-        let user = AuthMapping.mapUser(response.user)
-        try await environment.tokenStore.write(response.token)
-        let scope = await environment.snapshots.beginSession(userId: user.id.rawValue)
-        if let encoded = AuthMapping.encodeCachedUser(user) {
-          await environment.snapshots.writeData(encoded, for: .me, scope: scope)
-        }
-        return user
+        return try await persistAuthenticatedUser(token: response.token, userDto: response.user)
       case .unauthorized(let unauthorized):
         let code = try? unauthorized.body.json.error.code.rawValue
         throw await environment.errorMapper.mapStatus(
@@ -126,13 +120,7 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
       switch output {
       case .ok(let ok):
         let response = try ok.body.json
-        let user = AuthMapping.mapUser(response.user)
-        try await environment.tokenStore.write(response.token)
-        let scope = await environment.snapshots.beginSession(userId: user.id.rawValue)
-        if let encoded = AuthMapping.encodeCachedUser(user) {
-          await environment.snapshots.writeData(encoded, for: .me, scope: scope)
-        }
-        return user
+        return try await persistAuthenticatedUser(token: response.token, userDto: response.user)
       case .badRequest(let badRequest):
         let code = try? badRequest.body.json.error.code.rawValue
         throw await environment.errorMapper.mapStatus(
@@ -157,7 +145,89 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
   }
 
   public func signInWithApple() async throws(AppError) -> User {
-    throw .api(code: "NOT_CONNECTED", status: 501)
+    let payload = try await AppleAuthCoordinator.authorize()
+    return try await signInWithAppleCredential(
+      identityToken: payload.identityToken,
+      rawNonce: payload.rawNonce,
+      authorizationCode: payload.authorizationCode,
+      name: payload.name
+    )
+  }
+
+  public func signInWithAppleCredential(
+    identityToken: String,
+    rawNonce: String,
+    authorizationCode: String,
+    name: String?
+  ) async throws(AppError) -> User {
+    do {
+      let body = Components.Schemas.AppleSignInRequest(
+        authorizationCode: authorizationCode,
+        client: .ios,
+        deviceName: environment.configuration.deviceName,
+        identityToken: identityToken,
+        name: name,
+        rawNonce: rawNonce
+      )
+      let output = try await environment.client.post_sol_api_sol_v1_sol_auth_sol_apple(
+        .init(body: .json(body))
+      )
+      switch output {
+      case .ok(let ok):
+        let response = try ok.body.json
+        return try await persistAuthenticatedUser(token: response.token, userDto: response.user)
+      case .unauthorized(let unauthorized):
+        let code = try? unauthorized.body.json.error.code.rawValue
+        throw await environment.errorMapper.mapStatus(
+          statusCode: 401,
+          code: code ?? "INVALID_CREDENTIALS",
+          clearSessionOnUnauthorized: false
+        )
+      case .forbidden(let forbidden):
+        let code = try? forbidden.body.json.error.code.rawValue
+        throw await environment.errorMapper.mapStatus(
+          statusCode: 403,
+          code: code ?? "EMAIL_NOT_VERIFIED",
+          clearSessionOnUnauthorized: false
+        )
+      case .tooManyRequests:
+        throw AppError.rateLimited
+      case .serviceUnavailable(let unavailable):
+        let code = try? unavailable.body.json.error.code.rawValue
+        throw await environment.errorMapper.mapStatus(
+          statusCode: 503,
+          code: code ?? "APPLE_REVOCATION_FAILED",
+          clearSessionOnUnauthorized: false
+        )
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(
+          statusCode: status,
+          payload: payload,
+          clearSessionOnUnauthorized: false
+        )
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  private func persistAuthenticatedUser(
+    token: String,
+    userDto: Components.Schemas.UserDto
+  ) async throws(AppError) -> User {
+    let user = AuthMapping.mapUser(userDto)
+    do {
+      try await environment.tokenStore.write(token)
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+    let scope = await environment.snapshots.beginSession(userId: user.id.rawValue)
+    if let encoded = AuthMapping.encodeCachedUser(user) {
+      await environment.snapshots.writeData(encoded, for: .me, scope: scope)
+    }
+    return user
   }
 
   public func register(email: String, name: String, password: String) async throws(AppError) {
@@ -263,6 +333,13 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
         currentSessionId.withLock { $0 = nil }
         await environment.invalidateSession()
         return
+      case .serviceUnavailable(let unavailable):
+        let code = try? unavailable.body.json.error.code.rawValue
+        throw await environment.errorMapper.mapStatus(
+          statusCode: 503,
+          code: code ?? "APPLE_REVOCATION_FAILED",
+          clearSessionOnUnauthorized: false
+        )
       case .undocumented(let status, let payload):
         throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
       }

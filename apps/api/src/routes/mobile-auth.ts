@@ -1,5 +1,6 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import {
+	AppleSignInRequest,
 	ErrorResponse,
 	MobileExchangeRequest,
 	TokenLoginRequest,
@@ -8,6 +9,7 @@ import {
 import type { AppDeps, AppEnv } from "../app.js";
 import { prepareAccountEmail, socketIp } from "../auth/account-limits.js";
 import { loginAccount } from "../services/accounts.js";
+import { appleSignIn } from "../services/apple-sign-in.js";
 import { exchangeMobileCode } from "../services/mobile-auth.js";
 import { createLoginRateLimiters } from "./account-auth.js";
 
@@ -58,6 +60,40 @@ const exchangeRoute = createRoute({
 		},
 		429: {
 			description: "Too many exchange attempts",
+			content: { "application/json": { schema: ErrorResponse } },
+		},
+	},
+});
+
+const appleSignInRoute = createRoute({
+	method: "post",
+	path: "/api/v1/auth/apple",
+	request: {
+		headers: z.object({ "user-agent": z.string().max(1024).optional() }),
+		body: {
+			required: true,
+			content: { "application/json": { schema: AppleSignInRequest } },
+		},
+	},
+	responses: {
+		200: {
+			description: "Native session issued from Apple identity token",
+			content: { "application/json": { schema: TokenLoginResponse } },
+		},
+		401: {
+			description: "Invalid Apple identity token",
+			content: { "application/json": { schema: ErrorResponse } },
+		},
+		403: {
+			description: "Matching password account has unverified email",
+			content: { "application/json": { schema: ErrorResponse } },
+		},
+		429: {
+			description: "Too many sign-in attempts",
+			content: { "application/json": { schema: ErrorResponse } },
+		},
+		503: {
+			description: "Apple token exchange failed",
 			content: { "application/json": { schema: ErrorResponse } },
 		},
 	},
@@ -122,4 +158,35 @@ export function registerMobileAuthRoutes(
 			);
 		},
 	);
+
+	if (deps.config.appleProvider) {
+		const appleIpLimit = deps.rateLimiter.limit({
+			name: "apple-ip",
+			max: 15,
+			windowMs: 15 * 60 * 1000,
+			key: socketIp,
+		});
+		app.openapi(
+			{
+				...appleSignInRoute,
+				middleware: [appleIpLimit],
+			},
+			async (context) => {
+				const body = context.req.valid("json");
+				const userAgent = context.req.valid("header")["user-agent"];
+				const result = await appleSignIn(deps, {
+					request: body,
+					...(userAgent === undefined ? {} : { userAgent }),
+				});
+				context.header("Cache-Control", "no-store");
+				return context.json(
+					TokenLoginResponse.parse({
+						token: result.session.token,
+						user: result.user,
+					}),
+					200,
+				);
+			},
+		);
+	}
 }

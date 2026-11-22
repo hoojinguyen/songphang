@@ -24,7 +24,7 @@ export function registerFeatureRoute(
 					sentenceAi: Boolean(deps.config.aiProvider),
 					telegram: Boolean(deps.config.telegramProvider),
 					push: false,
-					appleSignIn: false,
+					appleSignIn: Boolean(deps.config.appleProvider),
 					errorAlerts: false,
 					minAppVersion: {
 						ios: deps.config.minAppVersionIos,

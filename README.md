@@ -131,6 +131,13 @@ When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to A
 | ------------------------- | ------------------------------------------------------------------------ | ------------------------- |
 | `MIN_APP_VERSION_IOS`     | Minimum allowed iOS app version (`major.minor.patch`) in `GET /features` | `0.0.0`                   |
 | `MIN_APP_VERSION_ANDROID` | Minimum allowed Android version (`major.minor.patch`) in `GET /features` | `0.0.0`                   |
+| `APPLE_PROVIDER`          | Leave empty to disable, `fake` for local JWKS testing, or `apple`        | _(unset)_                 |
+| `APPLE_BUNDLE_ID`         | iOS bundle identifier validated as Apple ID token `aud`                  | _(unset)_                 |
+| `APPLE_TEAM_ID`           | Apple Developer Team ID (10 characters, required for `apple` mode)       | _(unset)_                 |
+| `APPLE_KEY_ID`            | Sign in with Apple Key ID (10 characters, required for `apple` mode)     | _(unset)_                 |
+| `APPLE_PRIVATE_KEY`       | Sign in with Apple `.p8` EC private key PEM (`apple` mode)               | _(unset)_                 |
+| `DATA_ENCRYPTION_KEY`     | 32-byte base64 key encrypting Apple refresh tokens (`apple` mode)        | _(unset)_                 |
+| `APPLE_FAKE_JWKS_FILE`    | Path to local JWKS fixture file (`fake` mode only; refused in prod)      | _(unset)_                 |
 
 ## Development mail and optional Google sign-in
 

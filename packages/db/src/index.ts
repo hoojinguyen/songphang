@@ -2,6 +2,7 @@ export { sql as drizzleSql } from "drizzle-orm";
 export * from "./accounts.js";
 export * from "./activity.js";
 export * from "./ai-calls.js";
+export * from "./apple-accounts.js";
 export * from "./attachments.js";
 export * from "./balances.js";
 export * from "./budgets.js";

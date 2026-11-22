@@ -18,6 +18,9 @@ const SNAPSHOT_ENV: Record<string, string> = {
 	TELEGRAM_BOT_USERNAME: "SongPhangBot",
 	MIN_APP_VERSION_IOS: "0.0.0",
 	MIN_APP_VERSION_ANDROID: "0.0.0",
+	APPLE_PROVIDER: "fake",
+	APPLE_BUNDLE_ID: "vn.songphang.app",
+	APPLE_FAKE_JWKS_FILE: "./fixtures/apple-fake-jwks.json",
 };
 
 function inertRuntimeDependency<T extends object>(label: string): T {

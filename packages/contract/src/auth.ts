@@ -135,3 +135,15 @@ export const MobileExchangeRequest = z
 	})
 	.openapi("MobileExchangeRequest");
 export type MobileExchangeRequest = z.infer<typeof MobileExchangeRequest>;
+
+export const AppleSignInRequest = z
+	.object({
+		identityToken: z.string().min(1).max(16384),
+		rawNonce: z.string().min(16).max(256),
+		authorizationCode: z.string().min(1).max(4096),
+		name: z.string().trim().min(1).max(50).optional(),
+		client: NativeClient,
+		deviceName: DeviceName,
+	})
+	.openapi("AppleSignInRequest");
+export type AppleSignInRequest = z.infer<typeof AppleSignInRequest>;

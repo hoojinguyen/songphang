@@ -1,0 +1,5 @@
+ALTER TABLE "user_identities" DROP CONSTRAINT "user_identities_provider_check";--> statement-breakpoint
+ALTER TABLE "user_identities" DROP CONSTRAINT "user_identities_credentials_check";--> statement-breakpoint
+ALTER TABLE "user_identities" ADD COLUMN "provider_secret" text;--> statement-breakpoint
+ALTER TABLE "user_identities" ADD CONSTRAINT "user_identities_provider_check" CHECK ("user_identities"."provider" in ('google','apple','password'));--> statement-breakpoint
+ALTER TABLE "user_identities" ADD CONSTRAINT "user_identities_credentials_check" CHECK (("user_identities"."provider" = 'password' and "user_identities"."password_hash" is not null and "user_identities"."provider_subject" is null and "user_identities"."provider_secret" is null) or ("user_identities"."provider" = 'google' and "user_identities"."provider_subject" is not null and "user_identities"."password_hash" is null and "user_identities"."provider_secret" is null) or ("user_identities"."provider" = 'apple' and "user_identities"."provider_subject" is not null and "user_identities"."password_hash" is null));

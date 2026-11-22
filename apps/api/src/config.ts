@@ -86,6 +86,40 @@ const CONFIG_SCHEMA = z
 			EMPTY_TO_UNDEFINED,
 			AppVersion.default("0.0.0"),
 		),
+		APPLE_PROVIDER: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.enum(["apple", "fake"]).optional(),
+		),
+		APPLE_BUNDLE_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(255).optional(),
+		),
+		APPLE_TEAM_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APPLE_KEY_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APPLE_PRIVATE_KEY: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(8192).optional(),
+		),
+		DATA_ENCRYPTION_KEY: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(128).optional(),
+		),
+		APPLE_FAKE_JWKS_FILE: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(1024).optional(),
+		),
 	})
 	.superRefine((env, context) => {
 		if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
@@ -143,6 +177,69 @@ const CONFIG_SCHEMA = z
 					message: "TELEGRAM_PROVIDER=console is forbidden in production",
 				});
 			}
+			if (env.APPLE_PROVIDER === "fake") {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_PROVIDER"],
+					message: "APPLE_PROVIDER=fake is forbidden in production",
+				});
+			}
+			if (env.APPLE_FAKE_JWKS_FILE) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_FAKE_JWKS_FILE"],
+					message: "APPLE_FAKE_JWKS_FILE is forbidden in production",
+				});
+			}
+		}
+		if (env.APPLE_PROVIDER === "apple") {
+			for (const [key, value] of [
+				["APPLE_BUNDLE_ID", env.APPLE_BUNDLE_ID],
+				["APPLE_TEAM_ID", env.APPLE_TEAM_ID],
+				["APPLE_KEY_ID", env.APPLE_KEY_ID],
+				["APPLE_PRIVATE_KEY", env.APPLE_PRIVATE_KEY],
+			] as const) {
+				if (!value) {
+					context.addIssue({
+						code: "custom",
+						path: [key],
+						message: `${key} is required when APPLE_PROVIDER=apple`,
+					});
+				}
+			}
+			const rawDek = env.DATA_ENCRYPTION_KEY;
+			if (!rawDek || Buffer.from(rawDek, "base64").length !== 32) {
+				context.addIssue({
+					code: "custom",
+					path: ["DATA_ENCRYPTION_KEY"],
+					message:
+						"DATA_ENCRYPTION_KEY must be 32-byte base64 when APPLE_PROVIDER=apple",
+				});
+			}
+			if (env.APPLE_FAKE_JWKS_FILE) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_FAKE_JWKS_FILE"],
+					message:
+						"APPLE_FAKE_JWKS_FILE cannot be set when APPLE_PROVIDER=apple",
+				});
+			}
+		}
+		if (env.APPLE_PROVIDER === "fake") {
+			if (!env.APPLE_BUNDLE_ID) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_BUNDLE_ID"],
+					message: "APPLE_BUNDLE_ID is required when APPLE_PROVIDER=fake",
+				});
+			}
+			if (!env.APPLE_FAKE_JWKS_FILE) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_FAKE_JWKS_FILE"],
+					message: "APPLE_FAKE_JWKS_FILE is required when APPLE_PROVIDER=fake",
+				});
+			}
 		}
 		if (env.TELEGRAM_PROVIDER !== undefined) {
 			if (
@@ -196,6 +293,17 @@ const CONFIG_SCHEMA = z
 		telegramBotUsername: env.TELEGRAM_BOT_USERNAME?.replace(/^@+/, ""),
 		minAppVersionIos: env.MIN_APP_VERSION_IOS,
 		minAppVersionAndroid: env.MIN_APP_VERSION_ANDROID,
+		appleProvider: env.APPLE_PROVIDER,
+		appleBundleId: env.APPLE_BUNDLE_ID,
+		appleTeamId: env.APPLE_TEAM_ID,
+		appleKeyId: env.APPLE_KEY_ID,
+		applePrivateKey: env.APPLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+		dataEncryptionKey: env.DATA_ENCRYPTION_KEY
+			? Buffer.from(env.DATA_ENCRYPTION_KEY, "base64")
+			: undefined,
+		appleFakeJwksFile: env.APPLE_FAKE_JWKS_FILE
+			? path.resolve(REPO_ROOT, env.APPLE_FAKE_JWKS_FILE)
+			: undefined,
 	}));
 
 export type Config = z.infer<typeof CONFIG_SCHEMA>;

@@ -24,7 +24,13 @@ export function registerMeRoute(app: OpenAPIHono<AppEnv>, deps: AppDeps): void {
 					content: { "application/json": { schema: DeleteAccountRequest } },
 				},
 			},
-			responses: { 204: { description: "Account deleted" } },
+			responses: {
+				204: { description: "Account deleted" },
+				503: {
+					description: "Apple revocation failed",
+					content: { "application/json": { schema: ErrorResponse } },
+				},
+			},
 		}),
 		async (context) => {
 			await deleteAccount(deps, {
