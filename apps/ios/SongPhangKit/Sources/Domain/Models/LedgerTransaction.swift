@@ -156,6 +156,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var currency: String
   public var occurredAt: String
   public var category: TransactionCategory?
+  public var categoryId: GroupCategory.ID?
   public var payers: [MemberAmount]
   public var split: SplitSpec
   public var shares: [MemberAmount]
@@ -174,6 +175,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     currency: String = "VND",
     occurredAt: String,
     category: TransactionCategory?,
+    categoryId: GroupCategory.ID? = nil,
     payers: [MemberAmount],
     split: SplitSpec,
     shares: [MemberAmount],
@@ -191,6 +193,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.currency = currency
     self.occurredAt = occurredAt
     self.category = category
+    self.categoryId = categoryId
     self.payers = payers
     self.split = split
     self.shares = shares

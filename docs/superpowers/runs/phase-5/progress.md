@@ -425,6 +425,26 @@
 - Security review: checked relevant items 1, 2, 4, 7, 8; no secrets or tokens in logs/diffs, `NSPhotoLibraryAddUsageDescription` uses add-only access, all writes gated by server group role + verified email + `hasCurrentPaymentDetails` / online checks, `PendingSettlementCard` & `PayView` accept only server-supplied `qrPayload`, no third-party dependencies added.
 - External verification gap (5D.1): Physical iPhone banking-app QR scan and live Photos save authorization prompt belong to owner device checks.
 
+### Task 5D.2 — Search, categories, statistics and CSV
+
+**Approach**
+- Files created/modified: `apps/ios/SongPhangKit/Package.swift`, `Domain/Models/{Category,GroupStats,TransactionFilter,LedgerTransaction,TransactionDraft}.swift`, `Domain/Repositories/{CategoriesRepository,StatisticsRepository,TransactionsRepository}.swift`, `Repositories/Snapshots/SnapshotStore.swift`, `Repositories/Categories/{CategoryMapping,LiveCategoriesRepository}.swift`, `Repositories/Statistics/{StatsMapping,LiveStatisticsRepository}.swift`, `Repositories/Transactions/{TransactionMapping,LiveTransactionsRepository}.swift`, `PreviewSupport/Fakes/{FakeWorld,FakeWorld+Ledger,FakeWorld+Stats,FakeRepositories}.swift`, `DesignSystem/Components/{CategoryLabel,CategoryManagementSection,FileShareSheet}.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `StatisticsFeature/Stats/{StatsModel,StatsBarRows,StatsView}.swift`, `GroupsFeature/GroupSettings/{GroupSettingsModel,GroupSettingsView}.swift`, `LedgerFeature/ExpenseForm/{ExpenseFormModel,ExpenseFormSubViews,ExpenseFormView}.swift`, `LedgerFeature/GroupFeed/{FilterSheetView,GroupFeedModel,GroupFeedSubViews,GroupFeedView}.swift`, `AppShell/{AppDependencies,Route,RouteDestination,RootView,Routing/LinkRouter}.swift`.
+- Approach: Add `GroupCategory`, `GroupStats`, `TransactionFilter`, and `categoryId` support in `Domain` and `Repositories` (with OpenAPI filter queries and raw-byte CSV export via `OpenAPIRuntime.HTTPBody`), snapshot-caching only unfiltered page 1 of transactions and group categories. Build `StatisticsFeature` (`StatsView` S16) computing integer permille widths only for visual bar fill ratios, writing UTF-8 BOM CSV bytes to temporary storage off the main actor with `.completeFileProtectionUntilFirstUserAuthentication`, sharing via `UIActivityViewController`, and deleting the temporary file on completion. Share `CategoryManagementSection` in `DesignSystem` across `GroupSettingsView` and `ExpenseFormView` without cross-feature imports, and wire `Tổng chuyến đi`, 300ms debounced search, filter sheet/chips, and `/stats` push routing in `GroupFeed` and `AppShell`.
+- Why this is the simplest approach: Keeps money server-authoritative in integer `Money`, avoids cross-feature dependencies via `DesignSystem` + `StatisticsFeature`, and aligns 1:1 with web filter/stats drill-down query parameters.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .` — 512 files, 0 errors; 8 workspace typechecks; `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: PASS (exit 0, no output).
+  - `apps/ios/Scripts/check-strings.sh`: `0` `DIFFERING`, `0` `EXTRA`, and `0` missing keys across `csv.*`, `stats.*`, `categories.*`, `filter.*`.
+  - Debug `xcodebuild` (`generic/platform=iOS Simulator`) & Release `xcodebuild` (`generic/platform=iOS Simulator`, `CODE_SIGNING_ALLOWED=NO`): both `** BUILD SUCCEEDED **`.
+- Live Simulator & API exercise (`songphang_phase5_5d2`, clean-env API `:4000`, `Exercise5D2.app` on `iPhone 17 Pro`):
+  - `EXERCISE_5D2_API_PASS`: verified viewer `403` on category creation, `409 CATEGORY_EXISTS` duplicate rejection, owner/editor category CRUD & archive (`204`), accent-insensitive Vietnamese search (`q="ca phe"` -> 1 match), custom category & uncategorized filters, `/stats` total `370000`, and `/export.csv` (`435` bytes) starting with UTF-8 BOM `efbbbf`, exact Vietnamese headers, and integer amounts.
+  - `SIM_5D2_CATEGORIES_PASS`, `SIM_5D2_FILTER_PASS` (`search=Cà phê sữa đá`), `SIM_5D2_DRILLDOWN_PASS` (`total=370000` with category/uncategorized drill-down IDs matching exact feed rows), `SIM_5D2_CSV_PASS` (`bytes=435 cleaned=true`), `SIM_EXERCISE_5D2_READY`.
+  - Captured and inspected Simulator screenshot `docs/superpowers/runs/phase-5/screens/5d/stats.png`.
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a203e7-16e7-7ebc-8b91-56354c681012 Đà Lạt 5D2: sum 0; mismatches 0`); disposable DB dropped and ports `3000`/`4000` verified free.
+- Security review: checked relevant items 1, 2, 4, 7, 8; no secrets or tokens in logs/diffs, server validates filter queries and enforces group membership/write roles (`403` viewer on category mutations), temp CSV file uses `.completeFileProtectionUntilFirstUserAuthentication` off MainActor and is removed on share completion, no third-party dependencies added.
+
 ## Gate Not Passed
 
 None.

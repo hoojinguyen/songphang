@@ -8,6 +8,7 @@ public final class ExpenseFormModel {
   public struct ScreenData: Sendable, Equatable {
     public var group: ExpenseGroup
     public var members: [Member]
+    public var categories: [GroupCategory]
     public var editingTransaction: LedgerTransaction?
   }
 
@@ -19,6 +20,7 @@ public final class ExpenseFormModel {
   private let groupsRepository: any GroupsRepository
   private let membersRepository: any MembersRepository
   private let transactionsRepository: any TransactionsRepository
+  public let categoriesRepository: any CategoriesRepository
   private let onSaved: () -> Void
   private let onDeleted: (LedgerTransaction.ID) -> Void
 
@@ -27,6 +29,7 @@ public final class ExpenseFormModel {
   public var amountText: String = ""
   public var descriptionText: String = ""
   public var category: TransactionCategory?
+  public var categoryId: GroupCategory.ID?
   public var payerIds: [Member.ID] = []
   public var payerAmounts: [Member.ID: String] = [:]
   public var transferFrom: Member.ID?
@@ -56,6 +59,7 @@ public final class ExpenseFormModel {
     groupsRepository: any GroupsRepository,
     membersRepository: any MembersRepository,
     transactionsRepository: any TransactionsRepository,
+    categoriesRepository: any CategoriesRepository,
     onSaved: @escaping () -> Void,
     onDeleted: @escaping (LedgerTransaction.ID) -> Void = { _ in }
   ) {
@@ -66,6 +70,7 @@ public final class ExpenseFormModel {
     self.groupsRepository = groupsRepository
     self.membersRepository = membersRepository
     self.transactionsRepository = transactionsRepository
+    self.categoriesRepository = categoriesRepository
     self.onSaved = onSaved
     self.onDeleted = onDeleted
     self.isSplitEditorOpen =
@@ -118,7 +123,8 @@ public final class ExpenseFormModel {
     do {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedMembers = membersRepository.members(groupId: groupId)
-      let (group, members) = try await (fetchedGroup, fetchedMembers)
+      async let fetchedCategories = categoriesRepository.list(groupId: groupId)
+      let (group, members, categories) = try await (fetchedGroup, fetchedMembers, fetchedCategories)
       let editingTx: LedgerTransaction?
       if let editingTransactionId {
         editingTx = try await transactionsRepository.transaction(
@@ -131,6 +137,7 @@ public final class ExpenseFormModel {
       let data = ScreenData(
         group: group,
         members: members,
+        categories: categories,
         editingTransaction: editingTx
       )
       state = .loaded(data)
@@ -155,6 +162,7 @@ public final class ExpenseFormModel {
       amountText = MoneyFormat.amount(tx.amount)
       descriptionText = tx.description
       category = tx.category
+      categoryId = tx.categoryId
       payerIds = tx.payers.map(\.memberId)
       var pMap: [Member.ID: String] = [:]
       for p in tx.payers {
@@ -172,6 +180,7 @@ public final class ExpenseFormModel {
       }
       descriptionText = reading.draft.description ?? ""
       category = nil
+      categoryId = nil
       if !reading.draft.payers.isEmpty {
         payerIds = reading.draft.payers.map(\.memberId)
       } else if let defaultMyId {
@@ -186,11 +195,33 @@ public final class ExpenseFormModel {
       amountText = ""
       descriptionText = ""
       category = nil
+      categoryId = nil
       payerIds = defaultMyId.map { [$0] } ?? []
       transferFrom = defaultMyId
       transferTo = nil
       splitState = SplitEditorState(members: active, initial: nil)
       previewShares = []
+    }
+  }
+
+  public func selectBuiltinCategory(_ next: TransactionCategory?) {
+    category = next
+    if next != nil {
+      categoryId = nil
+    }
+  }
+
+  public func selectCustomCategory(_ id: GroupCategory.ID?) {
+    categoryId = id
+    if id != nil {
+      category = nil
+    }
+  }
+
+  public func updateCategories(_ next: [GroupCategory]) {
+    if case .loaded(var current) = state {
+      current.categories = next
+      state = .loaded(current)
     }
   }
 
@@ -304,7 +335,8 @@ public final class ExpenseFormModel {
         description: desc,
         amount: amt,
         occurredAt: occurredAtIso,
-        category: category,
+        category: categoryId == nil ? category : nil,
+        categoryId: categoryId,
         payers: resolvedPayers,
         split: resolvedSplit
       )

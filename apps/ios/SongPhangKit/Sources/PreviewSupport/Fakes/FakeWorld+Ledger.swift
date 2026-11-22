@@ -16,11 +16,17 @@
 
     public func fetchTransactionsPage(
       groupId: ExpenseGroup.ID,
+      filter: TransactionFilter? = nil,
       cursor: String?
     ) async throws(AppError) -> Page<LedgerTransaction> {
       try await simulateNetwork()
-      guard let list = transactionsByGroup[groupId] else {
+      guard var list = transactionsByGroup[groupId] else {
         throw .api(code: "NOT_FOUND", status: 404)
+      }
+      if let filter, !filter.isEmpty {
+        list = list.filter { tx in
+          Self.matches(transaction: tx, filter: filter)
+        }
       }
       let offset = cursor.flatMap(Int.init) ?? 0
       guard offset < list.count else {
@@ -30,6 +36,46 @@
       let slice = Array(list[offset..<end])
       let nextCursor = end < list.count ? String(end) : nil
       return Page(items: slice, nextCursor: nextCursor)
+    }
+
+    private nonisolated static func matches(
+      transaction tx: LedgerTransaction,
+      filter: TransactionFilter
+    ) -> Bool {
+      if let q = filter.query,
+        !tx.description.localizedCaseInsensitiveContains(q)
+      {
+        return false
+      }
+      if let memberId = filter.memberId,
+        !tx.payers.contains(where: { $0.memberId == memberId })
+          && !tx.shares.contains(where: { $0.memberId == memberId })
+      {
+        return false
+      }
+      if let category = filter.category, tx.category != category {
+        return false
+      }
+      if let categoryId = filter.categoryId, tx.categoryId != categoryId {
+        return false
+      }
+      if filter.uncategorized && (tx.category != nil || tx.categoryId != nil) {
+        return false
+      }
+      if filter.spendingOnly && tx.type == .transfer {
+        return false
+      }
+      if let type = filter.type, tx.type != type {
+        return false
+      }
+      let dateStr = String(tx.occurredAt.prefix(10))
+      if let from = filter.from, dateStr < from {
+        return false
+      }
+      if let to = filter.to, dateStr > to {
+        return false
+      }
+      return true
     }
 
     public func fetchTransaction(

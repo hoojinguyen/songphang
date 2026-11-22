@@ -5,6 +5,7 @@ public enum TransactionDraft: Sendable, Hashable {
     public var amount: Money
     public var occurredAt: String
     public var category: TransactionCategory?
+    public var categoryId: GroupCategory.ID?
     public var payers: [MemberAmount]
     public var split: SplitSpec
 
@@ -14,6 +15,7 @@ public enum TransactionDraft: Sendable, Hashable {
       amount: Money,
       occurredAt: String,
       category: TransactionCategory? = nil,
+      categoryId: GroupCategory.ID? = nil,
       payers: [MemberAmount],
       split: SplitSpec
     ) {
@@ -21,7 +23,8 @@ public enum TransactionDraft: Sendable, Hashable {
       self.description = description
       self.amount = amount
       self.occurredAt = occurredAt
-      self.category = category
+      self.category = categoryId == nil ? category : nil
+      self.categoryId = categoryId
       self.payers = payers
       self.split = split
     }

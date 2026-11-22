@@ -5,6 +5,7 @@ public import Domain
 import GroupsFeature
 import LedgerFeature
 import PaymentsFeature
+import StatisticsFeature
 public import SwiftUI
 
 #if DEBUG
@@ -41,6 +42,7 @@ public struct RouteDestination: View {
   @State private var settingsModel: GroupSettingsModel?
   @State private var feedModel: GroupFeedModel?
   @State private var balancesModel: BalancesModel?
+  @State private var statsModel: StatsModel?
   @State private var activityModel: ActivityModel?
   @State private var quickEntryModel: QuickEntryModel?
   @State private var expenseFormModel: ExpenseFormModel?
@@ -136,10 +138,11 @@ public struct RouteDestination: View {
           groupId: groupId,
           groupsRepository: dependencies.groups,
           invitesRepository: dependencies.invites,
-          membersRepository: dependencies.members
+          membersRepository: dependencies.members,
+          categoriesRepository: dependencies.categories
         )
       )
-    case .groupFeed(let groupId):
+    case .groupFeed(let groupId, let initialFilter):
       #if DEBUG
         let deletedId =
           args.contains("--delete-t4") ? TripScenario.t4Transaction.id : nil
@@ -152,10 +155,26 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
+          categoriesRepository: dependencies.categories,
           transactionsRepository: dependencies.transactions,
           eventsRepository: dependencies.groupEvents,
+          initialFilter: initialFilter,
           initialHasNewItemsPill: args.contains("--new-items-pill"),
           initialDeletedTransactionId: deletedId
+        )
+      )
+    case .groupStats(let groupId):
+      self._statsModel = State(
+        initialValue: StatsModel(
+          groupId: groupId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          categoriesRepository: dependencies.categories,
+          statisticsRepository: dependencies.statistics,
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
         )
       )
     case .groupBalances(let groupId):
@@ -215,6 +234,7 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           transactionsRepository: dependencies.transactions,
+          categoriesRepository: dependencies.categories,
           onSaved: {
             onPop()
             onExpenseSaved()
@@ -231,6 +251,7 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           transactionsRepository: dependencies.transactions,
+          categoriesRepository: dependencies.categories,
           onSaved: onPop,
           onDeleted: { id in
             deletedTransactionId.wrappedValue = id
@@ -352,6 +373,7 @@ public struct RouteDestination: View {
           onBack: onPop,
           onOpenMembers: { id in onNavigate(.groupMembers(groupId: id)) },
           onOpenBalances: { id in onNavigate(.groupBalances(groupId: id)) },
+          onOpenStats: { id in onNavigate(.groupStats(groupId: id)) },
           onOpenQuickEntry: { id, sentence in
             onNavigate(.quickEntry(groupId: id, initialSentence: sentence))
           },
@@ -363,6 +385,16 @@ public struct RouteDestination: View {
           },
           onRemovedFromGroup: {
             onPopToRoot(L10n.tr("common.removed"))
+          }
+        )
+      }
+    case .groupStats(let groupId):
+      if let statsModel {
+        StatsView(
+          model: statsModel,
+          onBack: onPop,
+          onOpenFilteredFeed: { filter in
+            onNavigate(.groupFeed(groupId: groupId, initialFilter: filter))
           }
         )
       }

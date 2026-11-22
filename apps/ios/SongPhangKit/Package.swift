@@ -30,6 +30,7 @@ let package = Package(
     .library(name: "LedgerFeature", targets: ["LedgerFeature"]),
     .library(name: "AccountFeature", targets: ["AccountFeature"]),
     .library(name: "PaymentsFeature", targets: ["PaymentsFeature"]),
+    .library(name: "StatisticsFeature", targets: ["StatisticsFeature"]),
     .library(name: "AppShell", targets: ["AppShell"]),
   ],
   dependencies: [
@@ -104,6 +105,11 @@ let package = Package(
       swiftSettings: mainActorSwiftSettings
     ),
     .target(
+      name: "StatisticsFeature",
+      dependencies: ["Domain", "DesignSystem", "PreviewSupport"],
+      swiftSettings: mainActorSwiftSettings
+    ),
+    .target(
       name: "AppShell",
       dependencies: [
         "Domain",
@@ -115,6 +121,7 @@ let package = Package(
         "LedgerFeature",
         "AccountFeature",
         "PaymentsFeature",
+        "StatisticsFeature",
       ],
       swiftSettings: mainActorSwiftSettings
     ),

@@ -11,6 +11,7 @@ public struct ExpenseFormView: View {
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
   @FocusState private var isDescriptionFocused: Bool
+  @State private var isManagingCategories = false
 
   public init(
     model: ExpenseFormModel,
@@ -114,6 +115,32 @@ public struct ExpenseFormView: View {
     }
     .background(Tokens.bg.ignoresSafeArea())
     .navigationBarBackButtonHidden(true)
+    .sheet(isPresented: $isManagingCategories) {
+      NavigationStack {
+        ScrollView {
+          CategoryManagementSection(
+            groupId: model.groupId,
+            categories: model.state.value?.categories ?? [],
+            categoriesRepository: model.categoriesRepository,
+            onChanged: { updated in
+              model.updateCategories(updated)
+            }
+          )
+          .padding(20)
+        }
+        .background(Tokens.bg.ignoresSafeArea())
+        .navigationTitle(L10n.tr("categories.title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button(L10n.tr("common.back")) {
+              isManagingCategories = false
+            }
+          }
+        }
+      }
+      .presentationDetents([.medium, .large])
+    }
     .task {
       if model.state.value == nil {
         await model.load()
@@ -211,8 +238,12 @@ public struct ExpenseFormView: View {
             )
           } else {
             CategoryPickerView(
+              categories: data.categories,
               selected: model.category,
-              onSelect: { model.category = $0 }
+              selectedCustomId: model.categoryId,
+              onSelect: { model.selectBuiltinCategory($0) },
+              onSelectCustom: { model.selectCustomCategory($0) },
+              onManageCategories: { isManagingCategories = true }
             )
 
             VStack(alignment: .leading, spacing: 8) {
@@ -411,6 +442,7 @@ extension ExpenseFormView {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
         onSaved: {}
       ),
       onCancel: {}
@@ -426,6 +458,7 @@ extension ExpenseFormView {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
         onSaved: {}
       ),
       onCancel: {}

@@ -1,6 +1,186 @@
 {
   "sourceLanguage": "vi",
   "strings": {
+    "csv.date": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Ngày" } } }
+    },
+    "csv.type": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Loại" } } }
+    },
+    "csv.description": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Mô tả" } } }
+    },
+    "csv.category": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Danh mục" } } }
+    },
+    "csv.totalAmount": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tổng tiền" } } }
+    },
+    "csv.payers": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Người trả" } } }
+    },
+    "csv.typeExpense": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chi tiêu" } } }
+    },
+    "csv.typeTransfer": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chuyển khoản" } } }
+    },
+    "csv.typeIncome": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Thu nhập" } } }
+    },
+    "stats.title": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tiền đi đâu" } } }
+    },
+    "stats.all": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tất cả" } } }
+    },
+    "stats.thisMonth": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tháng này" } } }
+    },
+    "stats.lastMonth": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tháng trước" } } }
+    },
+    "stats.custom": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tuỳ chọn" } } }
+    },
+    "stats.byCategory": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo danh mục" } } }
+    },
+    "stats.byMember": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo người" } } }
+    },
+    "stats.byTime": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo thời gian" } } }
+    },
+    "stats.memberRow": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "{name} · đã trả {paid} · phần mình {share}" } } }
+    },
+    "stats.uncategorised": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chưa phân loại" } } }
+    },
+    "stats.empty": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chưa có khoản chi nào trong khoảng này" } } }
+    },
+    "stats.exportCsv": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xuất CSV" } } }
+    },
+    "categories.title": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Danh mục của nhóm" } } }
+    },
+    "categories.add": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Thêm danh mục" } } }
+    },
+    "categories.nameLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tên danh mục" } } }
+    },
+    "categories.archive": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Ẩn danh mục" } } }
+    },
+    "categories.edit": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Sửa {name}" } } }
+    },
+    "categories.saveName": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Lưu tên" } } }
+    },
+    "categories.duplicate": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Nhóm đã có danh mục này." } } }
+    },
+    "categories.limitReached": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Nhóm đã có 30 danh mục." } } }
+    },
+    "categories.archivedTag": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "đã ẩn" } } }
+    },
+    "categories.colorLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Màu {color}" } } }
+    },
+    "categories.colors.mint": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xanh lá" } } }
+    },
+    "categories.colors.sky": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xanh dương" } } }
+    },
+    "categories.colors.coral": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "San hô" } } }
+    },
+    "categories.colors.lilac": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tím" } } }
+    },
+    "filter.button": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Lọc" } } }
+    },
+    "filter.searchPlaceholder": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tìm khoản chi" } } }
+    },
+    "filter.member": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Người" } } }
+    },
+    "filter.category": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Danh mục" } } }
+    },
+    "filter.type": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Loại" } } }
+    },
+    "filter.fromDate": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Từ ngày" } } }
+    },
+    "filter.toDate": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đến ngày" } } }
+    },
+    "filter.apply": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Áp dụng" } } }
+    },
+    "filter.clear": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xoá lọc" } } }
+    },
+    "filter.noResult": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Không có khoản nào khớp" } } }
+    },
     "ios.pay.saveQRSucceeded": {
       "extractionState": "manual",
       "localizations": {

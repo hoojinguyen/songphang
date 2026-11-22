@@ -8,6 +8,7 @@ public final class GroupSettingsModel {
     public var group: ExpenseGroup
     public var invite: Invite
     public var users: [GroupUser]
+    public var categories: [GroupCategory]
   }
 
   public let groupId: ExpenseGroup.ID
@@ -20,27 +21,32 @@ public final class GroupSettingsModel {
   private let groupsRepository: any GroupsRepository
   private let invitesRepository: any InvitesRepository
   private let membersRepository: any MembersRepository
+  public let categoriesRepository: any CategoriesRepository
 
   public init(
     groupId: ExpenseGroup.ID,
     groupsRepository: any GroupsRepository,
     invitesRepository: any InvitesRepository,
-    membersRepository: any MembersRepository
+    membersRepository: any MembersRepository,
+    categoriesRepository: any CategoriesRepository
   ) {
     self.groupId = groupId
     self.groupsRepository = groupsRepository
     self.invitesRepository = invitesRepository
     self.membersRepository = membersRepository
+    self.categoriesRepository = categoriesRepository
   }
 
   public func load() async {
     async let cachedGroup = groupsRepository.lastKnownGroup(id: groupId)
     async let cachedInvite = invitesRepository.lastKnownInvite(groupId: groupId)
     async let cachedUsers = membersRepository.lastKnownGroupUsers(groupId: groupId)
+    async let cachedCategories = categoriesRepository.lastKnownCategories(groupId: groupId)
 
     if let g = await cachedGroup, let inv = await cachedInvite, let u = await cachedUsers {
+      let c = await cachedCategories ?? []
       if nameDraft.isEmpty { nameDraft = g.name }
-      state = .loaded(ScreenData(group: g, invite: inv, users: u))
+      state = .loaded(ScreenData(group: g, invite: inv, users: u, categories: c))
     } else if case .failed = state {
       state = .loading
     }
@@ -49,12 +55,14 @@ public final class GroupSettingsModel {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedInvite = invitesRepository.invite(groupId: groupId)
       async let fetchedUsers = membersRepository.groupUsers(groupId: groupId)
+      async let fetchedCategories = categoriesRepository.list(groupId: groupId)
 
       let g = try await fetchedGroup
       let inv = try await fetchedInvite
       let u = try await fetchedUsers
+      let c = try await fetchedCategories
       nameDraft = g.name
-      state = .loaded(ScreenData(group: g, invite: inv, users: u))
+      state = .loaded(ScreenData(group: g, invite: inv, users: u, categories: c))
       refreshError = nil
     } catch let error as AppError {
       if case .loaded = state {
@@ -169,6 +177,13 @@ public final class GroupSettingsModel {
       onDeleted()
     } catch {
       actionError = error
+    }
+  }
+
+  public func updateCategories(_ next: [GroupCategory]) {
+    if case .loaded(var current) = state {
+      current.categories = next
+      state = .loaded(current)
     }
   }
 }

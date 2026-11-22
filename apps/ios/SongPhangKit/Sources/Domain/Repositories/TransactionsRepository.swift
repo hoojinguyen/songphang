@@ -2,6 +2,7 @@ public protocol TransactionsRepository: Sendable {
   func lastKnownFirstPage(groupId: ExpenseGroup.ID) async -> Page<LedgerTransaction>?
   func page(
     groupId: ExpenseGroup.ID,
+    filter: TransactionFilter?,
     cursor: String?
   ) async throws(AppError) -> Page<LedgerTransaction>
   func transaction(
@@ -28,4 +29,13 @@ public protocol TransactionsRepository: Sendable {
     groupId: ExpenseGroup.ID,
     id: LedgerTransaction.ID
   ) async throws(AppError) -> LedgerTransaction
+}
+
+extension TransactionsRepository {
+  public func page(
+    groupId: ExpenseGroup.ID,
+    cursor: String?
+  ) async throws(AppError) -> Page<LedgerTransaction> {
+    try await page(groupId: groupId, filter: nil, cursor: cursor)
+  }
 }

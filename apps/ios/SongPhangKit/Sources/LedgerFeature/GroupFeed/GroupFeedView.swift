@@ -12,10 +12,12 @@ public struct GroupFeedView: View {
   private let onBack: () -> Void
   private let onOpenMembers: (ExpenseGroup.ID) -> Void
   private let onOpenBalances: (ExpenseGroup.ID) -> Void
+  private let onOpenStats: (ExpenseGroup.ID) -> Void
   private let onOpenQuickEntry: (ExpenseGroup.ID, String?) -> Void
   private let onOpenNewTransactionForm: (ExpenseGroup.ID) -> Void
   private let onOpenEditTransaction: (ExpenseGroup.ID, LedgerTransaction.ID) -> Void
   private let onRemovedFromGroup: () -> Void
+  @State private var isFilterSheetOpen = false
 
   public init(
     model: GroupFeedModel,
@@ -23,6 +25,7 @@ public struct GroupFeedView: View {
     onBack: @escaping () -> Void,
     onOpenMembers: @escaping (ExpenseGroup.ID) -> Void,
     onOpenBalances: @escaping (ExpenseGroup.ID) -> Void,
+    onOpenStats: @escaping (ExpenseGroup.ID) -> Void,
     onOpenQuickEntry: @escaping (ExpenseGroup.ID, String?) -> Void,
     onOpenNewTransactionForm: @escaping (ExpenseGroup.ID) -> Void,
     onOpenEditTransaction: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void,
@@ -33,6 +36,7 @@ public struct GroupFeedView: View {
     self.onBack = onBack
     self.onOpenMembers = onOpenMembers
     self.onOpenBalances = onOpenBalances
+    self.onOpenStats = onOpenStats
     self.onOpenQuickEntry = onOpenQuickEntry
     self.onOpenNewTransactionForm = onOpenNewTransactionForm
     self.onOpenEditTransaction = onOpenEditTransaction
@@ -119,6 +123,22 @@ public struct GroupFeedView: View {
       }
     }
     .navigationBarBackButtonHidden(true)
+    .sheet(isPresented: $isFilterSheetOpen) {
+      if let data = model.state.value {
+        FilterSheetView(
+          members: data.members,
+          categories: data.categories,
+          initialFilter: model.filter,
+          onApply: { next in
+            Task { await model.applyFilter(next) }
+          },
+          onClear: {
+            Task { await model.clearFilter() }
+          },
+          onDismiss: { isFilterSheetOpen = false }
+        )
+      }
+    }
     .task {
       await model.load()
     }
@@ -185,11 +205,23 @@ public struct GroupFeedView: View {
       .padding(.horizontal, 20)
     }
 
-    if data.group.role.canWrite {
+    HStack(spacing: 16) {
+      if data.group.role.canWrite {
+        Button {
+          onOpenMembers(model.groupId)
+        } label: {
+          Text(L10n.tr("feed.inviteLink"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .frame(minHeight: 36)
+        }
+        .buttonStyle(.plain)
+      }
+
       Button {
-        onOpenMembers(model.groupId)
+        onOpenStats(model.groupId)
       } label: {
-        Text(L10n.tr("feed.inviteLink"))
+        Text(L10n.tr("feed.tripTotal"))
           .font(Typography.captionBold)
           .foregroundStyle(Tokens.ink)
           .frame(minHeight: 36)
@@ -197,18 +229,48 @@ public struct GroupFeedView: View {
       .buttonStyle(.plain)
     }
 
-    if data.transactions.isEmpty {
-      FeedEmptyStreamView(
-        members: data.members,
-        canInvite: data.group.role.canWrite,
-        onSelectSample: { sentence in
-          onOpenQuickEntry(model.groupId, sentence)
-        },
-        onOpenMembers: {
-          onOpenMembers(model.groupId)
-        }
-      )
+    if !data.transactions.isEmpty || !model.filter.isEmpty {
+      VStack(spacing: 8) {
+        FeedSearchBarView(
+          text: $model.searchText,
+          hasModalFilters: model.filter.hasModalFilters,
+          onSearchChange: { next in model.updateSearchText(next) },
+          onOpenFilters: { isFilterSheetOpen = true }
+        )
+        FeedFilterChipsView(
+          filter: model.filter,
+          members: data.members,
+          categories: data.categories,
+          onChange: { next in
+            Task { await model.applyFilter(next) }
+          },
+          onClear: {
+            Task { await model.clearFilter() }
+          }
+        )
+      }
       .padding(.horizontal, 20)
+    }
+
+    if data.transactions.isEmpty {
+      if model.filter.isEmpty {
+        FeedEmptyStreamView(
+          members: data.members,
+          canInvite: data.group.role.canWrite,
+          onSelectSample: { sentence in
+            onOpenQuickEntry(model.groupId, sentence)
+          },
+          onOpenMembers: {
+            onOpenMembers(model.groupId)
+          }
+        )
+        .padding(.horizontal, 20)
+      } else {
+        FeedNoMatchView {
+          Task { await model.clearFilter() }
+        }
+        .padding(.horizontal, 20)
+      }
     } else {
       streamList(data: data, canEdit: canEdit)
     }
@@ -282,6 +344,7 @@ public struct GroupFeedView: View {
               FeedTransactionRowView(
                 transaction: tx,
                 members: data.members,
+                categories: data.categories,
                 myMemberId: data.group.myMemberId,
                 canEdit: canEdit
               ) {
@@ -372,12 +435,14 @@ public struct GroupFeedView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         balancesRepository: FakeBalancesRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         eventsRepository: FakeGroupEventsRepository(world: world)
       ),
       onBack: {},
       onOpenMembers: { _ in },
       onOpenBalances: { _ in },
+      onOpenStats: { _ in },
       onOpenQuickEntry: { _, _ in },
       onOpenNewTransactionForm: { _ in },
       onOpenEditTransaction: { _, _ in },
@@ -393,12 +458,14 @@ public struct GroupFeedView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         balancesRepository: FakeBalancesRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         eventsRepository: FakeGroupEventsRepository(world: world)
       ),
       onBack: {},
       onOpenMembers: { _ in },
       onOpenBalances: { _ in },
+      onOpenStats: { _ in },
       onOpenQuickEntry: { _, _ in },
       onOpenNewTransactionForm: { _ in },
       onOpenEditTransaction: { _, _ in },
@@ -417,12 +484,14 @@ public struct GroupFeedView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         balancesRepository: FakeBalancesRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         eventsRepository: FakeGroupEventsRepository(world: world)
       ),
       onBack: {},
       onOpenMembers: { _ in },
       onOpenBalances: { _ in },
+      onOpenStats: { _ in },
       onOpenQuickEntry: { _, _ in },
       onOpenNewTransactionForm: { _ in },
       onOpenEditTransaction: { _, _ in },
@@ -441,12 +510,14 @@ public struct GroupFeedView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         balancesRepository: FakeBalancesRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         eventsRepository: FakeGroupEventsRepository(world: world)
       ),
       onBack: {},
       onOpenMembers: { _ in },
       onOpenBalances: { _ in },
+      onOpenStats: { _ in },
       onOpenQuickEntry: { _, _ in },
       onOpenNewTransactionForm: { _ in },
       onOpenEditTransaction: { _, _ in },

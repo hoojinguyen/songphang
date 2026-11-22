@@ -107,6 +107,62 @@ enum TransactionMapping {
     }
   }
 
+  static func encodeFilterCategory(
+    _ category: TransactionCategory?
+  ) -> Operations.get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions.Input.Query
+    .categoryPayload?
+  {
+    guard let category else { return nil }
+    switch category {
+    case .food: return .food
+    case .transport: return .transport
+    case .lodging: return .lodging
+    case .shopping: return .shopping
+    case .entertainment: return .entertainment
+    case .bills: return .bills
+    case .other: return .other
+    case .unknown: return nil
+    }
+  }
+
+  static func encodeFilterType(
+    _ type: TransactionType?
+  ) -> Operations.get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions.Input.Query
+    ._typePayload?
+  {
+    guard let type else { return nil }
+    switch type {
+    case .expense: return .expense
+    case .income: return .income
+    case .transfer: return .transfer
+    case .unknown: return nil
+    }
+  }
+
+  static func makeQuery(
+    filter: TransactionFilter?,
+    cursor: String?
+  ) -> Operations.get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions.Input.Query
+  {
+    guard let filter, !filter.isEmpty else {
+      return .init(cursor: cursor, limit: 20)
+    }
+    let hasCustomOrUncategorized = filter.categoryId != nil || filter.uncategorized
+    return .init(
+      cursor: cursor,
+      limit: 20,
+      q: filter.query,
+      memberId: filter.memberId?.rawValue,
+      category: hasCustomOrUncategorized ? nil : encodeFilterCategory(filter.category),
+      categoryId: filter.uncategorized ? nil : filter.categoryId?.rawValue,
+      uncategorized: filter.uncategorized ? ._true : nil,
+      spendingOnly: (filter.spendingOnly && filter.type != .transfer) ? ._true : nil,
+      _type: encodeFilterType(filter.type),
+      from: filter.from,
+      to: filter.to
+    )
+  }
+
   static func mapListItem(_ dto: Components.Schemas.TransactionListItemDto) -> LedgerTransaction {
     LedgerTransaction(
       id: LedgerTransaction.ID(dto.id),
@@ -116,6 +172,7 @@ enum TransactionMapping {
       currency: dto.currency.rawValue,
       occurredAt: formatISO(dto.occurredAt),
       category: mapCategory(dto.category?.rawValue),
+      categoryId: dto.categoryId.map(GroupCategory.ID.init),
       payers: dto.payers.map {
         MemberAmount(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
       },
@@ -145,6 +202,7 @@ enum TransactionMapping {
       currency: dto.currency.rawValue,
       occurredAt: formatISO(dto.occurredAt),
       category: mapCategory(dto.category?.rawValue),
+      categoryId: dto.categoryId.map(GroupCategory.ID.init),
       payers: dto.payers.map {
         MemberAmount(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
       },
@@ -170,7 +228,8 @@ enum TransactionMapping {
   ) -> Components.Schemas.SplitTransactionRequest {
     Components.Schemas.SplitTransactionRequest(
       amount: Int(payload.amount.amount),
-      category: encodeCategory(payload.category),
+      category: payload.categoryId == nil ? encodeCategory(payload.category) : nil,
+      categoryId: payload.categoryId?.rawValue,
       description: payload.description,
       occurredAt: parseISO(payload.occurredAt),
       payers: payload.payers.map {
@@ -361,6 +420,7 @@ enum TransactionMapping {
     let currency: String
     let occurredAt: String
     let category: String?
+    let categoryId: String?
     let payers: [RawMemberAmount]
     let split: RawSplitSpec
     let shares: [RawMemberAmount]
@@ -380,6 +440,7 @@ enum TransactionMapping {
         currency: currency,
         occurredAt: occurredAt,
         category: TransactionMapping.mapCategory(category),
+        categoryId: categoryId.map(GroupCategory.ID.init),
         payers: payers.map {
           MemberAmount(memberId: Member.ID($0.memberId), amount: Money($0.amount))
         },
@@ -404,6 +465,7 @@ enum TransactionMapping {
       self.currency = tx.currency
       self.occurredAt = tx.occurredAt
       self.category = tx.category?.code
+      self.categoryId = tx.categoryId?.rawValue
       self.payers = tx.payers.map {
         RawMemberAmount(memberId: $0.memberId.rawValue, amount: $0.amount.amount)
       }

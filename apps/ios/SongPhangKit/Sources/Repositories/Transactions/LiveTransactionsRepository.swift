@@ -17,17 +17,19 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
 
   public func page(
     groupId: ExpenseGroup.ID,
+    filter: TransactionFilter?,
     cursor: String?
   ) async throws(AppError) -> Page<LedgerTransaction> {
     let scope = await environment.snapshots.currentScope()
     let groupGen = await environment.snapshots.groupGeneration(for: groupId.rawValue)
     do {
+      let query = TransactionMapping.makeQuery(filter: filter, cursor: cursor)
       let pageResult: Page<LedgerTransaction> = try await ResponseBodyCapture.withCapture {
         let output = try await environment.client
           .get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions(
             .init(
               path: .init(groupId: groupId.rawValue),
-              query: .init(cursor: cursor, limit: 20)
+              query: query
             )
           )
         switch output {
@@ -44,7 +46,10 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
         try TransactionMapping.decodeResilientPage(from: data)
       }
 
-      if cursor == nil, let scope, let encoded = TransactionMapping.encodePageSnapshot(pageResult) {
+      let isUnfiltered = filter?.isEmpty ?? true
+      if cursor == nil, isUnfiltered, let scope,
+        let encoded = TransactionMapping.encodePageSnapshot(pageResult)
+      {
         await environment.snapshots.writeData(
           encoded,
           for: .feedFirstPage(groupId.rawValue),

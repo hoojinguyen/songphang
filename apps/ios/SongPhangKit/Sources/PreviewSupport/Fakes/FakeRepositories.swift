@@ -1,5 +1,6 @@
 #if DEBUG
   public import Domain
+  public import Foundation
 
   public nonisolated struct FakeAuthRepository: AuthRepository {
     private let world: FakeWorld
@@ -233,9 +234,10 @@
 
     public func page(
       groupId: ExpenseGroup.ID,
+      filter: TransactionFilter?,
       cursor: String?
     ) async throws(AppError) -> Page<LedgerTransaction> {
-      try await world.fetchTransactionsPage(groupId: groupId, cursor: cursor)
+      try await world.fetchTransactionsPage(groupId: groupId, filter: filter, cursor: cursor)
     }
 
     public func transaction(
@@ -353,6 +355,66 @@
 
     public func updateHidePushContent(_ hideContent: Bool) async throws(AppError) -> Bool {
       try await world.updateHidePushContent(hideContent)
+    }
+  }
+
+  public nonisolated struct FakeCategoriesRepository: CategoriesRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func lastKnownCategories(groupId: ExpenseGroup.ID) async -> [GroupCategory]? {
+      await world.lastKnownCategories(groupId: groupId)
+    }
+
+    public func list(groupId: ExpenseGroup.ID) async throws(AppError) -> [GroupCategory] {
+      try await world.listCategories(groupId: groupId)
+    }
+
+    public func create(
+      groupId: ExpenseGroup.ID,
+      name: String,
+      color: MemberColor,
+      key: IdempotencyKey
+    ) async throws(AppError) -> GroupCategory {
+      try await world.createCategory(groupId: groupId, name: name, color: color, key: key)
+    }
+
+    public func update(
+      groupId: ExpenseGroup.ID,
+      categoryId: GroupCategory.ID,
+      name: String?,
+      color: MemberColor?
+    ) async throws(AppError) -> GroupCategory {
+      try await world.updateCategory(
+        groupId: groupId,
+        categoryId: categoryId,
+        name: name,
+        color: color
+      )
+    }
+
+    public func archive(
+      groupId: ExpenseGroup.ID,
+      categoryId: GroupCategory.ID
+    ) async throws(AppError) {
+      try await world.archiveCategory(groupId: groupId, categoryId: categoryId)
+    }
+  }
+
+  public nonisolated struct FakeStatisticsRepository: StatisticsRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func stats(
+      groupId: ExpenseGroup.ID,
+      from: String?,
+      to: String?
+    ) async throws(AppError) -> GroupStats {
+      try await world.fetchStats(groupId: groupId, from: from, to: to)
+    }
+
+    public func exportCSV(groupId: ExpenseGroup.ID) async throws(AppError) -> Data {
+      try await world.exportCSV(groupId: groupId)
     }
   }
 #endif

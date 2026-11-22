@@ -6,8 +6,9 @@ public enum Route: Hashable, Sendable {
   case account
   case createGroup
   case joinGroup(token: String)
-  case groupFeed(groupId: ExpenseGroup.ID)
+  case groupFeed(groupId: ExpenseGroup.ID, initialFilter: TransactionFilter? = nil)
   case groupBalances(groupId: ExpenseGroup.ID)
+  case groupStats(groupId: ExpenseGroup.ID)
   case groupActivity(groupId: ExpenseGroup.ID)
   case groupMembers(groupId: ExpenseGroup.ID)
   case groupSettings(groupId: ExpenseGroup.ID)

@@ -208,6 +208,13 @@ public struct GroupSettingsView: View {
       .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
       inviteLinkCard(invite: data.invite)
+      CategoryManagementSection(
+        groupId: model.groupId,
+        categories: data.categories,
+        categoriesRepository: model.categoriesRepository,
+        isDisabled: isOffline || model.isPerformingAction,
+        onChanged: { model.updateCategories($0) }
+      )
       transferOwnershipCard(users: data.users)
       deleteGroupCard()
 
@@ -363,7 +370,8 @@ public struct GroupSettingsView: View {
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
-        membersRepository: FakeMembersRepository(world: world)
+        membersRepository: FakeMembersRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},
@@ -381,7 +389,8 @@ public struct GroupSettingsView: View {
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
-        membersRepository: FakeMembersRepository(world: world)
+        membersRepository: FakeMembersRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},
@@ -399,7 +408,8 @@ public struct GroupSettingsView: View {
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
-        membersRepository: FakeMembersRepository(world: world)
+        membersRepository: FakeMembersRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},

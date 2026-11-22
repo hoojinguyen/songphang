@@ -59,6 +59,7 @@
     internal var transactionsByGroup: [ExpenseGroup.ID: [LedgerTransaction]] = [:]
     internal var balancesByGroup: [ExpenseGroup.ID: GroupBalances] = [:]
     internal var activityByGroup: [ExpenseGroup.ID: [ActivityItem]] = [:]
+    internal var categoriesByGroup: [ExpenseGroup.ID: [GroupCategory]] = [:]
     internal var settlementRequestsByGroup: [ExpenseGroup.ID: [SettlementRequest]] = [:]
     internal var seenIdempotencyKeys: Set<IdempotencyKey> = []
     internal var deletedTransactionsByGroup:
@@ -77,6 +78,7 @@
       var transactionsByGroup: [ExpenseGroup.ID: [LedgerTransaction]] = [:]
       var balancesByGroup: [ExpenseGroup.ID: GroupBalances] = [:]
       var activityByGroup: [ExpenseGroup.ID: [ActivityItem]] = [:]
+      var categoriesByGroup: [ExpenseGroup.ID: [GroupCategory]] = [:]
     }
 
     public init(
@@ -96,6 +98,7 @@
       self.transactionsByGroup = initial.transactionsByGroup
       self.balancesByGroup = initial.balancesByGroup
       self.activityByGroup = initial.activityByGroup
+      self.categoriesByGroup = initial.categoriesByGroup
     }
 
     public func setBehavior(_ newBehavior: FakeBehavior) {
@@ -126,6 +129,7 @@
       self.transactionsByGroup = next.transactionsByGroup
       self.balancesByGroup = next.balancesByGroup
       self.activityByGroup = next.activityByGroup
+      self.categoriesByGroup = next.categoriesByGroup
       self.seenIdempotencyKeys.removeAll()
       self.deletedTransactionsByGroup.removeAll()
       self.deletedPrevBalancesByGroup.removeAll()
@@ -168,6 +172,7 @@
         state.transactionsByGroup[id] = TripScenario.transactions(forStep: 4)
         state.balancesByGroup[id] = TripScenario.balances(forStep: 4)
         state.activityByGroup[id] = TripScenario.activityItems
+        state.categoriesByGroup[id] = FakeWorld.defaultTripCategories
       case .large:
         state.user = signedIn ? TripScenario.user : nil
         var group = LargeScenario.group

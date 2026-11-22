@@ -57,6 +57,7 @@ public struct LinkRouter: Sendable, Hashable {
   public enum PushDestination: Hashable, Sendable {
     case groupFeed(groupId: ExpenseGroup.ID)
     case groupBalances(groupId: ExpenseGroup.ID)
+    case groupStats(groupId: ExpenseGroup.ID)
   }
 
   public func pushDestination(groupId: String?, target: String?) -> PushDestination? {
@@ -90,8 +91,7 @@ public struct LinkRouter: Sendable, Hashable {
       case "balances":
         return .groupBalances(groupId: id)
       case "stats":
-        // Stats detail destination arrives in Stage 5D; land on the authorized feed during 5C.
-        return .groupFeed(groupId: id)
+        return .groupStats(groupId: id)
       default:
         return nil
       }
