@@ -8,6 +8,7 @@ export const USER_COLUMNS = {
 	email: users.email,
 	name: users.name,
 	avatarUrl: users.avatarUrl,
+	hidePushContent: users.hidePushContent,
 	emailVerified: sql<boolean>`${users.emailVerifiedAt} is not null`,
 	hasPassword: sql<boolean>`exists(select 1 from ${userIdentities} where ${userIdentities.userId} = ${users.id} and ${userIdentities.provider} = 'password')`,
 };

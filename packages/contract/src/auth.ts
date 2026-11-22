@@ -8,6 +8,7 @@ export const UserDto = z
 		avatarUrl: z.string().nullable(),
 		emailVerified: z.boolean(),
 		hasPassword: z.boolean(),
+		hidePushContent: z.boolean().default(false),
 	})
 	.openapi("UserDto");
 export type UserDto = z.infer<typeof UserDto>;

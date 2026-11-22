@@ -183,6 +183,13 @@
 			"when": 1795337510199,
 			"tag": "0025_productive_tigra",
 			"breakpoints": true
+		},
+		{
+			"idx": 26,
+			"version": "7",
+			"when": 1795338593252,
+			"tag": "0026_mighty_enchantress",
+			"breakpoints": true
 		}
 	]
 }

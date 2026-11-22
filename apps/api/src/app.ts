@@ -1,6 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { GroupRole, UserDto } from "@songphang/contract";
-import type { Db } from "@songphang/db";
+import type { Db, DbSessionClient } from "@songphang/db";
 import type { FileStore } from "@songphang/storage";
 import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
@@ -55,6 +55,8 @@ export type AppEnv = {
 		requestId: string;
 		user: UserDto;
 		sessionToken: string;
+		sessionId: string;
+		sessionClient: DbSessionClient;
 		sessionTransport: "bearer" | "cookie" | "mixed";
 		authEmail: string;
 		groupAccess: { groupId: string; role: GroupRole; memberId: string | null };

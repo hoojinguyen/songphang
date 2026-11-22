@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+	boolean,
 	check,
 	pgTable,
 	text,
@@ -17,6 +18,7 @@ export const users = pgTable(
 		emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
 		name: text("name").notNull(),
 		avatarUrl: text("avatar_url"),
+		hidePushContent: boolean("hide_push_content").notNull().default(false),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),

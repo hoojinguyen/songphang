@@ -23,7 +23,7 @@ export function registerFeatureRoute(
 					receiptReading: Boolean(deps.config.aiProvider),
 					sentenceAi: Boolean(deps.config.aiProvider),
 					telegram: Boolean(deps.config.telegramProvider),
-					push: false,
+					push: Boolean(deps.config.pushProvider),
 					appleSignIn: Boolean(deps.config.appleProvider),
 					errorAlerts: false,
 					minAppVersion: {

@@ -120,6 +120,21 @@ const CONFIG_SCHEMA = z
 			EMPTY_TO_UNDEFINED,
 			z.string().min(1).max(1024).optional(),
 		),
+		PUSH_PROVIDER: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.enum(["apns", "console"]).optional(),
+		),
+		APNS_KEY_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APNS_PRIVATE_KEY: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(8192).optional(),
+		),
 	})
 	.superRefine((env, context) => {
 		if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
@@ -189,6 +204,45 @@ const CONFIG_SCHEMA = z
 					code: "custom",
 					path: ["APPLE_FAKE_JWKS_FILE"],
 					message: "APPLE_FAKE_JWKS_FILE is forbidden in production",
+				});
+			}
+			if (env.PUSH_PROVIDER === "console") {
+				context.addIssue({
+					code: "custom",
+					path: ["PUSH_PROVIDER"],
+					message: "PUSH_PROVIDER=console is forbidden in production",
+				});
+			}
+		}
+		if (env.PUSH_PROVIDER === "apns") {
+			if (!env.APPLE_BUNDLE_ID) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_BUNDLE_ID"],
+					message: "APPLE_BUNDLE_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			if (!env.APPLE_TEAM_ID) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_TEAM_ID"],
+					message: "APPLE_TEAM_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			if (!(env.APNS_KEY_ID ?? env.APPLE_KEY_ID)) {
+				context.addIssue({
+					code: "custom",
+					path: ["APNS_KEY_ID"],
+					message:
+						"APNS_KEY_ID or APPLE_KEY_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			if (!(env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY)) {
+				context.addIssue({
+					code: "custom",
+					path: ["APNS_PRIVATE_KEY"],
+					message:
+						"APNS_PRIVATE_KEY or APPLE_PRIVATE_KEY is required when PUSH_PROVIDER=apns",
 				});
 			}
 		}
@@ -304,6 +358,12 @@ const CONFIG_SCHEMA = z
 		appleFakeJwksFile: env.APPLE_FAKE_JWKS_FILE
 			? path.resolve(REPO_ROOT, env.APPLE_FAKE_JWKS_FILE)
 			: undefined,
+		pushProvider: env.PUSH_PROVIDER,
+		apnsKeyId: env.APNS_KEY_ID ?? env.APPLE_KEY_ID,
+		apnsPrivateKey: (env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY)?.replace(
+			/\\n/g,
+			"\n",
+		),
 	}));
 
 export type Config = z.infer<typeof CONFIG_SCHEMA>;

@@ -2925,6 +2925,37 @@
 				],
 				"type": "object"
 			},
+			"PushDeviceToken": {
+				"maxLength": 512,
+				"minLength": 16,
+				"pattern": "^[A-Za-z0-9:_-]+$",
+				"type": "string"
+			},
+			"PushEnvironment": {
+				"enum": [
+					"sandbox",
+					"production"
+				],
+				"type": "string"
+			},
+			"PushPlatform": {
+				"enum": [
+					"ios",
+					"android"
+				],
+				"type": "string"
+			},
+			"PushSettingsResponse": {
+				"properties": {
+					"hideContent": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"hideContent"
+				],
+				"type": "object"
+			},
 			"PutBudgetRequest": {
 				"properties": {
 					"amount": {
@@ -3114,6 +3145,37 @@
 				},
 				"required": [
 					"scan"
+				],
+				"type": "object"
+			},
+			"RegisterDeviceRequest": {
+				"properties": {
+					"environment": {
+						"$ref": "#/components/schemas/PushEnvironment"
+					},
+					"platform": {
+						"$ref": "#/components/schemas/PushPlatform"
+					},
+					"token": {
+						"$ref": "#/components/schemas/PushDeviceToken"
+					}
+				},
+				"required": [
+					"platform",
+					"token",
+					"environment"
+				],
+				"type": "object"
+			},
+			"RegisterDeviceResponse": {
+				"properties": {
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					}
+				},
+				"required": [
+					"id"
 				],
 				"type": "object"
 			},
@@ -4709,6 +4771,17 @@
 				},
 				"type": "object"
 			},
+			"UpdatePushSettingsRequest": {
+				"properties": {
+					"hideContent": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"hideContent"
+				],
+				"type": "object"
+			},
 			"UserDto": {
 				"properties": {
 					"avatarUrl": {
@@ -4724,6 +4797,10 @@
 						"type": "boolean"
 					},
 					"hasPassword": {
+						"type": "boolean"
+					},
+					"hidePushContent": {
+						"default": false,
 						"type": "boolean"
 					},
 					"id": {
@@ -8306,6 +8383,102 @@
 				}
 			}
 		},
+		"/api/v1/me/devices": {
+			"post": {
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/RegisterDeviceRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RegisterDeviceResponse"
+								}
+							}
+						},
+						"description": "Push device registered"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Authentication required"
+					},
+					"403": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Native session required"
+					},
+					"422": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Device registration limit reached"
+					}
+				}
+			}
+		},
+		"/api/v1/me/devices/{id}": {
+			"delete": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "id",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Push device removed"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Authentication required"
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Push device not found"
+					}
+				}
+			}
+		},
 		"/api/v1/me/notification-settings": {
 			"get": {
 				"responses": {
@@ -8415,6 +8588,52 @@
 							}
 						},
 						"description": "Unread notification count"
+					}
+				}
+			}
+		},
+		"/api/v1/me/push-settings": {
+			"put": {
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdatePushSettingsRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PushSettingsResponse"
+								}
+							}
+						},
+						"description": "Push settings updated"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Authentication required"
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "User not found"
 					}
 				}
 			}

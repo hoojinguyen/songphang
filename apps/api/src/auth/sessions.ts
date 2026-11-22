@@ -6,8 +6,8 @@ import {
 	type DbExecutor,
 	type DbSessionClient,
 	deleteSessionByHash,
+	findSessionRecordByHash,
 	findUserById,
-	findUserBySessionHash,
 	insertSession,
 } from "@songphang/db";
 import type { Config } from "../config.js";
@@ -48,17 +48,35 @@ export async function createSession(
 	return { id, token, expiresAt };
 }
 
+export async function findSessionRecord(
+	db: Db,
+	token: string,
+	now: Date,
+): Promise<{
+	user: UserDto;
+	sessionId: string;
+	sessionClient: DbSessionClient;
+} | null> {
+	if (!SESSION_TOKEN_SCHEMA.safeParse(token).success) return null;
+	const record = await findSessionRecordByHash(db, {
+		tokenHash: hashSessionToken(token),
+		now,
+	});
+	if (record === null) return null;
+	return {
+		user: UserDto.parse(record.user),
+		sessionId: record.sessionId,
+		sessionClient: record.sessionClient,
+	};
+}
+
 export async function findSessionUser(
 	db: Db,
 	token: string,
 	now: Date,
 ): Promise<UserDto | null> {
-	if (!SESSION_TOKEN_SCHEMA.safeParse(token).success) return null;
-	const user = await findUserBySessionHash(db, {
-		tokenHash: hashSessionToken(token),
-		now,
-	});
-	return user === null ? null : UserDto.parse(user);
+	const record = await findSessionRecord(db, token, now);
+	return record?.user ?? null;
 }
 
 export async function deleteSession(db: Db, token: string): Promise<void> {

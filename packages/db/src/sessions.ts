@@ -71,12 +71,16 @@ export async function deleteUserSessionById(
 	return deleted ?? null;
 }
 
-export async function findUserBySessionHash(
+export async function findSessionRecordByHash(
 	db: Db,
 	input: { tokenHash: string; now: Date },
 ) {
-	const [user] = await db
-		.select(USER_COLUMNS)
+	const [record] = await db
+		.select({
+			user: USER_COLUMNS,
+			sessionId: sessions.id,
+			sessionClient: sessions.client,
+		})
 		.from(sessions)
 		.innerJoin(users, eq(sessions.userId, users.id))
 		.where(
@@ -86,7 +90,20 @@ export async function findUserBySessionHash(
 			),
 		)
 		.limit(1);
-	return user ?? null;
+	if (!record) return null;
+	return {
+		user: record.user,
+		sessionId: record.sessionId,
+		sessionClient: record.sessionClient as DbSessionClient,
+	};
+}
+
+export async function findUserBySessionHash(
+	db: Db,
+	input: { tokenHash: string; now: Date },
+) {
+	const record = await findSessionRecordByHash(db, input);
+	return record?.user ?? null;
 }
 
 export async function deleteSessionByHash(

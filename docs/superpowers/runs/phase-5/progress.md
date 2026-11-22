@@ -317,6 +317,24 @@
   - `LIVE_DELETE_AND_REVOKE_5C2_PASS` & `REVOCATION_LOG_VERIFIED`: `DELETE /me` blocked while owning a group (`422 OWNER_REQUIRED`), succeeded (`204`) after group deletion, invalidated session (`401`), and emitted sanitized `{"event":"apple.revoke.simulated","userId":"..."}` with zero secrets in `api-5c2.log`.
 - Security review: checked items 1, 2, 4, 7, 9; no identity tokens, nonces, authorization codes, refresh tokens, `DATA_ENCRYPTION_KEY`, private keys, or session tokens appear in logs/errors; production startup rejects fake JWKS/provider; JWT `alg` pinned to `RS256` and constant-time nonce hash comparison enforced.
 
+### Task 5C.3 — Push devices and preferences
+
+**Approach**
+- Files created/modified: `packages/db/src/{schema,users,schema-push,push-devices,sessions,index}.ts`, `packages/db/drizzle.config.ts`, `packages/db/drizzle/0026_mighty_enchantress.sql`, `packages/contract/src/{push,auth,index}.ts`, `packages/contract/openapi.json`, `apps/api/src/{config,app,openapi/build}.ts`, `apps/api/src/auth/{sessions,middleware}.ts`, `apps/api/src/services/devices.ts`, `apps/api/src/routes/{me,features}.ts`, `apps/worker/src/config.ts`, `.env.example`, `README.md`, `docs/superpowers/runs/phase-5/decisions.md`.
+- Approach: Add `users.hide_push_content` (`boolean`, default `false`) and `push_devices` (`user_id` & `session_id` cascade FKs, unique `token`, platform/environment/length checks, user & session indexes), expose `sessionId`/`sessionClient` on `AppEnv`, validate identical `PUSH_PROVIDER` (`apns | console`) rules across API and worker (production refuses `console`, optional `APNS_KEY_ID`/`APNS_PRIVATE_KEY` overrides falling back to `APPLE_KEY_ID`/`APPLE_PRIVATE_KEY` per D8), enforce native Bearer-only registration (`POST /me/devices`, transactional 10-device cap returning `422 LIMIT_REACHED`, `no-store`, `{ id }` only), caller-owned delete (`DELETE /me/devices/{id}`), and `PUT /me/push-settings` reflected additively on `UserDto.hidePushContent`.
+- Why this is the simplest approach: Relies on SQL `ON CONFLICT (token) DO UPDATE` inside a row-locked user transaction (`lockAccount`) plus cascading FKs on `users` and `sessions`, avoiding background cleanup races or extra token state.
+- Rejected alternative: Separate push-token table unlinked from `sessions`, which would require manual pruning on logout/revocation.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .`, 8 workspace typechecks, `OpenAPI contract snapshot is up to date.`).
+  - Xcode Debug build (`iPhone 17 Pro`, regenerated OpenAPI `UserDto.hidePushContent`): `** BUILD SUCCEEDED **`.
+- Live disposable exercise (`songphang_phase5_5c3`, isolated API `:4000` with `PUSH_PROVIDER=console`):
+  - `CONFIG_AND_DISABLED_5C3_PASS`: verified disabled `PUSH_PROVIDER` returns `features.push === false` and `404` on `/me/devices`, `/me/devices/{id}`, `/me/push-settings`; verified `APP_ENV=production` refuses `PUSH_PROVIDER=console` in both API (`loadConfig`) and worker (`loadWorkerConfig`); verified `apns` missing config rejection and `APPLE_KEY_ID`/`APNS_KEY_ID` fallback/override.
+  - `ALL_5C3_PASS`: verified Cookie, mixed Cookie+Bearer, and web-client Bearer `POST /me/devices` all rejected with `403 FORBIDDEN`; verified double registration returns identical `{ id }` with `Cache-Control: no-store` and no echoed token; verified rebind across sessions and across users; verified foreign delete denied (`404`); verified 10-device cap (`11th -> 422 LIMIT_REACHED`, existing-token re-upsert still succeeds); verified `POST /auth/logout`, remote `DELETE /me/sessions/{id}`, and `DELETE /me` all cascade-delete `push_devices`; verified `PUT /me/push-settings` (`true`/`false`) reflected in `GET /me`.
+  - `ZERO_TOKEN_EXPOSURE_IN_LOGS`: confirmed `api-5c3.log` contains zero device tokens.
+- Security review: checked items 1, 2, 4, 7, 9; raw device tokens never echoed or logged, native Bearer + non-web client enforced (`403`), foreign device deletion returns `404`, transactional lock prevents cap race.
+
 ## Gate Not Passed
 
 None.

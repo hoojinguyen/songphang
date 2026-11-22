@@ -4,7 +4,7 @@ import { createMiddleware } from "hono/factory";
 import type { AppDeps, AppEnv } from "../app.js";
 import type { Config } from "../config.js";
 import { AppError } from "../errors.js";
-import { findSessionUser, SESSION_COOKIE } from "./sessions.js";
+import { findSessionRecord, SESSION_COOKIE } from "./sessions.js";
 
 const SESSION_HEADERS = z.object({
 	authorization: z.string().max(256).optional(),
@@ -42,8 +42,8 @@ export function requireUser(deps: AppDeps) {
 		const cookieToken = getCookie(context, SESSION_COOKIE);
 		const hasCookieHeader = headers.data.cookie !== undefined;
 		const token = bearerToken ?? cookieToken ?? "";
-		const user = await findSessionUser(deps.db, token, deps.now());
-		if (user === null)
+		const record = await findSessionRecord(deps.db, token, deps.now());
+		if (record === null)
 			throw new AppError(401, "UNAUTHENTICATED", "Authentication required");
 		const transport =
 			bearerToken !== undefined
@@ -51,8 +51,10 @@ export function requireUser(deps: AppDeps) {
 					? "mixed"
 					: "bearer"
 				: "cookie";
-		context.set("user", user);
+		context.set("user", record.user);
 		context.set("sessionToken", token);
+		context.set("sessionId", record.sessionId);
+		context.set("sessionClient", record.sessionClient);
 		context.set("sessionTransport", transport);
 		await next();
 	});

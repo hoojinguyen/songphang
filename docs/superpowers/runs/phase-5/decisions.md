@@ -100,6 +100,12 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 - **Choice:** Option 2.
 - **Reason:** Clean, standard Zod practice that allows native Swift Codable clients to safely omit nil fields without payload bloat, preserves backward compatibility with web, and aligns client page sizing with the Phase 5B verification requirement.
 
+### D8 — Shared Apple / APNs key override and per-device environment selection (Task 5C.3)
+- **Problem:** Phase 5 design §4.4 reuses `APPLE_BUNDLE_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and `APPLE_PRIVATE_KEY` for APNs push configuration alongside `PUSH_PROVIDER` (`apns | console`), while teams sometimes separate their Sign in with Apple key from their APNs auth key and register simulator/sandbox vs TestFlight/production builds against the same API instance.
+- **Options:** (1) Require `APPLE_KEY_ID`/`APPLE_PRIVATE_KEY` exclusively and pin APNs host globally; (2) Share validated `PUSH_PROVIDER`, `APPLE_BUNDLE_ID`, and `APPLE_TEAM_ID` across both API and worker config schemas, allow optional `APNS_KEY_ID` and `APNS_PRIVATE_KEY` overrides falling back to `APPLE_KEY_ID`/`APPLE_PRIVATE_KEY`, and select the APNs host (`api.sandbox.push.apple.com` vs `api.push.apple.com`) from each registered device's `environment` column.
+- **Choice:** Option 2.
+- **Reason:** Zero duplication when one key is shared, clean key separation when a dedicated APNs `.p8` key exists, identical fail-closed startup checks (and `PUSH_PROVIDER=console` production refusal) in both API and worker, and mixed Debug/TestFlight device support per device row.
+
 ## Standing Documentation Follow-ups
 
 - Codex reconciles the approved design §9 changes (`docs/04-adr.md` ADR-014/029/030/032, `docs/05-api-spec.md`, `docs/05-database-design.md`, `docs/03-srs.md`, root `AGENTS.md`) with the reviewed implementation before merge.

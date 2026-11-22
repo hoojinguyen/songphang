@@ -127,17 +127,20 @@ When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to A
 
 `packages/contract/openapi.json` is the deterministic OpenAPI 3.1 snapshot of the v1 API registry (excluding development-only `/api/v1/dev/*` routes). Version 1 evolves strictly by addition; clients ignore unknown fields and map unknown enum values to safe fallbacks.
 
-| Variable                  | Purpose                                                                  | Default in `.env.example` |
-| ------------------------- | ------------------------------------------------------------------------ | ------------------------- |
-| `MIN_APP_VERSION_IOS`     | Minimum allowed iOS app version (`major.minor.patch`) in `GET /features` | `0.0.0`                   |
-| `MIN_APP_VERSION_ANDROID` | Minimum allowed Android version (`major.minor.patch`) in `GET /features` | `0.0.0`                   |
-| `APPLE_PROVIDER`          | Leave empty to disable, `fake` for local JWKS testing, or `apple`        | _(unset)_                 |
-| `APPLE_BUNDLE_ID`         | iOS bundle identifier validated as Apple ID token `aud`                  | _(unset)_                 |
-| `APPLE_TEAM_ID`           | Apple Developer Team ID (10 characters, required for `apple` mode)       | _(unset)_                 |
-| `APPLE_KEY_ID`            | Sign in with Apple Key ID (10 characters, required for `apple` mode)     | _(unset)_                 |
-| `APPLE_PRIVATE_KEY`       | Sign in with Apple `.p8` EC private key PEM (`apple` mode)               | _(unset)_                 |
-| `DATA_ENCRYPTION_KEY`     | 32-byte base64 key encrypting Apple refresh tokens (`apple` mode)        | _(unset)_                 |
-| `APPLE_FAKE_JWKS_FILE`    | Path to local JWKS fixture file (`fake` mode only; refused in prod)      | _(unset)_                 |
+| Variable                  | Purpose                                                                       | Default in `.env.example` |
+| ------------------------- | ----------------------------------------------------------------------------- | ------------------------- |
+| `MIN_APP_VERSION_IOS`     | Minimum allowed iOS app version (`major.minor.patch`) in `GET /features`      | `0.0.0`                   |
+| `MIN_APP_VERSION_ANDROID` | Minimum allowed Android version (`major.minor.patch`) in `GET /features`      | `0.0.0`                   |
+| `APPLE_PROVIDER`          | Leave empty to disable, `fake` for local JWKS testing, or `apple`             | _(unset)_                 |
+| `APPLE_BUNDLE_ID`         | iOS bundle identifier validated as Apple ID token `aud`                       | _(unset)_                 |
+| `APPLE_TEAM_ID`           | Apple Developer Team ID (10 characters, required for `apple` mode)            | _(unset)_                 |
+| `APPLE_KEY_ID`            | Sign in with Apple Key ID (10 characters, required for `apple` mode)          | _(unset)_                 |
+| `APPLE_PRIVATE_KEY`       | Sign in with Apple `.p8` EC private key PEM (`apple` mode)                    | _(unset)_                 |
+| `DATA_ENCRYPTION_KEY`     | 32-byte base64 key encrypting Apple refresh tokens (`apple` mode)             | _(unset)_                 |
+| `APPLE_FAKE_JWKS_FILE`    | Path to local JWKS fixture file (`fake` mode only; refused in prod)           | _(unset)_                 |
+| `PUSH_PROVIDER`           | Leave empty to disable, `console` for local logs (refused in prod), or `apns` | _(unset)_                 |
+| `APNS_KEY_ID`             | Optional 10-character APNs `.p8` key ID overriding `APPLE_KEY_ID`             | _(unset)_                 |
+| `APNS_PRIVATE_KEY`        | Optional APNs `.p8` EC private key PEM overriding `APPLE_PRIVATE_KEY`         | _(unset)_                 |
 
 ## Development mail and optional Google sign-in
 

@@ -28,6 +28,7 @@ export * from "./members.js";
 export { runMigrations } from "./migrate.js";
 export * from "./notifications.js";
 export * from "./payment-methods.js";
+export * from "./push-devices.js";
 export * from "./receipt-scans.js";
 export * from "./reminders.js";
 export { sessions, users } from "./schema.js";
@@ -54,6 +55,7 @@ export {
 	notificationUnsubscribeTokens,
 } from "./schema-notifications.js";
 export * from "./schema-payments.js";
+export { pushDevices } from "./schema-push.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";
 export { debtReminders } from "./schema-reminders.js";
 export { receiptScans } from "./schema-scans.js";
@@ -69,6 +71,7 @@ export {
 	deleteSessionByHash,
 	deleteUserSessionById,
 	deleteUserSessions,
+	findSessionRecordByHash,
 	findUserBySessionHash,
 	insertSession,
 	listUserSessions,

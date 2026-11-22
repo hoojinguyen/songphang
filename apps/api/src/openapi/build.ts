@@ -21,6 +21,7 @@ const SNAPSHOT_ENV: Record<string, string> = {
 	APPLE_PROVIDER: "fake",
 	APPLE_BUNDLE_ID: "vn.songphang.app",
 	APPLE_FAKE_JWKS_FILE: "./fixtures/apple-fake-jwks.json",
+	PUSH_PROVIDER: "console",
 };
 
 function inertRuntimeDependency<T extends object>(label: string): T {
