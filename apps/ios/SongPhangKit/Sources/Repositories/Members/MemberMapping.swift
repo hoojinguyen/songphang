@@ -7,6 +7,8 @@ enum MemberMapping {
     Member(
       id: Member.ID(dto.id),
       name: dto.name,
+      kind: MemberKind(code: dto.kind?.rawValue ?? "person"),
+      fundHolderMemberId: dto.fundHolderMemberId.map(Member.ID.init),
       active: dto.active,
       defaultWeight: dto.defaultWeight,
       position: dto.position,
@@ -53,6 +55,8 @@ enum MemberMapping {
   struct RawMember: Codable, Sendable {
     let id: String
     let name: String
+    let kind: String?
+    let fundHolderMemberId: String?
     let active: Bool
     let defaultWeight: String
     let position: Int
@@ -66,6 +70,8 @@ enum MemberMapping {
       Member(
         id: Member.ID(id),
         name: name,
+        kind: MemberKind(code: kind ?? "person"),
+        fundHolderMemberId: fundHolderMemberId.map(Member.ID.init),
         active: active,
         defaultWeight: defaultWeight,
         position: position,
@@ -122,6 +128,8 @@ enum MemberMapping {
         RawMember(
           id: m.id.rawValue,
           name: m.name,
+          kind: m.kind.code,
+          fundHolderMemberId: m.fundHolderMemberId?.rawValue,
           active: m.active,
           defaultWeight: m.defaultWeight,
           position: m.position,

@@ -9,16 +9,20 @@ public final class ExpenseFormModel {
     public var group: ExpenseGroup
     public var members: [Member]
     public var categories: [GroupCategory]
+    public var balances: GroupBalances
     public var editingTransaction: LedgerTransaction?
   }
 
   public let groupId: ExpenseGroup.ID
   public let editingTransactionId: LedgerTransaction.ID?
   public let initialReading: QuickEntryReading?
+  public let initialTransferFrom: Member.ID?
+  public let initialTransferTo: Member.ID?
   public let idempotencyKey: IdempotencyKey
 
   private let groupsRepository: any GroupsRepository
   private let membersRepository: any MembersRepository
+  private let balancesRepository: any BalancesRepository
   private let transactionsRepository: any TransactionsRepository
   public let categoriesRepository: any CategoriesRepository
   private let onSaved: () -> Void
@@ -40,6 +44,7 @@ public final class ExpenseFormModel {
   public var isUnparsedBannerDismissed = false
 
   public private(set) var previewShares: [MemberAmount] = []
+  public private(set) var previewWarnings: [TransactionWarning] = []
   public private(set) var isPreviewPending = false
   public private(set) var previewError: AppError?
 
@@ -55,9 +60,12 @@ public final class ExpenseFormModel {
     groupId: ExpenseGroup.ID,
     editingTransactionId: LedgerTransaction.ID? = nil,
     initialReading: QuickEntryReading? = nil,
+    initialTransferFrom: Member.ID? = nil,
+    initialTransferTo: Member.ID? = nil,
     initialSplitEditorOpen: Bool = false,
     groupsRepository: any GroupsRepository,
     membersRepository: any MembersRepository,
+    balancesRepository: any BalancesRepository,
     transactionsRepository: any TransactionsRepository,
     categoriesRepository: any CategoriesRepository,
     onSaved: @escaping () -> Void,
@@ -66,9 +74,12 @@ public final class ExpenseFormModel {
     self.groupId = groupId
     self.editingTransactionId = editingTransactionId
     self.initialReading = initialReading
+    self.initialTransferFrom = initialTransferFrom
+    self.initialTransferTo = initialTransferTo
     self.idempotencyKey = IdempotencyKey()
     self.groupsRepository = groupsRepository
     self.membersRepository = membersRepository
+    self.balancesRepository = balancesRepository
     self.transactionsRepository = transactionsRepository
     self.categoriesRepository = categoriesRepository
     self.onSaved = onSaved
@@ -89,6 +100,22 @@ public final class ExpenseFormModel {
       return data.members
     }
     return data.members.filter(\.active)
+  }
+
+  public var sharerMembers: [Member] {
+    activeMembers.filter { $0.kind == .person }
+  }
+
+  public var payerMembers: [Member] {
+    let people = sharerMembers
+    if let fund = activeMembers.first(where: { $0.kind == .fund }) {
+      return people + [fund]
+    }
+    return people
+  }
+
+  public var transferMembers: [Member] {
+    activeMembers
   }
 
   public var headerTitle: String {
@@ -124,7 +151,13 @@ public final class ExpenseFormModel {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedMembers = membersRepository.members(groupId: groupId)
       async let fetchedCategories = categoriesRepository.list(groupId: groupId)
-      let (group, members, categories) = try await (fetchedGroup, fetchedMembers, fetchedCategories)
+      async let fetchedBalances = balancesRepository.balances(groupId: groupId)
+      let (group, members, categories, balances) = try await (
+        fetchedGroup,
+        fetchedMembers,
+        fetchedCategories,
+        fetchedBalances
+      )
       let editingTx: LedgerTransaction?
       if let editingTransactionId {
         editingTx = try await transactionsRepository.transaction(
@@ -138,6 +171,7 @@ public final class ExpenseFormModel {
         group: group,
         members: members,
         categories: categories,
+        balances: balances,
         editingTransaction: editingTx
       )
       state = .loaded(data)
@@ -151,11 +185,11 @@ public final class ExpenseFormModel {
   }
 
   private func configureFields(data: ScreenData) {
-    let active = data.editingTransaction != nil ? data.members : data.members.filter(\.active)
+    let people = sharerMembers
     let defaultMyId =
-      active.contains(where: { $0.id == data.group.myMemberId })
+      people.contains(where: { $0.id == data.group.myMemberId })
       ? data.group.myMemberId
-      : active.first?.id
+      : people.first?.id
 
     if let tx = data.editingTransaction {
       transactionType = tx.type
@@ -171,7 +205,7 @@ public final class ExpenseFormModel {
       payerAmounts = pMap
       transferFrom = tx.payers.first?.memberId ?? defaultMyId
       transferTo = tx.shares.first?.memberId
-      splitState = SplitEditorState(members: active, initial: tx.split)
+      splitState = SplitEditorState(members: people, initial: tx.split)
       previewShares = tx.shares
     } else if let reading = initialReading {
       transactionType = .expense
@@ -188,18 +222,19 @@ public final class ExpenseFormModel {
       }
       transferFrom = defaultMyId
       transferTo = nil
-      splitState = SplitEditorState(members: active, initial: reading.draft.split)
+      splitState = SplitEditorState(members: people, initial: reading.draft.split)
       previewShares = reading.shares ?? []
     } else {
-      transactionType = .expense
+      let isFundTransferPrefill = (initialTransferFrom != nil || initialTransferTo != nil)
+      transactionType = isFundTransferPrefill ? .transfer : .expense
       amountText = ""
       descriptionText = ""
       category = nil
       categoryId = nil
       payerIds = defaultMyId.map { [$0] } ?? []
-      transferFrom = defaultMyId
-      transferTo = nil
-      splitState = SplitEditorState(members: active, initial: nil)
+      transferFrom = initialTransferFrom ?? defaultMyId
+      transferTo = initialTransferTo
+      splitState = SplitEditorState(members: people, initial: nil)
       previewShares = []
     }
   }
@@ -270,7 +305,7 @@ public final class ExpenseFormModel {
   }
 
   public func toggleSharer(_ id: Member.ID) {
-    splitState.toggle(id, members: activeMembers)
+    splitState.toggle(id, members: sharerMembers)
     schedulePreview()
   }
 
@@ -374,6 +409,7 @@ public final class ExpenseFormModel {
   public func refreshPreviewNow() async {
     guard transactionType != .transfer, let draft = buildDraft() else {
       isPreviewPending = false
+      previewWarnings = []
       return
     }
     isPreviewPending = true
@@ -382,9 +418,26 @@ public final class ExpenseFormModel {
     do throws(AppError) {
       let preview = try await transactionsRepository.preview(groupId: groupId, draft: draft)
       previewShares = preview.shares
+      previewWarnings = preview.warnings
     } catch {
       previewError = error
     }
+  }
+
+  public func fundOverdrawnAmount() -> Money? {
+    guard previewWarnings.contains(.fundOverdrawn),
+      let fund = state.value?.balances.fund,
+      payerIds.contains(fund.memberId)
+    else { return nil }
+    let fundPaid: Money
+    if payerIds.count == 1 {
+      fundPaid = amount
+    } else {
+      fundPaid = MoneyFormat.parseInput(payerAmounts[fund.memberId] ?? "") ?? .zero
+    }
+    let positiveCash = fund.cash.isPositive ? fund.cash : .zero
+    let overdraft = fundPaid - positiveCash
+    return overdraft.isPositive ? overdraft : nil
   }
 
   public func submit() async {

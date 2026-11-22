@@ -11,9 +11,15 @@ public enum Route: Hashable, Sendable {
   case groupStats(groupId: ExpenseGroup.ID)
   case groupActivity(groupId: ExpenseGroup.ID)
   case groupMembers(groupId: ExpenseGroup.ID)
+  case groupFund(groupId: ExpenseGroup.ID)
   case groupSettings(groupId: ExpenseGroup.ID)
   case quickEntry(groupId: ExpenseGroup.ID, initialSentence: String?)
-  case newTransactionForm(groupId: ExpenseGroup.ID, initialReading: QuickEntryReading? = nil)
+  case newTransactionForm(
+    groupId: ExpenseGroup.ID,
+    initialReading: QuickEntryReading? = nil,
+    initialTransferFrom: Member.ID? = nil,
+    initialTransferTo: Member.ID? = nil
+  )
   case editTransaction(groupId: ExpenseGroup.ID, transactionId: LedgerTransaction.ID)
   case settle(
     groupId: ExpenseGroup.ID,

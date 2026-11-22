@@ -9,6 +9,7 @@ public final class GroupFeedModel {
     public var members: [Member]
     public var balances: GroupBalances
     public var categories: [GroupCategory]
+    public var budget: GroupBudget?
     public var transactions: [LedgerTransaction]
     public var nextCursor: String?
   }
@@ -30,6 +31,7 @@ public final class GroupFeedModel {
   private let membersRepository: any MembersRepository
   private let balancesRepository: any BalancesRepository
   private let categoriesRepository: any CategoriesRepository
+  private let budgetRepository: any BudgetRepository
   private let transactionsRepository: any TransactionsRepository
   private let eventsRepository: any GroupEventsRepository
   private var searchTask: Task<Void, Never>?
@@ -40,6 +42,7 @@ public final class GroupFeedModel {
     membersRepository: any MembersRepository,
     balancesRepository: any BalancesRepository,
     categoriesRepository: any CategoriesRepository,
+    budgetRepository: any BudgetRepository,
     transactionsRepository: any TransactionsRepository,
     eventsRepository: any GroupEventsRepository,
     initialFilter: TransactionFilter? = nil,
@@ -51,6 +54,7 @@ public final class GroupFeedModel {
     self.membersRepository = membersRepository
     self.balancesRepository = balancesRepository
     self.categoriesRepository = categoriesRepository
+    self.budgetRepository = budgetRepository
     self.transactionsRepository = transactionsRepository
     self.eventsRepository = eventsRepository
     let resolvedFilter = initialFilter ?? TransactionFilter()
@@ -83,6 +87,7 @@ public final class GroupFeedModel {
     async let cachedMembers = membersRepository.lastKnownMembers(groupId: groupId)
     async let cachedBalances = balancesRepository.lastKnownBalances(groupId: groupId)
     async let cachedCategories = categoriesRepository.lastKnownCategories(groupId: groupId)
+    async let cachedBudget = budgetRepository.lastKnownBudget(groupId: groupId)
     async let cachedPage = transactionsRepository.lastKnownFirstPage(groupId: groupId)
 
     if filter.isEmpty,
@@ -92,12 +97,14 @@ public final class GroupFeedModel {
       let p = await cachedPage
     {
       let c = await cachedCategories ?? []
+      let bud = await cachedBudget
       state = .loaded(
         ScreenData(
           group: g,
           members: m,
           balances: b,
           categories: c,
+          budget: bud,
           transactions: p.items,
           nextCursor: p.nextCursor
         )
@@ -111,6 +118,7 @@ public final class GroupFeedModel {
       async let fetchedMembers = membersRepository.members(groupId: groupId)
       async let fetchedBalances = balancesRepository.balances(groupId: groupId)
       async let fetchedCategories = categoriesRepository.list(groupId: groupId)
+      async let fetchedBudget = budgetRepository.budget(groupId: groupId)
       async let fetchedPage = transactionsRepository.page(
         groupId: groupId,
         filter: filter,
@@ -121,6 +129,7 @@ public final class GroupFeedModel {
       let m = try await fetchedMembers
       let b = try await fetchedBalances
       let c = try await fetchedCategories
+      let bud = try await fetchedBudget
       let p = try await fetchedPage
       state = .loaded(
         ScreenData(
@@ -128,6 +137,7 @@ public final class GroupFeedModel {
           members: m,
           balances: b,
           categories: c,
+          budget: bud,
           transactions: p.items,
           nextCursor: p.nextCursor
         )
@@ -251,6 +261,9 @@ public final class GroupFeedModel {
       }
       if resources.contains("categories") {
         current.categories = try await categoriesRepository.list(groupId: groupId)
+      }
+      if resources.contains("budget") || resources.contains("transactions") {
+        current.budget = try await budgetRepository.budget(groupId: groupId)
       }
       if resources.contains("transactions") {
         let page = try await transactionsRepository.page(

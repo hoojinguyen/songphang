@@ -549,7 +549,7 @@ public struct RootView: View {
 
     let groupId: ExpenseGroup.ID
     switch destination {
-    case .groupFeed(let id), .groupBalances(let id), .groupStats(let id):
+    case .groupFeed(let id), .groupBalances(let id), .groupStats(let id), .groupFund(let id):
       groupId = id
     }
 
@@ -563,6 +563,8 @@ public struct RootView: View {
         path = [.groupFeed(groupId: id), .groupBalances(groupId: id)]
       case .groupStats(let id):
         path = [.groupFeed(groupId: id), .groupStats(groupId: id)]
+      case .groupFund(let id):
+        path = [.groupFeed(groupId: id), .groupFund(groupId: id)]
       }
     } catch {
       if error == .unauthorized {

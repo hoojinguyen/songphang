@@ -61,6 +61,7 @@ public struct QuickEntryReading: Sendable, Hashable {
     case descriptionMissing
     case memberAmbiguous
     case memberUnknown
+    case fundCannotShare
     case countMismatch
     case sumMismatch
     case textNotUnderstood

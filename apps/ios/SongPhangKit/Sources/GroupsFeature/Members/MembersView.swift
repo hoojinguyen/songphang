@@ -15,6 +15,8 @@ public struct MembersView: View {
   private let onOpenActivity: (ExpenseGroup.ID) -> Void
   private let onOpenSettings: (ExpenseGroup.ID) -> Void
   private let onEditPaymentDetails: ((Member) -> Void)?
+  private let onOpenFund: ((ExpenseGroup.ID) -> Void)?
+  private let onCreateFund: (() -> Void)?
   private let onLeftGroup: () -> Void
 
   @State private var editingNames: [Member.ID: String] = [:]
@@ -30,6 +32,8 @@ public struct MembersView: View {
     onOpenActivity: @escaping (ExpenseGroup.ID) -> Void,
     onOpenSettings: @escaping (ExpenseGroup.ID) -> Void,
     onEditPaymentDetails: ((Member) -> Void)? = nil,
+    onOpenFund: ((ExpenseGroup.ID) -> Void)? = nil,
+    onCreateFund: (() -> Void)? = nil,
     onLeftGroup: @escaping () -> Void
   ) {
     self.model = model
@@ -38,6 +42,8 @@ public struct MembersView: View {
     self.onOpenActivity = onOpenActivity
     self.onOpenSettings = onOpenSettings
     self.onEditPaymentDetails = onEditPaymentDetails
+    self.onOpenFund = onOpenFund
+    self.onCreateFund = onCreateFund
     self.onLeftGroup = onLeftGroup
   }
 
@@ -120,14 +126,21 @@ public struct MembersView: View {
   private func loadedContent(_ data: MembersModel.ScreenData) -> some View {
     let isOffline = model.refreshError == .offline
     let canWrite = isEmailVerified && data.group.role.canWrite && !isOffline
+    let people = data.members.filter { $0.kind == .person }
 
     SPScreenHeader(
       title: data.group.name,
-      subtitle: L10n.t("members.memberCount", ["count": String(data.members.count)]),
+      subtitle: L10n.t("members.memberCount", ["count": String(people.count)]),
       onBack: onBack
     )
 
-    ForEach(data.members) { member in
+    if let fund = data.balances.fund {
+      FundBlockView(fund: fund, members: people) {
+        onOpenFund?(model.groupId)
+      }
+    }
+
+    ForEach(people) { member in
       let memberRole = data.users.first(where: { $0.memberId == member.id })?.role
       let isExpanded = model.expandedMemberId == member.id
 
@@ -170,7 +183,16 @@ public struct MembersView: View {
     }
 
     if canWrite {
-      addMemberSection(members: data.members)
+      addMemberSection(members: people)
+
+      if data.balances.fund == nil, let onCreateFund {
+        SPButton(
+          L10n.tr("fund.createEntry"),
+          variant: .surface,
+          isFullWidth: true,
+          action: onCreateFund
+        )
+      }
     } else if !isEmailVerified {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))

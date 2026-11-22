@@ -22,6 +22,7 @@ public final class QuickEntryModel {
   public private(set) var reading: QuickEntryReading?
   public private(set) var isParsing = false
   public private(set) var parseError: AppError?
+  public private(set) var previewWarnings: [TransactionWarning] = []
   public private(set) var isSaving = false
   public private(set) var saveError: AppError?
   public var isCollapsing = false
@@ -96,6 +97,7 @@ public final class QuickEntryModel {
     guard !trimmed.isEmpty else {
       reading = nil
       parseError = nil
+      previewWarnings = []
       isParsing = false
       return
     }
@@ -120,6 +122,7 @@ public final class QuickEntryModel {
     guard !trimmed.isEmpty else { return }
     isParsing = true
     parseError = nil
+    previewWarnings = []
     defer { isParsing = false }
 
     do throws(AppError) {
@@ -127,6 +130,27 @@ public final class QuickEntryModel {
       reading = result
       if result.status == .unparsed {
         onOpenManualForm(result)
+      } else if result.status == .ok,
+        let amount = result.draft.amount,
+        let split = result.draft.split,
+        let description = result.draft.description,
+        !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      {
+        let occurredAt = Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(Date.now)
+        let draft = TransactionDraft.split(
+          TransactionDraft.SplitPayload(
+            isIncome: false,
+            description: description,
+            amount: amount,
+            occurredAt: occurredAt,
+            category: nil,
+            payers: result.draft.payers,
+            split: split
+          )
+        )
+        if let preview = try? await transactionsRepository.preview(groupId: groupId, draft: draft) {
+          previewWarnings = preview.warnings
+        }
       }
     } catch {
       parseError = error

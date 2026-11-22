@@ -88,8 +88,8 @@ public struct ExpenseFormView: View {
           }
           .padding(20)
         } else if model.isSplitEditorOpen {
-          let active = model.activeMembers
-          let payerNames = active.filter { model.payerIds.contains($0.id) }
+          let active = model.sharerMembers
+          let payerNames = model.payerMembers.filter { model.payerIds.contains($0.id) }
             .map(\.name)
             .joined(separator: ", ")
           SplitEditorView(
@@ -153,7 +153,7 @@ public struct ExpenseFormView: View {
 
   @ViewBuilder
   private func formContent(data: ExpenseFormModel.ScreenData) -> some View {
-    let active = model.activeMembers
+    let active = model.sharerMembers
     let myMemberId = data.group.myMemberId
     let isEditing = (data.editingTransaction != nil)
 
@@ -230,7 +230,7 @@ public struct ExpenseFormView: View {
 
           if model.transactionType == .transfer {
             TransferFieldsView(
-              members: active,
+              members: model.transferMembers,
               fromId: model.transferFrom,
               toId: model.transferTo,
               onFrom: { model.setTransferFrom($0) },
@@ -256,12 +256,15 @@ public struct ExpenseFormView: View {
               .foregroundStyle(Tokens.ink)
 
               MemberToggleGridView(
-                members: active,
+                members: model.payerMembers,
                 selectedIds: model.payerIds,
                 disabledIds: [],
                 isCaptionDimmed: false,
                 captionFor: { member in
-                  member.id == myMemberId ? L10n.tr("common.you") : member.name
+                  if member.kind == .fund {
+                    return L10n.t("fund.payerOption", ["name": member.name])
+                  }
+                  return member.id == myMemberId ? L10n.tr("common.you") : member.name
                 },
                 onToggle: { model.togglePayer($0) }
               )
@@ -271,7 +274,7 @@ public struct ExpenseFormView: View {
 
             if model.payerIds.count > 1 {
               PayerAmountsView(
-                members: active.filter { model.payerIds.contains($0.id) },
+                members: model.payerMembers.filter { model.payerIds.contains($0.id) },
                 values: model.payerAmounts,
                 totalAmount: model.amount,
                 onChange: { id, val in model.setPayerAmount(val, for: id) }
@@ -366,6 +369,24 @@ public struct ExpenseFormView: View {
           }
 
           if model.transactionType != .transfer, model.amount.isPositive {
+            if let overdraft = model.fundOverdrawnAmount() {
+              SPCard(tone: .accent, padding: 14) {
+                Text(L10n.t("fund.overdrawnWarning", ["amount": MoneyFormat.full(overdraft)]))
+                  .font(Typography.subheadlineBold)
+                  .foregroundStyle(Tokens.ink)
+              }
+            }
+
+            if model.previewWarnings.contains(.budgetOver) {
+              Text(L10n.tr("budget.overWarning"))
+                .font(Typography.subheadlineBold)
+                .foregroundStyle(Tokens.ink)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                  Tokens.coral, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+
             SplitStatusBannerView(
               status: model.splitState.status(from: active, totalAmount: model.amount)
             )
@@ -441,6 +462,7 @@ extension ExpenseFormView {
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
+        balancesRepository: FakeBalancesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
         onSaved: {}
@@ -457,6 +479,7 @@ extension ExpenseFormView {
         editingTransactionId: TripScenario.t1Transaction.id,
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
+        balancesRepository: FakeBalancesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
         onSaved: {}

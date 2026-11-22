@@ -10,7 +10,8 @@ struct UnparsedBannerView: View {
   private var relevantIssues: [QuickEntryReading.Issue] {
     reading.issues.filter { issue in
       switch issue.code {
-      case .amountMissing, .sumMismatch, .memberUnknown, .countMismatch, .textNotUnderstood:
+      case .amountMissing, .sumMismatch, .memberUnknown, .fundCannotShare, .countMismatch,
+        .textNotUnderstood:
         return true
       case .descriptionMissing, .memberAmbiguous, .unknown:
         return false
@@ -80,6 +81,8 @@ struct UnparsedBannerView: View {
       )
     case .memberUnknown:
       return L10n.t("unparsed.memberUnknown", ["word": word])
+    case .fundCannotShare:
+      return L10n.tr("unparsed.fundCannotShare")
     case .countMismatch:
       return L10n.t("unparsed.countTooLarge", ["total": String(activeCount)])
     case .textNotUnderstood:

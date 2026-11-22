@@ -60,6 +60,7 @@
     internal var balancesByGroup: [ExpenseGroup.ID: GroupBalances] = [:]
     internal var activityByGroup: [ExpenseGroup.ID: [ActivityItem]] = [:]
     internal var categoriesByGroup: [ExpenseGroup.ID: [GroupCategory]] = [:]
+    internal var budgetsByGroup: [ExpenseGroup.ID: GroupBudget] = [:]
     internal var settlementRequestsByGroup: [ExpenseGroup.ID: [SettlementRequest]] = [:]
     internal var seenIdempotencyKeys: Set<IdempotencyKey> = []
     internal var deletedTransactionsByGroup:
@@ -79,16 +80,47 @@
       var balancesByGroup: [ExpenseGroup.ID: GroupBalances] = [:]
       var activityByGroup: [ExpenseGroup.ID: [ActivityItem]] = [:]
       var categoriesByGroup: [ExpenseGroup.ID: [GroupCategory]] = [:]
+      var budgetsByGroup: [ExpenseGroup.ID: GroupBudget] = [:]
     }
 
     public init(
       preset: ScenarioPreset = .tripStep4,
       behavior: FakeBehavior = FakeBehavior(),
-      signedIn: Bool = true
+      signedIn: Bool = true,
+      hasFundAndBudget: Bool = false
     ) {
       self.preset = preset
       self.behavior = behavior
-      let initial = Self.makePresetState(preset, role: behavior.role, signedIn: signedIn)
+      var initial = Self.makePresetState(preset, role: behavior.role, signedIn: signedIn)
+      if hasFundAndBudget, let groupId = initial.groupOrder.first {
+        let fundMember = Member(
+          id: Self.sampleFund.memberId,
+          name: Self.sampleFund.name,
+          kind: .fund,
+          fundHolderMemberId: Self.sampleFund.holderMemberId,
+          active: true,
+          position: 99,
+          shape: .unknown("fund"),
+          color: .unknown("sun"),
+          isMe: false,
+          claimed: false
+        )
+        var members = initial.membersByGroup[groupId] ?? []
+        if !members.contains(where: { $0.id == fundMember.id }) {
+          members.append(fundMember)
+          initial.membersByGroup[groupId] = members
+        }
+        if let bal = initial.balancesByGroup[groupId] {
+          initial.balancesByGroup[groupId] = GroupBalances(
+            currency: bal.currency,
+            minimized: bal.minimized,
+            balances: bal.balances,
+            transfers: bal.transfers,
+            fund: Self.sampleFund
+          )
+        }
+        initial.budgetsByGroup[groupId] = Self.sampleBudgetNear
+      }
       self.currentUser = initial.user
       self.groupsById = initial.groupsById
       self.groupOrder = initial.groupOrder
@@ -99,6 +131,7 @@
       self.balancesByGroup = initial.balancesByGroup
       self.activityByGroup = initial.activityByGroup
       self.categoriesByGroup = initial.categoriesByGroup
+      self.budgetsByGroup = initial.budgetsByGroup
     }
 
     public func setBehavior(_ newBehavior: FakeBehavior) {
@@ -131,6 +164,7 @@
       self.activityByGroup = next.activityByGroup
       self.categoriesByGroup = next.categoriesByGroup
       self.seenIdempotencyKeys.removeAll()
+      self.budgetsByGroup.removeAll()
       self.deletedTransactionsByGroup.removeAll()
       self.deletedPrevBalancesByGroup.removeAll()
     }

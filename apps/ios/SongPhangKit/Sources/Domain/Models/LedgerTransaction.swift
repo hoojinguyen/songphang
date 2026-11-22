@@ -166,6 +166,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var createdAt: String
   public var updatedAt: String
   public var deletedAt: String?
+  public var warnings: [TransactionWarning]
 
   public init(
     id: ID,
@@ -184,7 +185,8 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     createdBy: ActorRef? = nil,
     createdAt: String = "2026-11-16T14:23:26.466Z",
     updatedAt: String = "2026-11-16T14:23:26.466Z",
-    deletedAt: String? = nil
+    deletedAt: String? = nil,
+    warnings: [TransactionWarning] = []
   ) {
     self.id = id
     self.type = type
@@ -203,5 +205,6 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.deletedAt = deletedAt
+    self.warnings = warnings
   }
 }

@@ -445,6 +445,30 @@
   - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a203e7-16e7-7ebc-8b91-56354c681012 Đà Lạt 5D2: sum 0; mismatches 0`); disposable DB dropped and ports `3000`/`4000` verified free.
 - Security review: checked relevant items 1, 2, 4, 7, 8; no secrets or tokens in logs/diffs, server validates filter queries and enforces group membership/write roles (`403` viewer on category mutations), temp CSV file uses `.completeFileProtectionUntilFirstUserAuthentication` off MainActor and is removed on share completion, no third-party dependencies added.
 
+### Task 5D.3 — Funds and budgets
+
+**Approach**
+- Files created/modified: `Domain/Models/{Balance,Budget,Fund,LedgerTransaction,Member,QuickEntryReading,SharePreview}.swift`, `Domain/Repositories/{BudgetRepository,FundRepository}.swift`, `Repositories/{Snapshots/SnapshotStore,Balances/BalanceMapping,Members/MemberMapping,QuickEntry/QuickEntryMapping,Transactions/TransactionMapping,Transactions/LiveTransactionsRepository,Fund/LiveFundRepository,Budget/BudgetMapping,Budget/LiveBudgetRepository}.swift`, `DesignSystem/{Tokens/Tokens,Components/BudgetBannerView,Components/FundBlockView,Components/FundShapeView,Components/MemberShapeView,Resources/Localizable.xcstrings}.swift`, `PreviewSupport/Fakes/{FakeRepositories,FakeWorld,FakeWorld+FundBudget}.swift`, `PaymentsFeature/Fund/{CreateFundSheetView,FundModel,FundView}.swift`, `GroupsFeature/{Members/MembersView,GroupSettings/BudgetSettingsCard,GroupSettings/GroupSettingsModel,GroupSettings/GroupSettingsView}.swift`, `LedgerFeature/{Balances/BalancesView,GroupFeed/GroupFeedModel,GroupFeed/GroupFeedView,ExpenseForm/ExpenseFormModel,ExpenseForm/ExpenseFormSubViews,ExpenseForm/ExpenseFormView,ConfirmCard/ConfirmationCardView,ConfirmCard/QuestionCardView,QuickEntry/QuickEntryModel,QuickEntry/QuickEntryView}.swift`, `StatisticsFeature/Stats/{StatsModel,StatsView}.swift`, `AppShell/{AppDependencies,Route,RouteDestination,RootView,Routing/LinkRouter}.swift`.
+- Approach: Add integer-only `FundSummary`, `FundContribution`, `TransactionWarning`, `GroupBudget`, `BudgetState`, `MemberKind`, and `.fundCannotShare` in `Domain`, wire `/fund` and `/budget` repositories (including explicit `"holderMemberId": null` raw PATCH in `LiveFundRepository.patchClearingHolder` because `swift-openapi-generator`'s synthesized `encodeIfPresent` omits `nil`), and surface server warnings (`FUND_OVERDRAWN`, `BUDGET_NEAR`, `BUDGET_OVER`) on `ExpenseFormView`, `QuickEntryView`/`ConfirmationCardView`, `QuestionCardView`, `GroupFeedView`, and `StatsView` alongside S17 `FundView` and `BudgetSettingsCard`.
+- Why this is the simplest approach: Keeps all official fund cash, contributions, budget spent/state, and warning checks strictly on the server while keeping SwiftUI views declarative and preventing fund selection as an expense sharer.
+- Rejected alternative: Client-side budget/fund cash recomputation from feed pages, which would drift from paginated/filtered views and violate integer-only server authority.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .` — 512 files, 0 errors; 8 workspace typechecks; `OpenAPI contract snapshot is up to date.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: PASS (exit 0).
+  - `apps/ios/Scripts/check-strings.sh`: `0` `DIFFERING`, `0` `EXTRA`, and `0` missing keys across `fund.*`, `budget.*`, `balances.fund*`, `balances.memberContributesToFund`, and `unparsed.fundCannotShare`.
+  - Debug `xcodebuild` (`generic/platform=iOS Simulator`) & Release `xcodebuild` (`generic/platform=iOS Simulator`, `CODE_SIGNING_ALLOWED=NO`): both `** BUILD SUCCEEDED **`.
+- Live Simulator & API exercise (`songphang_phase5_5d3`, clean-env API `:4000`, `Exercise5D3.app` on `iPhone 17 Pro`):
+  - `EXERCISE_5D3_SETUP_PASS`: verified editor & viewer receive `403` on `PUT/DELETE /budget`, viewer receives `403` on `POST /fund`, and outsider receives `404` on `/budget`.
+  - `SIM_5D3_DELETE_UNUSED_FUND_PASS`, `SIM_5D3_FUND_CRUD_HOLDER_CLEAR_PASS`: verified idempotent fund creation replay, `FundHolderUpdate.clear` clearing holder (`nil`) on live PATCH, holder restoration, and deleting an unused fund.
+  - `SIM_5D3_FUND_CANNOT_SHARE_PASS`: verified API `FUND_CANNOT_SHARE` error and quick-entry `.fundCannotShare` issue detection.
+  - `SIM_5D3_BUDGET_LIFECYCLE_PASS`: verified editor `403` via `LiveBudgetRepository`, `ok` -> `near` (80% / `800000` on `1000000`) -> `over` (`1100000`) transitions, `BUDGET_NEAR` / `BUDGET_OVER` / `FUND_OVERDRAWN` preview & save warnings, month budget switch, and delete/recreate.
+  - `SIM_5D3_OVERDRAWN_CLOSE_DELETE_GUARDS_PASS`, `SIM_5D3_CLOSE_REOPEN_AT_ZERO_PASS`, `SIM_5D3_FUND_VIEW_CASH cash=250000 contribs=3`, `SIM_EXERCISE_5D3_READY`.
+  - Captured and visually inspected `docs/superpowers/runs/phase-5/screens/5d/fund.png`.
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a20400-81a2-7831-8639-e953a9ad6280 Đà Lạt 5D3: sum 0; mismatches 0`, `01a20400-81ce-7b06-9a57-530559e1e7b8 Nhóm xoá quỹ 5D3: sum 0; mismatches 0`); disposable DB dropped and ports `3000`/`4000` verified free.
+- Security review: checked relevant items 1, 2, 4, 6, 8; no secrets/tokens in code or logs, `LiveFundRepository.patchClearingHolder` sends `Authorization: Bearer` + `X-App-Version` without logging tokens or bodies, server enforces `owner` on `/budget` writes (`403` editor/viewer) and `editor` on `/fund` writes (`403` viewer), no floating-point money conversions or third-party dependencies added.
+
 ## Gate Not Passed
 
 None.

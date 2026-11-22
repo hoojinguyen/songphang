@@ -7,6 +7,7 @@ enum SnapshotKey: Hashable, Sendable {
   case members(String)
   case groupUsers(String)
   case categories(String)
+  case budget(String)
   case feedFirstPage(String)
   case balances(String)
   case activityFirstPage(String)
@@ -19,6 +20,7 @@ enum SnapshotKey: Hashable, Sendable {
       .members(let id),
       .groupUsers(let id),
       .categories(let id),
+      .budget(let id),
       .feedFirstPage(let id),
       .balances(let id),
       .activityFirstPage(let id):
@@ -40,6 +42,8 @@ enum SnapshotKey: Hashable, Sendable {
       return "groups/\(Self.sanitize(id))/users.json"
     case .categories(let id):
       return "groups/\(Self.sanitize(id))/categories.json"
+    case .budget(let id):
+      return "groups/\(Self.sanitize(id))/budget.json"
     case .feedFirstPage(let id):
       return "groups/\(Self.sanitize(id))/feed.json"
     case .balances(let id):

@@ -193,7 +193,10 @@ enum TransactionMapping {
     )
   }
 
-  static func mapDetail(_ dto: Components.Schemas.TransactionDto) -> LedgerTransaction {
+  static func mapDetail(
+    _ dto: Components.Schemas.TransactionDto,
+    warnings: [TransactionWarning] = []
+  ) -> LedgerTransaction {
     LedgerTransaction(
       id: LedgerTransaction.ID(dto.id),
       type: TransactionType(code: dto._type.rawValue),
@@ -219,7 +222,8 @@ enum TransactionMapping {
       },
       createdAt: formatISO(dto.createdAt),
       updatedAt: formatISO(dto.updatedAt),
-      deletedAt: dto.deletedAt.map(formatISO)
+      deletedAt: dto.deletedAt.map(formatISO),
+      warnings: warnings
     )
   }
 
@@ -489,6 +493,7 @@ enum TransactionMapping {
 
   struct RawTransactionResponse: Codable, Sendable {
     let transaction: RawTransaction
+    let warnings: [String]?
   }
 
   static func decodeResilientPage(from data: Data) throws -> Page<LedgerTransaction> {
@@ -505,6 +510,9 @@ enum TransactionMapping {
   }
 
   static func decodeResilientDetail(from data: Data) throws -> LedgerTransaction {
-    try JSONDecoder().decode(RawTransactionResponse.self, from: data).transaction.toDomain()
+    let raw = try JSONDecoder().decode(RawTransactionResponse.self, from: data)
+    var tx = raw.transaction.toDomain()
+    tx.warnings = (raw.warnings ?? []).map { TransactionWarning(code: $0) }
+    return tx
   }
 }

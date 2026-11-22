@@ -1,6 +1,146 @@
 {
   "sourceLanguage": "vi",
   "strings": {
+    "balances.fundRemaining": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ còn {amount}" } } }
+    },
+    "balances.fundNegative": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ đang âm {amount}" } } }
+    },
+    "balances.fundRefundsMember": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ hoàn {to} {amount}" } } }
+    },
+    "balances.memberContributesToFund": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "{from} góp thêm vào quỹ {amount}" } } }
+    },
+    "fund.createEntry": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Lập quỹ chung" } } }
+    },
+    "fund.nameLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Tên quỹ" } } }
+    },
+    "fund.defaultName": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ chung" } } }
+    },
+    "fund.holderLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Ai giữ tiền quỹ?" } } }
+    },
+    "fund.noHolder": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chưa chọn" } } }
+    },
+    "fund.createSubmit": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Lập quỹ" } } }
+    },
+    "fund.remainingLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ còn" } } }
+    },
+    "fund.negativeLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ đang âm" } } }
+    },
+    "fund.holderLine": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Giữ tiền: {name}" } } }
+    },
+    "fund.contributionsTitle": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đã góp" } } }
+    },
+    "fund.noContributions": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Chưa ai góp vào quỹ." } } }
+    },
+    "fund.contributeButton": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Góp vào quỹ" } } }
+    },
+    "fund.withdrawButton": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Rút khỏi quỹ" } } }
+    },
+    "fund.payerOption": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "{name} trả" } } }
+    },
+    "fund.overdrawnWarning": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ không đủ. Sau khoản này quỹ âm {amount}." } } }
+    },
+    "fund.closeNonEmpty": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ còn tiền. Hãy hoàn hết cho mọi người trước." } } }
+    },
+    "fund.closeButton": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đóng quỹ" } } }
+    },
+    "fund.reopenButton": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Mở lại quỹ" } } }
+    },
+    "fund.deleteButton": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Xoá quỹ" } } }
+    },
+    "fund.saveButton": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Lưu" } } }
+    },
+    "fund.hasTransactions": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Quỹ đã có khoản chi nên không xoá được. Hãy đóng quỹ." } } }
+    },
+    "fund.inactiveTag": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "đã đóng" } } }
+    },
+    "budget.title": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Hạn mức" } } }
+    },
+    "budget.periodMonth": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Theo tháng" } } }
+    },
+    "budget.periodTotal": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Cả chuyến" } } }
+    },
+    "budget.amountLabel": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Số tiền" } } }
+    },
+    "budget.save": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Lưu hạn mức" } } }
+    },
+    "budget.remove": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Bỏ hạn mức" } } }
+    },
+    "budget.nearBanner": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đã chi {spent} trên hạn mức {amount}." } } }
+    },
+    "budget.overBanner": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Đã vượt hạn mức {over}." } } }
+    },
+    "budget.overWarning": {
+      "extractionState": "manual",
+      "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Khoản này làm nhóm vượt hạn mức." } } }
+    },
     "csv.date": {
       "extractionState": "manual",
       "localizations": { "vi": { "stringUnit": { "state": "translated", "value": "Ngày" } } }
@@ -4973,6 +5113,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nhóm chỉ có {total} người đang hoạt động."
+          }
+        }
+      }
+    },
+    "unparsed.fundCannotShare": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quỹ không thể là người chia."
           }
         }
       }

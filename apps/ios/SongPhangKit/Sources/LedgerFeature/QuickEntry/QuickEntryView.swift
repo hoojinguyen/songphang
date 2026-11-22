@@ -131,6 +131,8 @@ public struct QuickEntryView: View {
                 reading: reading,
                 members: activeMembers,
                 isDisabled: !model.isCurrentReadingUpToDate || model.isSaving,
+                isBudgetOver: model.isCurrentReadingUpToDate
+                  && model.previewWarnings.contains(.budgetOver),
                 onEdit: {
                   model.openManualEdit()
                 },

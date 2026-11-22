@@ -77,7 +77,9 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
           )
         switch output {
         case .ok(let ok):
-          return TransactionMapping.mapDetail(try ok.body.json.transaction)
+          let body = try ok.body.json
+          let warnings = (body.warnings ?? []).map { TransactionWarning(code: $0.rawValue) }
+          return TransactionMapping.mapDetail(body.transaction, warnings: warnings)
         case .undocumented(let status, let payload):
           // Do NOT invalidate the group on a child-transaction 404 alone.
           throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
@@ -113,10 +115,14 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
         )
       switch output {
       case .ok(let ok):
-        let shares = try ok.body.json.shares.map {
+        let json = try ok.body.json
+        let shares = json.shares.map {
           MemberAmount(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
         }
-        return SharePreview(shares: shares)
+        let warnings = (json.warnings ?? []).map {
+          TransactionWarning(code: $0.rawValue)
+        }
+        return SharePreview(shares: shares, warnings: warnings)
       case .undocumented(let status, let payload):
         throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
       }
@@ -145,7 +151,9 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
           )
         switch output {
         case .created(let created):
-          return TransactionMapping.mapDetail(try created.body.json.transaction)
+          let body = try created.body.json
+          let warnings = (body.warnings ?? []).map { TransactionWarning(code: $0.rawValue) }
+          return TransactionMapping.mapDetail(body.transaction, warnings: warnings)
         case .undocumented(let status, let payload):
           throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
         }
@@ -177,7 +185,9 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
           )
         switch output {
         case .ok(let ok):
-          return TransactionMapping.mapDetail(try ok.body.json.transaction)
+          let body = try ok.body.json
+          let warnings = (body.warnings ?? []).map { TransactionWarning(code: $0.rawValue) }
+          return TransactionMapping.mapDetail(body.transaction, warnings: warnings)
         case .undocumented(let status, let payload):
           throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
         }
@@ -222,7 +232,9 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
           )
         switch output {
         case .ok(let ok):
-          return TransactionMapping.mapDetail(try ok.body.json.transaction)
+          let body = try ok.body.json
+          let warnings = (body.warnings ?? []).map { TransactionWarning(code: $0.rawValue) }
+          return TransactionMapping.mapDetail(body.transaction, warnings: warnings)
         case .undocumented(let status, let payload):
           throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
         }

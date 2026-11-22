@@ -85,8 +85,10 @@ public struct MemberShapeView: View {
 
   private var drawnShape: AnyShape {
     switch shape {
-    case .circle, .unknown:
+    case .circle:
       return AnyShape(Circle())
+    case .unknown(let raw):
+      return raw == "fund" ? AnyShape(Capsule()) : AnyShape(Circle())
     case .diamond:
       return AnyShape(RoundedRectangle(cornerRadius: size * scaleFactor * 0.24, style: .continuous))
     case .squircle:

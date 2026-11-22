@@ -33,12 +33,14 @@ public struct RouteDestination: View {
 
   @State private var paymentSheet: PaymentSheet?
   @State private var editingPaymentMember: Member?
+  @State private var isCreatingFund = false
   @State private var registerModel: RegisterModel?
   @State private var forgotPasswordModel: ForgotPasswordModel?
   @State private var accountModel: AccountModel?
   @State private var createGroupModel: CreateGroupModel?
   @State private var joinModel: JoinModel?
   @State private var membersModel: MembersModel?
+  @State private var fundModel: FundModel?
   @State private var settingsModel: GroupSettingsModel?
   @State private var feedModel: GroupFeedModel?
   @State private var balancesModel: BalancesModel?
@@ -132,6 +134,20 @@ public struct RouteDestination: View {
           invitesRepository: dependencies.invites
         )
       )
+    case .groupFund(let groupId):
+      self._fundModel = State(
+        initialValue: FundModel(
+          groupId: groupId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
+          fundRepository: dependencies.fund,
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
+        )
+      )
     case .groupSettings(let groupId):
       self._settingsModel = State(
         initialValue: GroupSettingsModel(
@@ -139,7 +155,8 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           invitesRepository: dependencies.invites,
           membersRepository: dependencies.members,
-          categoriesRepository: dependencies.categories
+          categoriesRepository: dependencies.categories,
+          budgetRepository: dependencies.budget
         )
       )
     case .groupFeed(let groupId, let initialFilter):
@@ -156,6 +173,7 @@ public struct RouteDestination: View {
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
           categoriesRepository: dependencies.categories,
+          budgetRepository: dependencies.budget,
           transactionsRepository: dependencies.transactions,
           eventsRepository: dependencies.groupEvents,
           initialFilter: initialFilter,
@@ -170,6 +188,7 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           categoriesRepository: dependencies.categories,
+          budgetRepository: dependencies.budget,
           statisticsRepository: dependencies.statistics,
           onUnauthorized: {
             onPopToRoot(nil)
@@ -224,15 +243,23 @@ public struct RouteDestination: View {
           }
         )
       )
-    case .newTransactionForm(let groupId, let initialReading):
+    case .newTransactionForm(
+      let groupId,
+      let initialReading,
+      let initialTransferFrom,
+      let initialTransferTo
+    ):
       self._expenseFormModel = State(
         initialValue: ExpenseFormModel(
           groupId: groupId,
           editingTransactionId: nil,
           initialReading: initialReading,
+          initialTransferFrom: initialTransferFrom,
+          initialTransferTo: initialTransferTo,
           initialSplitEditorOpen: args.contains("--open-split-editor"),
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           categoriesRepository: dependencies.categories,
           onSaved: {
@@ -250,6 +277,7 @@ public struct RouteDestination: View {
           initialSplitEditorOpen: args.contains("--open-split-editor"),
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           categoriesRepository: dependencies.categories,
           onSaved: onPop,
@@ -320,6 +348,9 @@ public struct RouteDestination: View {
       }
     case .groupMembers(let groupId):
       if let membersModel {
+        let people = (membersModel.state.value?.members ?? []).filter {
+          $0.kind == .person && $0.active
+        }
         MembersView(
           model: membersModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
@@ -327,8 +358,18 @@ public struct RouteDestination: View {
           onOpenActivity: { id in onNavigate(.groupActivity(groupId: id)) },
           onOpenSettings: { id in onNavigate(.groupSettings(groupId: id)) },
           onEditPaymentDetails: { member in editingPaymentMember = member },
+          onOpenFund: { id in onNavigate(.groupFund(groupId: id)) },
+          onCreateFund: { isCreatingFund = true },
           onLeftGroup: { onPopToRoot(nil) }
         )
+        .sheet(isPresented: $isCreatingFund) {
+          createFundSheet(
+            groupId: groupId,
+            people: people,
+            isOffline: membersModel.refreshError == .offline,
+            reload: { await membersModel.load() }
+          )
+        }
         .sheet(
           item: $editingPaymentMember,
           onDismiss: {
@@ -353,6 +394,35 @@ public struct RouteDestination: View {
               onDismiss: { editingPaymentMember = nil }
             )
           }
+        )
+      }
+    case .groupFund(let groupId):
+      if let fundModel {
+        FundView(
+          model: fundModel,
+          isEmailVerified: currentUser?.emailVerified ?? true,
+          onBack: onPop,
+          onContribute: { fundMemberId in
+            onNavigate(
+              .newTransactionForm(
+                groupId: groupId,
+                initialReading: nil,
+                initialTransferFrom: nil,
+                initialTransferTo: fundMemberId
+              )
+            )
+          },
+          onWithdraw: { fundMemberId in
+            onNavigate(
+              .newTransactionForm(
+                groupId: groupId,
+                initialReading: nil,
+                initialTransferFrom: fundMemberId,
+                initialTransferTo: nil
+              )
+            )
+          },
+          onDeleted: onPop
         )
       }
     case .groupSettings:
@@ -400,6 +470,9 @@ public struct RouteDestination: View {
       }
     case .groupBalances(let groupId):
       if let balancesModel {
+        let people = (balancesModel.state.value?.members ?? []).filter {
+          $0.kind == .person && $0.active
+        }
         BalancesView(
           model: balancesModel,
           currentUserId: currentUser?.id,
@@ -422,8 +495,18 @@ public struct RouteDestination: View {
                 initialAmount: transfer.amount
               )
             )
-          }
+          },
+          onOpenFund: { id in onNavigate(.groupFund(groupId: id)) },
+          onCreateFund: { isCreatingFund = true }
         )
+        .sheet(isPresented: $isCreatingFund) {
+          createFundSheet(
+            groupId: groupId,
+            people: people,
+            isOffline: balancesModel.refreshError == .offline,
+            reload: { await balancesModel.load() }
+          )
+        }
         .sheet(
           item: $paymentSheet,
           onDismiss: {
@@ -515,5 +598,29 @@ public struct RouteDestination: View {
     case .debugGallery:
       DebugGalleryView()
     }
+  }
+
+  private func createFundSheet(
+    groupId: ExpenseGroup.ID,
+    people: [Member],
+    isOffline: Bool,
+    reload: @escaping () async -> Void
+  ) -> some View {
+    CreateFundSheetView(
+      groupId: groupId,
+      people: people,
+      fundRepository: dependencies.fund,
+      isOffline: isOffline,
+      onCreated: {
+        isCreatingFund = false
+        Task { await reload() }
+      },
+      onDismiss: { isCreatingFund = false },
+      onUnauthorized: {
+        isCreatingFund = false
+        onPopToRoot(nil)
+        Task { await sessionModel.signOut() }
+      }
+    )
   }
 }

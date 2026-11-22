@@ -82,12 +82,33 @@ public struct StatsView: View {
     }
 
     SPCard(tone: .accent, padding: 20) {
-      MoneyText(
-        data.stats.total,
-        style: .full,
-        font: Typography.heroNumber,
-        color: Tokens.ink
-      )
+      VStack(alignment: .leading, spacing: 6) {
+        MoneyText(
+          data.stats.total,
+          style: .full,
+          font: Typography.heroNumber,
+          color: Tokens.ink
+        )
+        if let budget = data.budget, budget.state == .near || budget.state == .over {
+          let periodLabel =
+            budget.period == .month
+            ? L10n.tr("budget.periodMonth")
+            : L10n.tr("budget.periodTotal")
+          let statusLabel =
+            budget.state == .over
+            ? L10n.t("budget.overBanner", ["over": MoneyFormat.full(budget.spent - budget.amount)])
+            : L10n.t(
+              "budget.nearBanner",
+              [
+                "spent": MoneyFormat.full(budget.spent),
+                "amount": MoneyFormat.full(budget.amount),
+              ]
+            )
+          Text("\(periodLabel) · \(statusLabel)")
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+        }
+      }
       .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -279,13 +300,14 @@ public struct StatsView: View {
 
 #if DEBUG
   #Preview("Loaded") {
-    let world = FakeWorld(preset: .tripStep4)
+    let world = FakeWorld(preset: .tripStep4, hasFundAndBudget: true)
     StatsView(
       model: StatsModel(
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world),
         statisticsRepository: FakeStatisticsRepository(world: world)
       ),
       onBack: {},
@@ -301,6 +323,7 @@ public struct StatsView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world),
         statisticsRepository: FakeStatisticsRepository(world: world)
       ),
       onBack: {},
@@ -319,6 +342,7 @@ public struct StatsView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world),
         statisticsRepository: FakeStatisticsRepository(world: world)
       ),
       onBack: {},
@@ -337,6 +361,7 @@ public struct StatsView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world),
         statisticsRepository: FakeStatisticsRepository(world: world)
       ),
       onBack: {},

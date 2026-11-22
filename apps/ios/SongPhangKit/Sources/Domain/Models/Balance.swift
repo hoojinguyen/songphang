@@ -40,16 +40,19 @@ public struct GroupBalances: Sendable, Hashable {
   public let minimized: Bool
   public let balances: [Balance]
   public let transfers: [SuggestedTransfer]
+  public let fund: FundSummary?
 
   public init(
     currency: String = "VND",
     minimized: Bool = true,
     balances: [Balance],
-    transfers: [SuggestedTransfer]
+    transfers: [SuggestedTransfer],
+    fund: FundSummary? = nil
   ) {
     self.currency = currency
     self.minimized = minimized
     self.balances = balances
     self.transfers = transfers
+    self.fund = fund
   }
 }

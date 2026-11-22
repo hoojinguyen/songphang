@@ -215,6 +215,18 @@ public struct GroupSettingsView: View {
         isDisabled: isOffline || model.isPerformingAction,
         onChanged: { model.updateCategories($0) }
       )
+      BudgetSettingsCard(
+        budget: data.budget,
+        isDisabled: isOffline || model.isPerformingAction,
+        isPending: model.isSavingBudget,
+        errorMessage: budgetErrorText,
+        onSave: { period, amount in
+          Task { await model.saveBudget(period: period, amount: amount) }
+        },
+        onRemove: {
+          Task { await model.removeBudget() }
+        }
+      )
       transferOwnershipCard(users: data.users)
       deleteGroupCard()
 
@@ -360,6 +372,14 @@ public struct GroupSettingsView: View {
     .background(Tokens.bg.ignoresSafeArea())
     .presentationDetents([.medium])
   }
+
+  private var budgetErrorText: String? {
+    guard let error = model.budgetError else { return nil }
+    if case .api(_, 403) = error {
+      return L10n.tr("common.forbidden")
+    }
+    return L10n.tr("common.saveError")
+  }
 }
 
 #if DEBUG
@@ -371,7 +391,8 @@ public struct GroupSettingsView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
-        categoriesRepository: FakeCategoriesRepository(world: world)
+        categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},
@@ -390,7 +411,8 @@ public struct GroupSettingsView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
-        categoriesRepository: FakeCategoriesRepository(world: world)
+        categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},
@@ -409,7 +431,8 @@ public struct GroupSettingsView: View {
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
-        categoriesRepository: FakeCategoriesRepository(world: world)
+        categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},

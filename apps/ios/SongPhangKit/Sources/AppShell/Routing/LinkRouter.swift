@@ -58,6 +58,7 @@ public struct LinkRouter: Sendable, Hashable {
     case groupFeed(groupId: ExpenseGroup.ID)
     case groupBalances(groupId: ExpenseGroup.ID)
     case groupStats(groupId: ExpenseGroup.ID)
+    case groupFund(groupId: ExpenseGroup.ID)
   }
 
   public func pushDestination(groupId: String?, target: String?) -> PushDestination? {
@@ -92,6 +93,8 @@ public struct LinkRouter: Sendable, Hashable {
         return .groupBalances(groupId: id)
       case "stats":
         return .groupStats(groupId: id)
+      case "fund":
+        return .groupFund(groupId: id)
       default:
         return nil
       }

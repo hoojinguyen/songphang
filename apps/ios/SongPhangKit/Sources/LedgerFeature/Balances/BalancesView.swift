@@ -14,6 +14,8 @@ public struct BalancesView: View {
   private let onBackToGroups: () -> Void
   private let onOpenPay: ((SuggestedTransfer, Member, Member) -> Void)?
   private let onOpenSettle: (SuggestedTransfer) -> Void
+  private let onOpenFund: ((ExpenseGroup.ID) -> Void)?
+  private let onCreateFund: (() -> Void)?
 
   public init(
     model: BalancesModel,
@@ -22,7 +24,9 @@ public struct BalancesView: View {
     onBack: @escaping () -> Void,
     onBackToGroups: @escaping () -> Void,
     onOpenPay: ((SuggestedTransfer, Member, Member) -> Void)? = nil,
-    onOpenSettle: @escaping (SuggestedTransfer) -> Void
+    onOpenSettle: @escaping (SuggestedTransfer) -> Void,
+    onOpenFund: ((ExpenseGroup.ID) -> Void)? = nil,
+    onCreateFund: (() -> Void)? = nil
   ) {
     self.model = model
     self.currentUserId = currentUserId
@@ -31,6 +35,8 @@ public struct BalancesView: View {
     self.onBackToGroups = onBackToGroups
     self.onOpenPay = onOpenPay
     self.onOpenSettle = onOpenSettle
+    self.onOpenFund = onOpenFund
+    self.onCreateFund = onCreateFund
   }
 
   public var body: some View {
@@ -117,6 +123,19 @@ public struct BalancesView: View {
     let matchedPendingIds = Set(sortedTransfers.compactMap { $0.pendingSettlement?.id })
     let unmatchedPending = data.pendingRequests.filter {
       $0.status == .pending && !matchedPendingIds.contains($0.id)
+    }
+
+    if let fund = data.balances.fund {
+      FundBlockView(fund: fund, members: data.members) {
+        onOpenFund?(model.groupId)
+      }
+    } else if canWrite, let onCreateFund {
+      SPButton(
+        L10n.tr("fund.createEntry"),
+        variant: .surface,
+        isFullWidth: true,
+        action: onCreateFund
+      )
     }
 
     if !hasTransactions {
@@ -384,6 +403,31 @@ private func canCancelPending(
   pending.createdByMe || group.myMemberId == fromMember.id
 }
 
+private func transferRowCaption(
+  from: Member,
+  to: Member,
+  amount: Money,
+  myMemberId: Member.ID?,
+  includeAmountForFund: Bool = false
+) -> String {
+  if from.kind == .fund {
+    return L10n.t(
+      "balances.fundRefundsMember", ["to": to.name, "amount": MoneyFormat.full(amount)])
+  }
+  if to.kind == .fund {
+    return L10n.t(
+      "balances.memberContributesToFund", ["from": from.name, "amount": MoneyFormat.full(amount)])
+  }
+  if from.id == myMemberId {
+    return L10n.t("balances.youPayMember", ["name": to.name])
+  }
+  if to.id == myMemberId {
+    return L10n.t("balances.memberPaysYou", ["name": from.name])
+  }
+  _ = includeAmountForFund
+  return L10n.t("balances.memberPaysMember", ["from": from.name, "to": to.name])
+}
+
 private struct OwnSettlementCardView: View {
   let transfer: SuggestedTransfer
   let members: [Member]
@@ -407,9 +451,16 @@ private struct OwnSettlementCardView: View {
           name: toMember.name,
           size: 84
         )
-        Text(L10n.t("balances.youPayMember", ["name": toMember.name]))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
+        Text(
+          transferRowCaption(
+            from: fromMember,
+            to: toMember,
+            amount: transfer.amount,
+            myMemberId: group.myMemberId
+          )
+        )
+        .font(Typography.captionBold)
+        .foregroundStyle(Tokens.ink)
         MoneyText(
           transfer.amount,
           style: .amountOnly,
@@ -474,18 +525,12 @@ private struct SettlementCardView: View {
         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
         : AnyLayout(HStackLayout(spacing: 16))
       let other = transfer.fromMemberId == myMemberId ? toMember : fromMember
-      let caption: String = {
-        if transfer.fromMemberId == myMemberId {
-          return L10n.t("balances.youPayMember", ["name": toMember.name])
-        } else if transfer.toMemberId == myMemberId {
-          return L10n.t("balances.memberPaysYou", ["name": fromMember.name])
-        } else {
-          return L10n.t(
-            "balances.memberPaysMember",
-            ["from": fromMember.name, "to": toMember.name]
-          )
-        }
-      }()
+      let caption = transferRowCaption(
+        from: fromMember,
+        to: toMember,
+        amount: transfer.amount,
+        myMemberId: myMemberId
+      )
 
       VStack(alignment: .leading, spacing: 16) {
         rowLayout {
@@ -574,9 +619,11 @@ private struct OtherSettlementsSection: View {
                 showInitial: false
               )
               Text(
-                L10n.t(
-                  "balances.memberPaysMember",
-                  ["from": fromMember.name, "to": toMember.name]
+                transferRowCaption(
+                  from: fromMember,
+                  to: toMember,
+                  amount: transfer.amount,
+                  myMemberId: group.myMemberId
                 )
               )
               .font(Typography.caption)

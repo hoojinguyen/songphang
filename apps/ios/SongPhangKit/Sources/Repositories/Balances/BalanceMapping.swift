@@ -25,6 +25,20 @@ enum BalanceMapping {
             )
           }
         )
+      },
+      fund: dto.fund.map(mapFund)
+    )
+  }
+
+  static func mapFund(_ dto: Components.Schemas.FundSummary) -> FundSummary {
+    FundSummary(
+      memberId: Member.ID(dto.memberId),
+      name: dto.name,
+      holderMemberId: dto.holderMemberId.map(Member.ID.init),
+      active: dto.active,
+      cash: Money(Int64(dto.cash)),
+      contributions: dto.contributions.map {
+        FundContribution(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
       }
     )
   }
@@ -121,6 +135,44 @@ enum BalanceMapping {
     let createdByMe: Bool
   }
 
+  struct RawFundContribution: Codable, Sendable {
+    let memberId: String
+    let amount: Int64
+  }
+
+  struct RawFundSummary: Codable, Sendable {
+    let memberId: String
+    let name: String
+    let holderMemberId: String?
+    let active: Bool
+    let cash: Int64
+    let contributions: [RawFundContribution]
+
+    init(fund: FundSummary) {
+      self.memberId = fund.memberId.rawValue
+      self.name = fund.name
+      self.holderMemberId = fund.holderMemberId?.rawValue
+      self.active = fund.active
+      self.cash = fund.cash.amount
+      self.contributions = fund.contributions.map {
+        RawFundContribution(memberId: $0.memberId.rawValue, amount: $0.amount.amount)
+      }
+    }
+
+    func toDomain() -> FundSummary {
+      FundSummary(
+        memberId: Member.ID(memberId),
+        name: name,
+        holderMemberId: holderMemberId.map(Member.ID.init),
+        active: active,
+        cash: Money(cash),
+        contributions: contributions.map {
+          FundContribution(memberId: Member.ID($0.memberId), amount: Money($0.amount))
+        }
+      )
+    }
+  }
+
   struct RawBalancesResponse: Codable, Sendable {
     struct RawBalance: Codable, Sendable {
       let memberId: String
@@ -139,6 +191,7 @@ enum BalanceMapping {
     let minimized: Bool
     let balances: [RawBalance]
     let transfers: [RawTransfer]
+    let fund: RawFundSummary?
 
     func toDomain() -> GroupBalances {
       GroupBalances(
@@ -162,7 +215,8 @@ enum BalanceMapping {
               )
             }
           )
-        }
+        },
+        fund: fund?.toDomain()
       )
     }
   }
@@ -196,7 +250,8 @@ enum BalanceMapping {
             )
           }
         )
-      }
+      },
+      fund: value.fund.map(RawFundSummary.init)
     )
     return try? JSONEncoder().encode(payload)
   }

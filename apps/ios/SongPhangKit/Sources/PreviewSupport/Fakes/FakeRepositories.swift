@@ -417,4 +417,61 @@
       try await world.exportCSV(groupId: groupId)
     }
   }
+
+  public nonisolated struct FakeFundRepository: FundRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func create(
+      groupId: ExpenseGroup.ID,
+      name: String?,
+      holderMemberId: Member.ID?,
+      key: IdempotencyKey
+    ) async throws(AppError) -> Member {
+      try await world.createFund(
+        groupId: groupId,
+        name: name,
+        holderMemberId: holderMemberId,
+        key: key
+      )
+    }
+
+    public func update(
+      groupId: ExpenseGroup.ID,
+      name: String?,
+      holder: FundHolderUpdate,
+      active: Bool?
+    ) async throws(AppError) -> Member {
+      try await world.updateFund(groupId: groupId, name: name, holder: holder, active: active)
+    }
+
+    public func delete(groupId: ExpenseGroup.ID) async throws(AppError) {
+      try await world.deleteFund(groupId: groupId)
+    }
+  }
+
+  public nonisolated struct FakeBudgetRepository: BudgetRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func lastKnownBudget(groupId: ExpenseGroup.ID) async -> GroupBudget? {
+      await world.lastKnownBudget(groupId: groupId)
+    }
+
+    public func budget(groupId: ExpenseGroup.ID) async throws(AppError) -> GroupBudget? {
+      try await world.fetchBudget(groupId: groupId)
+    }
+
+    public func setBudget(
+      groupId: ExpenseGroup.ID,
+      period: BudgetPeriod,
+      amount: Money
+    ) async throws(AppError) -> GroupBudget {
+      try await world.setBudget(groupId: groupId, period: period, amount: amount)
+    }
+
+    public func deleteBudget(groupId: ExpenseGroup.ID) async throws(AppError) {
+      try await world.deleteBudget(groupId: groupId)
+    }
+  }
 #endif

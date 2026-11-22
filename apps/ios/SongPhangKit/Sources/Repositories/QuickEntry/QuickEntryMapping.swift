@@ -21,6 +21,7 @@ enum QuickEntryMapping {
     case "DESCRIPTION_MISSING": return .descriptionMissing
     case "MEMBER_AMBIGUOUS": return .memberAmbiguous
     case "MEMBER_UNKNOWN": return .memberUnknown
+    case "FUND_CANNOT_SHARE": return .fundCannotShare
     case "COUNT_MISMATCH": return .countMismatch
     case "SUM_MISMATCH": return .sumMismatch
     case "TEXT_NOT_UNDERSTOOD": return .textNotUnderstood

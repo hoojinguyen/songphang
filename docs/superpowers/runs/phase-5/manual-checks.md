@@ -86,4 +86,10 @@ Pending owner-led verification with the required configuration. Preserve the app
   3. Tap `Tổng chuyến đi` → S16 `Tiền đi đâu` shows server total, period chips (`Tất cả`, `Tháng này`, `Tháng trước`, `Tuỳ chọn`), and category/member/time bars; tap any bar to drill down into the matching scoped feed.
   4. Tap `Xuất CSV` → system Share sheet exports a `.csv` file that opens in Excel/Numbers with proper Vietnamese accents (UTF-8 BOM) and leaves no lingering temp files.
 
+- **Group funds & budget tracking (5D.3):**
+  1. In `Thành viên và lời mời` or `Số dư`, tap `Lập quỹ chung`, enter name + choose holder (or `Chưa chọn`), create → S17 shows fund cash `0 đ` and holder line; test changing holder to another person and back to `Chưa chọn`.
+  2. Contribute to the fund (`Góp vào quỹ`) and record an expense paid by the fund (`Khoản chi mới` selecting the fund as payer, ensuring fund is absent from split sharer checkboxes); overdraw the fund beyond its cash → yellow `FUND_OVERDRAWN` warning appears and balance card reads `Quỹ đang âm ...`.
+  3. Attempt closing/deleting the fund while non-empty or with transactions → refusal copy is shown (`Quỹ còn ...` / `Không thể xoá ...`); refund/contribute back to `0 đ`, then close (`Đóng quỹ`) and reopen (`Mở lại quỹ`); delete an unused fund successfully.
+  4. As Owner in `Cài đặt nhóm`, set a `Tháng này` or `Toàn chuyến đi` budget (`Lưu hạn mức`); confirm Editors/Viewers cannot edit budget; add expenses reaching ≥80% and >100% → amber `Gần chạm hạn mức` / coral `Đã vượt hạn mức` banners appear on the feed & stats, and `Khoản này làm nhóm vượt hạn mức.` appears in preview/save before removing the budget.
+
 - **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.

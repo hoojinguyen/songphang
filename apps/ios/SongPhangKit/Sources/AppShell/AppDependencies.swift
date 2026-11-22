@@ -14,6 +14,8 @@ public struct AppDependencies: Sendable {
   public let transactions: any TransactionsRepository
   public let settlementRequests: any SettlementRequestsRepository
   public let balances: any BalancesRepository
+  public let fund: any FundRepository
+  public let budget: any BudgetRepository
   public let categories: any CategoriesRepository
   public let statistics: any StatisticsRepository
   public let activity: any ActivityRepository
@@ -41,6 +43,8 @@ public struct AppDependencies: Sendable {
         transactions: LiveTransactionsRepository(environment: environment),
         settlementRequests: LiveSettlementRequestsRepository(environment: environment),
         balances: LiveBalancesRepository(environment: environment),
+        fund: LiveFundRepository(environment: environment),
+        budget: LiveBudgetRepository(environment: environment),
         categories: LiveCategoriesRepository(environment: environment),
         statistics: LiveStatisticsRepository(environment: environment),
         activity: LiveActivityRepository(environment: environment),
@@ -63,6 +67,8 @@ public struct AppDependencies: Sendable {
         transactions: LiveTransactionsRepository(environment: environment),
         settlementRequests: LiveSettlementRequestsRepository(environment: environment),
         balances: LiveBalancesRepository(environment: environment),
+        fund: LiveFundRepository(environment: environment),
+        budget: LiveBudgetRepository(environment: environment),
         categories: LiveCategoriesRepository(environment: environment),
         statistics: LiveStatisticsRepository(environment: environment),
         activity: LiveActivityRepository(environment: environment),
@@ -92,6 +98,8 @@ public struct AppDependencies: Sendable {
         transactions: FakeTransactionsRepository(world: world),
         settlementRequests: FakeSettlementRequestsRepository(world: world),
         balances: FakeBalancesRepository(world: world),
+        fund: FakeFundRepository(world: world),
+        budget: FakeBudgetRepository(world: world),
         categories: FakeCategoriesRepository(world: world),
         statistics: FakeStatisticsRepository(world: world),
         activity: FakeActivityRepository(world: world),

@@ -189,6 +189,13 @@ public struct GroupFeedView: View {
     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
 
+    if data.budget?.state == .near || data.budget?.state == .over {
+      BudgetBannerView(budget: data.budget) {
+        onOpenStats(model.groupId)
+      }
+      .padding(.horizontal, 20)
+    }
+
     if data.group.myMemberId == nil {
       Button {
         onOpenMembers(model.groupId)
@@ -436,6 +443,7 @@ public struct GroupFeedView: View {
         membersRepository: FakeMembersRepository(world: world),
         balancesRepository: FakeBalancesRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         eventsRepository: FakeGroupEventsRepository(world: world)
       ),
@@ -459,6 +467,7 @@ public struct GroupFeedView: View {
         membersRepository: FakeMembersRepository(world: world),
         balancesRepository: FakeBalancesRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         eventsRepository: FakeGroupEventsRepository(world: world)
       ),
@@ -485,6 +494,7 @@ public struct GroupFeedView: View {
         membersRepository: FakeMembersRepository(world: world),
         balancesRepository: FakeBalancesRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         eventsRepository: FakeGroupEventsRepository(world: world)
       ),
@@ -511,6 +521,7 @@ public struct GroupFeedView: View {
         membersRepository: FakeMembersRepository(world: world),
         balancesRepository: FakeBalancesRepository(world: world),
         categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
         eventsRepository: FakeGroupEventsRepository(world: world)
       ),

@@ -8,6 +8,7 @@ public final class StatsModel {
     public var group: ExpenseGroup
     public var members: [Member]
     public var categories: [GroupCategory]
+    public var budget: GroupBudget?
     public var stats: GroupStats
     public var periodRange: DateRange
   }
@@ -36,6 +37,7 @@ public final class StatsModel {
   private let groupsRepository: any GroupsRepository
   private let membersRepository: any MembersRepository
   private let categoriesRepository: any CategoriesRepository
+  private let budgetRepository: any BudgetRepository
   private let statisticsRepository: any StatisticsRepository
   private let onUnauthorized: () -> Void
 
@@ -44,6 +46,7 @@ public final class StatsModel {
     groupsRepository: any GroupsRepository,
     membersRepository: any MembersRepository,
     categoriesRepository: any CategoriesRepository,
+    budgetRepository: any BudgetRepository,
     statisticsRepository: any StatisticsRepository,
     onUnauthorized: @escaping () -> Void = {}
   ) {
@@ -51,6 +54,7 @@ public final class StatsModel {
     self.groupsRepository = groupsRepository
     self.membersRepository = membersRepository
     self.categoriesRepository = categoriesRepository
+    self.budgetRepository = budgetRepository
     self.statisticsRepository = statisticsRepository
     self.onUnauthorized = onUnauthorized
     let monthBounds = StatsDateHelper.currentMonthDates()
@@ -73,17 +77,25 @@ public final class StatsModel {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedMembers = membersRepository.members(groupId: groupId)
       async let fetchedCategories = categoriesRepository.list(groupId: groupId)
+      async let fetchedBudget = budgetRepository.budget(groupId: groupId)
       async let fetchedStats = statisticsRepository.stats(
         groupId: groupId,
         from: range.from,
         to: range.to
       )
-      let (g, m, c, s) = try await (fetchedGroup, fetchedMembers, fetchedCategories, fetchedStats)
+      let (g, m, c, b, s) = try await (
+        fetchedGroup,
+        fetchedMembers,
+        fetchedCategories,
+        fetchedBudget,
+        fetchedStats
+      )
       state = .loaded(
         ScreenData(
           group: g,
           members: m,
           categories: c,
+          budget: b,
           stats: s,
           periodRange: range
         )

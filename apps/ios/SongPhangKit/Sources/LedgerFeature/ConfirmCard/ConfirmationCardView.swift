@@ -6,6 +6,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
   private let reading: QuickEntryReading
   private let members: [Member]
   private let isDisabled: Bool
+  private let isBudgetOver: Bool
   private let saveLabel: String?
   private let onEdit: () -> Void
   private let onSave: () -> Void
@@ -15,6 +16,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
     reading: QuickEntryReading,
     members: [Member],
     isDisabled: Bool = false,
+    isBudgetOver: Bool = false,
     saveLabel: String? = nil,
     onEdit: @escaping () -> Void,
     onSave: @escaping () -> Void,
@@ -23,6 +25,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
     self.reading = reading
     self.members = members
     self.isDisabled = isDisabled
+    self.isBudgetOver = isBudgetOver
     self.saveLabel = saveLabel
     self.onEdit = onEdit
     self.onSave = onSave
@@ -36,7 +39,8 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
     let split = draft.split
     let isEqual = shares.allSatisfy { $0.amount == shares.first?.amount }
     let notIncluded = members.filter { member in
-      member.active && !shares.contains(where: { $0.memberId == member.id })
+      member.active && member.kind == .person
+        && !shares.contains(where: { $0.memberId == member.id })
     }
     let rest: Money = {
       if case .exact(_, let entries, _) = split, let total = draft.amount {
@@ -154,6 +158,15 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
 
       extraContent
 
+      if isBudgetOver {
+        Text(L10n.tr("budget.overWarning"))
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
+          .padding(14)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+      }
+
       let footerPrefix =
         (!shares.isEmpty && !notIncluded.isEmpty)
         ? L10n.t(
@@ -193,6 +206,7 @@ extension ConfirmationCardView where ExtraContent == EmptyView {
     reading: QuickEntryReading,
     members: [Member],
     isDisabled: Bool = false,
+    isBudgetOver: Bool = false,
     saveLabel: String? = nil,
     onEdit: @escaping () -> Void,
     onSave: @escaping () -> Void
@@ -201,6 +215,7 @@ extension ConfirmationCardView where ExtraContent == EmptyView {
       reading: reading,
       members: members,
       isDisabled: isDisabled,
+      isBudgetOver: isBudgetOver,
       saveLabel: saveLabel,
       onEdit: onEdit,
       onSave: onSave

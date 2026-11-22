@@ -14,6 +14,7 @@ public struct QuestionCardView: View {
   @State private var selectedIds: [Member.ID] = []
   @State private var descriptionText: String
   @State private var previewShares: [MemberAmount]?
+  @State private var previewWarnings: [TransactionWarning] = []
   @State private var isPreviewing = false
   @State private var previewError = false
 
@@ -109,6 +110,7 @@ public struct QuestionCardView: View {
       reading: effective,
       members: members,
       isDisabled: isDisabled || !ready,
+      isBudgetOver: ready && previewWarnings.contains(.budgetOver),
       saveLabel: saveButtonLabel,
       onEdit: { onEdit(effective) },
       onSave: { onSave(effective) }
@@ -136,8 +138,10 @@ public struct QuestionCardView: View {
             }
           )
         } else if let countIssue {
-          let candidates = members.filter { countIssue.candidates.contains($0.id) }
-          let activeTotal = members.filter(\.active).count
+          let candidates = members.filter {
+            $0.kind == .person && countIssue.candidates.contains($0.id)
+          }
+          let activeTotal = members.filter { $0.active && $0.kind == .person }.count
           let target = countIssue.count ?? 0
           ChoicePanelView(
             members: candidates,
@@ -201,6 +205,7 @@ public struct QuestionCardView: View {
     do throws(AppError) {
       let preview = try await transactionsRepository.preview(groupId: groupId, draft: draft)
       previewShares = preview.shares
+      previewWarnings = preview.warnings
     } catch {
       previewError = true
     }
