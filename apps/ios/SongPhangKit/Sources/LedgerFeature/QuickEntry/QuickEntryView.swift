@@ -132,14 +132,19 @@ public struct QuickEntryView: View {
                 groupId: model.groupId,
                 reading: reading,
                 members: activeMembers,
+                categories: data.categories,
                 transactionsRepository: model.transactionsRepository,
                 isDisabled: !model.isCurrentReadingUpToDate || model.isSaving,
+                indexLabel: indexLabel,
+                saveLabel: saveLabel,
+                skipLabel: model.isMultiDraft ? L10n.tr("compose.skipDraft") : nil,
                 onEdit: { resolved in
                   model.openManualEdit(with: resolved)
                 },
                 onSave: { resolved in
                   Task { await model.save(chosen: resolved, reduceMotion: reduceMotion) }
-                }
+                },
+                onSkip: model.isMultiDraft ? { model.skipDraft() } : nil
               )
               .id("\(reading.text):\(model.currentDraftIndex)")
             } else if reading.status == .ok {

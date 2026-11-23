@@ -7,14 +7,14 @@ public struct TransactionDetailView: View {
   private let verifyEmailBanner: AnyView?
   private let onBack: () -> Void
   private let onOpenEdit: (ExpenseGroup.ID, LedgerTransaction.ID) -> Void
-  private let onRemoved: (() -> Void)?
+  private let onRemoved: () -> Void
 
   public init(
     model: TransactionDetailModel,
     verifyEmailBanner: AnyView? = nil,
     onBack: @escaping () -> Void,
     onOpenEdit: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void,
-    onRemoved: (() -> Void)? = nil
+    onRemoved: @escaping () -> Void
   ) {
     self.model = model
     self.verifyEmailBanner = verifyEmailBanner
@@ -108,7 +108,7 @@ public struct TransactionDetailView: View {
               deleted: data.transaction.deletedAt != nil,
               isPending: model.isPerformingAction,
               onOpenDispute: { reason in
-                Task { _ = await model.openDispute(reason: reason) }
+                await model.openDispute(reason: reason)
               },
               onResolveDispute: {
                 Task { await model.resolveDispute() }
@@ -165,7 +165,7 @@ public struct TransactionDetailView: View {
     }
     .task(id: model.transactionId) {
       await model.listenForEvents {
-        onRemoved?()
+        onRemoved()
       }
     }
   }

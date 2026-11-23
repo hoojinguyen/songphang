@@ -8,7 +8,7 @@ struct DisputeBlockView: View {
   let verified: Bool
   let deleted: Bool
   let isPending: Bool
-  let onOpenDispute: (String) -> Void
+  let onOpenDispute: (String) async -> Bool
   let onResolveDispute: () -> Void
 
   @State private var isDisputeSheetOpen = false
@@ -63,7 +63,8 @@ struct DisputeBlockView: View {
           VStack(alignment: .leading, spacing: 16) {
             SPTextField(
               label: L10n.tr("transactionView.disputeReasonLabel"),
-              text: $disputeReason
+              text: $disputeReason,
+              maxLength: 500
             )
 
             Spacer()
@@ -85,8 +86,12 @@ struct DisputeBlockView: View {
                 isDisabled: trimmed.isEmpty || isPending,
                 isPending: isPending
               ) {
-                onOpenDispute(trimmed)
-                isDisputeSheetOpen = false
+                Task {
+                  if await onOpenDispute(trimmed) {
+                    disputeReason = ""
+                    isDisputeSheetOpen = false
+                  }
+                }
               }
             }
           }

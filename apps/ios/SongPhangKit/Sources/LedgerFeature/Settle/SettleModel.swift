@@ -29,6 +29,7 @@ public final class SettleModel {
   private let balancesRepository: any BalancesRepository
   private let transactionsRepository: any TransactionsRepository
   private let onSaved: () -> Void
+  private var capturedOccurredAt: String?
 
   public private(set) var state: Loadable<ScreenData> = .loading
   public var amountText: String
@@ -114,16 +115,23 @@ public final class SettleModel {
     isSubmitting = true
     submitError = nil
 
-    let targetDate: Date
-    switch daySelection {
-    case .today:
-      targetDate = Date.now
-    case .yesterday:
-      targetDate = Calendar.current.date(byAdding: .day, value: -1, to: Date.now) ?? Date.now
-    case .other:
-      targetDate = customDate
+    let occurredAt: String
+    if let capturedOccurredAt {
+      occurredAt = capturedOccurredAt
+    } else {
+      let targetDate: Date
+      switch daySelection {
+      case .today:
+        targetDate = Date.now
+      case .yesterday:
+        targetDate = Calendar.current.date(byAdding: .day, value: -1, to: Date.now) ?? Date.now
+      case .other:
+        targetDate = customDate
+      }
+      let formatted = Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(targetDate)
+      capturedOccurredAt = formatted
+      occurredAt = formatted
     }
-    let occurredAt = Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(targetDate)
 
     let draft = TransactionDraft.transfer(
       TransactionDraft.TransferPayload(
@@ -140,6 +148,7 @@ public final class SettleModel {
         draft: draft,
         key: idempotencyKey
       )
+      capturedOccurredAt = nil
       isRecorded = true
       if !reduceMotion {
         try? await Task.sleep(for: .milliseconds(200))

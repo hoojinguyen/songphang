@@ -220,7 +220,15 @@ public enum ActivitySentenceFormatter {
         return entries.map { "\(memberName($0.memberId)) \($0.percent)" }
           .joined(separator: " · ")
       case .items(let items, _):
-        return items.map(\.name).joined(separator: " · ")
+        return items.map { item in
+          let membersStr = item.memberIds.map(memberName).joined(separator: ", ")
+          let amountStr = MoneyFormat.amount(item.amount)
+          if membersStr.isEmpty {
+            return "\(item.name) \(amountStr)"
+          } else {
+            return "\(item.name) \(amountStr) (\(membersStr))"
+          }
+        }.joined(separator: " · ")
       }
     }
 

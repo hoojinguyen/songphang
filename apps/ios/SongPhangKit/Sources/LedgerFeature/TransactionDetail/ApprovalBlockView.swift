@@ -80,7 +80,8 @@ struct ApprovalBlockView: View {
           VStack(alignment: .leading, spacing: 16) {
             SPTextField(
               label: L10n.tr("approval.rejectNoteLabel"),
-              text: $rejectNote
+              text: $rejectNote,
+              maxLength: 300
             )
 
             Spacer()

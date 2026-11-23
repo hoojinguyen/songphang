@@ -45,6 +45,7 @@ public final class GroupFeedModel {
     loadMoreTask = nil
     isLoadingMore = false
     loadMoreError = nil
+    isFiltering = false
     return listGeneration
   }
 
@@ -147,15 +148,6 @@ public final class GroupFeedModel {
       let bud = try await fetchedBudget
       let p = try await fetchedPage
       guard listGeneration == generation, filter == requestedFilter else {
-        if case .loaded(var latest) = state {
-          latest.group = g
-          latest.members = m
-          latest.balances = b
-          latest.categories = c
-          latest.budget = bud
-          state = .loaded(latest)
-          refreshError = nil
-        }
         return
       }
       state = .loaded(
@@ -171,12 +163,14 @@ public final class GroupFeedModel {
       )
       refreshError = nil
     } catch let error as AppError {
+      guard listGeneration == generation else { return }
       if case .loaded = state {
         refreshError = error
       } else {
         state = .failed(error)
       }
     } catch {
+      guard listGeneration == generation else { return }
       if case .loaded = state {
         refreshError = .unexpected
       } else {
@@ -309,6 +303,10 @@ public final class GroupFeedModel {
   private func refetch(resources: [String]) async {
     guard case .loaded(let initial) = state else { return }
     let previousNewestId = initial.transactions.first?.id
+    let refetchGeneration = listGeneration
+    let refetchFilter = filter
+    var pageGeneration: UInt64?
+    var pageFilter: TransactionFilter?
 
     do throws(AppError) {
       let fetchedGroup =
@@ -326,8 +324,6 @@ public final class GroupFeedModel {
         ? try await budgetRepository.budget(groupId: groupId) : nil
 
       var fetchedPage: Page<LedgerTransaction>?
-      var pageGeneration: UInt64?
-      var pageFilter: TransactionFilter?
       if resources.contains("transactions") {
         let gen = invalidatePagination()
         let reqFilter = filter
@@ -340,18 +336,19 @@ public final class GroupFeedModel {
         )
       }
 
-      guard case .loaded(var current) = state else { return }
+      let expectedGeneration = pageGeneration ?? refetchGeneration
+      let expectedFilter = pageFilter ?? refetchFilter
+      guard listGeneration == expectedGeneration,
+        filter == expectedFilter,
+        case .loaded(var current) = state
+      else { return }
+
       if let fetchedGroup { current.group = fetchedGroup }
       if let fetchedMembers { current.members = fetchedMembers }
       if let fetchedBalances { current.balances = fetchedBalances }
       if let fetchedCategories { current.categories = fetchedCategories }
       if let fetchedBudget { current.budget = fetchedBudget }
-      if let fetchedPage,
-        let pageGeneration,
-        let pageFilter,
-        listGeneration == pageGeneration,
-        filter == pageFilter
-      {
+      if let fetchedPage {
         current.transactions = fetchedPage.items
         current.nextCursor = fetchedPage.nextCursor
       }
@@ -364,6 +361,8 @@ public final class GroupFeedModel {
         hasNewItemsPill = true
       }
     } catch {
+      let expectedGeneration = pageGeneration ?? refetchGeneration
+      guard listGeneration == expectedGeneration else { return }
       refreshError = error
     }
   }

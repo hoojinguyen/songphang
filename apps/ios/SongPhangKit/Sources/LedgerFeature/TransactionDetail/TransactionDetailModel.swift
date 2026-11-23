@@ -49,6 +49,7 @@ public final class TransactionDetailModel: Sendable {
   private let currentUserProvider: (@Sendable () -> User?)?
   private let onUnauthorized: (@Sendable () -> Void)?
   private var pendingSilentRefresh = false
+  private var refreshGeneration: UInt64 = 0
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -80,6 +81,7 @@ public final class TransactionDetailModel: Sendable {
   }
 
   public func load() async {
+    refreshGeneration += 1
     state = .loading
     actionError = nil
     do throws(AppError) {
@@ -128,27 +130,31 @@ public final class TransactionDetailModel: Sendable {
   }
 
   public func refreshSilently(resources: [String]? = nil) async {
-    guard case .loaded(var current) = state else {
+    guard case .loaded = state else {
       pendingSilentRefresh = true
       return
     }
+    let gen = refreshGeneration
     let shouldReloadAll = resources == nil
     do throws(AppError) {
-      if shouldReloadAll || resources?.contains("group") == true {
-        current.group = try await groupsRepository.group(id: groupId)
-      }
-      if shouldReloadAll || resources?.contains("members") == true {
-        current.members = try await membersRepository.members(groupId: groupId)
-      }
-      if shouldReloadAll || resources?.contains("categories") == true {
-        current.categories = try await categoriesRepository.list(groupId: groupId)
-      }
+      let fetchedGroup =
+        (shouldReloadAll || resources?.contains("group") == true)
+        ? try await groupsRepository.group(id: groupId) : nil
+      let fetchedMembers =
+        (shouldReloadAll || resources?.contains("members") == true)
+        ? try await membersRepository.members(groupId: groupId) : nil
+      let fetchedCategories =
+        (shouldReloadAll || resources?.contains("categories") == true)
+        ? try await categoriesRepository.list(groupId: groupId) : nil
+
+      var fetchedTx: LedgerTransaction?
+      var fetchedCommentsRes: (comments: [Comment], nextCursor: String?)?
       if shouldReloadAll
         || resources?.contains("transactions") == true
         || resources?.contains("comments") == true
         || resources?.contains("attachments") == true
       {
-        current.transaction = try await transactionsRepository.transaction(
+        fetchedTx = try await transactionsRepository.transaction(
           groupId: groupId,
           id: transactionId
         )
@@ -158,15 +164,32 @@ public final class TransactionDetailModel: Sendable {
           cursor: nil,
           limit: 50
         )
-        if !Task.isCancelled {
-          comments = res.comments
-          commentsNextCursor = res.nextCursor
-          commentsError = nil
-        }
+        fetchedCommentsRes = (comments: res.comments, nextCursor: res.nextCursor)
       }
-      if !Task.isCancelled {
-        current.currentUser = currentUserProvider?()
-        state = .loaded(current)
+
+      guard !Task.isCancelled, refreshGeneration == gen, case .loaded(var current) = state else {
+        return
+      }
+      if let fetchedGroup { current.group = fetchedGroup }
+      if let fetchedMembers { current.members = fetchedMembers }
+      if let fetchedCategories { current.categories = fetchedCategories }
+      if let fetchedTx { current.transaction = fetchedTx }
+      current.currentUser = currentUserProvider?()
+      state = .loaded(current)
+
+      if let fetchedCommentsRes {
+        var merged = fetchedCommentsRes.comments
+        let newIds = Set(merged.map(\.id))
+        for existing in comments where !newIds.contains(existing.id) {
+          merged.append(existing)
+        }
+        comments = merged
+        if commentsNextCursor != nil && comments.count > fetchedCommentsRes.comments.count {
+          // Keep existing commentsNextCursor because user has more pages loaded
+        } else {
+          commentsNextCursor = fetchedCommentsRes.nextCursor
+        }
+        commentsError = nil
       }
     } catch {
       if case .unauthorized = error {
@@ -225,6 +248,7 @@ public final class TransactionDetailModel: Sendable {
         body: body,
         key: key
       )
+      refreshGeneration += 1
       comments.append(comment)
       if case .loaded(var cur) = state {
         cur.transaction.commentCount += 1
@@ -249,6 +273,7 @@ public final class TransactionDetailModel: Sendable {
         id: transactionId,
         commentId: id
       )
+      refreshGeneration += 1
       comments.removeAll(where: { $0.id == id })
       if case .loaded(var cur) = state {
         cur.transaction.commentCount = max(0, cur.transaction.commentCount - 1)
@@ -271,6 +296,7 @@ public final class TransactionDetailModel: Sendable {
         id: transactionId,
         reason: reason
       )
+      refreshGeneration += 1
       if case .loaded(var cur) = state {
         cur.transaction.dispute = dispute
         state = .loaded(cur)
@@ -290,6 +316,7 @@ public final class TransactionDetailModel: Sendable {
 
     do throws(AppError) {
       try await transactionsRepository.resolveDispute(groupId: groupId, id: transactionId)
+      refreshGeneration += 1
       if case .loaded(var cur) = state {
         cur.transaction.dispute = nil
         state = .loaded(cur)
@@ -308,6 +335,7 @@ public final class TransactionDetailModel: Sendable {
 
     do throws(AppError) {
       let updated = try await transactionsRepository.approve(groupId: groupId, id: transactionId)
+      refreshGeneration += 1
       if case .loaded(var cur) = state {
         cur.transaction = updated
         state = .loaded(cur)
@@ -329,6 +357,7 @@ public final class TransactionDetailModel: Sendable {
         id: transactionId,
         note: note
       )
+      refreshGeneration += 1
       if case .loaded(var cur) = state {
         cur.transaction = updated
         state = .loaded(cur)

@@ -6,10 +6,15 @@ public struct QuestionCardView: View {
   private let groupId: ExpenseGroup.ID
   private let initialReading: QuickEntryReading
   private let members: [Member]
+  private let categories: [GroupCategory]
   private let transactionsRepository: any TransactionsRepository
   private let isDisabled: Bool
+  private let indexLabel: String?
+  private let saveLabel: String?
+  private let skipLabel: String?
   private let onEdit: (QuickEntryReading) -> Void
   private let onSave: (QuickEntryReading) -> Void
+  private let onSkip: (() -> Void)?
 
   @State private var selectedIds: [Member.ID] = []
   @State private var descriptionText: String
@@ -22,18 +27,28 @@ public struct QuestionCardView: View {
     groupId: ExpenseGroup.ID,
     reading: QuickEntryReading,
     members: [Member],
+    categories: [GroupCategory] = [],
     transactionsRepository: any TransactionsRepository,
     isDisabled: Bool = false,
+    indexLabel: String? = nil,
+    saveLabel: String? = nil,
+    skipLabel: String? = nil,
     onEdit: @escaping (QuickEntryReading) -> Void,
-    onSave: @escaping (QuickEntryReading) -> Void
+    onSave: @escaping (QuickEntryReading) -> Void,
+    onSkip: (() -> Void)? = nil
   ) {
     self.groupId = groupId
     self.initialReading = reading
     self.members = members
+    self.categories = categories
     self.transactionsRepository = transactionsRepository
     self.isDisabled = isDisabled
+    self.indexLabel = indexLabel
+    self.saveLabel = saveLabel
+    self.skipLabel = skipLabel
     self.onEdit = onEdit
     self.onSave = onSave
+    self.onSkip = onSkip
     self._descriptionText = State(initialValue: reading.draft.description ?? "")
     self._previewShares = State(initialValue: reading.shares)
   }
@@ -113,11 +128,15 @@ public struct QuestionCardView: View {
     ConfirmationCardView(
       reading: effective,
       members: members,
+      categories: categories,
       isDisabled: isDisabled || !ready,
       isBudgetOver: ready && previewWarnings.contains(.budgetOver),
-      saveLabel: saveButtonLabel,
+      indexLabel: indexLabel,
+      saveLabel: saveButtonLabel ?? saveLabel,
+      skipLabel: skipLabel,
       onEdit: { onEdit(effective) },
-      onSave: { onSave(effective) }
+      onSave: { onSave(effective) },
+      onSkip: onSkip
     ) {
       VStack(alignment: .leading, spacing: 12) {
         if let ambiguousIssue {
@@ -197,7 +216,7 @@ public struct QuestionCardView: View {
         isIncome: false,
         description: description,
         amount: amount,
-        occurredAt: "2026-11-16T15:00:00.000Z",
+        occurredAt: Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(Date.now),
         category: current.draft.category,
         categoryId: current.draft.categoryId,
         payers: current.draft.payers,
