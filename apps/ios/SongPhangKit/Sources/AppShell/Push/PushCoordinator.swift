@@ -119,7 +119,6 @@ public final class PushCoordinator {
     guard !hexToken.isEmpty else { return }
     lastDeviceToken = hexToken
     guard !isRegistering else { return }
-    guard currentDeviceId == nil || registeredToken != hexToken else { return }
     isRegistering = true
     defer {
       if sessionGeneration == expectedGeneration {
@@ -133,12 +132,21 @@ public final class PushCoordinator {
     #else
       env = .production
     #endif
-    if let deviceId = try? await devicesRepository.registerDevice(
-      token: hexToken,
-      environment: env
-    ), sessionGeneration == expectedGeneration {
-      currentDeviceId = deviceId
-      registeredToken = hexToken
+
+    while sessionGeneration == expectedGeneration,
+      let tokenToRegister = lastDeviceToken,
+      !tokenToRegister.isEmpty,
+      currentDeviceId == nil || registeredToken != tokenToRegister
+    {
+      if let deviceId = try? await devicesRepository.registerDevice(
+        token: tokenToRegister,
+        environment: env
+      ), sessionGeneration == expectedGeneration {
+        currentDeviceId = deviceId
+        registeredToken = tokenToRegister
+      } else {
+        break
+      }
     }
   }
 

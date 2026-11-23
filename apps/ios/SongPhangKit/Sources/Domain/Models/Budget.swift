@@ -1,6 +1,23 @@
-public enum BudgetPeriod: String, Sendable, Hashable, CaseIterable {
+public enum BudgetPeriod: Sendable, Hashable {
   case month
   case total
+  case unknown(String)
+
+  public init(rawValue: String) {
+    switch rawValue {
+    case "month": self = .month
+    case "total": self = .total
+    default: self = .unknown(rawValue)
+    }
+  }
+
+  public var rawValue: String {
+    switch self {
+    case .month: return "month"
+    case .total: return "total"
+    case .unknown(let raw): return raw
+    }
+  }
 }
 
 public enum BudgetState: Sendable, Hashable {

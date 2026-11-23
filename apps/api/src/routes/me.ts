@@ -160,6 +160,10 @@ export function registerMeRoute(app: OpenAPIHono<AppEnv>, deps: AppDeps): void {
 							"application/json": { schema: RegisterDeviceResponse },
 						},
 					},
+					400: {
+						description: "Invalid request payload",
+						content: { "application/json": { schema: ErrorResponse } },
+					},
 					401: {
 						description: "Authentication required",
 						content: { "application/json": { schema: ErrorResponse } },

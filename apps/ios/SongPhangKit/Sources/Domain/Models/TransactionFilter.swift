@@ -80,7 +80,7 @@ public struct TransactionFilter: Sendable, Hashable {
       let y = Int(parts[0]),
       let m = Int(parts[1]),
       let d = Int(parts[2]),
-      y >= 1000, y <= 9999,
+      y >= 1, y <= 9999,
       m >= 1, m <= 12,
       d >= 1, d <= 31
     else { return nil }

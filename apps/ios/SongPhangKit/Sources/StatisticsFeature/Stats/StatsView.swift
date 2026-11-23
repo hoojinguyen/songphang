@@ -90,10 +90,16 @@ public struct StatsView: View {
           color: Tokens.ink
         )
         if let budget = data.budget, budget.state == .near || budget.state == .over {
-          let periodLabel =
-            budget.period == .month
-            ? L10n.tr("budget.periodMonth")
-            : L10n.tr("budget.periodTotal")
+          let periodLabel: String = {
+            switch budget.period {
+            case .month:
+              return L10n.tr("budget.periodMonth")
+            case .total:
+              return L10n.tr("budget.periodTotal")
+            case .unknown(let raw):
+              return raw
+            }
+          }()
           let statusLabel =
             budget.state == .over
             ? L10n.t("budget.overBanner", ["over": MoneyFormat.full(budget.spent - budget.amount)])

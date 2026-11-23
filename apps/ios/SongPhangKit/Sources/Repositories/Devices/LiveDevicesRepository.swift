@@ -26,6 +26,12 @@ public final class LiveDevicesRepository: DevicesRepository, Sendable {
       switch output {
       case .ok(let ok):
         return try ok.body.json.id
+      case .badRequest(let badRequest):
+        let code = try? badRequest.body.json.error.code.rawValue
+        throw await environment.errorMapper.mapStatus(
+          statusCode: 400,
+          code: code ?? "VALIDATION_FAILED"
+        )
       case .unauthorized(let unauthorized):
         let code = try? unauthorized.body.json.error.code.rawValue
         throw await environment.errorMapper.mapStatus(statusCode: 401, code: code)

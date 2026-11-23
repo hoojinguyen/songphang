@@ -3,22 +3,15 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import Foundation
 
-enum PaymentQRCode: Sendable {
-  private final class Storage: @unchecked Sendable {
-    let context = CIContext()
-    let lock = NSLock()
-    var cachedPayload: String?
-    var cachedImage: CGImage?
-  }
-
-  private static let storage = Storage()
+@MainActor
+enum PaymentQRCode {
+  private static let context = CIContext()
+  private static var cachedPayload: String?
+  private static var cachedImage: CGImage?
 
   static func render(payload: String) -> CGImage? {
-    storage.lock.lock()
-    defer { storage.lock.unlock() }
-
-    if let cachedPayload = storage.cachedPayload, cachedPayload == payload,
-      let cachedImage = storage.cachedImage
+    if let cachedPayload, cachedPayload == payload,
+      let cachedImage
     {
       return cachedImage
     }
@@ -33,11 +26,11 @@ enum PaymentQRCode: Sendable {
       .cropped(to: quietZone)
     let image = code.composited(over: background)
       .transformed(by: CGAffineTransform(scaleX: 12, y: 12))
-    guard let cgImage = storage.context.createCGImage(image, from: image.extent) else {
+    guard let cgImage = context.createCGImage(image, from: image.extent) else {
       return nil
     }
-    storage.cachedPayload = payload
-    storage.cachedImage = cgImage
+    cachedPayload = payload
+    cachedImage = cgImage
     return cgImage
   }
 }

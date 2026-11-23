@@ -38,12 +38,11 @@ struct BudgetSettingsCard: View {
         value: activePeriod.rawValue,
         isDisabled: isDisabled || isPending
       ) { next in
-        if let nextPeriod = BudgetPeriod(rawValue: next) {
-          period = nextPeriod
-          if !hasDraftEdit {
-            amountText = activeAmountText
-            hasDraftEdit = true
-          }
+        let nextPeriod = BudgetPeriod(rawValue: next)
+        period = nextPeriod
+        if !hasDraftEdit {
+          amountText = activeAmountText
+          hasDraftEdit = true
         }
       }
 

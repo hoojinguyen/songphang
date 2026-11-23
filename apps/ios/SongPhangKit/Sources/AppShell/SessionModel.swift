@@ -38,7 +38,14 @@ public final class SessionModel {
 
   public func loadSession() async {
     let generation = sessionGeneration
-    if case .loading = state, let cached = await authRepository.lastKnownUser() {
+    let shouldCheckCache: Bool
+    switch state {
+    case .loading, .signedOut:
+      shouldCheckCache = true
+    case .signedIn:
+      shouldCheckCache = false
+    }
+    if shouldCheckCache, let cached = await authRepository.lastKnownUser() {
       guard sessionGeneration == generation else { return }
       state = .signedIn(cached)
     }
@@ -70,6 +77,7 @@ public final class SessionModel {
       applyFeatures(features)
     }
     guard case .signedIn = state else {
+      await loadSession()
       return
     }
     let generation = sessionGeneration

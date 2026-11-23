@@ -3,10 +3,8 @@ import Foundation
 import GeneratedAPI
 
 enum BudgetMapping {
-  static func mapBudget(_ dto: Components.Schemas.BudgetDto) -> GroupBudget? {
-    guard let period = BudgetPeriod(rawValue: dto.period.rawValue) else {
-      return nil
-    }
+  static func mapBudget(_ dto: Components.Schemas.BudgetDto) -> GroupBudget {
+    let period = BudgetPeriod(rawValue: dto.period.rawValue)
     return GroupBudget(
       period: period,
       amount: Money(Int64(dto.amount)),
@@ -25,6 +23,7 @@ enum BudgetMapping {
       switch period {
       case .month: .month
       case .total: .total
+      case .unknown: .month
       }
     return Components.Schemas.PutBudgetRequest(
       amount: Int(amount.amount),
@@ -49,10 +48,8 @@ enum BudgetMapping {
       self.periodEnd = budget.periodEnd
     }
 
-    func toDomain() -> GroupBudget? {
-      guard let budgetPeriod = BudgetPeriod(rawValue: period) else {
-        return nil
-      }
+    func toDomain() -> GroupBudget {
+      let budgetPeriod = BudgetPeriod(rawValue: period)
       return GroupBudget(
         period: budgetPeriod,
         amount: Money(amount),
