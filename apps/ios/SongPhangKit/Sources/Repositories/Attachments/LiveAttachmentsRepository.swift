@@ -54,17 +54,12 @@ public final class LiveAttachmentsRepository: AttachmentsRepository, Sendable {
     request.httpMethod = "POST"
     request.setValue(
       "multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-    request.setValue(environment.configuration.appVersion, forHTTPHeaderField: "X-App-Version")
-    if let token = await environment.tokenStore.read(), !token.isEmpty {
-      request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    }
     request.httpBody = body
 
     do {
-      let (responseData, response) = try await environment.urlSession.data(for: request)
-      guard let http = response as? HTTPURLResponse else {
-        throw AppError.unexpected
-      }
+      let (responseData, http, snapshot) = try await environment.performAuthorizedDataRequest(
+        request
+      )
       guard (200..<300).contains(http.statusCode) else {
         let decoded = try? JSONDecoder().decode(UploadErrorPayload.self, from: responseData)
         let reason = decoded?.error.details?.reason
@@ -76,7 +71,8 @@ public final class LiveAttachmentsRepository: AttachmentsRepository, Sendable {
         }
         throw await environment.errorMapper.mapStatus(
           statusCode: http.statusCode,
-          code: decoded?.error.code
+          code: decoded?.error.code,
+          sessionGeneration: snapshot.token != nil ? snapshot.generation : nil
         )
       }
       return try ReceiptMapping.decodeResilientAttachment(from: responseData)
@@ -100,21 +96,17 @@ public final class LiveAttachmentsRepository: AttachmentsRepository, Sendable {
 
     var request = URLRequest(url: url)
     request.httpMethod = "GET"
-    request.setValue(environment.configuration.appVersion, forHTTPHeaderField: "X-App-Version")
-    if let token = await environment.tokenStore.read(), !token.isEmpty {
-      request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    }
 
     do {
-      let (responseData, response) = try await environment.urlSession.data(for: request)
-      guard let http = response as? HTTPURLResponse else {
-        throw AppError.unexpected
-      }
+      let (responseData, http, snapshot) = try await environment.performAuthorizedDataRequest(
+        request
+      )
       guard (200..<300).contains(http.statusCode) else {
         let decoded = try? JSONDecoder().decode(UploadErrorPayload.self, from: responseData)
         throw await environment.errorMapper.mapStatus(
           statusCode: http.statusCode,
-          code: decoded?.error.code
+          code: decoded?.error.code,
+          sessionGeneration: snapshot.token != nil ? snapshot.generation : nil
         )
       }
       return responseData

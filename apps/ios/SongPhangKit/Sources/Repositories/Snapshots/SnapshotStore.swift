@@ -70,6 +70,7 @@ actor SnapshotStore {
   private let rootURL: URL
   private let maxRecentGroups: Int
   private var sessionGeneration: UInt64 = 0
+  private var minAllowedTokenGeneration: UInt64 = 0
   private var activeScope: Scope?
   private var groupGenerations: [String: UInt64] = [:]
   private var memoryCache: [SnapshotKey: Data] = [:]
@@ -96,7 +97,15 @@ actor SnapshotStore {
   }
 
   @discardableResult
-  func beginSession(userId: String) -> Scope {
+  func beginSession(userId: String, tokenGeneration: UInt64? = nil) -> Scope? {
+    if let tokenGeneration {
+      guard tokenGeneration >= minAllowedTokenGeneration else {
+        return nil
+      }
+      if tokenGeneration > minAllowedTokenGeneration {
+        minAllowedTokenGeneration = tokenGeneration
+      }
+    }
     if let current = activeScope, current.userId == userId {
       return current
     }
@@ -111,8 +120,12 @@ actor SnapshotStore {
   }
 
   func restoreLastUser<T: Sendable>(
+    tokenGeneration: UInt64? = nil,
     decode: (Data) throws -> (userId: String, value: T)
   ) -> T? {
+    if let tokenGeneration, tokenGeneration < minAllowedTokenGeneration {
+      return nil
+    }
     let fm = FileManager.default
     guard
       let entries = try? fm.contentsOfDirectory(
@@ -138,7 +151,9 @@ actor SnapshotStore {
     }
     do {
       let parsed = try decode(data)
-      _ = beginSession(userId: parsed.userId)
+      guard beginSession(userId: parsed.userId, tokenGeneration: tokenGeneration) != nil else {
+        return nil
+      }
       memoryCache[.me] = data
       return parsed.value
     } catch {
@@ -224,7 +239,10 @@ actor SnapshotStore {
     }
   }
 
-  func invalidateSession() {
+  func invalidateSession(atLeastTokenGeneration minGeneration: UInt64? = nil) {
+    if let minGeneration, minGeneration > minAllowedTokenGeneration {
+      minAllowedTokenGeneration = minGeneration
+    }
     sessionGeneration &+= 1
     activeScope = nil
     groupGenerations.removeAll()

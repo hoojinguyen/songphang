@@ -37,7 +37,8 @@ public final class LiveGroupEventsRepository: GroupEventsRepository, Sendable {
     var hasConnectedOnce = false
 
     while !Task.isCancelled {
-      guard let token = await environment.tokenStore.read(), !token.isEmpty else {
+      let snapshot = await environment.tokenStore.readSnapshot()
+      guard let token = snapshot.token, !token.isEmpty else {
         continuation.finish()
         return
       }
@@ -53,20 +54,26 @@ public final class LiveGroupEventsRepository: GroupEventsRepository, Sendable {
 
       do {
         let (bytes, response) = try await environment.streamingSession.bytes(for: request)
+        guard await environment.tokenStore.currentGeneration() == snapshot.generation else {
+          continuation.finish()
+          return
+        }
         guard let http = response as? HTTPURLResponse else {
           try await sleepBackoff(&backoffSeconds)
           continue
         }
 
         if http.statusCode == 401 {
-          await environment.invalidateSession()
+          await environment.invalidateSessionIfMatching(snapshot.generation)
           continuation.finish()
           return
         }
 
         if http.statusCode == 404 {
-          await environment.snapshots.invalidateGroup(groupId.rawValue)
-          continuation.yield(.removed)
+          if await environment.tokenStore.currentGeneration() == snapshot.generation {
+            await environment.snapshots.invalidateGroup(groupId.rawValue)
+            continuation.yield(.removed)
+          }
           continuation.finish()
           return
         }
@@ -90,12 +97,17 @@ public final class LiveGroupEventsRepository: GroupEventsRepository, Sendable {
             continuation.finish()
             return
           }
+          if await environment.tokenStore.currentGeneration() != snapshot.generation {
+            continuation.finish()
+            return
+          }
           if line.isEmpty {
             if currentEvent != nil && !dataLines.isEmpty {
               let shouldStop = await dispatchFrame(
                 eventName: currentEvent,
                 dataLines: dataLines,
                 groupId: groupId,
+                expectedTokenGeneration: snapshot.generation,
                 environment: environment,
                 continuation: continuation
               )
@@ -125,6 +137,7 @@ public final class LiveGroupEventsRepository: GroupEventsRepository, Sendable {
                 eventName: currentEvent,
                 dataLines: dataLines,
                 groupId: groupId,
+                expectedTokenGeneration: snapshot.generation,
                 environment: environment,
                 continuation: continuation
               )
@@ -168,10 +181,14 @@ public final class LiveGroupEventsRepository: GroupEventsRepository, Sendable {
     eventName: String?,
     dataLines: [String],
     groupId: ExpenseGroup.ID,
+    expectedTokenGeneration: UInt64,
     environment: LiveAPIEnvironment,
     continuation: AsyncStream<GroupEvent>.Continuation
   ) async -> Bool {
     guard let eventName else { return false }
+    guard await environment.tokenStore.currentGeneration() == expectedTokenGeneration else {
+      return true
+    }
     switch eventName {
     case "changed":
       let joined = dataLines.joined(separator: "\n")

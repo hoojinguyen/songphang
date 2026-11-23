@@ -3,10 +3,16 @@ import Foundation
 import Security
 
 actor TokenStore {
+  struct TokenSnapshot: Sendable, Equatable {
+    let token: String?
+    let generation: UInt64
+  }
+
   private let service: String
   private let account: String
   private var cachedToken: String?
   private var hasLoaded = false
+  private var generation: UInt64 = 0
 
   init(
     service: String = "vn.songphang.app.session",
@@ -14,6 +20,14 @@ actor TokenStore {
   ) {
     self.service = service
     self.account = account
+  }
+
+  func currentGeneration() -> UInt64 {
+    generation
+  }
+
+  func readSnapshot() -> TokenSnapshot {
+    TokenSnapshot(token: read(), generation: generation)
   }
 
   func read() -> String? {
@@ -42,7 +56,8 @@ actor TokenStore {
     return token
   }
 
-  func write(_ token: String) throws(AppError) {
+  @discardableResult
+  func write(_ token: String) throws(AppError) -> UInt64 {
     guard let data = token.data(using: .utf8), !data.isEmpty else {
       throw .unexpected
     }
@@ -66,9 +81,12 @@ actor TokenStore {
     }
     cachedToken = token
     hasLoaded = true
+    generation &+= 1
+    return generation
   }
 
-  func clear() {
+  @discardableResult
+  func clear() -> UInt64 {
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
@@ -77,5 +95,14 @@ actor TokenStore {
     SecItemDelete(query as CFDictionary)
     cachedToken = nil
     hasLoaded = true
+    generation &+= 1
+    return generation
+  }
+
+  func clearIfGeneration(_ expected: UInt64) -> UInt64? {
+    guard generation == expected else {
+      return nil
+    }
+    return clear()
   }
 }

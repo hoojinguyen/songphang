@@ -24,6 +24,7 @@ public final class SessionModel {
 
   private let authRepository: any AuthRepository
   private let appVersion: String
+  private var sessionGeneration: UInt64 = 0
 
   public init(
     authRepository: any AuthRepository,
@@ -36,7 +37,9 @@ public final class SessionModel {
   }
 
   public func loadSession() async {
+    let generation = sessionGeneration
     if case .loading = state, let cached = await authRepository.lastKnownUser() {
+      guard sessionGeneration == generation else { return }
       state = .signedIn(cached)
     }
 
@@ -55,6 +58,10 @@ public final class SessionModel {
       applyFeatures(features)
     }
 
+    guard sessionGeneration == generation else { return }
+    if case .failure(.api(code: "STALE_SESSION", status: _)) = userResult {
+      return
+    }
     applyUserResult(userResult)
   }
 
@@ -65,8 +72,11 @@ public final class SessionModel {
     guard case .signedIn = state else {
       return
     }
+    let generation = sessionGeneration
     do throws(AppError) {
-      if let user = try await authRepository.currentUser() {
+      let user = try await authRepository.currentUser()
+      guard sessionGeneration == generation else { return }
+      if let user {
         state = .signedIn(user)
         isOffline = false
       } else {
@@ -74,6 +84,10 @@ public final class SessionModel {
         isOffline = false
       }
     } catch {
+      guard sessionGeneration == generation else { return }
+      if error == .api(code: "STALE_SESSION", status: 0) {
+        return
+      }
       if error == .unauthorized {
         state = .signedOut
         isOffline = false
@@ -84,6 +98,7 @@ public final class SessionModel {
   }
 
   public func didSignIn(_ user: User) {
+    sessionGeneration &+= 1
     state = .signedIn(user)
     isOffline = false
   }
@@ -106,11 +121,13 @@ public final class SessionModel {
   }
 
   public func markSignedOut() {
+    sessionGeneration &+= 1
     state = .signedOut
     isOffline = false
   }
 
   public func signOut() async {
+    sessionGeneration &+= 1
     try? await authRepository.signOut()
     markSignedOut()
   }

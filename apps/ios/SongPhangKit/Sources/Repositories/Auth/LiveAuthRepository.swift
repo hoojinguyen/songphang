@@ -12,18 +12,21 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
   }
 
   public func lastKnownUser() async -> User? {
-    guard await environment.hasToken() else {
-      await environment.snapshots.invalidateSession()
+    let snapshot = await environment.tokenStore.readSnapshot()
+    guard let token = snapshot.token, !token.isEmpty else {
+      await environment.invalidateSessionIfMatching(snapshot.generation)
       return nil
     }
-    return await environment.snapshots.restoreLastUser { data in
+    return await environment.snapshots.restoreLastUser(tokenGeneration: snapshot.generation) {
+      data in
       try AuthMapping.decodeCachedUser(from: data)
     }
   }
 
   public func currentUser() async throws(AppError) -> User? {
-    guard await environment.hasToken() else {
-      await environment.snapshots.invalidateSession()
+    let snapshot = await environment.tokenStore.readSnapshot()
+    guard let token = snapshot.token, !token.isEmpty else {
+      await environment.invalidateSessionIfMatching(snapshot.generation)
       return nil
     }
     do {
@@ -42,10 +45,17 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
         try AuthMapping.decodeCachedUser(from: data).value
       }
 
-      guard await environment.hasToken() else {
-        return nil
+      guard await environment.tokenStore.currentGeneration() == snapshot.generation else {
+        throw AppError.api(code: "STALE_SESSION", status: 0)
       }
-      let scope = await environment.snapshots.beginSession(userId: user.id.rawValue)
+      guard
+        let scope = await environment.snapshots.beginSession(
+          userId: user.id.rawValue,
+          tokenGeneration: snapshot.generation
+        )
+      else {
+        throw AppError.api(code: "STALE_SESSION", status: 0)
+      }
       if let encoded = AuthMapping.encodeCachedUser(user) {
         await environment.snapshots.writeData(encoded, for: .me, scope: scope)
       }
@@ -218,13 +228,16 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
     userDto: Components.Schemas.UserDto
   ) async throws(AppError) -> User {
     let user = AuthMapping.mapUser(userDto)
+    let tokenGeneration: UInt64
     do {
-      try await environment.tokenStore.write(token)
+      tokenGeneration = try await environment.tokenStore.write(token)
     } catch {
       throw environment.errorMapper.mapTransportError(error)
     }
-    let scope = await environment.snapshots.beginSession(userId: user.id.rawValue)
-    if let encoded = AuthMapping.encodeCachedUser(user) {
+    if let scope = await environment.snapshots.beginSession(
+      userId: user.id.rawValue,
+      tokenGeneration: tokenGeneration
+    ), let encoded = AuthMapping.encodeCachedUser(user) {
       await environment.snapshots.writeData(encoded, for: .me, scope: scope)
     }
     return user
@@ -323,6 +336,7 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
   }
 
   public func deleteAccount(email: String) async throws(AppError) {
+    let snapshot = await environment.tokenStore.readSnapshot()
     do {
       let body = Components.Schemas.DeleteAccountRequest(email: email)
       let output = try await environment.client.delete_sol_api_sol_v1_sol_me(
@@ -330,8 +344,9 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
       )
       switch output {
       case .noContent:
-        currentSessionId.withLock { $0 = nil }
-        await environment.invalidateSession()
+        if await environment.invalidateSessionIfMatching(snapshot.generation) {
+          currentSessionId.withLock { $0 = nil }
+        }
         return
       case .serviceUnavailable(let unavailable):
         let code = try? unavailable.body.json.error.code.rawValue
@@ -378,6 +393,7 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
   }
 
   public func revokeSession(id: UserSession.ID) async throws(AppError) {
+    let snapshot = await environment.tokenStore.readSnapshot()
     do {
       let output = try await environment.client
         .delete_sol_api_sol_v1_sol_me_sol_sessions_sol__lcub_id_rcub_(
@@ -386,9 +402,8 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
       switch output {
       case .noContent:
         let isCurrent = currentSessionId.withLock { $0 == id }
-        if isCurrent {
+        if isCurrent, await environment.invalidateSessionIfMatching(snapshot.generation) {
           currentSessionId.withLock { $0 = nil }
-          await environment.invalidateSession()
         }
         return
       case .unauthorized(let unauthorized):
@@ -412,10 +427,12 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
   }
 
   public func signOut() async throws(AppError) {
-    if await environment.hasToken() {
+    let snapshot = await environment.tokenStore.readSnapshot()
+    if let token = snapshot.token, !token.isEmpty {
       _ = try? await environment.client.post_sol_api_sol_v1_sol_auth_sol_logout(.init())
     }
-    currentSessionId.withLock { $0 = nil }
-    await environment.invalidateSession()
+    if await environment.invalidateSessionIfMatching(snapshot.generation) {
+      currentSessionId.withLock { $0 = nil }
+    }
   }
 }

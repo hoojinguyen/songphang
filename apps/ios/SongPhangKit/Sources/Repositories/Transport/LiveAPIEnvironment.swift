@@ -12,6 +12,7 @@ public final class LiveAPIEnvironment: Sendable {
   let client: Client
   let errorMapper: ErrorMapper
   private let invalidationHub: SessionInvalidationHub
+  private let onSessionInvalidated: @Sendable () async -> Void
 
   public init(
     configuration: APIConfiguration,
@@ -24,13 +25,25 @@ public final class LiveAPIEnvironment: Sendable {
     self.tokenStore = store
     self.snapshots = snapshotStore
     self.invalidationHub = hub
+    self.onSessionInvalidated = onSessionInvalidated
+
+    let invalidateForGeneration: @Sendable (UInt64) async -> Bool = { expectedGeneration in
+      guard let newGeneration = await store.clearIfGeneration(expectedGeneration) else {
+        return false
+      }
+      await snapshotStore.invalidateSession(atLeastTokenGeneration: newGeneration)
+      hub.broadcast()
+      await onSessionInvalidated()
+      return true
+    }
 
     let session = BearerURLSession.makeSession()
     self.urlSession = session
     self.streamingSession = BearerURLSession.makeStreamingSession()
     let middleware = AuthMiddleware(
       tokenStore: store,
-      appVersion: configuration.appVersion
+      appVersion: configuration.appVersion,
+      onUnauthorized: invalidateForGeneration
     )
     self.client = Client(
       serverURL: configuration.serverOriginURL,
@@ -38,22 +51,49 @@ public final class LiveAPIEnvironment: Sendable {
       transport: BearerURLSession.makeTransport(session: session),
       middlewares: [middleware]
     )
-    self.errorMapper = ErrorMapper {
-      await store.clear()
-      await snapshotStore.invalidateSession()
-      hub.broadcast()
-      await onSessionInvalidated()
-    }
+    self.errorMapper = ErrorMapper(onUnauthorized: invalidateForGeneration)
   }
 
   public func sessionInvalidations() -> AsyncStream<Void> {
     invalidationHub.makeStream()
   }
 
-  func invalidateSession() async {
-    await tokenStore.clear()
-    await snapshots.invalidateSession()
+  @discardableResult
+  func invalidateSessionIfMatching(_ expectedGeneration: UInt64) async -> Bool {
+    guard let newGeneration = await tokenStore.clearIfGeneration(expectedGeneration) else {
+      return false
+    }
+    await snapshots.invalidateSession(atLeastTokenGeneration: newGeneration)
     invalidationHub.broadcast()
+    await onSessionInvalidated()
+    return true
+  }
+
+  func invalidateSession() async {
+    let newGeneration = await tokenStore.clear()
+    await snapshots.invalidateSession(atLeastTokenGeneration: newGeneration)
+    invalidationHub.broadcast()
+    await onSessionInvalidated()
+  }
+
+  func performAuthorizedDataRequest(
+    _ request: URLRequest
+  ) async throws -> (Data, HTTPURLResponse, TokenStore.TokenSnapshot) {
+    let snapshot = await tokenStore.readSnapshot()
+    var modified = request
+    modified.setValue(configuration.appVersion, forHTTPHeaderField: "X-App-Version")
+    if let token = snapshot.token, !token.isEmpty {
+      modified.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+    let (data, response) = try await urlSession.data(for: modified)
+    let currentGeneration = await tokenStore.currentGeneration()
+    if currentGeneration != snapshot.generation {
+      throw StaleSessionError()
+    }
+    guard let http = response as? HTTPURLResponse else {
+      throw AppError.unexpected
+    }
+    return (data, http, snapshot)
   }
 
   func hasToken() async -> Bool {

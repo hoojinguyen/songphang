@@ -247,19 +247,16 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
     var request = URLRequest(url: url)
     request.httpMethod = "PATCH"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    request.setValue(environment.configuration.appVersion, forHTTPHeaderField: "X-App-Version")
-    if let token = await environment.tokenStore.read() {
-      request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    }
     do {
       request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-      let (data, response) = try await environment.urlSession.data(for: request)
-      guard let http = response as? HTTPURLResponse else {
-        throw AppError.unexpected
-      }
+      let (data, http, snapshot) = try await environment.performAuthorizedDataRequest(request)
       guard http.statusCode == 200 else {
         let code = (try? JSONDecoder().decode(APIErrorPayload.self, from: data))?.error.code
-        throw await environment.errorMapper.mapStatus(statusCode: http.statusCode, code: code)
+        throw await environment.errorMapper.mapStatus(
+          statusCode: http.statusCode,
+          code: code,
+          sessionGeneration: snapshot.token != nil ? snapshot.generation : nil
+        )
       }
       return try GroupMapping.decodeResilientGroup(from: data)
     } catch let error as AppError {

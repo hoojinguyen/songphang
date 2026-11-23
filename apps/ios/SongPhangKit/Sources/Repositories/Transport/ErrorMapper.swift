@@ -2,6 +2,8 @@ import Domain
 import Foundation
 import OpenAPIRuntime
 
+struct StaleSessionError: Error, Sendable {}
+
 struct APIErrorPayload: Decodable, Sendable {
   struct Inner: Decodable, Sendable {
     let code: String
@@ -12,13 +14,16 @@ struct APIErrorPayload: Decodable, Sendable {
 }
 
 struct ErrorMapper: Sendable {
-  private let onUnauthorized: @Sendable () async -> Void
+  private let onUnauthorized: @Sendable (UInt64) async -> Bool
 
-  init(onUnauthorized: @escaping @Sendable () async -> Void) {
+  init(onUnauthorized: @escaping @Sendable (UInt64) async -> Bool) {
     self.onUnauthorized = onUnauthorized
   }
 
   func mapTransportError(_ error: any Error) -> AppError {
+    if error is StaleSessionError {
+      return .api(code: "STALE_SESSION", status: 0)
+    }
     if let appError = error as? AppError {
       return appError
     }
@@ -46,7 +51,8 @@ struct ErrorMapper: Sendable {
   func mapUndocumented(
     statusCode: Int,
     payload: UndocumentedPayload,
-    clearSessionOnUnauthorized: Bool = true
+    clearSessionOnUnauthorized: Bool = true,
+    sessionGeneration: UInt64? = nil
   ) async -> AppError {
     var errorCode: String?
     if let body = payload.body {
@@ -59,21 +65,26 @@ struct ErrorMapper: Sendable {
     return await mapStatus(
       statusCode: statusCode,
       code: errorCode,
-      clearSessionOnUnauthorized: clearSessionOnUnauthorized
+      clearSessionOnUnauthorized: clearSessionOnUnauthorized,
+      sessionGeneration: sessionGeneration
     )
   }
 
   func mapStatus(
     statusCode: Int,
     code: String?,
-    clearSessionOnUnauthorized: Bool = true
+    clearSessionOnUnauthorized: Bool = true,
+    sessionGeneration: UInt64? = nil
   ) async -> AppError {
     if statusCode == 401 {
       if code == "INVALID_CREDENTIALS" {
         return .api(code: "INVALID_CREDENTIALS", status: 401)
       }
-      if clearSessionOnUnauthorized {
-        await onUnauthorized()
+      if clearSessionOnUnauthorized, let sessionGeneration {
+        let invalidated = await onUnauthorized(sessionGeneration)
+        if !invalidated {
+          return .api(code: "STALE_SESSION", status: 0)
+        }
       }
       return .unauthorized
     }
