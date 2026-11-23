@@ -131,7 +131,7 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 
 - **Problem:** Apple exchange and revocation need durable ownership across network calls, process loss, and simultaneous requests.
 - **Options:** Hold database transactions across provider calls or use short transactions with durable reservations.
-- **Choice:** Use durable reservations. Reject a different Apple subject before exchanging against an already-linked account. Clean up expired conflicting reservations for that account's other subjects. Retain a genuinely uncertain exchange for the linked subject until a later verified exchange reconciles it. Record short-lived deletion markers for the email and linked subject and reject late Apple sign-in during that window.
+- **Choice:** Use durable reservations. Reject a different Apple subject before exchanging against an already-linked account. Clean up expired conflicting reservations for that account's other subjects. Block account deletion while an Apple exchange is genuinely unresolved. Retain that reservation for the linked subject until a later verified exchange reconciles it. Record a definitive provider rejection as terminal before pruning the operation so cleanup failures cannot mask the rejection or block deletion. Record short-lived deletion markers for the email and linked subject and reject late Apple sign-in during that window.
 - **Reason:** Provider I/O stays outside transactions. A revoked grant can be retried after the revocation lease expires, and an authenticated session remains available until deletion succeeds.
 
 ### D15 — PATCH schema compatibility

@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { type AppleSignInRequest, UserDto } from "@songphang/contract";
 import {
-	clearAppleOperation,
 	clearExpiredConflictingAppleExchanges,
 	findAccountByEmail,
 	findAppleIdentity,
 	findAppleOperation,
 	findUserAppleIdentity,
 	findUserById,
+	finishAppleExchange,
 	hasAppleExchange,
 	hasRecentAppleDeletion,
 	insertAccount,
@@ -15,6 +15,7 @@ import {
 	lockAccount,
 	lockAppleOperation,
 	pruneExpiredAppleOperations,
+	releaseAppleExchangeLease,
 	saveAppleOperation,
 	updateAppleProviderSecret,
 } from "@songphang/db";
@@ -47,6 +48,18 @@ function fallbackAppleName(
 		return localPart.slice(0, 50);
 	}
 	return "Người dùng Apple";
+}
+
+async function finishRejectedExchange(
+	deps: AppDeps,
+	key: string,
+	owner: string,
+) {
+	try {
+		await finishAppleExchange(deps.db, key, owner);
+	} catch {
+		console.warn(JSON.stringify({ event: "apple.exchange.finish_failed" }));
+	}
 }
 
 export async function appleSignIn(
@@ -95,7 +108,11 @@ export async function appleSignIn(
 			"Apple credential encryption key is missing",
 		);
 	}
-	await pruneExpiredAppleOperations(deps.db);
+	try {
+		await pruneExpiredAppleOperations(deps.db);
+	} catch {
+		console.warn(JSON.stringify({ event: "apple.operations.prune_failed" }));
+	}
 	const operationKey = `exchange:${claims.sub}`;
 	const owner = randomUUID();
 	const hadPendingExchange = await deps.db.transaction(async (transaction) => {
@@ -214,6 +231,9 @@ export async function appleSignIn(
 			);
 		} catch (error) {
 			if (error instanceof AppError) {
+				if (!hadPendingExchange && error.status === 401) {
+					await finishRejectedExchange(deps, operationKey, owner);
+				}
 				throw error;
 			}
 			if (
@@ -222,7 +242,7 @@ export async function appleSignIn(
 				error.category.startsWith("rejected:") &&
 				error.category !== "rejected:unknown"
 			) {
-				await clearAppleOperation(deps.db, operationKey, owner);
+				await finishRejectedExchange(deps, operationKey, owner);
 			}
 			const category =
 				error instanceof AppleTokenAdapterError
@@ -418,16 +438,20 @@ export async function appleSignIn(
 					? {}
 					: { userAgent: input.userAgent }),
 			});
-			await clearAppleOperation(transaction, operationKey, owner);
+			await finishAppleExchange(transaction, operationKey, owner);
 			return { session, user: UserDto.parse(userRow) };
 		});
 	} catch (error) {
-		if (
-			!hadPendingExchange &&
-			error instanceof AppError &&
-			error.status < 500
-		) {
-			await clearAppleOperation(deps.db, operationKey, owner);
+		if (error instanceof AppError && error.status < 500) {
+			// A failed validation after exchange does not establish that Apple issued no grant.
+			// Release the lease for a new attempt while retaining the unresolved outcome.
+			try {
+				await releaseAppleExchangeLease(deps.db, operationKey, owner);
+			} catch {
+				console.warn(
+					JSON.stringify({ event: "apple.exchange.lease_release_failed" }),
+				);
+			}
 		}
 		throw error;
 	}

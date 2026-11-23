@@ -148,6 +148,33 @@ export function clearAppleOperation(
 		.where(and(eq(appleOperations.key, key), eq(appleOperations.owner, owner)));
 }
 
+export function finishAppleExchange(
+	executor: DbExecutor,
+	key: string,
+	owner: string,
+) {
+	return executor
+		.update(appleOperations)
+		.set({
+			key: `finished-exchange:${owner}`,
+			userId: null,
+			email: null,
+			expiresAt: new Date(0),
+		})
+		.where(and(eq(appleOperations.key, key), eq(appleOperations.owner, owner)));
+}
+
+export function releaseAppleExchangeLease(
+	executor: DbExecutor,
+	key: string,
+	owner: string,
+) {
+	return executor
+		.update(appleOperations)
+		.set({ expiresAt: new Date(0) })
+		.where(and(eq(appleOperations.key, key), eq(appleOperations.owner, owner)));
+}
+
 function deletionKey(kind: "email" | "subject", value: string) {
 	return `deleted:${kind}:${createHash("sha256").update(value).digest("hex")}`;
 }
@@ -210,7 +237,7 @@ export function pruneExpiredAppleOperations(executor: DbExecutor) {
 	return executor.execute(sql`
 		delete from apple_operations where key in (
 			select key from apple_operations
-			where expires_at < now() and (key like 'deleted:%' or key like 'revoke:%')
+			where expires_at < now() and (key like 'deleted:%' or key like 'revoke:%' or key like 'finished-exchange:%')
 			order by expires_at limit 64 for update skip locked
 		)
 	`);
