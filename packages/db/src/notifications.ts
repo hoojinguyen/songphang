@@ -409,6 +409,12 @@ export async function findNotificationForPush(
 	};
 }
 
+export function lockPushDelivery(executor: DbExecutor, notificationId: string) {
+	return executor.execute(
+		sql`select pg_advisory_xact_lock(hashtextextended(${`push:${notificationId}`}, 0))`,
+	);
+}
+
 export async function recordPushDeviceDelivered(
 	executor: DbExecutor,
 	notificationId: string,

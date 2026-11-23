@@ -1,12 +1,12 @@
-import { createPrivateKey, sign } from "node:crypto";
+import { createHash, createPrivateKey, sign } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { z } from "@hono/zod-openapi";
 import type { Config } from "../../config.js";
 import { AppError } from "../../errors.js";
 
 const APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
 const APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
-const FAKE_CODE_TTL_MS = 5 * 60 * 1000;
-const MAX_FAKE_CODES = 10_000;
 
 export class AppleTokenAdapterError extends Error {
 	constructor(
@@ -77,10 +77,25 @@ export function createAppleClientSecret(
 	return `${signingInput}.${signature}`;
 }
 
-const consumedFakeCodes = new Map<string, number>();
-
-export function clearFakeAppleReplayCodes(): void {
-	consumedFakeCodes.clear();
+async function consumeFakeCode(jwksPath: string, code: string): Promise<void> {
+	const fixture = createHash("sha256")
+		.update(await readFile(jwksPath))
+		.digest("hex");
+	const directory = join(`${jwksPath}.replay`, fixture);
+	const digest = createHash("sha256").update(code).digest("hex");
+	await mkdir(directory, { recursive: true, mode: 0o700 });
+	try {
+		await writeFile(join(directory, digest), "", { flag: "wx", mode: 0o600 });
+	} catch (error) {
+		if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+			throw new AppError(
+				401,
+				"INVALID_CREDENTIALS",
+				"Apple authorization code has already been used",
+			);
+		}
+		throw error;
+	}
 }
 
 export function createAppleTokenAdapter(
@@ -92,25 +107,9 @@ export function createAppleTokenAdapter(
 			code: string,
 		): Promise<AppleTokenExchangeResult> {
 			if (config.appleProvider === "fake") {
-				const nowMs = now().getTime();
-				for (const [consumedCode, expiresAt] of consumedFakeCodes.entries()) {
-					if (expiresAt <= nowMs) {
-						consumedFakeCodes.delete(consumedCode);
-					}
-				}
-				if (consumedFakeCodes.has(code)) {
-					throw new AppError(
-						401,
-						"INVALID_CREDENTIALS",
-						"Apple authorization code has already been used",
-					);
-				}
-				if (consumedFakeCodes.size >= MAX_FAKE_CODES) {
-					throw new Error(
-						"Fake Apple provider code capacity reached; retry shortly",
-					);
-				}
-				consumedFakeCodes.set(code, nowMs + FAKE_CODE_TTL_MS);
+				if (!config.appleFakeJwksFile)
+					throw new Error("Fake Apple JWKS is not configured");
+				await consumeFakeCode(config.appleFakeJwksFile, code);
 				if (code.startsWith("sub=")) {
 					const afterPrefix = code.slice(4);
 					const separator = afterPrefix.indexOf(":");

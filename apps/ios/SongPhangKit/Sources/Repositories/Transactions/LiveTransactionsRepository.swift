@@ -218,26 +218,40 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
     version: Int
   ) async throws(AppError) -> LedgerTransaction {
     do {
-      let updateReq = TransactionMapping.encodeUpdateRequest(draft)
-      return try await ResponseBodyCapture.withCapture {
-        let output = try await environment.client
-          .patch_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub_(
-            .init(
-              path: .init(groupId: groupId.rawValue, id: id.rawValue),
-              body: .json(.init(value1: updateReq, value2: .init(version: version)))
-            )
-          )
-        switch output {
-        case .ok(let ok):
-          let body = try ok.body.json
-          let warnings = (body.warnings ?? []).map { TransactionWarning(code: $0.rawValue) }
-          return TransactionMapping.mapDetail(body.transaction, warnings: warnings)
-        case .undocumented(let status, let payload):
-          throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
-        }
-      } fallback: { data in
-        try TransactionMapping.decodeResilientDetail(from: data)
+      let encoder = JSONEncoder()
+      encoder.dateEncodingStrategy = .iso8601
+      let body = Components.Schemas.UpdateTransactionRequest(
+        value1: TransactionMapping.encodeUpdateRequest(draft),
+        value2: .init(version: version)
+      )
+      let encodedBody = try encoder.encode(body)
+      let url = environment.configuration.apiBaseURL
+        .appendingPathComponent("groups")
+        .appendingPathComponent(groupId.rawValue)
+        .appendingPathComponent("transactions")
+        .appendingPathComponent(id.rawValue)
+      var request = URLRequest(url: url)
+      request.httpMethod = "PATCH"
+      request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+      if case .split(let payload) = draft, payload.category == nil, payload.categoryId == nil {
+        guard var json = try JSONSerialization.jsonObject(with: encodedBody) as? [String: Any]
+        else { throw AppError.unexpected }
+        json["category"] = NSNull()
+        json["categoryId"] = NSNull()
+        request.httpBody = try JSONSerialization.data(withJSONObject: json)
+      } else {
+        request.httpBody = encodedBody
       }
+      let (data, http, snapshot) = try await environment.performAuthorizedDataRequest(request)
+      guard http.statusCode == 200 else {
+        let code = (try? JSONDecoder().decode(APIErrorPayload.self, from: data))?.error.code
+        throw await environment.errorMapper.mapStatus(
+          statusCode: http.statusCode,
+          code: code,
+          sessionGeneration: snapshot.token != nil ? snapshot.generation : nil
+        )
+      }
+      return try TransactionMapping.decodeResilientDetail(from: data)
     } catch let error as AppError {
       throw error
     } catch {

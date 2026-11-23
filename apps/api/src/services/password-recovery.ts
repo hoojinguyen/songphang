@@ -15,6 +15,7 @@ import {
 	findUserAppleIdentity,
 	listUserGroups,
 	lockAccount,
+	lockAppleRevocation,
 	updateAppleProviderSecret,
 	updatePasswordHash,
 	verifyAccountEmail,
@@ -125,118 +126,137 @@ export async function deleteAccount(
 		);
 
 	// Phase 1: Pre-check ownership and mark Apple identity revoking inside transaction
-	const { appleIdentity, grantHash, needsRevocation, refreshToken } =
-		await deps.db.transaction(async (tx) => {
-			await lockAccount(tx, input.user.id);
-			const ownedGroups = await countOwnedGroups(tx, input.user.id);
-			if (ownedGroups > 0) {
-				throw new AppError(
-					422,
-					"OWNER_REQUIRED",
-					"Transfer or delete owned groups first",
-					{ groupCount: ownedGroups },
-				);
-			}
+	const {
+		appleIdentity,
+		grantHash,
+		needsRevocation,
+		refreshToken,
+		deletedGroups,
+	} = await deps.db.transaction(async (tx) => {
+		await lockAccount(tx, input.user.id);
+		const ownedGroups = await countOwnedGroups(tx, input.user.id);
+		if (ownedGroups > 0) {
+			throw new AppError(
+				422,
+				"OWNER_REQUIRED",
+				"Transfer or delete owned groups first",
+				{ groupCount: ownedGroups },
+			);
+		}
 
-			const identity = await findUserAppleIdentity(tx, input.user.id);
-			if (identity === null) {
-				await deleteUserSessions(tx, { userId: input.user.id });
-				return {
-					appleIdentity: null,
-					grantHash: null,
-					needsRevocation: false,
-					refreshToken: null,
-				};
-			}
+		const identity = await findUserAppleIdentity(tx, input.user.id);
+		if (identity === null) {
+			const groups = await listUserGroups(tx, input.user.id);
+			await deleteAccountRow(tx, input.user.id);
+			return {
+				deletedGroups: groups,
+				appleIdentity: null,
+				grantHash: null,
+				needsRevocation: false,
+				refreshToken: null,
+			};
+		}
 
-			if (!deps.config.appleProvider) {
+		if (!deps.config.appleProvider) {
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Apple provider is disabled; cannot revoke Apple authorization",
+			);
+		}
+
+		const rawSecret = identity.providerSecret ?? "";
+		if (rawSecret.startsWith("APPLE_REVOCATION_COMPLETED:")) {
+			return {
+				deletedGroups: null,
+				appleIdentity: identity,
+				grantHash: null,
+				needsRevocation: false,
+				refreshToken: null,
+			};
+		}
+
+		const actualSecret = rawSecret.startsWith("REVOKING:")
+			? rawSecret.slice("REVOKING:".length)
+			: rawSecret;
+		const hash = createHash("sha256").update(actualSecret).digest("hex");
+
+		let tokenToRevoke: string | null = null;
+		if (deps.config.appleProvider === "apple") {
+			if (!actualSecret || !deps.config.dataEncryptionKey) {
 				throw new AppError(
 					503,
 					"APPLE_REVOCATION_FAILED",
-					"Apple provider is disabled; cannot revoke Apple authorization",
+					"Missing Apple revocation material",
 				);
 			}
-
-			const rawSecret = identity.providerSecret ?? "";
-			if (rawSecret.startsWith("APPLE_REVOCATION_COMPLETED:")) {
-				await deleteUserSessions(tx, { userId: input.user.id });
-				return {
-					appleIdentity: identity,
-					grantHash: null,
-					needsRevocation: false,
-					refreshToken: null,
-				};
+			try {
+				tokenToRevoke = decryptSecret(
+					actualSecret,
+					deps.config.dataEncryptionKey,
+				);
+			} catch {
+				throw new AppError(
+					503,
+					"APPLE_REVOCATION_FAILED",
+					"Could not decrypt Apple revocation material",
+				);
 			}
+		}
 
-			const actualSecret = rawSecret.startsWith("REVOKING:")
-				? rawSecret.slice("REVOKING:".length)
-				: rawSecret;
-			const hash = createHash("sha256").update(actualSecret).digest("hex");
+		if (identity.providerSubject) {
+			await updateAppleProviderSecret(tx, {
+				userId: input.user.id,
+				subject: identity.providerSubject,
+				providerSecret: `REVOKING:${actualSecret}`,
+			});
+		}
 
-			let tokenToRevoke: string | null = null;
-			if (deps.config.appleProvider === "apple") {
-				if (!actualSecret || !deps.config.dataEncryptionKey) {
-					throw new AppError(
-						503,
-						"APPLE_REVOCATION_FAILED",
-						"Missing Apple revocation material",
-					);
-				}
-				try {
-					tokenToRevoke = decryptSecret(
-						actualSecret,
-						deps.config.dataEncryptionKey,
-					);
-				} catch {
-					throw new AppError(
-						503,
-						"APPLE_REVOCATION_FAILED",
-						"Could not decrypt Apple revocation material",
-					);
-				}
-			}
-
-			if (identity.providerSubject) {
-				await updateAppleProviderSecret(tx, {
-					userId: input.user.id,
-					subject: identity.providerSubject,
-					providerSecret: `REVOKING:${actualSecret}`,
-				});
-			}
-
-			await deleteUserSessions(tx, { userId: input.user.id });
-
-			return {
-				appleIdentity: identity,
-				grantHash: hash,
-				needsRevocation: true,
-				refreshToken: tokenToRevoke,
-			};
-		});
-
-	deps.events.revokeUserSessions(input.user.id);
+		return {
+			deletedGroups: null,
+			appleIdentity: identity,
+			grantHash: hash,
+			needsRevocation: true,
+			refreshToken: tokenToRevoke,
+		};
+	});
 
 	// Phase 2: Call Apple adapter to revoke token (if needed)
 	if (needsRevocation && appleIdentity !== null) {
 		const adapter =
 			deps.appleTokenAdapter ?? createAppleTokenAdapter(deps.config, deps.now);
 		try {
-			await adapter.revokeRefreshToken({
-				refreshToken,
-				userId: input.user.id,
+			await deps.db.transaction(async (tx) => {
+				await lockAppleRevocation(tx, input.user.id);
+				const current = await findUserAppleIdentity(tx, input.user.id);
+				if (
+					current === null ||
+					current.providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:")
+				)
+					return;
+				const expected = appleIdentity.providerSecret?.startsWith("REVOKING:")
+					? appleIdentity.providerSecret
+					: `REVOKING:${appleIdentity.providerSecret ?? ""}`;
+				if (
+					current.providerSecret !== expected ||
+					!current.providerSubject ||
+					!grantHash
+				) {
+					throw new Error("Apple grant changed during deletion");
+				}
+				// REVOKING survives rollback. Apple returns success for an already-revoked
+				// token, so a retry after process loss must send this same grant again.
+				await adapter.revokeRefreshToken({
+					refreshToken,
+					userId: input.user.id,
+				});
+				await updateAppleProviderSecret(tx, {
+					userId: input.user.id,
+					subject: current.providerSubject,
+					providerSecret: `APPLE_REVOCATION_COMPLETED:${grantHash}`,
+				});
 			});
 		} catch (error) {
-			if (appleIdentity.providerSubject) {
-				const rawSecret = appleIdentity.providerSecret ?? "";
-				const cleanSecret = rawSecret.startsWith("REVOKING:")
-					? rawSecret.slice("REVOKING:".length)
-					: rawSecret;
-				await updateAppleProviderSecret(deps.db, {
-					userId: input.user.id,
-					subject: appleIdentity.providerSubject,
-					providerSecret: cleanSecret,
-				});
-			}
 			const category =
 				error instanceof AppleTokenAdapterError
 					? error.category
@@ -256,31 +276,25 @@ export async function deleteAccount(
 				"Could not revoke Apple authorization",
 			);
 		}
-
-		if (appleIdentity.providerSubject && grantHash) {
-			await updateAppleProviderSecret(deps.db, {
-				userId: input.user.id,
-				subject: appleIdentity.providerSubject,
-				providerSecret: `APPLE_REVOCATION_COMPLETED:${grantHash}`,
-			});
-		}
 	}
 
 	// Phase 3: Final deletion transaction
-	const groups = await deps.db.transaction(async (transaction) => {
-		await lockAccount(transaction, input.user.id);
-		const groupCount = await countOwnedGroups(transaction, input.user.id);
-		if (groupCount > 0)
-			throw new AppError(
-				422,
-				"OWNER_REQUIRED",
-				"Transfer or delete owned groups first",
-				{ groupCount },
-			);
-		const userGroups = await listUserGroups(transaction, input.user.id);
-		await deleteAccountRow(transaction, input.user.id);
-		return userGroups;
-	});
+	const groups =
+		deletedGroups ??
+		(await deps.db.transaction(async (transaction) => {
+			await lockAccount(transaction, input.user.id);
+			const groupCount = await countOwnedGroups(transaction, input.user.id);
+			if (groupCount > 0)
+				throw new AppError(
+					422,
+					"OWNER_REQUIRED",
+					"Transfer or delete owned groups first",
+					{ groupCount },
+				);
+			const userGroups = await listUserGroups(transaction, input.user.id);
+			await deleteAccountRow(transaction, input.user.id);
+			return userGroups;
+		}));
 
 	deps.events.revokeUserSessions(input.user.id);
 	for (const group of groups) {

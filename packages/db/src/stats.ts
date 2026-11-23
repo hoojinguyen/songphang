@@ -30,11 +30,11 @@ function dateFilter(range: { start?: Date; endExclusive?: Date }) {
 	const startFilter =
 		range.start === undefined
 			? sql``
-			: sql`and t.occurred_at >= ${range.start.toISOString()}::timestamptz`;
+			: sql`and t.occurred_at >= to_timestamp(${range.start.getTime() / 1000})`;
 	const endFilter =
 		range.endExclusive === undefined
 			? sql``
-			: sql`and t.occurred_at < ${range.endExclusive.toISOString()}::timestamptz`;
+			: sql`and t.occurred_at < to_timestamp(${range.endExclusive.getTime() / 1000})`;
 	return sql`${startFilter} ${endFilter}`;
 }
 

@@ -1,54 +1,55 @@
 import { JOB_NAMES, SendPushPayload } from "@songphang/contract";
 import { formatNotificationText } from "@songphang/core";
 import {
+	type DbExecutor,
 	deletePushDeviceIfUnchanged,
 	findNotificationForPush,
 	listActivePushDevicesForUser,
+	lockPushDelivery,
 	recordPushDeviceDelivered,
 } from "@songphang/db";
 import type { PgBoss } from "pg-boss";
 import { sanitizePushTarget } from "../push/types.js";
 import { registerJob, type WorkerDeps } from "../queue.js";
 
-// In-memory tracking of delivered devices per notification to prevent duplicate delivery across queue retries.
-// Note on provider-accepted vs worker-crash ambiguity:
-// If a push was accepted by APNs but the worker process crashes before recording or completing,
-// a subsequent retry after restart might re-deliver to that device. In-memory tracking prevents
-// duplicate delivery across queue retries within the running worker.
-const deliveredNotificationDevices = new Map<string, Set<string>>();
-const MAX_TRACKED_NOTIFICATIONS = 10_000;
-
-function recordDelivered(notificationId: string, deviceId: string): void {
-	let set = deliveredNotificationDevices.get(notificationId);
-	if (!set) {
-		if (deliveredNotificationDevices.size >= MAX_TRACKED_NOTIFICATIONS) {
-			const oldest = deliveredNotificationDevices.keys().next().value;
-			if (oldest !== undefined) {
-				deliveredNotificationDevices.delete(oldest);
-			}
-		}
-		set = new Set<string>();
-		deliveredNotificationDevices.set(notificationId, set);
-	}
-	set.add(deviceId);
-}
-
 export async function runSendPush(
 	deps: WorkerDeps,
 	notificationId: string,
 ): Promise<number> {
-	if (!deps.pushSender) return 0;
+	const pushSender = deps.pushSender;
+	if (!pushSender) return 0;
 
-	const row = await findNotificationForPush(deps.db, notificationId);
+	const outcome = await deps.db.transaction(async (transaction) => {
+		await lockPushDelivery(transaction, notificationId);
+		return deliverNotification(
+			transaction,
+			pushSender,
+			notificationId,
+			deps.now(),
+		);
+	});
+	if (outcome.hasFailure) {
+		throw new Error("Push delivery failed for one or more active devices");
+	}
+	return outcome.sentCount;
+}
+
+async function deliverNotification(
+	executor: DbExecutor,
+	pushSender: NonNullable<WorkerDeps["pushSender"]>,
+	notificationId: string,
+	now: Date,
+): Promise<{ sentCount: number; hasFailure: boolean }> {
+	const row = await findNotificationForPush(executor, notificationId);
 	if (row === null || row.readAt !== null || !row.inGroup || row.muted) {
-		return 0;
+		return { sentCount: 0, hasFailure: false };
 	}
 
-	const devices = await listActivePushDevicesForUser(deps.db, {
+	const devices = await listActivePushDevicesForUser(executor, {
 		userId: row.userId,
-		now: deps.now(),
+		now,
 	});
-	if (devices.length === 0) return 0;
+	if (devices.length === 0) return { sentCount: 0, hasFailure: false };
 
 	const { text, href } = formatNotificationText({
 		groupId: row.groupId,
@@ -62,7 +63,6 @@ export async function runSendPush(
 
 	let sentCount = 0;
 	let hasFailure = false;
-	const inMemoryDelivered = deliveredNotificationDevices.get(notificationId);
 	const payloadObj =
 		typeof row.payload === "object" && row.payload !== null
 			? (row.payload as Record<string, unknown>)
@@ -76,15 +76,12 @@ export async function runSendPush(
 	);
 
 	for (const device of devices) {
-		if (
-			inMemoryDelivered?.has(device.id) ||
-			durableDeliveredIds.has(device.id)
-		) {
+		if (durableDeliveredIds.has(device.id)) {
 			// Already delivered to this device in a previous attempt of this notification
 			continue;
 		}
 		try {
-			const result = await deps.pushSender.send(device, {
+			const result = await pushSender.send(device, {
 				title: row.groupName,
 				body,
 				groupId: row.groupId,
@@ -92,12 +89,10 @@ export async function runSendPush(
 			});
 			if (result === "sent") {
 				sentCount += 1;
-				recordDelivered(notificationId, device.id);
-				await recordPushDeviceDelivered(deps.db, notificationId, device.id);
+				await recordPushDeviceDelivered(executor, notificationId, device.id);
 			} else if (result === "gone") {
-				recordDelivered(notificationId, device.id);
-				await recordPushDeviceDelivered(deps.db, notificationId, device.id);
-				await deletePushDeviceIfUnchanged(deps.db, {
+				await recordPushDeviceDelivered(executor, notificationId, device.id);
+				await deletePushDeviceIfUnchanged(executor, {
 					id: device.id,
 					userId: device.userId,
 					sessionId: device.sessionId,
@@ -105,8 +100,7 @@ export async function runSendPush(
 					lastSeenAt: device.lastSeenAt,
 				});
 			} else if (result === "permanent_failure") {
-				recordDelivered(notificationId, device.id);
-				await recordPushDeviceDelivered(deps.db, notificationId, device.id);
+				await recordPushDeviceDelivered(executor, notificationId, device.id);
 				console.warn(
 					JSON.stringify({
 						event: "push.send.permanent_failure",
@@ -122,18 +116,13 @@ export async function runSendPush(
 					event: "push.send.device_exception",
 					deviceId: device.id,
 					category: error instanceof Error ? error.name : "unknown",
-					message: error instanceof Error ? error.message : undefined,
 				}),
 			);
 			hasFailure = true;
 		}
 	}
 
-	if (hasFailure) {
-		throw new Error("Push delivery failed for one or more active devices");
-	}
-	deliveredNotificationDevices.delete(notificationId);
-	return sentCount;
+	return { sentCount, hasFailure };
 }
 
 export async function registerSendPushJob(

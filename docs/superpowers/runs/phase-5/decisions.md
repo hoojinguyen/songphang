@@ -112,7 +112,7 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 
 ### D10 — Fake Apple JWKS workflow and fixture format (`APPLE_FAKE_JWKS_FILE`) (Task 5F remediation)
 - **Problem:** Offline development and automated local regression of Sign in with Apple require validating Apple ID token JWTs without hitting Apple's external servers.
-- **Choice:** Document `APPLE_FAKE_JWKS_FILE` in `README.md`. When `APPLE_PROVIDER=fake`, the server reads a local JSON file containing an RFC 7517 JWKS object (`{"keys": [{"kty": "RSA", "kid": "...", "n": "...", "e": "...", "alg": "RS256", "use": "sig"}]}`) matching the private key used to sign test JWTs. Fake authorization codes (`fake-code-*` and `sub=<custom_sub>:<code_body>`) are single-use with in-memory replay rejection. Both `APPLE_PROVIDER=fake` and `APPLE_FAKE_JWKS_FILE` are strictly forbidden in production.
+- **Choice:** Document `APPLE_FAKE_JWKS_FILE` in `README.md`. When `APPLE_PROVIDER=fake`, the server reads a local JSON file containing an RFC 7517 JWKS object (`{"keys": [{"kty": "RSA", "kid": "...", "n": "...", "e": "...", "alg": "RS256", "use": "sig"}]}`) matching the private key used to sign test JWTs. Fake authorization codes (`fake-code-*` and `sub=<custom_sub>:<code_body>`) are single-use for the lifetime of each local JWKS fixture, including across process restart. Both `APPLE_PROVIDER=fake` and `APPLE_FAKE_JWKS_FILE` are strictly forbidden in production.
 
 ### D11 — App Store subtitle character limit compliance (`listing.vi.md`) (Task 5F remediation)
 - **Problem:** Apple App Store Connect enforces a strict 30-character maximum for app subtitles. The initial draft subtitle in `apps/ios/Store/listing.vi.md` was 31 characters, risking rejection during App Store metadata validation.
@@ -125,7 +125,7 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 
 ### D13 — Durable per-device push retry tracking via notification payload (Task 5F remediation)
 - **Problem:** When multiple devices are registered to a user and APNs push delivery fails transiently for one device, retrying the worker job previously re-delivered pushes to devices that had already received them. In-memory deduplication was lost on worker restart.
-- **Choice:** Record delivered device IDs durably in PostgreSQL within `notifications.payload._deliveredDeviceIds`. On job retry (including after worker crash/restart), devices listed in `_deliveredDeviceIds` are skipped, preventing duplicate push alerts while ensuring failed devices are retried.
+- **Choice:** Record delivered device IDs durably in PostgreSQL within `notifications.payload._deliveredDeviceIds`. On job retry (including after worker crash/restart), devices listed in `_deliveredDeviceIds` are skipped, preventing repeats after a receipt is recorded while failed devices remain eligible for retry. A crash or database failure between provider acceptance and receipt persistence can still result in a duplicate on retry.
 
 ## Standing Documentation Follow-ups
 

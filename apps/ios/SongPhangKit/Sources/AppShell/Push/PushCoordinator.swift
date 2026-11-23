@@ -144,7 +144,7 @@ public final class PushCoordinator {
       ), sessionGeneration == expectedGeneration {
         currentDeviceId = deviceId
         registeredToken = tokenToRegister
-      } else {
+      } else if lastDeviceToken == tokenToRegister {
         break
       }
     }

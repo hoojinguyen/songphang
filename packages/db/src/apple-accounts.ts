@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { userIdentities } from "./schema-accounts.js";
 
@@ -75,4 +75,11 @@ export function updateAppleProviderSecret(
 				eq(userIdentities.providerSubject, input.subject),
 			),
 		);
+}
+
+// Revocation retries serialize separately from operations that read the pending marker.
+export function lockAppleRevocation(executor: DbExecutor, userId: string) {
+	return executor.execute(
+		sql`select pg_advisory_xact_lock(hashtextextended(${userId}, 0))`,
+	);
 }

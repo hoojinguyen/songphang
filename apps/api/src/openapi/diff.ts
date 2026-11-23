@@ -178,6 +178,19 @@ function compareNode(
 ): void {
 	if (sameJson(oldValue, newValue)) return;
 
+	if (
+		/\.requestBody\.content\..+\.schema\./.test(path) &&
+		Array.isArray(oldValue) &&
+		Array.isArray(newValue) &&
+		oldValue.length === newValue.length &&
+		/\.(allOf|oneOf|anyOf)$/.test(path)
+	) {
+		for (const [index, oldItem] of oldValue.entries()) {
+			compareNode(`${path}.${index}`, oldItem, newValue[index], changes);
+		}
+		return;
+	}
+
 	if (!isRecord(oldValue) || !isRecord(newValue)) {
 		const isMetadata =
 			path.endsWith(".description") ||
@@ -289,7 +302,13 @@ function compareNode(
 			const isMetadata =
 				key === "description" || key === "summary" || key === "example";
 			changes.push({
-				severity: isMetadata || isRemovedRequiredTrue ? "additive" : "breaking",
+				severity:
+					isMetadata ||
+					isRemovedRequiredTrue ||
+					(key === "default" &&
+						/\.requestBody\.content\..+\.schema\./.test(path))
+						? "additive"
+						: "breaking",
 				path: childPath,
 				reason: isRemovedRequiredTrue
 					? `Required constraint removed from "${key}"`
@@ -337,12 +356,96 @@ function compareNode(
 	}
 }
 
+// Compare request schema structure independently of local component extraction.
+function expandRequestSchema(
+	value: unknown,
+	schemas: Record<string, unknown>,
+	ancestors = new Set<string>(),
+): unknown {
+	if (Array.isArray(value)) {
+		return value.map((item) => expandRequestSchema(item, schemas, ancestors));
+	}
+	if (!isRecord(value)) return value;
+
+	const expandReference = (ref: unknown): unknown => {
+		if (typeof ref !== "string" || !ref.startsWith("#/components/schemas/"))
+			return ref;
+		const name = ref.slice("#/components/schemas/".length);
+		if (!Object.hasOwn(schemas, name) || ancestors.has(name)) return ref;
+		return expandRequestSchema(
+			schemas[name],
+			schemas,
+			new Set([...ancestors, name]),
+		);
+	};
+	if (Object.keys(value).length === 1 && "$ref" in value) {
+		const resolved = expandReference(value.$ref);
+		return resolved === value.$ref ? value : resolved;
+	}
+
+	return Object.fromEntries(
+		Object.entries(value).map(([key, child]) => {
+			if (
+				key === "discriminator" &&
+				isRecord(child) &&
+				isRecord(child.mapping)
+			) {
+				return [
+					key,
+					{
+						...child,
+						mapping: Object.fromEntries(
+							Object.entries(child.mapping).map(([tag, ref]) => [
+								tag,
+								expandReference(ref),
+							]),
+						),
+					},
+				];
+			}
+			return [key, expandRequestSchema(child, schemas, ancestors)];
+		}),
+	);
+}
+
+function normalizeRequestSchemas(document: Record<string, unknown>) {
+	const copy = structuredClone(document);
+	if (
+		!isRecord(copy.paths) ||
+		!isRecord(copy.components) ||
+		!isRecord(copy.components.schemas)
+	)
+		return copy;
+	for (const path of Object.values(copy.paths)) {
+		if (!isRecord(path)) continue;
+		for (const operation of Object.values(path)) {
+			if (!isRecord(operation) || !isRecord(operation.requestBody)) continue;
+			const content = operation.requestBody.content;
+			if (!isRecord(content)) continue;
+			for (const media of Object.values(content)) {
+				if (isRecord(media) && isRecord(media.schema)) {
+					media.schema = expandRequestSchema(
+						media.schema,
+						copy.components.schemas,
+					);
+				}
+			}
+		}
+	}
+	return copy;
+}
+
 export function diffOpenApiSnapshots(
 	baseline: Record<string, unknown>,
 	candidate: Record<string, unknown>,
 ): OpenApiDiffResult {
 	const changes: OpenApiDiffEntry[] = [];
-	compareNode("", baseline, candidate, changes);
+	compareNode(
+		"",
+		normalizeRequestSchemas(baseline),
+		normalizeRequestSchemas(candidate),
+		changes,
+	);
 	const breakingCount = changes.filter((c) => c.severity === "breaking").length;
 	const additiveCount = changes.filter((c) => c.severity === "additive").length;
 	return {

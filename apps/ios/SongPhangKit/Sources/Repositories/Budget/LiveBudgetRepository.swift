@@ -58,6 +58,7 @@ public final class LiveBudgetRepository: BudgetRepository, Sendable {
     let scope = await environment.snapshots.currentScope()
     let groupGen = await environment.snapshots.groupGeneration(for: groupId.rawValue)
     do {
+      if case .unknown = period { throw AppError.api(code: "VALIDATION_FAILED", status: 400) }
       let body = BudgetMapping.encodePutRequest(period: period, amount: amount)
       let saved: GroupBudget = try await ResponseBodyCapture.withCapture {
         let output = try await environment.client

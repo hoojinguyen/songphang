@@ -4,15 +4,21 @@ export const APP_TIME_ZONE = "Asia/Ho_Chi_Minh";
 const VIETNAM_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
 const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+function calendarUtc(year: number, month: number, day: number): number {
+	const date = new Date(0);
+	return date.setUTCFullYear(year, month, day);
+}
+
 function parseCalendarParts(
 	value: string,
 ): { year: number; month: number; day: number } | null {
 	const match = CALENDAR_DATE_PATTERN.exec(value);
 	if (!match) return null;
 	const year = Number(match[1]);
+	if (year === 0) return null;
 	const month = Number(match[2]);
 	const day = Number(match[3]);
-	const date = new Date(Date.UTC(year, month - 1, day));
+	const date = new Date(calendarUtc(year, month - 1, day));
 	if (
 		date.getUTCFullYear() !== year ||
 		date.getUTCMonth() + 1 !== month ||
@@ -50,7 +56,7 @@ function monthRange(
 	year: number,
 	month: number,
 ): { start: string; end: string } {
-	const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+	const lastDay = new Date(calendarUtc(year, month, 0)).getUTCDate();
 	const prefix = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
 	return {
 		start: `${prefix}-01`,
@@ -77,8 +83,8 @@ export function bucketFor(from: string, to: string): "day" | "week" | "month" {
 	const end = parseCalendarParts(to);
 	if (!start || !end || from > to)
 		throw new RangeError("Invalid date range for bucket");
-	const startMs = Date.UTC(start.year, start.month - 1, start.day);
-	const endMs = Date.UTC(end.year, end.month - 1, end.day);
+	const startMs = calendarUtc(start.year, start.month - 1, start.day);
+	const endMs = calendarUtc(end.year, end.month - 1, end.day);
 	const inclusiveDays = Math.floor((endMs - startMs) / 86_400_000) + 1;
 	if (inclusiveDays <= 31) return "day";
 	if (inclusiveDays <= 182) return "week";
@@ -101,7 +107,7 @@ export function localDateRangeToUtc(
 		...(fromParts
 			? {
 					start: new Date(
-						Date.UTC(fromParts.year, fromParts.month - 1, fromParts.day) -
+						calendarUtc(fromParts.year, fromParts.month - 1, fromParts.day) -
 							VIETNAM_UTC_OFFSET_MS,
 					),
 				}
@@ -109,7 +115,7 @@ export function localDateRangeToUtc(
 		...(toParts
 			? {
 					endExclusive: new Date(
-						Date.UTC(toParts.year, toParts.month - 1, toParts.day + 1) -
+						calendarUtc(toParts.year, toParts.month - 1, toParts.day + 1) -
 							VIETNAM_UTC_OFFSET_MS,
 					),
 				}

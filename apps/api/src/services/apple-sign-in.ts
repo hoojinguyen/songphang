@@ -77,142 +77,161 @@ export async function appleSignIn(
 		);
 	}
 
-	const existingIdentity = await findAppleIdentity(deps.db, claims.sub);
-	if (existingIdentity === null) {
-		if (!claims.email || !claims.emailVerified) {
+	return deps.db.transaction(async (transaction) => {
+		const identityHint = await findAppleIdentity(transaction, claims.sub);
+		const accountHint =
+			identityHint === null && claims.email
+				? await findAccountByEmail(transaction, claims.email)
+				: null;
+		const accountId = identityHint?.userId ?? accountHint?.id;
+		if (
+			accountId !== undefined &&
+			(await lockAccount(transaction, accountId)).length === 0
+		) {
+			throw new AppError(403, "FORBIDDEN", "Account is undergoing deletion");
+		}
+		const existingIdentity = await findAppleIdentity(transaction, claims.sub);
+		if (
+			existingIdentity?.providerSecret?.startsWith("REVOKING:") ||
+			existingIdentity?.providerSecret?.startsWith(
+				"APPLE_REVOCATION_COMPLETED:",
+			)
+		) {
+			throw new AppError(403, "FORBIDDEN", "Account is undergoing deletion");
+		}
+		if (existingIdentity === null) {
+			if (!claims.email || !claims.emailVerified) {
+				throw new AppError(
+					401,
+					"INVALID_CREDENTIALS",
+					"Apple identity token requires a verified email on first sign-in",
+				);
+			}
+			const existingAccount = await findAccountByEmail(
+				transaction,
+				claims.email,
+			);
+			if (existingAccount && existingAccount.emailVerifiedAt === null) {
+				throw new AppError(
+					403,
+					"EMAIL_NOT_VERIFIED",
+					"Existing password account must verify email before linking Apple sign-in",
+				);
+			}
+		}
+
+		if (
+			deps.config.appleProvider === "apple" &&
+			!deps.config.dataEncryptionKey
+		) {
 			throw new AppError(
-				401,
-				"INVALID_CREDENTIALS",
-				"Apple identity token requires a verified email on first sign-in",
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Apple credential encryption key is missing",
 			);
 		}
-		const existingAccount = await findAccountByEmail(deps.db, claims.email);
-		if (existingAccount && existingAccount.emailVerifiedAt === null) {
-			throw new AppError(
-				403,
-				"EMAIL_NOT_VERIFIED",
-				"Existing password account must verify email before linking Apple sign-in",
-			);
-		}
-	}
 
-	if (deps.config.appleProvider === "apple" && !deps.config.dataEncryptionKey) {
-		throw new AppError(
-			503,
-			"APPLE_REVOCATION_FAILED",
-			"Apple credential encryption key is missing",
-		);
-	}
-
-	const adapter =
-		deps.appleTokenAdapter ?? createAppleTokenAdapter(deps.config, deps.now);
-	let exchanged: AppleTokenExchangeResult;
-	try {
-		exchanged = await adapter.exchangeAuthorizationCode(
-			input.request.authorizationCode,
-		);
-	} catch (error) {
-		if (error instanceof AppError) {
-			throw error;
-		}
-		const category =
-			error instanceof AppleTokenAdapterError
-				? error.category
-				: error instanceof Error
-					? error.name === "TimeoutError"
-						? "timeout"
-						: "unknown"
-					: "unknown";
-		console.warn(
-			JSON.stringify({
-				event: "apple.token_exchange.failed",
-				category,
-				operation: "exchangeAuthorizationCode",
-			}),
-		);
-		throw new AppError(
-			503,
-			"APPLE_REVOCATION_FAILED",
-			"Could not complete Apple token exchange",
-		);
-	}
-
-	if (exchanged.idToken !== undefined) {
-		let exchangedClaims: { sub: string };
+		const adapter =
+			deps.appleTokenAdapter ?? createAppleTokenAdapter(deps.config, deps.now);
+		let exchanged: AppleTokenExchangeResult;
 		try {
-			exchangedClaims = await verifyAppleExchangedIdToken({
-				idToken: exchanged.idToken,
-				config: deps.config,
-				keySet,
-				now: deps.now(),
-			});
+			exchanged = await adapter.exchangeAuthorizationCode(
+				input.request.authorizationCode,
+			);
 		} catch (error) {
 			if (error instanceof AppError) {
 				throw error;
 			}
+			const category =
+				error instanceof AppleTokenAdapterError
+					? error.category
+					: error instanceof Error
+						? error.name === "TimeoutError"
+							? "timeout"
+							: "unknown"
+						: "unknown";
 			console.warn(
 				JSON.stringify({
-					event: "apple.verify_exchanged_token.failed",
-					category: error instanceof Error ? error.name : "unknown",
+					event: "apple.token_exchange.failed",
+					category,
+					operation: "exchangeAuthorizationCode",
 				}),
 			);
-			throw new AppError(
-				503,
-				"APPLE_REVOCATION_FAILED",
-				"Could not verify Apple exchanged identity token with upstream provider",
-			);
-		}
-		if (exchangedClaims.sub !== claims.sub) {
-			throw new AppError(
-				401,
-				"INVALID_CREDENTIALS",
-				"Apple authorization identity mismatch",
-			);
-		}
-	} else if (exchanged.subject !== undefined) {
-		if (exchanged.subject !== claims.sub) {
-			throw new AppError(
-				401,
-				"INVALID_CREDENTIALS",
-				"Apple authorization identity mismatch",
-			);
-		}
-	} else if (deps.config.appleProvider === "apple") {
-		throw new AppError(
-			401,
-			"INVALID_CREDENTIALS",
-			"Apple token exchange missing identity token",
-		);
-	}
-
-	let encryptedSecret: string | null = null;
-	if (deps.config.appleProvider === "apple") {
-		if (!exchanged.refreshToken || !deps.config.dataEncryptionKey) {
 			throw new AppError(
 				503,
 				"APPLE_REVOCATION_FAILED",
 				"Could not complete Apple token exchange",
 			);
 		}
-		encryptedSecret = encryptSecret(
-			exchanged.refreshToken,
-			deps.config.dataEncryptionKey,
-		);
-	}
 
-	return deps.db.transaction(async (transaction) => {
+		if (exchanged.idToken !== undefined) {
+			let exchangedClaims: { sub: string };
+			try {
+				exchangedClaims = await verifyAppleExchangedIdToken({
+					idToken: exchanged.idToken,
+					config: deps.config,
+					keySet,
+					now: deps.now(),
+				});
+			} catch (error) {
+				if (error instanceof AppError) {
+					throw error;
+				}
+				console.warn(
+					JSON.stringify({
+						event: "apple.verify_exchanged_token.failed",
+						category: error instanceof Error ? error.name : "unknown",
+					}),
+				);
+				throw new AppError(
+					503,
+					"APPLE_REVOCATION_FAILED",
+					"Could not verify Apple exchanged identity token with upstream provider",
+				);
+			}
+			if (exchangedClaims.sub !== claims.sub) {
+				throw new AppError(
+					401,
+					"INVALID_CREDENTIALS",
+					"Apple authorization identity mismatch",
+				);
+			}
+		} else if (exchanged.subject !== undefined) {
+			if (exchanged.subject !== claims.sub) {
+				throw new AppError(
+					401,
+					"INVALID_CREDENTIALS",
+					"Apple authorization identity mismatch",
+				);
+			}
+		} else if (deps.config.appleProvider === "apple") {
+			throw new AppError(
+				401,
+				"INVALID_CREDENTIALS",
+				"Apple token exchange missing identity token",
+			);
+		}
+
+		let encryptedSecret: string | null = null;
+		if (deps.config.appleProvider === "apple") {
+			if (!exchanged.refreshToken || !deps.config.dataEncryptionKey) {
+				throw new AppError(
+					503,
+					"APPLE_REVOCATION_FAILED",
+					"Could not complete Apple token exchange",
+				);
+			}
+			encryptedSecret = encryptSecret(
+				exchanged.refreshToken,
+				deps.config.dataEncryptionKey,
+			);
+		}
+
 		const now = deps.now();
 		const known = await findAppleIdentity(transaction, claims.sub);
 		let userId: string;
 
 		if (known !== null) {
-			await lockAccount(transaction, known.userId);
-			if (
-				known.providerSecret?.startsWith("REVOKING:") ||
-				known.providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:")
-			) {
-				throw new AppError(403, "FORBIDDEN", "Account is undergoing deletion");
-			}
 			userId = known.userId;
 			if (encryptedSecret !== null) {
 				await updateAppleProviderSecret(transaction, {

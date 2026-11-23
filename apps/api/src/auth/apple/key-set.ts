@@ -32,6 +32,7 @@ export function createAppleKeySetProvider(
 ): AppleKeySetProvider {
 	let keys = new Map<string, KeyObject>();
 	let fetchedAtMs: number | null = null;
+	let lastRefreshError: unknown;
 	let lastRefreshAttemptMs = Number.NEGATIVE_INFINITY;
 	let lastUnknownRefreshMs = Number.NEGATIVE_INFINITY;
 	let lastUnknownRefreshError: Error | null = null;
@@ -94,7 +95,9 @@ export function createAppleKeySetProvider(
 				lastRefreshAttemptMs = currentMs;
 				try {
 					await refresh();
+					lastRefreshError = undefined;
 				} catch (error) {
+					lastRefreshError = error;
 					// Retain last successful JWKS on refresh failure if within bounded stale limit
 					if (
 						keys.size === 0 ||
@@ -112,8 +115,10 @@ export function createAppleKeySetProvider(
 				}
 			}
 			if (fetchedAtMs !== null && currentMs - fetchedAtMs >= MAX_STALE_MS) {
-				return null;
+				throw lastRefreshError ?? new Error("Apple key set expired");
 			}
+			if (keys.size === 0 && lastRefreshError !== undefined)
+				throw lastRefreshError;
 			const cached = keys.get(kid);
 			if (cached) return cached;
 			if (currentMs - lastUnknownRefreshMs >= UNKNOWN_KID_COOLDOWN_MS) {

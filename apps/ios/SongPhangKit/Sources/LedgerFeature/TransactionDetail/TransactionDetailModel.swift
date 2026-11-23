@@ -50,6 +50,7 @@ public final class TransactionDetailModel: Sendable {
   private let onUnauthorized: (@Sendable () -> Void)?
   private var pendingSilentRefresh = false
   private var refreshGeneration: UInt64 = 0
+  private var auxiliaryRefreshGeneration: UInt64 = 0
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -137,9 +138,16 @@ public final class TransactionDetailModel: Sendable {
       pendingSilentRefresh = true
       return
     }
-    let gen = refreshGeneration &+ 1
-    refreshGeneration = gen
     let shouldReloadAll = resources == nil
+    let refreshesComments =
+      shouldReloadAll
+      || resources?.contains("transactions") == true
+      || resources?.contains("comments") == true
+      || resources?.contains("attachments") == true
+    if refreshesComments { refreshGeneration &+= 1 }
+    auxiliaryRefreshGeneration &+= 1
+    let gen = refreshGeneration
+    let auxiliaryGen = auxiliaryRefreshGeneration
     do throws(AppError) {
       let fetchedGroup =
         (shouldReloadAll || resources?.contains("group") == true)
@@ -153,11 +161,7 @@ public final class TransactionDetailModel: Sendable {
 
       var fetchedTx: LedgerTransaction?
       var fetchedCommentsRes: (comments: [Comment], nextCursor: String?)?
-      if shouldReloadAll
-        || resources?.contains("transactions") == true
-        || resources?.contains("comments") == true
-        || resources?.contains("attachments") == true
-      {
+      if refreshesComments {
         fetchedTx = try await transactionsRepository.transaction(
           groupId: groupId,
           id: transactionId
@@ -191,9 +195,11 @@ public final class TransactionDetailModel: Sendable {
       guard !Task.isCancelled, refreshGeneration == gen, case .loaded(var current) = state else {
         return
       }
-      if let fetchedGroup { current.group = fetchedGroup }
-      if let fetchedMembers { current.members = fetchedMembers }
-      if let fetchedCategories { current.categories = fetchedCategories }
+      if auxiliaryRefreshGeneration == auxiliaryGen {
+        if let fetchedGroup { current.group = fetchedGroup }
+        if let fetchedMembers { current.members = fetchedMembers }
+        if let fetchedCategories { current.categories = fetchedCategories }
+      }
       if let fetchedTx { current.transaction = fetchedTx }
       current.currentUser = currentUserProvider?()
       state = .loaded(current)

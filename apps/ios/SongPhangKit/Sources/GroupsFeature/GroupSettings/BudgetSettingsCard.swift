@@ -20,6 +20,7 @@ struct BudgetSettingsCard: View {
       hasDraftEdit ? amountText : (budget.map { MoneyFormat.amount($0.amount) } ?? "")
     let parsed = MoneyFormat.parseInput(activeAmountText)
     let isValid = parsed.map { $0.amount >= 1 && $0.amount <= 999_999_999_999 } ?? false
+    let hasSupportedPeriod = activePeriod == .month || activePeriod == .total
     let isUnchanged = budget != nil && activePeriod == budget?.period && parsed == budget?.amount
 
     VStack(alignment: .leading, spacing: 14) {
@@ -77,7 +78,7 @@ struct BudgetSettingsCard: View {
           L10n.tr("budget.save"),
           variant: .primary,
           isFullWidth: true,
-          isDisabled: isDisabled || isPending || !isValid || isUnchanged,
+          isDisabled: isDisabled || isPending || !isValid || !hasSupportedPeriod || isUnchanged,
           isPending: isPending
         ) {
           if let parsed {

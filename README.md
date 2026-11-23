@@ -154,8 +154,45 @@ When `APPLE_PROVIDER=fake`, Apple identity token verification uses a local JWKS 
 
 - The file must contain a valid JSON Web Key Set (`{"keys": [{"kty": "RSA", "kid": "...", "n": "...", "e": "...", "alg": "RS256", "use": "sig"}]}`) matching the private key used to sign test JWTs.
 - Test tokens must specify `iss: "https://appleid.apple.com"`, `aud: APPLE_BUNDLE_ID`, valid timestamps (`iat`, `exp`), and `nonce: sha256(rawNonce)`.
-- Test authorization codes are single-use; the fake adapter tracks exchanged codes and rejects replayed codes with 401. A custom Apple subject can be injected in tests using the prefix `sub=<custom_sub>:<code_body>`.
+- Test authorization codes are single-use; the fake adapter keeps hashed receipts in the JWKS path’s adjacent `.replay` directory and rejects replayed codes with 401 across restarts. Put the JWKS and receipts in a writable disposable directory outside the repository. Use a fresh key set for each disposable fixture run. A custom Apple subject can be injected in tests using the prefix `sub=<custom_sub>:<code_body>`.
 - Both `APPLE_PROVIDER=fake` and `APPLE_FAKE_JWKS_FILE` are strictly forbidden when `APP_ENV=production`.
+
+Use this disposable fixture from a shell with Node.js. Configure the local API
+with `APPLE_PROVIDER=fake`, the printed `APPLE_FAKE_JWKS_FILE` and
+`APPLE_BUNDLE_ID=vn.songphang.app` before submitting the request.
+
+```sh
+fixture=$(mktemp -d)
+node --input-type=module - "$fixture" <<'NODE'
+import { createHash, generateKeyPairSync, randomUUID, sign } from "node:crypto";
+import { writeFileSync } from "node:fs";
+
+const directory = process.argv[2];
+const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const kid = "local-fixture";
+writeFileSync(directory + "/jwks.json", JSON.stringify({
+  keys: [{ ...publicKey.export({ format: "jwk" }), kid, alg: "RS256" }],
+}));
+const rawNonce = randomUUID();
+const now = Math.floor(Date.now() / 1000);
+const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const input = encode({ alg: "RS256", kid }) + "." + encode({
+  iss: "https://appleid.apple.com", aud: "vn.songphang.app",
+  sub: randomUUID(), email: "apple-local@example.test", email_verified: true,
+  iat: now, exp: now + 300, nonce: createHash("sha256").update(rawNonce).digest("hex"),
+});
+writeFileSync(directory + "/request.json", JSON.stringify({
+  identityToken: input + "." + sign("sha256", Buffer.from(input), privateKey).toString("base64url"),
+  rawNonce, authorizationCode: randomUUID(), client: "ios", deviceName: "Local fixture",
+}), { mode: 0o600 });
+NODE
+printf 'APPLE_FAKE_JWKS_FILE=%s/jwks.json\n' "$fixture"
+# After starting the local API, expect 200 once and 401 on repeat.
+for attempt in 1 2; do
+  curl -sS -o /dev/null -w '%{http_code}\n' -H 'Content-Type: application/json' \
+    --data-binary @"$fixture/request.json" http://127.0.0.1:4000/api/v1/auth/apple
+done
+```
 
 `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are optional; keep real values only in the local `.env`. Without both, the Google button/routes are disabled. The local callback is `http://localhost:3000/api/v1/auth/google/callback`. Google sign-in remains unverified until an OAuth app exists and the manual checklist has been completed.
 
