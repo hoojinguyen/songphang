@@ -91,7 +91,6 @@ async function deliverNotification(
 				sentCount += 1;
 				await recordPushDeviceDelivered(executor, notificationId, device.id);
 			} else if (result === "gone") {
-				await recordPushDeviceDelivered(executor, notificationId, device.id);
 				await deletePushDeviceIfUnchanged(executor, {
 					id: device.id,
 					userId: device.userId,
@@ -99,6 +98,7 @@ async function deliverNotification(
 					token: device.token,
 					lastSeenAt: device.lastSeenAt,
 				});
+				await recordPushDeviceDelivered(executor, notificationId, device.id);
 			} else if (result === "permanent_failure") {
 				await recordPushDeviceDelivered(executor, notificationId, device.id);
 				console.warn(
@@ -111,11 +111,22 @@ async function deliverNotification(
 				hasFailure = true;
 			}
 		} catch (error) {
+			const rawCode =
+				error instanceof Error &&
+				"code" in error &&
+				typeof error.code === "string"
+					? error.code
+					: undefined;
+			const errorCode =
+				rawCode !== undefined && /^[A-Za-z0-9_:-]{1,64}$/.test(rawCode)
+					? rawCode
+					: undefined;
 			console.warn(
 				JSON.stringify({
 					event: "push.send.device_exception",
 					deviceId: device.id,
 					category: error instanceof Error ? error.name : "unknown",
+					...(errorCode === undefined ? {} : { errorCode }),
 				}),
 			);
 			hasFailure = true;

@@ -8,6 +8,7 @@ import {
 	findGroupAccess,
 	findUserAppleIdentity,
 	insertActivity,
+	isAppleDeletionPending,
 	listGroupUsers,
 	lockAccount,
 	lockGroup,
@@ -159,10 +160,7 @@ export async function transferOwnership(deps: AppDeps, input: UserOperation) {
 		if (input.targetId === input.userId)
 			throw new AppError(422, "OWNER_REQUIRED", "Choose another group user");
 		const targetApple = await findUserAppleIdentity(tx, input.targetId);
-		if (
-			targetApple?.providerSecret?.startsWith("REVOKING:") ||
-			targetApple?.providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:")
-		) {
+		if (isAppleDeletionPending(targetApple?.providerSecret)) {
 			throw new AppError(
 				422,
 				"OWNER_REQUIRED",

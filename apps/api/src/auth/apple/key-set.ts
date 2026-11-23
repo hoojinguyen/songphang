@@ -26,6 +26,13 @@ export type AppleKeySetProvider = {
 	getKey(kid: string): Promise<KeyObject | null>;
 };
 
+export class AppleKeySetError extends Error {
+	constructor(message: string, options?: { cause?: unknown }) {
+		super(message, options);
+		this.name = "AppleKeySetError";
+	}
+}
+
 export function createAppleKeySetProvider(
 	config: Config,
 	now: () => Date,

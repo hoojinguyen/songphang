@@ -13,8 +13,47 @@ export type OpenApiDiffResult = {
 	additiveCount: number;
 };
 
+type DiffContext = {
+	oldComponentParams: Record<string, unknown>;
+	newComponentParams: Record<string, unknown>;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function extractComponentParameters(
+	doc: Record<string, unknown>,
+): Record<string, unknown> {
+	return isRecord(doc.components) && isRecord(doc.components.parameters)
+		? doc.components.parameters
+		: {};
+}
+
+function resolveParameter(
+	param: Record<string, unknown>,
+	componentParams: Record<string, unknown>,
+	seen = new Set<string>(),
+): Record<string, unknown> {
+	const ref = param.$ref;
+	if (typeof ref !== "string" || !ref.startsWith("#/components/parameters/")) {
+		return param;
+	}
+	const name = ref.slice("#/components/parameters/".length);
+	if (seen.has(name) || !Object.hasOwn(componentParams, name)) {
+		return param;
+	}
+	const target = componentParams[name];
+	if (!isRecord(target)) return param;
+	const { $ref: _ignored, ...siblings } = param;
+	const resolvedTarget = resolveParameter(
+		target,
+		componentParams,
+		new Set([...seen, name]),
+	);
+	return Object.keys(siblings).length > 0
+		? { ...resolvedTarget, ...siblings }
+		: resolvedTarget;
 }
 
 function sameJson(a: unknown, b: unknown): boolean {
@@ -100,14 +139,30 @@ function compareParameterList(
 	oldList: unknown,
 	newList: unknown,
 	changes: OpenApiDiffEntry[],
+	ctx: DiffContext,
 ): void {
 	const oldParams = (Array.isArray(oldList) ? oldList : []).filter(isRecord);
 	const newParams = (Array.isArray(newList) ? newList : []).filter(isRecord);
 
-	const paramKey = (p: Record<string, unknown>) =>
-		typeof p.$ref === "string" ? p.$ref : `${String(p.in)}:${String(p.name)}`;
-	const oldMap = new Map(oldParams.map((p) => [paramKey(p), p]));
-	const newMap = new Map(newParams.map((p) => [paramKey(p), p]));
+	const mapParams = (
+		params: Record<string, unknown>[],
+		componentParams: Record<string, unknown>,
+	) => {
+		const entries: Array<[string, Record<string, unknown>]> = [];
+		for (const p of params) {
+			const resolved = resolveParameter(p, componentParams);
+			const key =
+				typeof resolved.in === "string" && typeof resolved.name === "string"
+					? `${resolved.in}:${resolved.name}`
+					: typeof p.$ref === "string"
+						? p.$ref
+						: `${String(resolved.in)}:${String(resolved.name)}`;
+			entries.push([key, resolved]);
+		}
+		return new Map(entries);
+	};
+	const oldMap = mapParams(oldParams, ctx.oldComponentParams);
+	const newMap = mapParams(newParams, ctx.newComponentParams);
 
 	for (const [key, newP] of newMap.entries()) {
 		const childPath = `${path}.parameters[${key}]`;
@@ -122,7 +177,7 @@ function compareParameterList(
 					: `Optional parameter "${String(newP.name)}" in "${String(newP.in)}" added`,
 			});
 		} else {
-			compareNode(childPath, oldP, newP, changes);
+			compareNode(childPath, oldP, newP, changes, ctx);
 		}
 	}
 
@@ -143,6 +198,7 @@ function compareProperties(
 	newProps: Record<string, unknown>,
 	newRequired: Set<string>,
 	changes: OpenApiDiffEntry[],
+	ctx: DiffContext,
 ): void {
 	const keys = new Set([...Object.keys(oldProps), ...Object.keys(newProps)]);
 	for (const key of [...keys].sort()) {
@@ -166,7 +222,7 @@ function compareProperties(
 			});
 			continue;
 		}
-		compareNode(childPath, oldProps[key], newProps[key], changes);
+		compareNode(childPath, oldProps[key], newProps[key], changes, ctx);
 	}
 }
 
@@ -175,6 +231,7 @@ function compareNode(
 	oldValue: unknown,
 	newValue: unknown,
 	changes: OpenApiDiffEntry[],
+	ctx: DiffContext,
 ): void {
 	if (sameJson(oldValue, newValue)) return;
 
@@ -186,7 +243,7 @@ function compareNode(
 		/\.(allOf|oneOf|anyOf)$/.test(path)
 	) {
 		for (const [index, oldItem] of oldValue.entries()) {
-			compareNode(`${path}.${index}`, oldItem, newValue[index], changes);
+			compareNode(`${path}.${index}`, oldItem, newValue[index], changes, ctx);
 		}
 		return;
 	}
@@ -272,6 +329,7 @@ function compareNode(
 				oldValue.parameters,
 				newValue.parameters,
 				changes,
+				ctx,
 			);
 			continue;
 		}
@@ -293,6 +351,7 @@ function compareNode(
 				newValue.properties,
 				newRequired,
 				changes,
+				ctx,
 			);
 			continue;
 		}
@@ -355,7 +414,7 @@ function compareNode(
 			});
 			continue;
 		}
-		compareNode(childPath, oldValue[key], newValue[key], changes);
+		compareNode(childPath, oldValue[key], newValue[key], changes, ctx);
 	}
 }
 
@@ -496,6 +555,10 @@ export function diffOpenApiSnapshots(
 		normalizeRequestSchemas(baseline, candidate),
 		normalizeRequestSchemas(candidate, baseline),
 		changes,
+		{
+			oldComponentParams: extractComponentParameters(baseline),
+			newComponentParams: extractComponentParameters(candidate),
+		},
 	);
 	const breakingCount = changes.filter((c) => c.severity === "breaking").length;
 	const additiveCount = changes.filter((c) => c.severity === "additive").length;

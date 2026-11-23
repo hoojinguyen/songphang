@@ -12,6 +12,7 @@ import {
 	hasRecentAppleDeletion,
 	insertAccount,
 	insertAppleIdentity,
+	isAppleDeletionPending,
 	lockAccount,
 	lockAppleOperation,
 	pruneExpiredAppleOperations,
@@ -20,7 +21,10 @@ import {
 	updateAppleProviderSecret,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
-import { createAppleKeySetProvider } from "../auth/apple/key-set.js";
+import {
+	AppleKeySetError,
+	createAppleKeySetProvider,
+} from "../auth/apple/key-set.js";
 import { encryptSecret } from "../auth/apple/secret-box.js";
 import {
 	AppleTokenAdapterError,
@@ -85,20 +89,21 @@ export async function appleSignIn(
 			now: deps.now(),
 		});
 	} catch (error) {
-		if (error instanceof AppError) {
-			throw error;
+		if (error instanceof AppleKeySetError) {
+			console.warn(
+				JSON.stringify({
+					event: "apple.verify_identity_token.failed",
+					category:
+						error.cause instanceof Error ? error.cause.name : error.name,
+				}),
+			);
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Could not verify Apple identity token with upstream provider",
+			);
 		}
-		console.warn(
-			JSON.stringify({
-				event: "apple.verify_identity_token.failed",
-				category: error instanceof Error ? error.name : "unknown",
-			}),
-		);
-		throw new AppError(
-			503,
-			"APPLE_REVOCATION_FAILED",
-			"Could not verify Apple identity token with upstream provider",
-		);
+		throw error;
 	}
 
 	if (deps.config.appleProvider === "apple" && !deps.config.dataEncryptionKey) {
@@ -164,12 +169,7 @@ export async function appleSignIn(
 				);
 			}
 		}
-		if (
-			existingIdentity?.providerSecret?.startsWith("REVOKING:") ||
-			existingIdentity?.providerSecret?.startsWith(
-				"APPLE_REVOCATION_COMPLETED:",
-			)
-		) {
+		if (isAppleDeletionPending(existingIdentity?.providerSecret)) {
 			throw new AppError(403, "FORBIDDEN", "Account is undergoing deletion");
 		}
 		if (existingIdentity === null) {
@@ -276,20 +276,21 @@ export async function appleSignIn(
 					now: deps.now(),
 				});
 			} catch (error) {
-				if (error instanceof AppError) {
-					throw error;
+				if (error instanceof AppleKeySetError) {
+					console.warn(
+						JSON.stringify({
+							event: "apple.verify_exchanged_token.failed",
+							category:
+								error.cause instanceof Error ? error.cause.name : error.name,
+						}),
+					);
+					throw new AppError(
+						503,
+						"APPLE_REVOCATION_FAILED",
+						"Could not verify Apple exchanged identity token with upstream provider",
+					);
 				}
-				console.warn(
-					JSON.stringify({
-						event: "apple.verify_exchanged_token.failed",
-						category: error instanceof Error ? error.name : "unknown",
-					}),
-				);
-				throw new AppError(
-					503,
-					"APPLE_REVOCATION_FAILED",
-					"Could not verify Apple exchanged identity token with upstream provider",
-				);
+				throw error;
 			}
 			if (exchangedClaims.sub !== claims.sub) {
 				throw new AppError(
@@ -355,8 +356,7 @@ export async function appleSignIn(
 				const current = await findAppleIdentity(transaction, claims.sub);
 				if (
 					current?.userId !== known.userId ||
-					current.providerSecret?.startsWith("REVOKING:") ||
-					current.providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:")
+					isAppleDeletionPending(current.providerSecret)
 				) {
 					throw new AppError(
 						403,

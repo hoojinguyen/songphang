@@ -182,14 +182,6 @@ export async function deleteAccount(
 			};
 		}
 
-		if (!deps.config.appleProvider) {
-			throw new AppError(
-				503,
-				"APPLE_REVOCATION_FAILED",
-				"Apple provider is disabled; cannot revoke Apple authorization",
-			);
-		}
-
 		const rawSecret = identity.providerSecret ?? "";
 		if (rawSecret.startsWith("APPLE_REVOCATION_COMPLETED:")) {
 			return {
@@ -199,6 +191,14 @@ export async function deleteAccount(
 				needsRevocation: false,
 				refreshToken: null,
 			};
+		}
+
+		if (!deps.config.appleProvider) {
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Apple provider is disabled; cannot revoke Apple authorization",
+			);
 		}
 
 		const actualSecret = rawSecret.startsWith("REVOKING:")

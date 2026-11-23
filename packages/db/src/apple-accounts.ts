@@ -3,6 +3,15 @@ import { and, eq, lt, ne, or, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { appleOperations, userIdentities } from "./schema-accounts.js";
 
+export function isAppleDeletionPending(
+	providerSecret: string | null | undefined,
+): boolean {
+	return (
+		providerSecret?.startsWith("REVOKING:") === true ||
+		providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:") === true
+	);
+}
+
 export async function findAppleIdentity(executor: DbExecutor, subject: string) {
 	const [identity] = await executor
 		.select({

@@ -1,9 +1,14 @@
-import { createHash, createVerify, timingSafeEqual } from "node:crypto";
+import {
+	createHash,
+	createVerify,
+	type KeyObject,
+	timingSafeEqual,
+} from "node:crypto";
 import { z } from "@hono/zod-openapi";
 import { EmailAddress } from "@songphang/contract";
 import type { Config } from "../../config.js";
 import { AppError } from "../../errors.js";
-import type { AppleKeySetProvider } from "./key-set.js";
+import { AppleKeySetError, type AppleKeySetProvider } from "./key-set.js";
 
 const APPLE_ISSUER = "https://appleid.apple.com";
 const MAX_CLOCK_SKEW_SECONDS = 60;
@@ -90,7 +95,18 @@ async function verifyAppleJwt<TSchema extends z.ZodTypeAny>(input: {
 		);
 	}
 
-	const publicKey = await input.keySet.getKey(header.kid);
+	let publicKey: KeyObject | null;
+	try {
+		publicKey = await input.keySet.getKey(header.kid);
+	} catch (error) {
+		if (error instanceof AppError) {
+			throw error;
+		}
+		throw new AppleKeySetError(
+			error instanceof Error ? error.message : "Apple key set fetch failed",
+			{ cause: error },
+		);
+	}
 	if (publicKey === null) {
 		throw new AppError(
 			401,

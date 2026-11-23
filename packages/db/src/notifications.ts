@@ -429,7 +429,12 @@ export async function recordPushDeviceDelivered(
 				coalesce(${notifications.payload}->'_deliveredDeviceIds', '[]'::jsonb) || jsonb_build_array(${deviceId}::text)
 			)`,
 		})
-		.where(eq(notifications.id, notificationId));
+		.where(
+			and(
+				eq(notifications.id, notificationId),
+				sql`NOT (coalesce(${notifications.payload}->'_deliveredDeviceIds', '[]'::jsonb) @> jsonb_build_array(${deviceId}::text))`,
+			),
+		);
 }
 
 function digestEligibilityWhere(input: {
