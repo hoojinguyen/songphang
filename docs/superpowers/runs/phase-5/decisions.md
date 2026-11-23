@@ -131,3 +131,9 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 
 - Codex reconciles the approved design §9 changes (`docs/04-adr.md` ADR-014/029/030/032, `docs/05-api-spec.md`, `docs/05-database-design.md`, `docs/03-srs.md`, root `AGENTS.md`) with the reviewed implementation before merge.
 - Note for advisor: `packages/db/package.json` scripts (`migrate`, `seed`, `check-balances`) use `--env-file=../../.env` instead of `--env-file-if-exists`, causing clean worktrees without `.env` to require `pnpm --filter @songphang/db exec tsx src/...`. Recorded as out-of-scope observation.
+
+### D14 — Apple operation reservations and PATCH compatibility gate
+
+- Apple exchange and revocation reserve ownership in PostgreSQL before provider I/O. The account and identity are rechecked against the reservation before committing a grant. An unresolved exchange blocks account deletion until a later confirmed exchange reconciles it. An interrupted revocation can retry the same grant after its short reservation expires. The authenticated session stays usable for retry and is invalidated by successful deletion.
+- D12 intentionally changes omission of PATCH category and categoryId from a null default to preserving the saved value. The comparator accepts removal of these two null defaults only in this PATCH request. Other default removals remain breaking.
+- Calendar-date validation intentionally accepts four-digit Gregorian years 0001–9999 on API and iOS.

@@ -197,6 +197,13 @@
 			"when": 1795414558165,
 			"tag": "0027_bright_northstar",
 			"breakpoints": true
+		},
+		{
+			"idx": 28,
+			"version": "7",
+			"when": 1795434771526,
+			"tag": "0028_apple_operations",
+			"breakpoints": true
 		}
 	]
 }

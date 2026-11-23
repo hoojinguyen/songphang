@@ -15,6 +15,7 @@ function parseCalendarParts(
 	const match = CALENDAR_DATE_PATTERN.exec(value);
 	if (!match) return null;
 	const year = Number(match[1]);
+	// API calendar dates use four-digit Gregorian years 0001 through 9999.
 	if (year === 0) return null;
 	const month = Number(match[2]);
 	const day = Number(match[3]);

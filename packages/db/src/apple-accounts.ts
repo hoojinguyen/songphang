@@ -1,6 +1,6 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, or, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
-import { userIdentities } from "./schema-accounts.js";
+import { appleOperations, userIdentities } from "./schema-accounts.js";
 
 export async function findAppleIdentity(executor: DbExecutor, subject: string) {
 	const [identity] = await executor
@@ -77,9 +77,70 @@ export function updateAppleProviderSecret(
 		);
 }
 
-// Revocation retries serialize separately from operations that read the pending marker.
-export function lockAppleRevocation(executor: DbExecutor, userId: string) {
+export function lockAppleOperation(executor: DbExecutor, key: string) {
 	return executor.execute(
-		sql`select pg_advisory_xact_lock(hashtextextended(${userId}, 0))`,
+		sql`select pg_advisory_xact_lock(hashtextextended(${`apple:${key}`}, 0))`,
 	);
+}
+
+export async function findAppleOperation(executor: DbExecutor, key: string) {
+	const [operation] = await executor
+		.select()
+		.from(appleOperations)
+		.where(eq(appleOperations.key, key));
+	return operation ?? null;
+}
+
+export async function hasAppleExchange(
+	executor: DbExecutor,
+	userId: string | undefined,
+	email: string | undefined,
+	exceptKey?: string,
+) {
+	if (userId === undefined && email === undefined) return false;
+	const [operation] = await executor
+		.select({ key: appleOperations.key })
+		.from(appleOperations)
+		.where(
+			and(
+				sql`${appleOperations.key} like 'exchange:%'`,
+				exceptKey === undefined
+					? undefined
+					: ne(appleOperations.key, exceptKey),
+				or(
+					userId === undefined ? undefined : eq(appleOperations.userId, userId),
+					email === undefined ? undefined : eq(appleOperations.email, email),
+				),
+			),
+		)
+		.limit(1);
+	return operation !== undefined;
+}
+
+export function saveAppleOperation(
+	executor: DbExecutor,
+	operation: typeof appleOperations.$inferInsert,
+) {
+	return executor
+		.insert(appleOperations)
+		.values(operation)
+		.onConflictDoUpdate({
+			target: appleOperations.key,
+			set: {
+				owner: operation.owner,
+				userId: operation.userId ?? null,
+				email: operation.email ?? null,
+				expiresAt: operation.expiresAt,
+			},
+		});
+}
+
+export function clearAppleOperation(
+	executor: DbExecutor,
+	key: string,
+	owner: string,
+) {
+	return executor
+		.delete(appleOperations)
+		.where(and(eq(appleOperations.key, key), eq(appleOperations.owner, owner)));
 }

@@ -75,3 +75,11 @@ export const authTokens = pgTable(
 		),
 	],
 );
+
+export const appleOperations = pgTable("apple_operations", {
+	key: text("key").primaryKey(),
+	owner: uuid("owner").notNull(),
+	userId: uuid("user_id"),
+	email: text("email"),
+	expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});

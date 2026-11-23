@@ -306,7 +306,10 @@ function compareNode(
 					isMetadata ||
 					isRemovedRequiredTrue ||
 					(key === "default" &&
-						/\.requestBody\.content\..+\.schema\./.test(path))
+						oldValue[key] === null &&
+						/^paths\.\/api\/v1\/groups\/\{groupId\}\/transactions\/\{id\}\.patch\.requestBody\.content\.application\/json\.schema\.allOf\.\d+\.(oneOf\.\d+|discriminator\.mapping\.(expense|income))\.properties\.category(Id)?$/.test(
+							path,
+						))
 						? "additive"
 						: "breaking",
 				path: childPath,
@@ -356,6 +359,22 @@ function compareNode(
 	}
 }
 
+function canonicalSchema(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(canonicalSchema);
+	if (!isRecord(value)) return value;
+	return Object.fromEntries(
+		Object.keys(value)
+			.sort()
+			.map((key) => [key, canonicalSchema(value[key])]),
+	);
+}
+
+function compareSchemaBranches(left: unknown, right: unknown): number {
+	return JSON.stringify(canonicalSchema(left)).localeCompare(
+		JSON.stringify(canonicalSchema(right)),
+	);
+}
+
 // Compare request schema structure independently of local component extraction.
 function expandRequestSchema(
 	value: unknown,
@@ -378,9 +397,18 @@ function expandRequestSchema(
 			new Set([...ancestors, name]),
 		);
 	};
-	if (Object.keys(value).length === 1 && "$ref" in value) {
-		const resolved = expandReference(value.$ref);
-		return resolved === value.$ref ? value : resolved;
+	if ("$ref" in value) {
+		const { $ref, ...siblings } = value;
+		const resolved = expandReference($ref);
+		if (resolved !== $ref) {
+			if (Object.keys(siblings).length === 0) return resolved;
+			return {
+				allOf: [
+					resolved,
+					expandRequestSchema(siblings, schemas, ancestors),
+				].sort(compareSchemaBranches),
+			};
+		}
 	}
 
 	return Object.fromEntries(
@@ -403,31 +431,54 @@ function expandRequestSchema(
 					},
 				];
 			}
-			return [key, expandRequestSchema(child, schemas, ancestors)];
+			const expanded = expandRequestSchema(child, schemas, ancestors);
+			if (
+				Array.isArray(expanded) &&
+				["allOf", "anyOf", "oneOf"].includes(key)
+			) {
+				expanded.sort(compareSchemaBranches);
+			}
+			return [key, expanded];
 		}),
 	);
 }
 
-function normalizeRequestSchemas(document: Record<string, unknown>) {
+function normalizeRequestSchemas(
+	document: Record<string, unknown>,
+	other: Record<string, unknown>,
+) {
 	const copy = structuredClone(document);
-	if (
-		!isRecord(copy.paths) ||
-		!isRecord(copy.components) ||
-		!isRecord(copy.components.schemas)
-	)
-		return copy;
-	for (const path of Object.values(copy.paths)) {
+	if (!isRecord(copy.paths)) return copy;
+	const schemas =
+		isRecord(copy.components) && isRecord(copy.components.schemas)
+			? copy.components.schemas
+			: {};
+	const otherPaths = isRecord(other.paths) ? other.paths : {};
+	for (const [route, path] of Object.entries(copy.paths)) {
 		if (!isRecord(path)) continue;
-		for (const operation of Object.values(path)) {
+		const otherPath = otherPaths[route];
+		for (const [method, operation] of Object.entries(path)) {
 			if (!isRecord(operation) || !isRecord(operation.requestBody)) continue;
 			const content = operation.requestBody.content;
 			if (!isRecord(content)) continue;
-			for (const media of Object.values(content)) {
-				if (isRecord(media) && isRecord(media.schema)) {
-					media.schema = expandRequestSchema(
-						media.schema,
-						copy.components.schemas,
-					);
+			const otherOperation = isRecord(otherPath)
+				? otherPath[method]
+				: undefined;
+			const otherBody = isRecord(otherOperation)
+				? otherOperation.requestBody
+				: undefined;
+			const otherContent = isRecord(otherBody) ? otherBody.content : undefined;
+			for (const [mime, media] of Object.entries(content)) {
+				const otherMedia = isRecord(otherContent)
+					? otherContent[mime]
+					: undefined;
+				if (
+					isRecord(media) &&
+					isRecord(media.schema) &&
+					isRecord(otherMedia) &&
+					!sameJson(media.schema, otherMedia.schema)
+				) {
+					media.schema = expandRequestSchema(media.schema, schemas);
 				}
 			}
 		}
@@ -442,8 +493,8 @@ export function diffOpenApiSnapshots(
 	const changes: OpenApiDiffEntry[] = [];
 	compareNode(
 		"",
-		normalizeRequestSchemas(baseline),
-		normalizeRequestSchemas(candidate),
+		normalizeRequestSchemas(baseline, candidate),
+		normalizeRequestSchemas(candidate, baseline),
 		changes,
 	);
 	const breakingCount = changes.filter((c) => c.severity === "breaking").length;

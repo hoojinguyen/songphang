@@ -219,7 +219,10 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
   ) async throws(AppError) -> LedgerTransaction {
     do {
       let encoder = JSONEncoder()
-      encoder.dateEncodingStrategy = .iso8601
+      encoder.dateEncodingStrategy = .custom { date, encoder in
+        var container = encoder.singleValueContainer()
+        try container.encode(FlexibleISO8601DateTranscoder().encode(date))
+      }
       let body = Components.Schemas.UpdateTransactionRequest(
         value1: TransactionMapping.encodeUpdateRequest(draft),
         value2: .init(version: version)

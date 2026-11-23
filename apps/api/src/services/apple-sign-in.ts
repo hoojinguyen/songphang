@@ -1,11 +1,17 @@
+import { randomUUID } from "node:crypto";
 import { type AppleSignInRequest, UserDto } from "@songphang/contract";
 import {
+	clearAppleOperation,
 	findAccountByEmail,
 	findAppleIdentity,
+	findAppleOperation,
 	findUserById,
+	hasAppleExchange,
 	insertAccount,
 	insertAppleIdentity,
 	lockAccount,
+	lockAppleOperation,
+	saveAppleOperation,
 	updateAppleProviderSecret,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
@@ -77,7 +83,12 @@ export async function appleSignIn(
 		);
 	}
 
-	return deps.db.transaction(async (transaction) => {
+	const operationKey = `exchange:${claims.sub}`;
+	const owner = randomUUID();
+	const hadPendingExchange = await deps.db.transaction(async (transaction) => {
+		await lockAppleOperation(transaction, operationKey);
+		if (claims.email)
+			await lockAppleOperation(transaction, `email:${claims.email}`);
 		const identityHint = await findAppleIdentity(transaction, claims.sub);
 		const accountHint =
 			identityHint === null && claims.email
@@ -120,6 +131,35 @@ export async function appleSignIn(
 			}
 		}
 
+		if (
+			await hasAppleExchange(transaction, accountId, claims.email, operationKey)
+		) {
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Another Apple sign-in is pending for this account",
+			);
+		}
+
+		const previous = await findAppleOperation(transaction, operationKey);
+		if (previous && previous.expiresAt > new Date()) {
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Apple sign-in is already in progress",
+			);
+		}
+		await saveAppleOperation(transaction, {
+			key: operationKey,
+			owner,
+			userId: accountId,
+			email: claims.email,
+			expiresAt: new Date(Date.now() + 120_000),
+		});
+		return previous !== null;
+	});
+
+	try {
 		if (
 			deps.config.appleProvider === "apple" &&
 			!deps.config.dataEncryptionKey
@@ -227,83 +267,126 @@ export async function appleSignIn(
 			);
 		}
 
-		const now = deps.now();
-		const known = await findAppleIdentity(transaction, claims.sub);
-		let userId: string;
+		return await deps.db.transaction(async (transaction) => {
+			await lockAppleOperation(transaction, operationKey);
+			const operation = await findAppleOperation(transaction, operationKey);
+			if (operation?.owner !== owner) {
+				throw new AppError(
+					503,
+					"APPLE_REVOCATION_FAILED",
+					"Apple sign-in reservation changed",
+				);
+			}
 
-		if (known !== null) {
-			userId = known.userId;
-			if (encryptedSecret !== null) {
-				await updateAppleProviderSecret(transaction, {
-					userId,
+			const now = deps.now();
+			const known = await findAppleIdentity(transaction, claims.sub);
+			let userId: string;
+
+			if (known !== null) {
+				if ((await lockAccount(transaction, known.userId)).length === 0) {
+					throw new AppError(
+						403,
+						"FORBIDDEN",
+						"Account is undergoing deletion",
+					);
+				}
+				const current = await findAppleIdentity(transaction, claims.sub);
+				if (
+					current?.userId !== known.userId ||
+					current.providerSecret?.startsWith("REVOKING:") ||
+					current.providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:")
+				) {
+					throw new AppError(
+						403,
+						"FORBIDDEN",
+						"Account is undergoing deletion",
+					);
+				}
+				userId = known.userId;
+				if (encryptedSecret !== null) {
+					await updateAppleProviderSecret(transaction, {
+						userId,
+						subject: claims.sub,
+						providerSecret: encryptedSecret,
+					});
+				}
+			} else {
+				const email = claims.email;
+				if (!email || !claims.emailVerified) {
+					throw new AppError(
+						401,
+						"INVALID_CREDENTIALS",
+						"Apple identity token requires a verified email",
+					);
+				}
+				let account = await findAccountByEmail(transaction, email);
+				if (account && account.emailVerifiedAt === null) {
+					throw new AppError(
+						403,
+						"EMAIL_NOT_VERIFIED",
+						"Existing password account must verify email before linking Apple sign-in",
+					);
+				}
+				if (!account) {
+					await insertAccount(transaction, {
+						email,
+						name: fallbackAppleName(input.request.name, email),
+						avatarUrl: null,
+						emailVerifiedAt: now,
+						createdAt: now,
+						updatedAt: now,
+					});
+					account = await findAccountByEmail(transaction, email);
+				}
+				if (!account) {
+					throw new Error("Apple account creation failed");
+				}
+				await lockAccount(transaction, account.id);
+				const current = await findAccountByEmail(transaction, email);
+				if (!current || current.emailVerifiedAt === null) {
+					throw new AppError(
+						403,
+						"EMAIL_NOT_VERIFIED",
+						"Existing password account must verify email before linking Apple sign-in",
+					);
+				}
+				await insertAppleIdentity(transaction, {
+					userId: current.id,
 					subject: claims.sub,
 					providerSecret: encryptedSecret,
+					now,
 				});
+				const identity = await findAppleIdentity(transaction, claims.sub);
+				if (!identity) {
+					throw new Error("Apple identity association failed");
+				}
+				userId = identity.userId;
 			}
-		} else {
-			const email = claims.email;
-			if (!email || !claims.emailVerified) {
-				throw new AppError(
-					401,
-					"INVALID_CREDENTIALS",
-					"Apple identity token requires a verified email",
-				);
-			}
-			let account = await findAccountByEmail(transaction, email);
-			if (account && account.emailVerifiedAt === null) {
-				throw new AppError(
-					403,
-					"EMAIL_NOT_VERIFIED",
-					"Existing password account must verify email before linking Apple sign-in",
-				);
-			}
-			if (!account) {
-				await insertAccount(transaction, {
-					email,
-					name: fallbackAppleName(input.request.name, email),
-					avatarUrl: null,
-					emailVerifiedAt: now,
-					createdAt: now,
-					updatedAt: now,
-				});
-				account = await findAccountByEmail(transaction, email);
-			}
-			if (!account) {
-				throw new Error("Apple account creation failed");
-			}
-			await lockAccount(transaction, account.id);
-			const current = await findAccountByEmail(transaction, email);
-			if (!current || current.emailVerifiedAt === null) {
-				throw new AppError(
-					403,
-					"EMAIL_NOT_VERIFIED",
-					"Existing password account must verify email before linking Apple sign-in",
-				);
-			}
-			await insertAppleIdentity(transaction, {
-				userId: current.id,
-				subject: claims.sub,
-				providerSecret: encryptedSecret,
-				now,
-			});
-			const identity = await findAppleIdentity(transaction, claims.sub);
-			if (!identity) {
-				throw new Error("Apple identity association failed");
-			}
-			userId = identity.userId;
-		}
 
-		const userRow = await findUserById(transaction, userId);
-		if (userRow === null) {
-			throw new AppError(404, "NOT_FOUND", "User not found");
-		}
-		const session = await createSession(transaction, {
-			userId,
-			now,
-			client: input.request.client,
-			deviceName: input.request.deviceName,
-			...(input.userAgent === undefined ? {} : { userAgent: input.userAgent }),
+			const userRow = await findUserById(transaction, userId);
+			if (userRow === null) {
+				throw new AppError(404, "NOT_FOUND", "User not found");
+			}
+			const session = await createSession(transaction, {
+				userId,
+				now,
+				client: input.request.client,
+				deviceName: input.request.deviceName,
+				...(input.userAgent === undefined
+					? {}
+					: { userAgent: input.userAgent }),
+			});
+			await clearAppleOperation(transaction, operationKey, owner);
+			return { session, user: UserDto.parse(userRow) };
 		});
-		return { session, user: UserDto.parse(userRow) };
-	});
+	} catch (error) {
+		if (
+			!hadPendingExchange &&
+			error instanceof AppError &&
+			error.status < 500
+		) {
+			await clearAppleOperation(deps.db, operationKey, owner);
+		}
+		throw error;
+	}
 }

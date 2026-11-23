@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type {
 	ChangePasswordRequest,
 	DeleteAccountRequest,
@@ -7,15 +7,19 @@ import type {
 	UserDto,
 } from "@songphang/contract";
 import {
+	clearAppleOperation,
 	countOwnedGroups,
 	deleteAccountRow,
 	deleteUserSessions,
 	findAccountByEmail,
 	findAccountById,
+	findAppleOperation,
 	findUserAppleIdentity,
+	hasAppleExchange,
 	listUserGroups,
 	lockAccount,
-	lockAppleRevocation,
+	lockAppleOperation,
+	saveAppleOperation,
 	updateAppleProviderSecret,
 	updatePasswordHash,
 	verifyAccountEmail,
@@ -133,7 +137,17 @@ export async function deleteAccount(
 		refreshToken,
 		deletedGroups,
 	} = await deps.db.transaction(async (tx) => {
+		await lockAppleOperation(tx, `email:${input.user.email.toLowerCase()}`);
 		await lockAccount(tx, input.user.id);
+		if (
+			await hasAppleExchange(tx, input.user.id, input.user.email.toLowerCase())
+		) {
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Apple sign-in is still pending",
+			);
+		}
 		const ownedGroups = await countOwnedGroups(tx, input.user.id);
 		if (ownedGroups > 0) {
 			throw new AppError(
@@ -225,15 +239,18 @@ export async function deleteAccount(
 	if (needsRevocation && appleIdentity !== null) {
 		const adapter =
 			deps.appleTokenAdapter ?? createAppleTokenAdapter(deps.config, deps.now);
+		const key = `revoke:${input.user.id}`;
+		const owner = randomUUID();
+		let claimed = false;
 		try {
-			await deps.db.transaction(async (tx) => {
-				await lockAppleRevocation(tx, input.user.id);
+			const subject = await deps.db.transaction(async (tx) => {
+				await lockAppleOperation(tx, key);
 				const current = await findUserAppleIdentity(tx, input.user.id);
 				if (
 					current === null ||
 					current.providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:")
 				)
-					return;
+					return null;
 				const expected = appleIdentity.providerSecret?.startsWith("REVOKING:")
 					? appleIdentity.providerSecret
 					: `REVOKING:${appleIdentity.providerSecret ?? ""}`;
@@ -244,19 +261,39 @@ export async function deleteAccount(
 				) {
 					throw new Error("Apple grant changed during deletion");
 				}
-				// REVOKING survives rollback. Apple returns success for an already-revoked
-				// token, so a retry after process loss must send this same grant again.
+				const previous = await findAppleOperation(tx, key);
+				if (previous && previous.expiresAt > new Date()) {
+					throw new Error("Apple revocation is already in progress");
+				}
+				await saveAppleOperation(tx, {
+					key,
+					owner,
+					expiresAt: new Date(Date.now() + 30_000),
+				});
+				return current.providerSubject;
+			});
+			if (subject !== null) {
+				claimed = true;
 				await adapter.revokeRefreshToken({
 					refreshToken,
 					userId: input.user.id,
 				});
-				await updateAppleProviderSecret(tx, {
-					userId: input.user.id,
-					subject: current.providerSubject,
-					providerSecret: `APPLE_REVOCATION_COMPLETED:${grantHash}`,
+				await deps.db.transaction(async (tx) => {
+					await lockAppleOperation(tx, key);
+					if ((await findAppleOperation(tx, key))?.owner !== owner) {
+						throw new Error("Apple revocation reservation changed");
+					}
+					await updateAppleProviderSecret(tx, {
+						userId: input.user.id,
+						subject,
+						providerSecret: `APPLE_REVOCATION_COMPLETED:${grantHash}`,
+					});
+					await clearAppleOperation(tx, key, owner);
 				});
-			});
+			}
 		} catch (error) {
+			if (claimed) await clearAppleOperation(deps.db, key, owner);
+
 			const category =
 				error instanceof AppleTokenAdapterError
 					? error.category
