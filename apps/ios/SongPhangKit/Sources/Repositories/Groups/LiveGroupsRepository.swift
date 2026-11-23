@@ -64,7 +64,12 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
           )
         switch output {
         case .ok(let ok):
-          return GroupMapping.mapDetail(try ok.body.json.group)
+          return GroupMapping.mapDetail(
+            try ok.body.json.group,
+            reminderIntervalDays: GroupMapping.extractReminderIntervalDays(
+              from: ResponseBodyCapture.box?.read()
+            )
+          )
         case .undocumented(let status, let payload):
           if status == 404 {
             await environment.snapshots.invalidateGroup(id.rawValue)
@@ -111,7 +116,12 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
         )
         switch output {
         case .created(let created):
-          return GroupMapping.mapDetail(try created.body.json.group)
+          return GroupMapping.mapDetail(
+            try created.body.json.group,
+            reminderIntervalDays: GroupMapping.extractReminderIntervalDays(
+              from: ResponseBodyCapture.box?.read()
+            )
+          )
         case .undocumented(let status, let payload):
           throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
         }
@@ -179,7 +189,12 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
           )
         switch output {
         case .ok(let ok):
-          return GroupMapping.mapDetail(try ok.body.json.group)
+          return GroupMapping.mapDetail(
+            try ok.body.json.group,
+            reminderIntervalDays: GroupMapping.extractReminderIntervalDays(
+              from: ResponseBodyCapture.box?.read()
+            )
+          )
         case .undocumented(let status, let payload):
           if status == 404 {
             await environment.snapshots.invalidateGroup(id.rawValue)

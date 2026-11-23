@@ -25,7 +25,26 @@ enum GroupMapping {
     )
   }
 
-  static func mapDetail(_ dto: Components.Schemas.GroupDto) -> ExpenseGroup {
+  private struct ReminderIntervalEnvelope: Decodable {
+    struct Group: Decodable {
+      let reminderIntervalDays: Int?
+    }
+    let group: Group
+  }
+
+  static func extractReminderIntervalDays(from data: Data?) -> Int? {
+    guard let data,
+      let decoded = try? JSONDecoder().decode(ReminderIntervalEnvelope.self, from: data)
+    else {
+      return nil
+    }
+    return decoded.group.reminderIntervalDays
+  }
+
+  static func mapDetail(
+    _ dto: Components.Schemas.GroupDto,
+    reminderIntervalDays: Int? = nil
+  ) -> ExpenseGroup {
     ExpenseGroup(
       id: ExpenseGroup.ID(dto.id),
       name: dto.name,
@@ -38,7 +57,7 @@ enum GroupMapping {
       role: Role(code: dto.role.rawValue),
       myMemberId: dto.myMemberId.map(Member.ID.init),
       muted: dto.muted,
-      reminderIntervalDays: nil,
+      reminderIntervalDays: reminderIntervalDays,
       approvalThreshold: dto.approvalThreshold.map { Money(Int64($0)) },
       ownerName: dto.ownerName,
       createdAt: formatISO(dto.createdAt)
