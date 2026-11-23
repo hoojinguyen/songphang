@@ -111,5 +111,5 @@ A dedicated benchmark group was populated with **500 real transactions and 1,000
 - [ ] Exercise 7: Offline resilience & session revocation verified
 - [ ] Visual UI & Accessibility quality accepted
 
-**Owner signature / decision:** ____________________  
+**Owner signature / decision:** ____________________
 **Date:** ____________________

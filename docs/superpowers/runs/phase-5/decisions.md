@@ -120,8 +120,8 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 - **Reason:** Fully preserves the product's Vietnamese value proposition while complying strictly with the App Store 30-character ceiling ($25 \le 30$).
 
 ### D12 — PATCH category edit semantics and separation from create schema (Task 5F remediation)
-- **Problem:** Conflating the create schema (`CreateLedgerFields` where `category` has `.default(null)`) with the edit schema (`UpdateSplitTransactionRequest`) caused PATCH requests that omitted `category` to inadvertently clear any existing category to `null`.
-- **Choice:** Split `LedgerFields` in `@songphang/contract` into `CreateLedgerFields` (with `.default(null)` for backward-compatible creation) and `UpdateSplitTransactionRequest` (where `category` is `nullable().optional()`). In `apps/api/src/services/transaction-changes.ts`, `resolveCategoryForEdit` preserves existing categories when omitted (`undefined`), updates when explicitly provided, and clears to `null` only when explicitly passed as `null`.
+- **Problem:** Conflating the create schema (`LedgerFields`, where `category` has `.default(null)`) with the edit schema (`UpdateSplitTransactionRequest`) caused PATCH requests that omitted `category` to inadvertently clear any existing category to `null`.
+- **Choice:** Keep `LedgerFields` for create requests (where `category` defaults to `null`). Build `UpdateSplitTransactionRequest` from `CommonLedgerFields` with `category` as `nullable().optional()`. In `apps/api/src/services/transaction-changes.ts`, `resolveCategoryForEdit` preserves existing categories when omitted (`undefined`), updates when explicitly provided, and clears to `null` only when explicitly passed as `null`.
 
 ### D13 — Durable per-device push retry tracking via notification payload (Task 5F remediation)
 - **Problem:** When multiple devices are registered to a user and APNs push delivery fails transiently for one device, retrying the worker job previously re-delivered pushes to devices that had already received them. In-memory deduplication was lost on worker restart.

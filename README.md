@@ -128,21 +128,21 @@ When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to A
 
 `packages/contract/openapi.json` is the deterministic OpenAPI 3.1 snapshot of the v1 API registry (excluding development-only `/api/v1/dev/*` routes). Version 1 evolves strictly by addition; clients ignore unknown fields and map unknown enum values to safe fallbacks.
 
-| Variable                  | Purpose                                                                       | Default in `.env.example` |
-| ------------------------- | ----------------------------------------------------------------------------- | ------------------------- |
-| `MIN_APP_VERSION_IOS`     | Minimum allowed iOS app version (`major.minor.patch`) in `GET /features`      | `0.0.0`                   |
-| `MIN_APP_VERSION_ANDROID` | Minimum allowed Android version (`major.minor.patch`) in `GET /features`      | `0.0.0`                   |
-| `APPLE_PROVIDER`          | Leave empty to disable, `fake` for local JWKS testing, or `apple`             | _(unset)_                 |
-| `APPLE_BUNDLE_ID`         | iOS bundle identifier validated as Apple ID token `aud`                       | _(unset)_                 |
-| `APPLE_TEAM_ID`           | Apple Developer Team ID (10 characters, required for `apple` mode)            | _(unset)_                 |
-| `APPLE_KEY_ID`            | Sign in with Apple Key ID (10 characters, required for `apple` mode)          | _(unset)_                 |
-| `APPLE_PRIVATE_KEY`       | Sign in with Apple `.p8` EC private key PEM (`apple` mode)                    | _(unset)_                 |
-| `DATA_ENCRYPTION_KEY`     | 32-byte base64 key encrypting Apple refresh tokens (`apple` mode)             | _(unset)_                 |
-| `APPLE_FAKE_JWKS_FILE`    | Path to local JWKS fixture file (`fake` mode only; refused in prod)           | _(unset)_                 |
-| `PUSH_PROVIDER`           | Leave empty to disable, `console` for local logs (refused in prod), or `apns` | _(unset)_                 |
-| `APNS_KEY_ID`             | Optional 10-character APNs `.p8` key ID overriding `APPLE_KEY_ID`             | _(unset)_                 |
-| `APNS_PRIVATE_KEY`        | Optional APNs `.p8` EC private key PEM overriding `APPLE_PRIVATE_KEY`         | _(unset)_                 |
-| `APPLE_APP_ID`            | Web AASA `<TeamID>.<BundleID>` for `/.well-known/apple-app-site-association`  | _(unset)_                 |
+| Variable                  | Purpose                                                                                                                           | Default in `.env.example` |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `MIN_APP_VERSION_IOS`     | Minimum allowed iOS app version (`major.minor.patch`) in `GET /features`                                                          | `0.0.0`                   |
+| `MIN_APP_VERSION_ANDROID` | Minimum allowed Android version (`major.minor.patch`) in `GET /features`                                                          | `0.0.0`                   |
+| `APPLE_PROVIDER`          | Leave empty to disable, `fake` for local JWKS testing, or `apple`                                                                 | _(unset)_                 |
+| `APPLE_BUNDLE_ID`         | iOS bundle identifier validated as Apple ID token `aud`                                                                           | _(unset)_                 |
+| `APPLE_TEAM_ID`           | Apple Developer Team ID (10 characters, required for `apple` mode)                                                                | _(unset)_                 |
+| `APPLE_KEY_ID`            | Sign in with Apple Key ID (10 characters, required for `apple` mode)                                                              | _(unset)_                 |
+| `APPLE_PRIVATE_KEY`       | Sign in with Apple `.p8` EC private key PEM (`apple` mode)                                                                        | _(unset)_                 |
+| `DATA_ENCRYPTION_KEY`     | 32-byte base64 key encrypting Apple refresh tokens (`apple` mode)                                                                 | _(unset)_                 |
+| `APPLE_FAKE_JWKS_FILE`    | Path to local JWKS fixture file (`fake` mode only; refused in prod)                                                               | _(unset)_                 |
+| `PUSH_PROVIDER`           | Leave empty to disable, `console` for local logs (refused in prod), or `apns` (production dispatch deferred until Phase 7 mailer) | _(unset)_                 |
+| `APNS_KEY_ID`             | Optional 10-character APNs `.p8` key ID overriding `APPLE_KEY_ID`                                                                 | _(unset)_                 |
+| `APNS_PRIVATE_KEY`        | Optional APNs `.p8` EC private key PEM overriding `APPLE_PRIVATE_KEY`                                                             | _(unset)_                 |
+| `APPLE_APP_ID`            | Web AASA `<TeamID>.<BundleID>` for `/.well-known/apple-app-site-association`                                                      | _(unset)_                 |
 
 ## Development mail, background worker, and optional sign-in providers
 
@@ -153,7 +153,7 @@ Mail is printed by the API and worker processes to their development console. Re
 When `APPLE_PROVIDER=fake`, Apple identity token verification uses a local JWKS fixture file configured via `APPLE_FAKE_JWKS_FILE`:
 
 - The file must contain a valid JSON Web Key Set (`{"keys": [{"kty": "RSA", "kid": "...", "n": "...", "e": "...", "alg": "RS256", "use": "sig"}]}`) matching the private key used to sign test JWTs.
-- Test tokens must specify `iss: "https://appleid.apple.com"`, `aud: APPLE_BUNDLE_ID`, valid timestamps (`iat`, `exp`), and `nonce: sha256(rawNonce)`.
+- Test tokens must specify `iss: "https://appleid.apple.com"`, `aud: APPLE_BUNDLE_ID`, valid timestamps (`iat`, `exp`), and `nonce` as the lowercase hex SHA-256 digest of `rawNonce` (64 characters).
 - Test authorization codes are single-use; the fake adapter keeps hashed receipts in the JWKS path’s adjacent `.replay` directory and rejects replayed codes with 401 across restarts. Put the JWKS and receipts in a writable disposable directory outside the repository. Use a fresh key set for each disposable fixture run. A custom Apple subject can be injected in tests using the prefix `sub=<custom_sub>:<code_body>`.
 - Both `APPLE_PROVIDER=fake` and `APPLE_FAKE_JWKS_FILE` are strictly forbidden when `APP_ENV=production`.
 

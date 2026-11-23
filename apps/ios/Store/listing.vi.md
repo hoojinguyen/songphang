@@ -9,7 +9,7 @@ Metadata chuẩn cho App Store Connect theo thiết kế Phase 5 (`docs/superpow
 - **Bundle ID:** `vn.songphang.app`
 - **Ngôn ngữ chính:** Tiếng Việt (`vi`)
 - **Tên ứng dụng (App Name):** `Sòng Phẳng`
-- **Phụ đề (Subtitle):** `Chia tiền nhóm sòng phẳng`
+- **Phụ đề (Subtitle):** `Chia tiền nhóm sòng phẳng` *(25 ký tự; điều chỉnh theo D11 từ phụ đề 31 ký tự trong bản thiết kế §6 để đáp ứng giới hạn tối đa 30 ký tự của App Store Connect)*
 - **Danh mục chính (Primary Category):** Tài chính (Finance)
 - **Danh mục phụ (Secondary Category):** Tiện ích (Utilities)
 
