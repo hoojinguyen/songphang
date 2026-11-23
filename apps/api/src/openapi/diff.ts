@@ -66,6 +66,14 @@ function compareEnumList(
 		return;
 	}
 	const oldItems = Array.isArray(oldList) ? oldList : [];
+	if (!Array.isArray(newList)) {
+		changes.push({
+			severity: "additive",
+			path: `${path}.enum`,
+			reason: "Removed enum constraint from schema",
+		});
+		return;
+	}
 	const newItems = Array.isArray(newList) ? newList : [];
 	for (const item of oldItems) {
 		if (!newItems.some((candidate) => sameJson(candidate, item))) {
@@ -97,7 +105,7 @@ function compareParameterList(
 	const newParams = (Array.isArray(newList) ? newList : []).filter(isRecord);
 
 	const paramKey = (p: Record<string, unknown>) =>
-		`${String(p.in)}:${String(p.name)}`;
+		typeof p.$ref === "string" ? p.$ref : `${String(p.in)}:${String(p.name)}`;
 	const oldMap = new Map(oldParams.map((p) => [paramKey(p), p]));
 	const newMap = new Map(newParams.map((p) => [paramKey(p), p]));
 
@@ -176,6 +184,14 @@ function compareNode(
 			path.endsWith(".summary") ||
 			path.endsWith(".example") ||
 			path.startsWith("info.");
+		if (path.endsWith(".required") && oldValue === true && newValue === false) {
+			changes.push({
+				severity: "additive",
+				path,
+				reason: "Required constraint relaxed to optional",
+			});
+			return;
+		}
 		if (typeof oldValue === "number" && typeof newValue === "number") {
 			if (
 				path.endsWith(".minLength") ||

@@ -3715,6 +3715,7 @@
 						"type": "array"
 					},
 					"category": {
+						"default": null,
 						"enum": [
 							"food",
 							"transport",
@@ -3786,7 +3787,6 @@
 					"description",
 					"amount",
 					"occurredAt",
-					"category",
 					"payers",
 					"split"
 				],
@@ -4124,6 +4124,7 @@
 						"type": "array"
 					},
 					"category": {
+						"default": null,
 						"enum": [
 							"food",
 							"transport",
@@ -4290,7 +4291,6 @@
 					"description",
 					"amount",
 					"occurredAt",
-					"category",
 					"payers",
 					"split",
 					"id",
@@ -4324,6 +4324,7 @@
 						"type": "integer"
 					},
 					"category": {
+						"default": null,
 						"enum": [
 							"food",
 							"transport",
@@ -4490,7 +4491,6 @@
 					"description",
 					"amount",
 					"occurredAt",
-					"category",
 					"payers",
 					"split",
 					"id",
