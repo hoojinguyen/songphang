@@ -53,7 +53,7 @@
         throw .api(code: "NOT_FOUND", status: 404)
       }
       guard existing.status == .telegramConfirmed else {
-        throw .api(code: "INVALID_PAIRING_STATUS", status: 409)
+        throw .api(code: "TOKEN_INVALID", status: 400)
       }
       pairingsById[id] = TelegramPairing(
         id: existing.id,

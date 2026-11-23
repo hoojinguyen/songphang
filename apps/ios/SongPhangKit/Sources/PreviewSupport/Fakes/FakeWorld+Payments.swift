@@ -140,6 +140,31 @@
         var txList = transactionsByGroup[groupId] ?? []
         txList.insert(tx, at: 0)
         transactionsByGroup[groupId] = txList
+        var actList = activityByGroup[groupId] ?? []
+        actList.insert(
+          ActivityItem(
+            id: ActivityItem.ID("act-settle-\(UUID().uuidString)"),
+            actor: TripScenario.activityActorMinh,
+            action: "create",
+            entityType: .transaction,
+            entityId: tx.id.rawValue,
+            summary: tx.description,
+            after: ActivityItem.SnapshotValues(
+              transactionType: tx.type,
+              amount: tx.amount,
+              description: tx.description,
+              occurredAt: tx.occurredAt,
+              category: tx.category,
+              payers: tx.payers,
+              shares: tx.shares,
+              split: tx.split
+            ),
+            createdAt: tx.occurredAt,
+            canRestore: false
+          ),
+          at: 0
+        )
+        activityByGroup[groupId] = actList
       }
       list[idx] = SettlementRequest(
         id: current.id,

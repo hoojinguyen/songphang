@@ -79,15 +79,15 @@
         id: AppNotification.ID("00000000-0000-7000-8000-000000000901"),
         kind: "expense_added",
         groupId: TripScenario.groupId,
-        groupName: "Đà Lạt 2026",
+        groupName: "Đà Lạt 3N2Đ",
         read: false,
         createdAt: "2026-11-22T10:00:00.000Z",
         payload: .expenseAdded(
           actorName: "Lan",
-          groupName: "Đà Lạt 2026",
+          groupName: "Đà Lạt 3N2Đ",
           transactionId: TripScenario.t1Transaction.id.rawValue,
           description: "Lẩu",
-          share: Money(100_000)
+          share: Money(120_000)
         ),
         target: .transaction(
           groupId: TripScenario.groupId,
@@ -98,12 +98,12 @@
         id: AppNotification.ID("00000000-0000-7000-8000-000000000902"),
         kind: "settlement_requested",
         groupId: TripScenario.groupId,
-        groupName: "Đà Lạt 2026",
+        groupName: "Đà Lạt 3N2Đ",
         read: true,
         createdAt: "2026-11-21T15:30:00.000Z",
         payload: .settlementRequested(
           actorName: "Hoa",
-          groupName: "Đà Lạt 2026",
+          groupName: "Đà Lạt 3N2Đ",
           amount: Money(120_000)
         ),
         target: .balances(groupId: TripScenario.groupId)
