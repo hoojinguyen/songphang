@@ -122,4 +122,9 @@ Pending owner-led verification with the required configuration. Preserve the app
   4. In `Cài đặt nhóm` as Owner when `features.telegram == true`, verify `Liên kết nhóm Telegram` appears; tap `Tạo mã liên kết` → displays `/lienket ...` command + `Sao chép`; send command in Telegram group chat → linked `chatId` appears in list and `/chi`, `/sodu`, `/huy` work with Sòng Phẳng permissions; tap `Bỏ liên kết` to unlink.
   5. Verify simulated push tap routing: `/g/{groupId}/tx/{txId}/view` opens S20 `Chi tiết khoản chi`, `/notifications` opens S19 `Thông báo`, and removed/inaccessible group push lands on group list with notice.
 
+- **Release configuration, privacy manifest & minimum version gate (5E.1):**
+  1. Before archiving for App Store Connect / TestFlight, replace `https:/$()/example.invalid` and `example.invalid` in `apps/ios/Config/Release.xcconfig` (or supply an Xcode configuration override) with the real HTTPS API/web host. Confirm `App/Info.plist` keeps no `NSAppTransportSecurity` exceptions while `Config/Info-Debug.plist` keeps `NSAllowsLocalNetworking` strictly in Debug.
+  2. Temporarily set `MIN_APP_VERSION_IOS=9.9.9` on the API and launch a `1.0.0` Debug build → verify `Hãy cập nhật Sòng Phẳng để tiếp tục.` blocks entry immediately with `Mở App Store`.
+  3. Inspect the archived `.xcarchive` (`AppIcon`, `PrivacyInfo.xcprivacy`, `Info.plist`) in Xcode Organizer prior to TestFlight upload.
+
 - **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.

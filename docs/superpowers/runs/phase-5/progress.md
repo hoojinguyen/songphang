@@ -31,7 +31,7 @@
 - [x] 5D.5 — Notification center and reminders
 - [x] 5D.6 — Detail, discussion, disputes and approval
 - [x] 5D.7 — Telegram and parity gate
-- [ ] 5E.1 — Release metadata and assets
+- [x] 5E.1 — Release metadata and assets
 - [ ] 5E.2 — Final parity evidence and owner handoff
 
 ## Task Reports
@@ -568,6 +568,30 @@
   - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `01a20658-af9f-7226-9b87-3d89a36be433 Phú Quốc 5D7: sum 0; mismatches 0` (`All groups balanced`).
 - Stage 5D Parity Matrix status: all Phase 2–4 rows (`P2-01`..`P4-07`) now verified locally in 5D.1–5D.7; remaining follow-ups are external providers only (`Real SMTP`, `Real Telegram client & Bot API webhook`, `Real AI provider`).
 - Security review: checked items 1, 2, 4, 7, 8; wrong-session Telegram pairing denial confirmed (`404`), webhook secret required, no secret/token logged in Swift models, legacy `/claim` code refused, browser `/link/telegram` not hijacked by `LinkRouter`, integer-only money via `/chi`.
+
+### Task 5E.1 — Release build, metadata and bundled assets
+
+**Approach**
+- Files created/modified: `apps/ios/App/Assets.xcassets/AppIcon.appiconset/{AppIcon.png,Contents.json}`, `apps/ios/App/PrivacyInfo.xcprivacy`, `docs/superpowers/runs/phase-5/{progress,manual-checks}.md`, `docs/superpowers/runs/phase-5/screens/5e/upgrade-required.png`.
+- Approach: Rendered a 1024×1024 opaque RGB PNG (`hasAlpha: no`) containing Sòng Phẳng's four-shape fallback mark on `#F6F2EA` (teal `#0D7A6F`, amber `#E89B2D`, coral `#D9534F`, ink `#1F2421`) since Phase 7A branding assets are not yet present in the repo, and referenced it in `AppIcon.appiconset/Contents.json`. Added `PrivacyInfo.xcprivacy` with `NSPrivacyTracking = false`, `NSPrivacyAccessedAPICategoryUserDefaults` (`CA92.1`), and the five app-functionality data types (`EmailAddress`, `Name`, `UserID`, `PhotosorVideos`, `OtherUserContent`), automatically bundled via `PBXFileSystemSynchronizedRootGroup`. Confirmed `Release.xcconfig` keeps `vn.songphang.app`, `Sòng Phẳng`, `1.0.0`, build `1`, and `https://example.invalid` placeholders, while `NSAllowsLocalNetworking` stays strictly in `Config/Info-Debug.plist` and out of `App/Info.plist`. Retained system font per D2 and flagged Be Vietnam Pro `.ttf`/`.otf` replacement for owner action.
+- Why this is the simplest approach: Reuses the Xcode synchronized App group, keeps Release free of fakes or local HTTP exceptions, and matches Apple's exact App Store Connect validation requirements.
+
+**Observed results:**
+- Asset & Privacy Manifest validation:
+  - `sips -g pixelWidth -g pixelHeight -g hasAlpha .../AppIcon.png`: `pixelWidth: 1024`, `pixelHeight: 1024`, `hasAlpha: no`.
+  - `plutil -lint apps/ios/App/PrivacyInfo.xcprivacy`: `OK`.
+- Unsigned Release Simulator build (`xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation build`): `** BUILD SUCCEEDED **` (including `builtin-validationUtility -validate-for-store`).
+- Release `SongPhang.app` bundle inspection:
+  - `plutil -p .../Release-iphonesimulator/SongPhang.app/Info.plist`: `CFBundleIdentifier = "vn.songphang.app"`, `CFBundleDisplayName = "Sòng Phẳng"`, `CFBundleShortVersionString = "1.0.0"`, `CFBundleVersion = "1"`, `API_BASE_URL = "https://example.invalid/api/v1"`, `WEB_BASE_URL = "https://example.invalid"`, and **no** `NSAppTransportSecurity` (`NO_ATS_IN_RELEASE`).
+  - `.../Release-iphonesimulator/SongPhang.app/PrivacyInfo.xcprivacy`: present (`2504` bytes) and `plutil -lint`: `OK`.
+  - `.../Release-iphonesimulator/SongPhang.app/Assets.car` + `AppIcon60x60@2x.png` + `AppIcon76x76@2x~ipad.png`: present.
+  - `nm -gU .../Release-iphonesimulator/SongPhang.app/SongPhang | grep -i FakeWorld`: empty (`NO_FAKE_WORLD_IN_RELEASE`).
+- Version gate live exercise (`MIN_APP_VERSION_IOS=9.9.9` on clean-env local API `:4010`, disposable DB `songphang_phase5_5e1`, Debug `Exercise5E1.app` wrapping `RootView(configuration:)` on `iPhone 17 Pro`):
+  - `GET /api/v1/features`: `{"minAppVersion":{"ios":"9.9.9","android":"0.0.0"},...}`.
+  - Simulator stdout: `SIM_VERSION_GATE_BLOCKED_OK: isUpgradeRequired=true minIos=9.9.9`.
+  - Screenshot verified: `docs/superpowers/runs/phase-5/screens/5e/upgrade-required.png` displays `"Hãy cập nhật Sòng Phẳng để tiếp tục."` + `"Mở App Store"`.
+- Repo & Swift gates: `pnpm check` PASS; `xcrun swift-format lint --strict --recursive apps/ios/SongPhangKit/Sources` exit 0.
+- Security review: checked items 1, 6, 7, 8; Release `Info.plist` contains zero `NSAppTransportSecurity` exceptions, Release binary exports zero `FakeWorld` symbols, `PrivacyInfo.xcprivacy` accurately sets `NSPrivacyTracking = false`, no secrets committed.
 
 ## Gate Not Passed
 
