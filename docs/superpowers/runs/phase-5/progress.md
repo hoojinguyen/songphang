@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Complete (Tasks 0 through 5E.2 verified locally; ready for advisor review).
+- Status: Complete (Tasks 0 through 5E.2 plus all 10 advisor review fixes verified locally at code SHA `802d30f`; ready for Codex re-review).
 
 ## Tasks
 
@@ -623,6 +623,53 @@
 - Parity matrix reconciliation (`docs/superpowers/runs/phase-5/parity-matrix.md`): all Phase 1–5 rows (`P1-01`..`P1-13`, `P2-01`..`P2-09`, `P3-01`..`P3-04`, `P4-01`..`P4-07`, `P5-01`..`P5-06`) verified locally with recorded evidence; zero rows remain `Pending`.
 - Security review: checked items 1, 6, 7, 8; `docs/runbooks/testflight.md` keeps zero real keys/secrets and documents non-shipping override for `example.invalid`, `Listing/App Privacy` matches `PrivacyInfo.xcprivacy` (`NSPrivacyTracking = false`, `CA92.1`), no ATS exceptions in Release.
 
+## Review Fixes (Findings 1–10, verified at code SHA `802d30f`)
+
+All 10 findings from the PR `#2` Phase 5 review (`0122a90`) were resolved in focused commits through final code SHA `802d30f97343523bbf2945ecc0d258c42d96a324` (`phase-5`):
+
+| Finding | Severity | Commit | Summary & Verified Evidence |
+|---|---|---|---|
+| 1 (5B) | P1 | `f5884fd` | Bound iOS `TokenStore` snapshots/requests, `AuthMiddleware`, `LiveAPIEnvironment`, `LiveAuthRepository`, `LiveGroupsRepository`, `LiveAttachmentsRepository`, `LiveFundRepository`, `EventStream`, and `SessionModel` to issuing `tokenGeneration` (discarding delayed `200` and delayed `401` across REST/manual/SSE paths without clearing Account B). Simulator `run-fix1-exercise.sh` -> `SIM_FIX1_SESSION_BINDING_PASS` (delayed 200 `/me`, delayed 401 across `GET /me`, manual `PATCH`, and SSE, plus clean relaunch restoring B only). |
+| 2 (5C) | P1 | `4de85f7` | Required fresh, single-use authorization-code exchange on every `POST /api/v1/auth/apple` sign-in (including returning users) and verified returned `sub` matches the verified identity token before storing AES-256-GCM refresh tokens or creating a session (`apps/api/src/{services/apple-sign-in,auth/apple/verify,auth/apple/token-adapter}.ts`). Disposable DB replay `exercise-fix2-apple.mts` -> `EXERCISE_FIX2_APPLE_PASS` (capability-off 404, first sign-in + encrypted `rt-1`, reused code refused 401, `sub` mismatch refused 401 with `rt-1` untouched, returning fresh code -> `rt-2`, `DELETE /me` revocation, fake adapter single-use & `sub=` refusal). |
+| 3 (5A) | P2 | `1fc6e43` | Classified adding `requestBody` with `required: true` (or flipping `required` to `true`) on an existing OpenAPI operation as `"breaking"` in `apps/api/src/openapi/diff.ts` while keeping optional `requestBody` and new operations `"additive"`. Replay `exercise-fix3-diff.mts` -> `EXERCISE_FIX3_DIFF_PASS`. |
+| 4 (5B) | P2 | `6d15453` | Reconciled cached group snapshots in `SnapshotStore.reconcileGroups` / `LiveGroupsRepository.groups()` on successful authoritative refresh, invalidating in-flight snapshot writes (`groupGenerations`) and purging disk/memory snapshots for removed groups while preserving cache on transport failure. Simulator `run-fix4-exercise.sh` -> `SIM_FIX4_SNAPSHOT_PURGE_PASS`. |
+| 5 (5C) | P2 | `0f9498a` | Restored push device registration across sessions when notification permission is already `.authorized` without re-prompting, with `sessionGeneration` checks preventing delayed completions from updating a newer session (`PushCoordinator.swift`, `RootView.swift`). Simulator `run-fix5-exercise.sh` (`PUSH_PROVIDER=console`) -> `SIM_FIX5_PUSH_RESTORE_PASS` (repo + coordinator state; live APNs hardware delivery remains pending). |
+| 6 (5D) | P2 | `110fb61` | Preserved `reminderIntervalDays` (`Int?`) on `GET/POST/PATCH` group responses via `ResponseBodyCapture` and `GroupMapping.extractReminderIntervalDays` while keeping `packages/contract/openapi.json` byte-for-byte intact. Simulator `run-fix6-exercise.sh` -> `SIM_FIX6_REMINDER_INTERVAL_PASS` (repo + snapshot + reopened `GroupSettingsModel` verified `7` and `nil`). |
+| 7 (5D) | P2 | `fc3b4b` | Extracted `RouteDestination.notificationDestination(for:)` mapping `.transaction` inbox taps to `.transactionDetail` (S20) without skipping viewer read-only / editor permissions. Simulator `run-fix7-exercise.sh` -> `SIM_FIX7_INBOX_TO_S20_PASS` (`RouteDestination` mapping verified for Editor & Viewer, `TransactionDetailModel` `canEdit` & Viewer 403 write refusal checked, and `TransactionDetailView` mounted for Viewer). |
+| 8 (5D) | P2 | `a450154` | Subscribed `TransactionDetailModel` / `TransactionDetailView` (S20) to group SSE events (`.task(id: model.transactionId)`) for silent refresh of comments, disputes, and approval decisions plus removal handling (`onRemoved`). Simulator `run-fix8-exercise.sh` (live `NavigationStack { TransactionDetailView }` UI + backend mutations) -> `SIM_FIX8_S20_LIVE_REFRESH_PASS`. |
+| 9 (5D) | P2 | `0b088eb` | Added `listGeneration`, `loadMoreTask` tracking/cancellation, and post-await `(listGeneration, filter, cursor)` checks in `GroupFeedModel` so delayed cursor pages cannot overwrite a newly selected filter. Simulator `run-fix9-exercise.sh` (HTTP proxy delaying `.food` cursor 1500ms while switching to `.transport`) -> `SIM_FIX9_PAGINATION_GUARD_PASS` (`GroupFeedModel` + live repo layer). |
+| 10 (5E) | P2 | `802d30f` | Wired `APP_STORE_URL` into `Debug.xcconfig`, `Release.xcconfig`, `Info-Debug.plist`, and `App/Info.plist`, validated via `RootView.parseOptionalHTTPURL` (rejecting empty/unexpanded/`$(...)`/non-HTTP(S) values), and documented owner-supplied `https:/$()/...` config in `docs/runbooks/testflight.md`. Bundle inspect + temporary `-xcconfig` Release build + Simulator `run-fix10-version-gate.sh` (`RootView` -> `UpgradeRequiredView` with visually inspected PNG screenshots showing muted disabled CTA when unset and active dark CTA when configured) -> `SIM_FIX10_ALL_PASS`. |
+
+### Final Verification Gates on Code Revision `802d30f97343523bbf2945ecc0d258c42d96a324`
+
+- **Automated static/build/lint gates:**
+  - `pnpm check`: PASS (`biome check .` checked 512 files, 0 errors, 3 pre-existing `noImgElement` warnings on web; 8 workspaces typechecked; `OpenAPI contract snapshot is up to date.`).
+  - `pnpm build`: PASS (`apps/web` Next.js 16.4.6 production build across all 14 static/dynamic routes).
+  - `pnpm contract:check`: PASS (`OpenAPI contract snapshot is up to date.`).
+  - `./apps/ios/Scripts/check-strings.sh`: PASS (`OK: 670 web keys verified, 0 missing, 0 differing.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios/SongPhangKit/Sources`: PASS (exit 0).
+  - `xcodebuild build-for-testing` (`iPhone 17 Pro`, D5 target-level `SWIFT_TREAT_WARNINGS_AS_ERRORS`, `-skipPackagePluginValidation`): `** TEST BUILD SUCCEEDED **`.
+  - Unsigned Release build (`xcodebuild -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation build`): `** BUILD SUCCEEDED **` (`INFOPLIST`: `APP_STORE_URL=""`, `API_BASE_URL="https://example.invalid/api/v1"`, `NO_ATS_IN_RELEASE`, `PrivacyInfo.xcprivacy: OK`, `NO_FAKE_WORLD_IN_RELEASE`); temporary `-xcconfig` Release build with placeholder `https:/$()/apps.apple.com/app/id0000000000` -> `APP_STORE_URL="https://apps.apple.com/app/id0000000000"`, `NO_ATS_IN_RELEASE`, `NO_FAKE_WORLD_IN_RELEASE`, followed by clean default Release rebuild.
+- **API regression, transport & role permission matrix (`exercise-final-matrix.mts` + `exercise-fix2-apple.mts` + `exercise-fix3-diff.mts` on disposable DBs & isolated storage):**
+  - `FINAL_MATRIX_PASS: cases=66 pushJobs=18` (`songphang_phase5_final_matrix`, local fake Apple adapter, `PUSH_PROVIDER=console`, isolated temp upload dir deleted on exit).
+  - Covered routes: `GET /features`, `POST /auth/{register,verify-email,login,token,apple,logout}`, `GET /me`, `GET /me/sessions`, `DELETE /me/sessions/{id}`, `POST /me/devices`, `DELETE /me/devices/{id}`, `GET /me/notifications`, `GET /me/notifications/unread-count`, `POST /me/notifications/read`, `GET/POST /groups`, `GET/PATCH /groups/{id}`, `DELETE /groups/{id}/users/{userId}`, `GET /groups/{id}/events`, `GET/POST /groups/{id}/transactions`, `GET/PATCH /groups/{id}/transactions/{id}`, `POST /transactions/{id}/approve`, `POST /comments`, `POST /dispute`, `POST /dispute/resolve`, `POST /settlement-requests`, `POST /settlement-requests/{id}/confirm`.
+  - Covered callers & transports: signed-out (`401`), query-param credential (`400`), revoked Bearer & logged-out session (`401`), Cookie (`Origin` checked `400`/`204`), native Bearer (no `Origin` required, allowed on `POST /me/devices`), mixed Cookie+Bearer (invalid Bearer `401` with no Cookie fallback; valid Bearer takes precedence without Cookie user leakage; foreign `Origin` `400`; `POST /me/devices` refused `403`), outsider (`404` across group endpoints), viewer (`200` reads/SSE, `403` settings/transactions/approve/other-settlement/remove-user, allowed own comment/dispute/own outgoing settlement), editor (`200` create/edit tx, `403` owner settings/approve/resolve-other-dispute/remove-user), owner (`200`/`204` settings, `reminderIntervalDays` `7`/`null`, approve, resolve dispute, remove user -> subsequent `404` for removed user).
+  - `DATABASE_URL=... pnpm --filter @songphang/db exec tsx src/check-balances.ts` (per D1 without root `.env`): `All groups balanced` (`sum 0; mismatches 0`).
+- **Simulator replays on final `802d30f` objects (`iPhone 17 Pro`, iOS 26.5, disposable DBs & ports `4010`/`4011`):**
+  - `run-5e2-final-replay.sh` (`Ex1`–`Ex7` + mounted `GroupFeedView` + `check-balances.ts`) -> `SIM_EXERCISE_5E2_FINAL_PASS` + `All groups balanced`.
+  - `run-5d4-exercise.sh` -> `SIM_EXERCISE_5D4_READY` + `All groups balanced` (scratch adaptation: appended `$DD/NotificationsFeature.o` to pre-5D.5 link command).
+  - `run-5d5-exercise.sh` -> `SIM_EXERCISE_5D5_READY` + `All groups balanced`.
+  - `run-5d6-exercise.sh` -> `SIM_EXERCISE_5D6_READY` + `All groups balanced`.
+  - `run-5d7-exercise.sh` -> `SIM_EXERCISE_5D7_READY` + `All groups balanced`.
+  - `run-fix1-exercise.sh` -> `SIM_FIX1_SESSION_BINDING_PASS`.
+  - `run-fix4-exercise.sh` -> `SIM_FIX4_SNAPSHOT_PURGE_PASS`.
+  - `run-fix5-exercise.sh` -> `SIM_FIX5_PUSH_RESTORE_PASS`.
+  - `run-fix6-exercise.sh` -> `SIM_FIX6_REMINDER_INTERVAL_PASS`.
+  - `run-fix7-exercise.sh` -> `SIM_FIX7_INBOX_TO_S20_PASS`.
+  - `run-fix8-exercise.sh` -> `SIM_FIX8_S20_LIVE_REFRESH_PASS`.
+  - `run-fix9-exercise.sh` -> `SIM_FIX9_PAGINATION_GUARD_PASS`.
+  - `run-fix10-version-gate.sh` -> `SIM_FIX10_ALL_PASS` (`RootView` / `UpgradeRequiredView` absent vs configured UI verified).
+
 ## Gate Not Passed
 
 None.
@@ -630,7 +677,7 @@ None.
 ## Not Verified
 
 - **Be Vietnam Pro bundled font assets:** Only `.woff2` web fonts exist in `apps/web/public/fonts/be-vietnam-pro/`; compatible `.ttf`/`.otf` files require owner supply or approved system-font substitution before final acceptance (D2).
-- **External providers & owner physical-device checks:** Real SMTP (`TD-002`), Google OAuth, Apple Sign-In, APNs, Telegram Bot API, HTTPS Universal Links, physical iPhone camera/VietQR scan/performance, TestFlight archive/signing/upload, and owner triage/fixes for `TD-001`..`TD-006` (`docs/tech-debt.md`) remain external/device follow-ups. Real AI provider verification remains deferred until all phases including iOS are done.
+- **External providers & owner physical-device checks:** Real SMTP (`TD-002`), Google OAuth, live Apple Sign-In & Apple token revocation (only local fake/adapter verification ran here), live APNs hardware delivery, HTTPS Universal Links, `APP_STORE_URL` tap-through to the App Store on device, physical iPhone camera/VietQR scan/performance, real Telegram Bot API webhook, TestFlight archive/signing/upload, and owner triage/fixes for `TD-001`..`TD-006` (`docs/tech-debt.md`) remain external/device follow-ups. Real AI provider verification remains deferred until all phases including iOS are done.
 
 ## Out of Scope
 
