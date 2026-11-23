@@ -128,3 +128,8 @@ Pending owner-led verification with the required configuration. Preserve the app
   3. Inspect the archived `.xcarchive` (`AppIcon`, `PrivacyInfo.xcprivacy`, `Info.plist`) in Xcode Organizer prior to TestFlight upload.
 
 - **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.
+
+- **TestFlight handoff, App Store metadata & physical-device follow-ups (5E.2):**
+  1. Follow `docs/runbooks/testflight.md` §1–§4 to supply production hosts (replacing `example.invalid`), Apple Team ID (`<TEAM_ID>`), Apple Sign-In / APNs `.p8` keys (`APPLE_KEY_ID`/`APPLE_PRIVATE_KEY` and optional `APNS_KEY_ID`/`APNS_PRIVATE_KEY`), `DATA_ENCRYPTION_KEY`, `APPLE_APP_ID`, archive via Xcode Organizer or `xcodebuild archive`, and distribute to TestFlight Internal Testing.
+  2. Paste Vietnamese store copy from `apps/ios/Store/listing.vi.md` into App Store Connect and capture 6.9" iPhone App Store screenshots on a signed build / physical device.
+  3. Complete physical-device checks once installed via TestFlight (camera receipt capture, live Google OAuth & Sign in with Apple, live APNs lock-screen privacy & tap routing, HTTPS Universal Link `/join/*`, real VietQR scan, cold start & scroll performance) and triage open owner device findings `TD-001`..`TD-006` in `docs/tech-debt.md` (`TD-007` is resolved in builds `>= d379b75`).

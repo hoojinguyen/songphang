@@ -10,69 +10,72 @@ Native iOS 26 application for Sòng Phẳng, built with Swift 6 and SwiftUI arou
 
 ## Project Structure
 
-```
+```text
 apps/ios/
-├── SongPhang.xcodeproj       # Single-target Xcode project (App/ root group)
-├── App/                      # Application entry point, Info.plist, Assets.xcassets
-├── Config/                   # Debug.xcconfig and Release.xcconfig
+├── SongPhang.xcodeproj       # Single-target Xcode project (PBXFileSystemSynchronizedRootGroup for App/)
+├── App/                      # SongPhangApp, Info.plist (Release), PrivacyInfo.xcprivacy, Assets.xcassets, SongPhang.entitlements
+├── Config/                   # Debug.xcconfig (localhost ATS in Info-Debug.plist) and Release.xcconfig
 ├── Scripts/
-│   └── check-strings.sh      # Verifies Localizable.xcstrings matches apps/web/src/messages/vi.ts
+│   └── check-strings.sh      # Verifies Localizable.xcstrings matches apps/web/src/messages/vi.ts (670 keys)
+├── Store/
+│   └── listing.vi.md         # Vietnamese App Store listing metadata and privacy summary
 └── SongPhangKit/             # Local Swift Package enforcing module boundaries
     ├── Package.swift
     └── Sources/
-        ├── Domain/           # Value types, Money, AppError, Loadable, repository protocols
+        ├── Domain/           # Value types, Money (integer-only), AppError, Loadable, repository protocols
+        ├── GeneratedAPI/     # swift-openapi-generator client from packages/contract/openapi.json
+        ├── Repositories/     # Live API repositories, SSE client, SnapshotStore, Apple/Google sign-in adapters
         ├── DesignSystem/     # Color/typography tokens, MemberShapeView, MoneyFormat, Localizable.xcstrings
         ├── PreviewSupport/   # #if DEBUG scripted scenarios and FakeWorld repositories
-        ├── AuthFeature/      # Sign-in (S1), registration, password reset, email verification banner
-        ├── GroupsFeature/    # Group list (S2), create group (S3), members (S10), settings (S11), join (S12)
-        ├── LedgerFeature/    # Group feed (S4), balances (S5), activity (S6), quick entry (S7), form (S8), settle (S9)
-        ├── AccountFeature/   # Account management (S13)
-        └── AppShell/         # AppDependencies composition root, SessionModel, Route, DebugPanel, RootView
+        ├── AuthFeature/      # Sign-in, Apple/Google native sign-in, registration, password reset, email verification
+        ├── GroupsFeature/    # Group list, create group, members, owner settings, funds, approval & Telegram link
+        ├── LedgerFeature/    # Feed, search/filters, balances, activity, quick entry, expense form, receipts, settle, detail (S20)
+        ├── PaymentsFeature/  # Payment details, VietQR pay screen, two-party settlement requests
+        ├── StatisticsFeature/# Category/member/time breakdowns and UTF-8 BOM CSV export
+        ├── NotificationsFeature/ # Notification inbox (S19), badges and formatting
+        ├── AccountFeature/   # Profile, sessions, push preferences, email settings, Telegram personal pairing
+        └── AppShell/         # AppDependencies composition root, SessionModel, Route, PushCoordinator, LinkRouter, RootView
 ```
 
-## Opening and Running in Xcode
+## Running Locally Against the Local API
 
-1. Open `apps/ios/SongPhang.xcodeproj` in Xcode.
-2. Select the **`SongPhang`** scheme and any **iPhone Simulator** running iOS 26 or newer.
-3. Press **Run (`⌘R`)**.
+1. Start Postgres, API (`http://127.0.0.1:4000`), and Worker (`AI_PROVIDER=fake`, `MAIL_PROVIDER=console`, `PUSH_PROVIDER=console`, `TELEGRAM_PROVIDER=console`) on a disposable database (see `docs/superpowers/runs/phase-5/manual-checks.md`).
+2. Open `apps/ios/SongPhang.xcodeproj` in Xcode.
+3. Select the **`SongPhang`** scheme (`Debug` configuration uses `Config/Debug.xcconfig` and `Config/Info-Debug.plist`, which enables `NSAllowsLocalNetworking` strictly in Debug).
+4. Pick an iPhone Simulator running iOS 26+ and press **Run (`⌘R`)**.
 
-In the interface stage (`5U`), Debug builds run entirely on the scripted `FakeWorld` in `PreviewSupport` with zero network or server dependencies. Release builds intentionally fail to compile at `AppShell/AppDependencies.swift` (`#error("Live repositories arrive in the integration stage")`) so scripted data cannot ship.
+### Debug Scripted Mode (Offline Previews / QA Scenarios)
+
+Launch with `--scripted` (plus optional scenario flags such as `--scenario-empty`, `--scenario-trip0`, `--scenario-large`, `--role-viewer`, `--fail-offline`, etc.) or tap **`Debug`** in the top-right bar / shake Simulator (`⌃⌘Z`) to control `FakeWorld` at runtime. Scripted/Fake dependencies are strictly compiled under `#if DEBUG` and stripped from Release builds.
 
 ## Automated Gate
 
-Run both commands from the repository root before every commit:
+Run from the repository root:
 
 ```bash
+# Debug build (warnings treated as errors on all first-party targets in Xcode/Package.swift)
 xcodebuild -project apps/ios/SongPhang.xcodeproj \
   -scheme SongPhang \
+  -destination 'id=<SIMULATOR_UUID>' \
+  -skipPackagePluginValidation \
+  build-for-testing
+
+# Unsigned Release verification build
+xcodebuild -project apps/ios/SongPhang.xcodeproj \
+  -scheme SongPhang \
+  -configuration Release \
   -destination 'generic/platform=iOS Simulator' \
-  SWIFT_TREAT_WARNINGS_AS_ERRORS=YES \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation \
   build
 
-xcrun swift-format lint --strict --recursive apps/ios
-```
-
-To verify that every Vietnamese user-facing string in `Localizable.xcstrings` matches `apps/web/src/messages/vi.ts` character for character:
-
-```bash
+# Strict Swift formatting & localization parity (670/670 keys)
+xcrun swift-format lint --strict --recursive apps/ios/SongPhangKit/Sources
 ./apps/ios/Scripts/check-strings.sh
 ```
 
-## Using the Debug Panel and Scripted Scenarios
+> **Note:** Do not pass `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES` as an `xcodebuild` command-line override because Xcode 27.2 passes `-suppress-warnings` to remote SwiftPM dependency `HTTPTypes`, producing an option conflict; all first-party targets (`SongPhang` and every target in `SongPhangKit`) already enable warnings-as-errors directly.
 
-In Debug builds, open the **Debug Panel** at any time by tapping the **`Debug`** button in the top-right navigation bar (on Sign-In or Group List) or by shaking the device/simulator (`⌃⌘Z` in Simulator).
+## Releasing & TestFlight
 
-The Debug Panel controls `FakeWorld` at runtime:
-
-- **Scenario preset:**
-  - `empty` — signed-in user (`Minh`) with no groups.
-  - `trip (step 0)` — the group `"Đà Lạt 3N2Đ"` with 4 members (`Minh`, `Lan`, `Hùng`, `Thu`) and zero transactions, ready for entering `T1`–`T4`.
-  - `trip (step 4)` — the group `"Đà Lạt 3N2Đ"` after transactions `T1`–`T4`, with balances and suggested transfers transcribed verbatim from `docs/superpowers/runs/ios-ui/fixtures/26-step4-balances.json`.
-  - `large` — a group with 500 transactions for scrolling and `xctrace` performance checks.
-- **Latency:** `0 ms`, `300 ms`, or `2 s` (to inspect loading skeletons).
-- **Snapshot (`hasSnapshot`):** toggles whether `lastKnown…` repository methods return cached values or `nil`. Combine a failure with `hasSnapshot = true` to inspect the stale/offline banner state, or `hasSnapshot = false` to inspect the full-screen `LoadError` state.
-- **Failure injection:** `None`, `Offline`, `Unauthorized (401)`, `Upgrade required (426)`, `Conflict (409)`, `Rate limited (429)`, `Not found (404)`, `Server / Unexpected`.
-- **Role:** `Owner`, `Editor`, or `Viewer` (updates role-gated write controls across all group screens).
-- **Realtime events:** emit `changed`, `removed`, or `reconnected` on the active group stream.
-- **Join preview:** open S12 (`JoinView`) with the valid fixture token or an invalid token.
-- **Design gallery:** open the token, member shape, money formatting, and component gallery built in Task U.1.
+Follow [docs/runbooks/testflight.md](../../docs/runbooks/testflight.md) before signing, archiving, or distributing a Release build. Make sure to replace all `example.invalid` placeholders in `Config/Release.xcconfig` (or via an override `.xcconfig`) with your production HTTPS domain and supply your Apple Team ID, APNs `.p8` key, privacy/support URLs, and Be Vietnam Pro font decision.

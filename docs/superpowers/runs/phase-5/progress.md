@@ -32,7 +32,7 @@
 - [x] 5D.6 — Detail, discussion, disputes and approval
 - [x] 5D.7 — Telegram and parity gate
 - [x] 5E.1 — Release metadata and assets
-- [ ] 5E.2 — Final parity evidence and owner handoff
+- [x] 5E.2 — Final parity evidence and owner handoff
 
 ## Task Reports
 
@@ -593,6 +593,36 @@
 - Repo & Swift gates: `pnpm check` PASS; `xcrun swift-format lint --strict --recursive apps/ios/SongPhangKit/Sources` exit 0.
 - Security review: checked items 1, 6, 7, 8; Release `Info.plist` contains zero `NSAppTransportSecurity` exceptions, Release binary exports zero `FakeWorld` symbols, `PrivacyInfo.xcprivacy` accurately sets `NSPrivacyTracking = false`, no secrets committed.
 
+### Task 5E.2 — TestFlight runbook, App Store copy and final parity evidence
+
+**Approach**
+- Files created/modified: `docs/runbooks/testflight.md`, `apps/ios/Store/listing.vi.md`, `apps/ios/README.md`, `docs/superpowers/runs/phase-5/{parity-matrix,manual-checks,progress}.md`.
+- Approach: Inspected `eac8aa7..main` (`9f6cbbe`) to check for any new web journeys or API changes since Phase 5 start; wrote the owner TestFlight runbook (`docs/runbooks/testflight.md`) matching `.env.example`, `apps/api/src/config.ts`, and `apps/api/src/routes/google.ts`; authored the Vietnamese App Store listing and App Privacy summary matching `PrivacyInfo.xcprivacy` (`apps/ios/Store/listing.vi.md`); updated `apps/ios/README.md` with Phase 5 module structure and gate commands; replayed all 7 Phase 5B checkpoint exercises against code revision `93834f6`; ran final automated gates and reconciled `parity-matrix.md` rows `P1-01`..`P5-06`.
+- Why this is the simplest approach: Keeps all owner handoff steps, Vietnamese marketing/privacy text, and final simulator/API evidence directly traceable to verified repository files with no extra tooling or scripts added inside the repository.
+
+**Observed results:**
+- Baseline delta check (`git log eac8aa7..main --stat`): only `ab2f07b` and `9f6cbbe` modifying `docs/tech-debt.md` (`TD-001`..`TD-007`), zero new API routes, contract fields, or unmapped web user journeys. (`TD-007` confirms `feed.tripTotal` missing in earlier `15e658e` was fixed in `d379b75`; `TD-001`..`TD-006` remain open device/design items tracked on `main` outside Phase 5E.2 scope.)
+- Final 5B checkpoint replay (`run-5e2-final-replay.sh` on disposable DB `songphang_phase5_5e2_final`, clean-env API `:4010`, `iPhone 17 Pro` iOS 26.5 Simulator against code revision `93834f6`):
+  - `EXERCISE_5E2_SETUP_PASS`
+  - `[5E.2] Ex1 PASS: invites cross-routing & LinkRouter`
+  - `[5E.2] Ex2 PASS: quick entry & idempotent double-tap (01a20663-6a5d-7972-aa64-b442d5d3312b)`
+  - `[5E.2] Ex3 PASS: realtime SSE & balance convergence (+40k/-40k)`
+  - `[5E.2] Ex4 PASS: optimistic lock 409 conflict & reload (+50k/-50k)`
+  - `[5E.2] Ex5 PASS: soft delete & undo restore`
+  - `[5E.2] Ex6 PASS: direct settlement zeroed balances`
+  - `[5E.2] Ex7 PASS: snapshot read, web session revocation -> 401, isolated Lan login`
+  - `SIM_EXERCISE_5E2_FINAL_PASS`
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `01a20663-5cc4-75fb-97ff-b458262903f4 Hội cà phê Sài Gòn 5E2: sum 0; mismatches 0`, `01a20663-68b4-7519-89c1-d55656e22995 Chuyến đi Đà Lạt 5E2: sum 0; mismatches 0`, `All groups balanced`.
+- Final automated gates (all executed cleanly after documentation/runbook updates):
+  - `pnpm check`: PASS (`biome check .` checked 512 files, 0 errors, 3 pre-existing `noImgElement` warnings; all 8 package/app typechecks passed; `OpenAPI contract snapshot is up to date.`).
+  - `pnpm build`: PASS (`apps/web` Next.js 16.4.6 production build succeeded across all 14 routes).
+  - `./apps/ios/Scripts/check-strings.sh`: PASS (`OK: 670 web keys verified, 0 missing, 0 differing.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios/SongPhangKit/Sources`: PASS (exit 0).
+  - Debug build (`xcodebuild build-for-testing` on `iPhone 17 Pro` `-skipPackagePluginValidation`): `** TEST BUILD SUCCEEDED **`.
+  - Unsigned Release build (`xcodebuild -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO -skipPackagePluginValidation build`): `** BUILD SUCCEEDED **`.
+- Parity matrix reconciliation (`docs/superpowers/runs/phase-5/parity-matrix.md`): all Phase 1–5 rows (`P1-01`..`P1-13`, `P2-01`..`P2-09`, `P3-01`..`P3-04`, `P4-01`..`P4-07`, `P5-01`..`P5-06`) verified locally with recorded evidence; zero rows remain `Pending`.
+- Security review: checked items 1, 6, 7, 8; `docs/runbooks/testflight.md` keeps zero real keys/secrets and documents non-shipping override for `example.invalid`, `Listing/App Privacy` matches `PrivacyInfo.xcprivacy` (`NSPrivacyTracking = false`, `CA92.1`), no ATS exceptions in Release.
+
 ## Gate Not Passed
 
 None.
@@ -600,8 +630,9 @@ None.
 ## Not Verified
 
 - **Be Vietnam Pro bundled font assets:** Only `.woff2` web fonts exist in `apps/web/public/fonts/be-vietnam-pro/`; compatible `.ttf`/`.otf` files require owner supply or approved system-font substitution before final acceptance (D2).
-- **External providers:** Real SMTP, Google OAuth, Apple Sign-In, APNs, Telegram Bot API, HTTPS Universal Links, physical iPhone performance/camera/QR scan, and TestFlight upload remain external/owner checks. Real AI provider verification remains deferred until all phases including iOS are done.
+- **External providers & owner physical-device checks:** Real SMTP (`TD-002`), Google OAuth, Apple Sign-In, APNs, Telegram Bot API, HTTPS Universal Links, physical iPhone camera/VietQR scan/performance, TestFlight archive/signing/upload, and owner triage/fixes for `TD-001`..`TD-006` (`docs/tech-debt.md`) remain external/device follow-ups. Real AI provider verification remains deferred until all phases including iOS are done.
 
 ## Out of Scope
 
 - `packages/db/package.json` scripts (`migrate`, `seed`, `check-balances`) use `tsx --env-file=../../.env`, which exits with code 9 in a clean worktree without `.env`. Bypassed via `pnpm --filter @songphang/db exec tsx src/...` per D1; not modified here.
+- Pre-existing owner physical-device findings logged on `main` in `docs/tech-debt.md` (`TD-001`..`TD-006` open; `TD-007` fixed in `d379b75` and awaiting device re-test) were intentionally left untouched outside Phase 5E.2 scope.
