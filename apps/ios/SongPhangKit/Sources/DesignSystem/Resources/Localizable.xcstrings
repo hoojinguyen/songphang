@@ -7282,6 +7282,303 @@
           }
         }
       }
+    },
+    "telegram.accountTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telegram"
+          }
+        }
+      }
+    },
+    "telegram.accountLinked": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã liên kết với {name}"
+          }
+        }
+      }
+    },
+    "telegram.unlink": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ liên kết"
+          }
+        }
+      }
+    },
+    "telegram.settingsTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết nhóm Telegram"
+          }
+        }
+      }
+    },
+    "telegram.settingsHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thêm bot @{bot} vào nhóm Telegram rồi gửi lệnh này trong nhóm:"
+          }
+        }
+      }
+    },
+    "telegram.generateCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo mã liên kết"
+          }
+        }
+      }
+    },
+    "telegram.copy": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép"
+          }
+        }
+      }
+    },
+    "telegram.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã sao chép"
+          }
+        }
+      }
+    },
+    "telegram.codeTtl": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã có hiệu lực 10 phút."
+          }
+        }
+      }
+    },
+    "telegram.linkConfirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết Telegram với tài khoản {email}?"
+          }
+        }
+      }
+    },
+    "telegram.linkButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết"
+          }
+        }
+      }
+    },
+    "telegram.linkDone": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã liên kết. Quay lại Telegram để tiếp tục."
+          }
+        }
+      }
+    },
+    "telegram.linkInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link này không còn dùng được."
+          }
+        }
+      }
+    },
+    "telegram.startPairingHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo mã xác nhận một lần (hiệu lực 10 phút) rồi gửi trong tin nhắn riêng cho bot Telegram."
+          }
+        }
+      }
+    },
+    "telegram.startPairingButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bắt đầu liên kết"
+          }
+        }
+      }
+    },
+    "telegram.privateStepTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận trên Telegram"
+          }
+        }
+      }
+    },
+    "telegram.privateStepHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở cuộc trò chuyện riêng với @{bot} trên Telegram và gửi lệnh dưới đây. Không gửi lệnh này vào nhóm chat."
+          }
+        }
+      }
+    },
+    "telegram.privateStepHintNoBot": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở cuộc trò chuyện riêng với bot trên Telegram và gửi lệnh dưới đây. Không gửi lệnh này vào nhóm chat."
+          }
+        }
+      }
+    },
+    "telegram.openTelegramButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Telegram @{bot}"
+          }
+        }
+      }
+    },
+    "telegram.waitingForTelegram": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chờ bạn xác nhận trong Telegram…"
+          }
+        }
+      }
+    },
+    "telegram.stagedWaitingConfirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bot đã nhận lệnh từ {telegramIdentity}. Hãy bấm Xác nhận liên kết trong Telegram."
+          }
+        }
+      }
+    },
+    "telegram.confirmStepTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn tất liên kết Telegram"
+          }
+        }
+      }
+    },
+    "telegram.confirmStepBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản Telegram {telegramIdentity} đã xác nhận liên kết với {email}. Bấm Hoàn tất liên kết để kích hoạt."
+          }
+        }
+      }
+    },
+    "telegram.finalConfirmButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoàn tất liên kết"
+          }
+        }
+      }
+    },
+    "telegram.cancelPairingButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Huỷ liên kết"
+          }
+        }
+      }
+    },
+    "telegram.startNewPairingButton": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo mã liên kết mới"
+          }
+        }
+      }
+    },
+    "telegram.identityTaken": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản Telegram này đã liên kết với một tài khoản Sòng Phẳng khác."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

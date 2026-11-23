@@ -266,6 +266,12 @@ public struct GroupSettingsView: View {
           Task { await model.setApprovalThreshold(threshold) }
         }
       )
+      if model.telegramFeatureEnabled {
+        TelegramGroupCardView(
+          model: model,
+          isDisabled: isOffline || model.isPerformingAction
+        )
+      }
       transferOwnershipCard(users: data.users)
       deleteGroupCard()
 

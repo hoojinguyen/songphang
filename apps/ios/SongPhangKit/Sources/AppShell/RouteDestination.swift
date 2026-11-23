@@ -101,6 +101,7 @@ public struct RouteDestination: View {
           repository: dependencies.auth,
           devicesRepository: dependencies.devices,
           notificationsRepository: dependencies.notifications,
+          chatLinksRepository: dependencies.chatLinks,
           initialUser: hasSnap ? currentUser : nil,
           onSignedOut: {
             sessionModel.markSignedOut()
@@ -162,7 +163,9 @@ public struct RouteDestination: View {
           invitesRepository: dependencies.invites,
           membersRepository: dependencies.members,
           categoriesRepository: dependencies.categories,
-          budgetRepository: dependencies.budget
+          budgetRepository: dependencies.budget,
+          chatLinksRepository: dependencies.chatLinks,
+          telegramFeatureEnabled: sessionModel.latestFeatures?.telegram == true
         )
       )
     case .groupFeed(let groupId, let initialFilter):

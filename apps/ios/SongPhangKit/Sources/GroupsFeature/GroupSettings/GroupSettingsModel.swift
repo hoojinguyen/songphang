@@ -13,12 +13,17 @@ public final class GroupSettingsModel {
   }
 
   public let groupId: ExpenseGroup.ID
+  public let telegramFeatureEnabled: Bool
   public private(set) var state: Loadable<ScreenData> = .loading
   public private(set) var refreshError: AppError?
   public private(set) var actionError: AppError?
   public private(set) var budgetError: AppError?
   public private(set) var isPerformingAction = false
   public private(set) var isSavingBudget = false
+  public private(set) var groupChatLinks: Loadable<GroupChatLinks> = .loading
+  public private(set) var generatedLinkCode: GroupChatLinkCode?
+  public private(set) var isPerformingTelegramAction = false
+  public private(set) var telegramError: AppError?
   public var nameDraft = ""
 
   private let groupsRepository: any GroupsRepository
@@ -26,6 +31,7 @@ public final class GroupSettingsModel {
   private let membersRepository: any MembersRepository
   public let categoriesRepository: any CategoriesRepository
   private let budgetRepository: any BudgetRepository
+  private let chatLinksRepository: (any ChatLinksRepository)?
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -33,7 +39,9 @@ public final class GroupSettingsModel {
     invitesRepository: any InvitesRepository,
     membersRepository: any MembersRepository,
     categoriesRepository: any CategoriesRepository,
-    budgetRepository: any BudgetRepository
+    budgetRepository: any BudgetRepository,
+    chatLinksRepository: (any ChatLinksRepository)? = nil,
+    telegramFeatureEnabled: Bool = false
   ) {
     self.groupId = groupId
     self.groupsRepository = groupsRepository
@@ -41,6 +49,8 @@ public final class GroupSettingsModel {
     self.membersRepository = membersRepository
     self.categoriesRepository = categoriesRepository
     self.budgetRepository = budgetRepository
+    self.chatLinksRepository = chatLinksRepository
+    self.telegramFeatureEnabled = telegramFeatureEnabled
   }
 
   public func load() async {
@@ -74,6 +84,9 @@ public final class GroupSettingsModel {
       nameDraft = g.name
       state = .loaded(ScreenData(group: g, invite: inv, users: u, categories: c, budget: b))
       refreshError = nil
+      if telegramFeatureEnabled, g.role.isOwner {
+        await reloadChatLinks()
+      }
     } catch let error as AppError {
       if case .loaded = state {
         refreshError = error
@@ -288,6 +301,56 @@ public final class GroupSettingsModel {
       }
     } catch {
       budgetError = error
+    }
+  }
+
+  public func reloadChatLinks() async {
+    guard let chatLinksRepository, telegramFeatureEnabled else { return }
+    do throws(AppError) {
+      let links = try await chatLinksRepository.groupChatLinks(groupId: groupId)
+      groupChatLinks = .loaded(links)
+      telegramError = nil
+    } catch {
+      if case .loaded = groupChatLinks {
+        telegramError = error
+      } else {
+        groupChatLinks = .failed(error)
+      }
+    }
+  }
+
+  public func generateTelegramLinkCode() async {
+    guard let chatLinksRepository, telegramFeatureEnabled, !isPerformingTelegramAction else {
+      return
+    }
+    isPerformingTelegramAction = true
+    telegramError = nil
+    defer { isPerformingTelegramAction = false }
+    do throws(AppError) {
+      generatedLinkCode = try await chatLinksRepository.createGroupChatLinkCode(groupId: groupId)
+    } catch {
+      telegramError = error
+    }
+  }
+
+  public func unlinkGroupChat(_ chatLinkId: ChatLink.ID) async {
+    guard let chatLinksRepository, telegramFeatureEnabled, !isPerformingTelegramAction else {
+      return
+    }
+    isPerformingTelegramAction = true
+    telegramError = nil
+    defer { isPerformingTelegramAction = false }
+    do throws(AppError) {
+      try await chatLinksRepository.unlinkGroupChat(groupId: groupId, chatLinkId: chatLinkId)
+      if case .loaded(var current) = groupChatLinks {
+        current = GroupChatLinks(
+          botUsername: current.botUsername,
+          chatLinks: current.chatLinks.filter { $0.id != chatLinkId }
+        )
+        groupChatLinks = .loaded(current)
+      }
+    } catch {
+      telegramError = error
     }
   }
 }

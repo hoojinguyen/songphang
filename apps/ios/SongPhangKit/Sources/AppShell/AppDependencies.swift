@@ -26,6 +26,7 @@ public struct AppDependencies: Sendable {
   public let devices: any DevicesRepository
   public let notifications: any NotificationsRepository
   public let reminders: any RemindersRepository
+  public let chatLinks: any ChatLinksRepository
   public let liveConfiguration: APIConfiguration?
   public let webBaseURL: URL
   public let appVersion: String
@@ -59,6 +60,7 @@ public struct AppDependencies: Sendable {
         devices: LiveDevicesRepository(environment: environment),
         notifications: LiveNotificationsRepository(environment: environment),
         reminders: LiveRemindersRepository(environment: environment),
+        chatLinks: LiveChatLinksRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -87,6 +89,7 @@ public struct AppDependencies: Sendable {
         devices: LiveDevicesRepository(environment: environment),
         notifications: LiveNotificationsRepository(environment: environment),
         reminders: LiveRemindersRepository(environment: environment),
+        chatLinks: LiveChatLinksRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -122,6 +125,7 @@ public struct AppDependencies: Sendable {
         devices: FakeDevicesRepository(world: world),
         notifications: FakeNotificationsRepository(world: world),
         reminders: FakeRemindersRepository(world: world),
+        chatLinks: FakeChatLinksRepository(world: world),
         liveConfiguration: nil,
         webBaseURL: webBaseURL,
         appVersion: appVersion,

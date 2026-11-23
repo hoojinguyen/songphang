@@ -59,17 +59,25 @@ public struct LinkRouter: Sendable, Hashable {
     case groupBalances(groupId: ExpenseGroup.ID)
     case groupStats(groupId: ExpenseGroup.ID)
     case groupFund(groupId: ExpenseGroup.ID)
+    case transactionDetail(groupId: ExpenseGroup.ID, transactionId: LedgerTransaction.ID)
+    case notifications
   }
 
   public func pushDestination(groupId: String?, target: String?) -> PushDestination? {
-    guard let groupId,
-      UUID(uuidString: groupId) != nil,
-      let target,
+    guard let target,
       !target.isEmpty,
       !target.contains(".."),
       !target.contains("?"),
       !target.contains("#")
     else {
+      return nil
+    }
+
+    if target == "/notifications" {
+      return .notifications
+    }
+
+    guard let groupId, UUID(uuidString: groupId) != nil else {
       return nil
     }
 
@@ -104,8 +112,7 @@ public struct LinkRouter: Sendable, Hashable {
       UUID(uuidString: segments[3]) != nil,
       segments[4] == "view"
     {
-      // Transaction detail (S20) arrives in Stage 5D; land on the authorized feed during 5C.
-      return .groupFeed(groupId: id)
+      return .transactionDetail(groupId: id, transactionId: LedgerTransaction.ID(segments[3]))
     }
     return nil
   }

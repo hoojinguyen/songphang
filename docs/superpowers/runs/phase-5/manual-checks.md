@@ -115,4 +115,11 @@ Pending owner-led verification with the required configuration. Preserve the app
   6. On an approved transaction, as any member, tap `Hỏi lại khoản này` → modal sheet prompts for reason; submit → coral dispute banner appears on detail and `Đang hỏi lại` tag appears on feed. Opener or Owner taps `Đã giải quyết xong` → dispute resolves and banner clears.
   7. In `Bình luận`, type a comment and tap `Gửi` → comment appears with author and timestamp, and comment counter updates. Author or Owner can tap delete (`Xóa`) on their comments. Soft-delete the transaction and verify comments can still be posted/viewed without restoring the transaction.
 
+- **Telegram account pairing, group link & push destination routing (5D.7):**
+  1. When `features.telegram == true`, open `Tài khoản` → verify `Telegram` section appears; tap `Bắt đầu liên kết` → sheet displays deep link button opening the server-provided `t.me/...` URL and copyable `/start ...` command.
+  2. In Telegram private chat with the bot, send `/start ...` and tap `Xác nhận liên kết` → iOS polls every 2s and updates to `Hoàn tất liên kết Telegram`; tap `Hoàn tất liên kết` → `Tài khoản` updates to `Đã liên kết với Telegram`; tap `Bỏ liên kết` to disconnect.
+  3. Open `/link/telegram` from Safari/web → verify iOS does **not** intercept the URL (remains in browser session).
+  4. In `Cài đặt nhóm` as Owner when `features.telegram == true`, verify `Liên kết nhóm Telegram` appears; tap `Tạo mã liên kết` → displays `/lienket ...` command + `Sao chép`; send command in Telegram group chat → linked `chatId` appears in list and `/chi`, `/sodu`, `/huy` work with Sòng Phẳng permissions; tap `Bỏ liên kết` to unlink.
+  5. Verify simulated push tap routing: `/g/{groupId}/tx/{txId}/view` opens S20 `Chi tiết khoản chi`, `/notifications` opens S19 `Thông báo`, and removed/inaccessible group push lands on group list with notice.
+
 - **Pending asset decision before final release:** Compatible Be Vietnam Pro `.ttf`/`.otf` font files are absent from the repository (only web `.woff2` files exist under `apps/web/public/fonts/be-vietnam-pro/`). Provide licensed `.ttf`/`.otf` files or approve the iOS system font substitution before final acceptance.

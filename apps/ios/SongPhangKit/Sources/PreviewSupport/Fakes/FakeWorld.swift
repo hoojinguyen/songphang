@@ -71,6 +71,9 @@
     internal var deletedPrevBalancesByGroup:
       [ExpenseGroup.ID: [LedgerTransaction.ID: GroupBalances]] = [:]
     internal var commentsByTx: [LedgerTransaction.ID: [Comment]] = [:]
+    internal var chatIdentities: [ChatIdentity] = []
+    internal var pairingsById: [TelegramPairing.ID: TelegramPairing] = [:]
+    internal var groupChatLinksByGroup: [ExpenseGroup.ID: [ChatLink]] = [:]
     private var eventContinuations: [UUID: AsyncStream<GroupEvent>.Continuation] = [:]
 
     private struct PresetState: Sendable {

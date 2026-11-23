@@ -30,7 +30,7 @@
 - [x] 5D.4 — Receipts, item splits and assisted entry
 - [x] 5D.5 — Notification center and reminders
 - [x] 5D.6 — Detail, discussion, disputes and approval
-- [ ] 5D.7 — Telegram and parity gate
+- [x] 5D.7 — Telegram and parity gate
 - [ ] 5E.1 — Release metadata and assets
 - [ ] 5E.2 — Final parity evidence and owner handoff
 
@@ -545,6 +545,29 @@
   - Captured and verified Simulator screenshot: `docs/superpowers/runs/phase-5/screens/5d/transaction-detail.png` (215 KB).
   - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `All groups balanced` (`01a20493-0418-7679-aecf-95dd2551af0b Hội An 5D6: sum 0; mismatches 0`).
 - Security review: checked relevant items 1, 2, 4, 7, 8; no tokens/passwords in code/logs, all routes enforce role and membership (outsider 404), owner-only approval policy and decisions (403 for non-owners), integer-only money calculations, plain SwiftUI text rendering preventing HTML injection.
+
+### Task 5D.7 — Telegram management, push target routing and Stage 5D parity gate
+
+**Approach**
+- Files created/modified: `apps/ios/SongPhangKit/Sources/Domain/Models/ChatLink.swift`, `apps/ios/SongPhangKit/Sources/Domain/Repositories/ChatLinksRepository.swift`, `apps/ios/SongPhangKit/Sources/Repositories/ChatLinks/LiveChatLinksRepository.swift`, `apps/ios/SongPhangKit/Sources/PreviewSupport/Fakes/{FakeWorld,FakeWorld+ChatLinks,FakeRepositories}.swift`, `apps/ios/SongPhangKit/Sources/DesignSystem/Resources/Localizable.xcstrings`, `apps/ios/SongPhangKit/Sources/AccountFeature/Account/{AccountModel,AccountModel+Telegram,TelegramAccountCardView,TelegramPairingSheetView,AccountView}.swift`, `apps/ios/SongPhangKit/Sources/GroupsFeature/GroupSettings/{GroupSettingsModel,TelegramGroupCardView,GroupSettingsView}.swift`, `apps/ios/SongPhangKit/Sources/AppShell/{AppDependencies,RouteDestination,RootView,Routing/LinkRouter}.swift`, `docs/superpowers/runs/phase-5/{parity-matrix,manual-checks,progress}.md`, `docs/superpowers/runs/phase-5/screens/5d/telegram.png`.
+- Approach: Added all 27 remaining `telegram.*` Vietnamese strings matching web `vi.ts` verbatim (670/670 keys). Implemented `ChatLinksRepository` and `LiveChatLinksRepository` using the generated OpenAPI client across all 9 account-pairing and group-link endpoints. Built `TelegramAccountCardView` and `TelegramPairingSheetView` polling pairing state every 2s under the initiating Bearer session, opening only server-supplied `deepLinkUrl`, supporting confirm/cancel/unlink and 409 `identityTaken` / expired handling. Built owner-only `TelegramGroupCardView` in Group Settings for generating `/lienket` codes and unlinking chats. Upgraded `LinkRouter.pushDestination` and `RootView.applyPushTap` to route `/g/{id}/tx/{txId}/view` to `.transactionDetail` and `/notifications` to `.notifications` while keeping browser `/link/telegram` untouched.
+- Why this is the simplest approach: Reuses existing OpenAPI client operations, `AppDependencies` composition, and SwiftUI `.sheet`/`.task` polling without introducing any new background services or dependencies.
+
+**Observed results:**
+- Build & lint gates:
+  - `pnpm check`: PASS (`biome check .` — 512 files, 0 errors, 3 pre-existing `noImgElement` warnings; 8 workspace typechecks; `OpenAPI contract snapshot is up to date.`).
+  - `pnpm build`: PASS (`apps/web` Next.js 16.4.6 production build succeeded across all 14 static/dynamic routes).
+  - `./apps/ios/Scripts/check-strings.sh`: PASS (`OK: 670 web keys verified, 0 missing, 0 differing.`).
+  - `xcrun swift-format lint --strict --recursive apps/ios/SongPhangKit/Sources`: PASS (exit 0).
+  - Debug & Test build (`xcodebuild build-for-testing` for `iPhone 17 Pro`): `** TEST BUILD SUCCEEDED **`.
+  - Release build (`xcodebuild -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build`): `** BUILD SUCCEEDED **`.
+- Live Simulator & API exercise (`songphang_phase5_5d7`, clean-env API `:4010` + Worker with `TELEGRAM_PROVIDER=console`, `TELEGRAM_BOT_USERNAME=SongPhangLocalBot`, `AI_PROVIDER=fake`, `PUSH_PROVIDER=console`):
+  - `EXERCISE_5D7_NODE_PASS`: verified two-sided pairing cancel (`204`), wrong-session denial (`404` on poll & confirm across Minh's second session pre- and post-bot callback), legacy `/claim` refusal (`404`), premature confirm refusal (`400`), webhook private `/start` -> callback `pc:` -> confirm (`204`) -> `/me/chat-identities` linked; role-aware group chat link code (`403` editor/viewer, `404` outsider) -> webhook `/lienket` -> `/chi Kem dừa 90k` draft + callback `s:<draftId>` -> ledger recorded 90k + `/sodu`.
+  - Swift Simulator execution (`Exercise5D7.app` on `iPhone 17 Pro`): `[5D.7] Minh signed in`, `[5D.7] AccountModel verified linked Telegram identity`, `[5D.7] GroupSettingsModel verified code generation & unlink`, `[5D.7] Push routing & 404 boundary verified` (`.transactionDetail`, `.groupBalances`, `.notifications`, unknown path `nil`, `/link/telegram` `nil`, outsider group 404), `[5D.7] AccountModel unlink, start pairing, cancel pairing verified`, `SIM_EXERCISE_5D7_READY`.
+  - Captured Simulator screenshot: `docs/superpowers/runs/phase-5/screens/5d/telegram.png`.
+  - `pnpm --filter @songphang/db exec tsx src/check-balances.ts`: `01a20658-af9f-7226-9b87-3d89a36be433 Phú Quốc 5D7: sum 0; mismatches 0` (`All groups balanced`).
+- Stage 5D Parity Matrix status: all Phase 2–4 rows (`P2-01`..`P4-07`) now verified locally in 5D.1–5D.7; remaining follow-ups are external providers only (`Real SMTP`, `Real Telegram client & Bot API webhook`, `Real AI provider`).
+- Security review: checked items 1, 2, 4, 7, 8; wrong-session Telegram pairing denial confirmed (`404`), webhook secret required, no secret/token logged in Swift models, legacy `/claim` code refused, browser `/link/telegram` not hijacked by `LinkRouter`, integer-only money via `/chi`.
 
 ## Gate Not Passed
 

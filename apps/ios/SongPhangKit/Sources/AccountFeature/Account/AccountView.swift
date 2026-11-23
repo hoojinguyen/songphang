@@ -83,6 +83,14 @@ public struct AccountView: View {
       pushSettingsCard(user)
     }
 
+    if model.telegramFeatureEnabled {
+      TelegramAccountCardView(
+        model: model,
+        email: user.email,
+        emailVerified: user.emailVerified
+      )
+    }
+
     notificationSettingsCard
 
     SessionsSectionView(

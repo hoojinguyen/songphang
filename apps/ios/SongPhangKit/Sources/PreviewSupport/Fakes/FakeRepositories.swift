@@ -661,4 +661,50 @@
       await world.sendAllReminders(groupId: groupId)
     }
   }
+
+  public nonisolated struct FakeChatLinksRepository: ChatLinksRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func myIdentities() async throws(AppError) -> [ChatIdentity] {
+      await world.listChatIdentities()
+    }
+
+    public func unlinkMyIdentity(platform: ChatPlatform) async throws(AppError) {
+      await world.unlinkChatIdentity(platform: platform)
+    }
+
+    public func startTelegramPairing() async throws(AppError) -> StartedTelegramPairing {
+      await world.startTelegramPairing()
+    }
+
+    public func telegramPairing(id: TelegramPairing.ID) async throws(AppError) -> TelegramPairing {
+      await world.fetchTelegramPairing(id: id)
+    }
+
+    public func confirmTelegramPairing(id: TelegramPairing.ID) async throws(AppError) {
+      await world.confirmTelegramPairing(id: id)
+    }
+
+    public func cancelTelegramPairing(id: TelegramPairing.ID) async throws(AppError) {
+      await world.cancelTelegramPairing(id: id)
+    }
+
+    public func groupChatLinks(groupId: ExpenseGroup.ID) async throws(AppError) -> GroupChatLinks {
+      await world.listGroupChatLinks(groupId: groupId)
+    }
+
+    public func createGroupChatLinkCode(groupId: ExpenseGroup.ID) async throws(AppError)
+      -> GroupChatLinkCode
+    {
+      await world.createGroupChatLinkCode(groupId: groupId)
+    }
+
+    public func unlinkGroupChat(
+      groupId: ExpenseGroup.ID,
+      chatLinkId: ChatLink.ID
+    ) async throws(AppError) {
+      await world.unlinkGroupChat(groupId: groupId, chatLinkId: chatLinkId)
+    }
+  }
 #endif

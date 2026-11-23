@@ -12,6 +12,11 @@ public final class AccountModel {
     case denied
   }
 
+  public enum PairingTerminalStatus: Sendable, Equatable {
+    case invalid
+    case identityTaken
+  }
+
   public private(set) var user: Loadable<User>
   public private(set) var sessions: Loadable<[UserSession]> = .loading
   public private(set) var refreshError: AppError?
@@ -19,6 +24,18 @@ public final class AccountModel {
   public private(set) var pushStatus: PushStatus = .notDetermined
   public private(set) var isSavingPushSettings = false
   public private(set) var pushSettingsError: String?
+
+  public private(set) var telegramFeatureEnabled = false
+  public internal(set) var chatIdentities: Loadable<[ChatIdentity]> = .loading
+  public internal(set) var startedPairing: StartedTelegramPairing?
+  public internal(set) var currentPairing: TelegramPairing?
+  public internal(set) var pairingCompleted = false
+  public internal(set) var isStartingPairing = false
+  public internal(set) var isSubmittingPairingAction = false
+  public internal(set) var isUnlinkingTelegram = false
+  public internal(set) var telegramError: String?
+  public internal(set) var pairingError: String?
+  public internal(set) var pairingTerminalStatus: PairingTerminalStatus?
 
   public private(set) var notificationSettings: Loadable<NotificationSettings> = .loading
   public private(set) var isUpdatingNotificationSettings = false
@@ -39,10 +56,11 @@ public final class AccountModel {
   public private(set) var isSigningOut = false
   public private(set) var signOutError: String?
 
-  private let repository: any AuthRepository
+  internal let repository: any AuthRepository
   private let devicesRepository: (any DevicesRepository)?
   private let notificationsRepository: (any NotificationsRepository)?
-  private let onSignedOut: () -> Void
+  internal let chatLinksRepository: (any ChatLinksRepository)?
+  internal let onSignedOut: () -> Void
   private let onUserUpdated: ((User) -> Void)?
   private let checkPushStatus: @Sendable () async -> PushStatus
   private let requestPushPermission: @Sendable () async -> PushStatus
@@ -51,6 +69,7 @@ public final class AccountModel {
     repository: any AuthRepository,
     devicesRepository: (any DevicesRepository)? = nil,
     notificationsRepository: (any NotificationsRepository)? = nil,
+    chatLinksRepository: (any ChatLinksRepository)? = nil,
     initialUser: User? = nil,
     onSignedOut: @escaping () -> Void,
     onUserUpdated: ((User) -> Void)? = nil,
@@ -60,6 +79,7 @@ public final class AccountModel {
     self.repository = repository
     self.devicesRepository = devicesRepository
     self.notificationsRepository = notificationsRepository
+    self.chatLinksRepository = chatLinksRepository
     if let initialUser {
       self.user = .loaded(initialUser)
     } else {
@@ -111,8 +131,12 @@ public final class AccountModel {
     )
     if let serverFeatures {
       pushFeatureEnabled = serverFeatures.push
+      telegramFeatureEnabled = serverFeatures.telegram
     }
     pushStatus = currentPushStatus
+    if telegramFeatureEnabled {
+      await loadChatIdentities()
+    }
 
     switch userResult {
     case .success(let fetched):

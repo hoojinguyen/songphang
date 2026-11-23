@@ -556,7 +556,15 @@ public struct RootView: View {
 
     let groupId: ExpenseGroup.ID
     switch destination {
-    case .groupFeed(let id), .groupBalances(let id), .groupStats(let id), .groupFund(let id):
+    case .notifications:
+      statusNotice = nil
+      path = [.notifications]
+      return
+    case .groupFeed(let id),
+      .groupBalances(let id),
+      .groupStats(let id),
+      .groupFund(let id),
+      .transactionDetail(let id, _):
       groupId = id
     }
 
@@ -564,6 +572,8 @@ public struct RootView: View {
       _ = try await dependencies.groups.group(id: groupId)
       statusNotice = nil
       switch destination {
+      case .notifications:
+        path = [.notifications]
       case .groupFeed(let id):
         path = [.groupFeed(groupId: id)]
       case .groupBalances(let id):
@@ -572,6 +582,12 @@ public struct RootView: View {
         path = [.groupFeed(groupId: id), .groupStats(groupId: id)]
       case .groupFund(let id):
         path = [.groupFeed(groupId: id), .groupFund(groupId: id)]
+      case .transactionDetail(let id, let txId):
+        if (try? await dependencies.transactions.transaction(groupId: id, id: txId)) != nil {
+          path = [.groupFeed(groupId: id), .transactionDetail(groupId: id, transactionId: txId)]
+        } else {
+          path = [.groupFeed(groupId: id)]
+        }
       }
     } catch {
       if error == .unauthorized {
