@@ -16,10 +16,24 @@ export type OpenApiDiffResult = {
 type DiffContext = {
 	oldComponentParams: Record<string, unknown>;
 	newComponentParams: Record<string, unknown>;
+	oldIsOpenApi31: boolean;
+	newIsOpenApi31: boolean;
+};
+
+type ResolvedParameter = {
+	raw: Record<string, unknown>;
+	resolved: Record<string, unknown>;
+	refName: string | null;
+	wasResolved: boolean;
+	refDescription: string | undefined;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isOpenApi31Document(doc: Record<string, unknown>): boolean {
+	return typeof doc.openapi === "string" && doc.openapi.startsWith("3.1.");
 }
 
 function extractComponentParameters(
@@ -32,28 +46,60 @@ function extractComponentParameters(
 
 function resolveParameter(
 	param: Record<string, unknown>,
-	componentParams: Record<string, unknown>,
+	options: {
+		componentParams: Record<string, unknown>;
+		isOpenApi31: boolean;
+	},
 	seen = new Set<string>(),
-): Record<string, unknown> {
+): ResolvedParameter {
+	const unresolved = (): ResolvedParameter => ({
+		raw: param,
+		resolved: param,
+		refName: null,
+		wasResolved: false,
+		refDescription: undefined,
+	});
 	const ref = param.$ref;
 	if (typeof ref !== "string" || !ref.startsWith("#/components/parameters/")) {
-		return param;
+		return unresolved();
 	}
 	const name = ref.slice("#/components/parameters/".length);
-	if (seen.has(name) || !Object.hasOwn(componentParams, name)) {
-		return param;
+	if (seen.has(name) || !Object.hasOwn(options.componentParams, name)) {
+		return unresolved();
 	}
-	const target = componentParams[name];
-	if (!isRecord(target)) return param;
-	const { $ref: _ignored, ...siblings } = param;
-	const resolvedTarget = resolveParameter(
-		target,
-		componentParams,
-		new Set([...seen, name]),
-	);
-	return Object.keys(siblings).length > 0
-		? { ...resolvedTarget, ...siblings }
-		: resolvedTarget;
+	const target = options.componentParams[name];
+	if (!isRecord(target)) {
+		return unresolved();
+	}
+	const inner = resolveParameter(target, options, new Set([...seen, name]));
+	const descriptionOverride =
+		options.isOpenApi31 && typeof param.description === "string"
+			? param.description
+			: undefined;
+	const resolved =
+		descriptionOverride !== undefined
+			? { ...inner.resolved, description: descriptionOverride }
+			: inner.resolved;
+	return {
+		raw: param,
+		resolved,
+		refName: inner.refName ?? name,
+		wasResolved: true,
+		refDescription: descriptionOverride ?? inner.refDescription,
+	};
+}
+
+function parameterLabel(entry: ResolvedParameter): string {
+	if (
+		typeof entry.resolved.name === "string" &&
+		typeof entry.resolved.in === "string"
+	) {
+		return `"${entry.resolved.name}" in "${entry.resolved.in}"`;
+	}
+	if (typeof entry.raw.$ref === "string") {
+		return `reference "${entry.raw.$ref}"`;
+	}
+	return `"${String(entry.resolved.name)}" in "${String(entry.resolved.in)}"`;
 }
 
 function sameJson(a: unknown, b: unknown): boolean {
@@ -147,46 +193,76 @@ function compareParameterList(
 	const mapParams = (
 		params: Record<string, unknown>[],
 		componentParams: Record<string, unknown>,
+		isOpenApi31: boolean,
 	) => {
-		const entries: Array<[string, Record<string, unknown>]> = [];
+		const entries: Array<[string, ResolvedParameter]> = [];
 		for (const p of params) {
-			const resolved = resolveParameter(p, componentParams);
+			const entry = resolveParameter(p, { componentParams, isOpenApi31 });
 			const key =
-				typeof resolved.in === "string" && typeof resolved.name === "string"
-					? `${resolved.in}:${resolved.name}`
+				typeof entry.resolved.in === "string" &&
+				typeof entry.resolved.name === "string"
+					? `${entry.resolved.in}:${entry.resolved.name}`
 					: typeof p.$ref === "string"
 						? p.$ref
-						: `${String(resolved.in)}:${String(resolved.name)}`;
-			entries.push([key, resolved]);
+						: `${String(entry.resolved.in)}:${String(entry.resolved.name)}`;
+			entries.push([key, entry]);
 		}
 		return new Map(entries);
 	};
-	const oldMap = mapParams(oldParams, ctx.oldComponentParams);
-	const newMap = mapParams(newParams, ctx.newComponentParams);
+	const oldMap = mapParams(
+		oldParams,
+		ctx.oldComponentParams,
+		ctx.oldIsOpenApi31,
+	);
+	const newMap = mapParams(
+		newParams,
+		ctx.newComponentParams,
+		ctx.newIsOpenApi31,
+	);
 
-	for (const [key, newP] of newMap.entries()) {
+	for (const [key, newEntry] of newMap.entries()) {
 		const childPath = `${path}.parameters[${key}]`;
-		const oldP = oldMap.get(key);
-		if (!oldP) {
-			const isRequired = newP.required === true;
+		const oldEntry = oldMap.get(key);
+		if (!oldEntry) {
+			const isRequired = newEntry.resolved.required === true;
+			const label = parameterLabel(newEntry);
 			changes.push({
 				severity: isRequired ? "breaking" : "additive",
 				path: childPath,
 				reason: isRequired
-					? `Required parameter "${String(newP.name)}" in "${String(newP.in)}" added`
-					: `Optional parameter "${String(newP.name)}" in "${String(newP.in)}" added`,
+					? `Required parameter ${label} added`
+					: `Optional parameter ${label} added`,
 			});
+		} else if (
+			oldEntry.wasResolved &&
+			newEntry.wasResolved &&
+			oldEntry.refName !== null &&
+			oldEntry.refName === newEntry.refName
+		) {
+			if (oldEntry.refDescription !== newEntry.refDescription) {
+				changes.push({
+					severity: "additive",
+					path: `${childPath}.description`,
+					reason: "Documentation updated",
+				});
+			}
 		} else {
-			compareNode(childPath, oldP, newP, changes, ctx);
+			compareNode(
+				childPath,
+				oldEntry.resolved,
+				newEntry.resolved,
+				changes,
+				ctx,
+			);
 		}
 	}
 
-	for (const [key, oldP] of oldMap.entries()) {
+	for (const [key, oldEntry] of oldMap.entries()) {
 		if (!newMap.has(key)) {
 			changes.push({
 				severity: "breaking",
 				path: `${path}.parameters[${key}]`,
-				reason: `Parameter "${String(oldP.name)}" in "${String(oldP.in)}" removed`,
+				reason: `Parameter ${parameterLabel(oldEntry)} removed`,
 			});
 		}
 	}
@@ -558,6 +634,8 @@ export function diffOpenApiSnapshots(
 		{
 			oldComponentParams: extractComponentParameters(baseline),
 			newComponentParams: extractComponentParameters(candidate),
+			oldIsOpenApi31: isOpenApi31Document(baseline),
+			newIsOpenApi31: isOpenApi31Document(candidate),
 		},
 	);
 	const breakingCount = changes.filter((c) => c.severity === "breaking").length;

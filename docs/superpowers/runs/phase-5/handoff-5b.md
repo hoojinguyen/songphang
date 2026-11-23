@@ -112,4 +112,5 @@ A dedicated benchmark group was populated with **500 real transactions and 1,000
 - [ ] Visual UI & Accessibility quality accepted
 
 **Owner signature / decision:** ____________________
+
 **Date:** ____________________

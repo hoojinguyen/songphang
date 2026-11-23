@@ -91,6 +91,7 @@ struct ApprovalCardView: View {
           )
         )
         .keyboardType(.numberPad)
+        .disabled(isDisabled || isPending)
 
         Text(L10n.tr("approval.settingsHint"))
           .font(Typography.caption)
@@ -115,14 +116,17 @@ struct ApprovalCardView: View {
     .background(Tokens.surface)
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     .onChange(of: group.approvalThreshold) { _, newThreshold in
-      let matchesPending: Bool = {
+      let matchesPendingAndCurrentDraft: Bool = {
         switch pendingAction {
-        case .save(let target): return newThreshold == target
-        case .disable: return newThreshold == nil
-        case nil: return false
+        case .save(let target):
+          return newThreshold == target && MoneyFormat.parseInput(amountText) == target
+        case .disable:
+          return newThreshold == nil
+        case nil:
+          return false
         }
       }()
-      if matchesPending || !hasDraftEdit {
+      if matchesPendingAndCurrentDraft || !hasDraftEdit {
         isEnabled = newThreshold != nil
         if let newThreshold {
           amountText = MoneyFormat.amount(newThreshold)
@@ -130,6 +134,8 @@ struct ApprovalCardView: View {
           amountText = ""
         }
         hasDraftEdit = false
+        pendingAction = nil
+      } else if case .save(let target) = pendingAction, newThreshold == target {
         pendingAction = nil
       }
     }
@@ -144,7 +150,7 @@ struct ApprovalCardView: View {
             amountText = ""
           }
         case .save(let target):
-          if group.approvalThreshold == target {
+          if group.approvalThreshold == target, MoneyFormat.parseInput(amountText) == target {
             hasDraftEdit = false
           }
         case nil:

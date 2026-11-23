@@ -52,6 +52,7 @@ public final class TransactionDetailModel: Sendable {
   private var transactionGeneration: UInt64 = 0
   private var commentsGeneration: UInt64 = 0
   private var auxiliaryRefreshGeneration: UInt64 = 0
+  private var commentResyncTask: Task<Void, Never>?
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -83,6 +84,8 @@ public final class TransactionDetailModel: Sendable {
   }
 
   public func load() async {
+    commentResyncTask?.cancel()
+    commentResyncTask = nil
     let txGen = transactionGeneration &+ 1
     transactionGeneration = txGen
     commentsGeneration &+= 1
@@ -226,11 +229,20 @@ public final class TransactionDetailModel: Sendable {
       }
     } catch {
       guard !Task.isCancelled,
-        transactionGeneration == txGen || commentsGeneration == commentGen
+        transactionGeneration == txGen,
+        commentsGeneration == commentGen,
+        auxiliaryRefreshGeneration == auxiliaryGen
       else { return }
       if case .unauthorized = error {
         onUnauthorized?()
       }
+    }
+  }
+
+  private func scheduleCommentsResync() {
+    commentResyncTask?.cancel()
+    commentResyncTask = Task { [weak self] in
+      await self?.refreshSilently(resources: ["comments"])
     }
   }
 
@@ -298,8 +310,9 @@ public final class TransactionDetailModel: Sendable {
         cur.transaction.commentCount += 1
         state = .loaded(cur)
       }
+      isPerformingAction = false
       if hadInFlightComments {
-        await refreshSilently(resources: ["comments"])
+        scheduleCommentsResync()
       }
       return true
     } catch {
@@ -328,8 +341,9 @@ public final class TransactionDetailModel: Sendable {
         cur.transaction.commentCount = max(0, cur.transaction.commentCount - 1)
         state = .loaded(cur)
       }
+      isPerformingAction = false
       if hadInFlightComments {
-        await refreshSilently(resources: ["comments"])
+        scheduleCommentsResync()
       }
     } catch {
       actionError = error

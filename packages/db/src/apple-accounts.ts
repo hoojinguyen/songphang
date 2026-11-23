@@ -3,12 +3,15 @@ import { and, eq, lt, ne, or, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { appleOperations, userIdentities } from "./schema-accounts.js";
 
+export const APPLE_REVOKING_PREFIX = "REVOKING:";
+export const APPLE_REVOCATION_COMPLETED_PREFIX = "APPLE_REVOCATION_COMPLETED:";
+
 export function isAppleDeletionPending(
 	providerSecret: string | null | undefined,
 ): boolean {
 	return (
-		providerSecret?.startsWith("REVOKING:") === true ||
-		providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:") === true
+		providerSecret?.startsWith(APPLE_REVOKING_PREFIX) === true ||
+		providerSecret?.startsWith(APPLE_REVOCATION_COMPLETED_PREFIX) === true
 	);
 }
 

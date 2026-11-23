@@ -7,6 +7,8 @@ import type {
 	UserDto,
 } from "@songphang/contract";
 import {
+	APPLE_REVOCATION_COMPLETED_PREFIX,
+	APPLE_REVOKING_PREFIX,
 	clearAppleOperation,
 	clearExpiredConflictingAppleExchanges,
 	countOwnedGroups,
@@ -183,7 +185,7 @@ export async function deleteAccount(
 		}
 
 		const rawSecret = identity.providerSecret ?? "";
-		if (rawSecret.startsWith("APPLE_REVOCATION_COMPLETED:")) {
+		if (rawSecret.startsWith(APPLE_REVOCATION_COMPLETED_PREFIX)) {
 			return {
 				deletedGroups: null,
 				appleIdentity: identity,
@@ -201,8 +203,8 @@ export async function deleteAccount(
 			);
 		}
 
-		const actualSecret = rawSecret.startsWith("REVOKING:")
-			? rawSecret.slice("REVOKING:".length)
+		const actualSecret = rawSecret.startsWith(APPLE_REVOKING_PREFIX)
+			? rawSecret.slice(APPLE_REVOKING_PREFIX.length)
 			: rawSecret;
 		const hash = createHash("sha256").update(actualSecret).digest("hex");
 
@@ -233,7 +235,7 @@ export async function deleteAccount(
 			await updateAppleProviderSecret(tx, {
 				userId: input.user.id,
 				subject: identity.providerSubject,
-				providerSecret: `REVOKING:${actualSecret}`,
+				providerSecret: `${APPLE_REVOKING_PREFIX}${actualSecret}`,
 			});
 		}
 
@@ -259,12 +261,14 @@ export async function deleteAccount(
 				const current = await findUserAppleIdentity(tx, input.user.id);
 				if (
 					current === null ||
-					current.providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:")
+					current.providerSecret?.startsWith(APPLE_REVOCATION_COMPLETED_PREFIX)
 				)
 					return null;
-				const expected = appleIdentity.providerSecret?.startsWith("REVOKING:")
+				const expected = appleIdentity.providerSecret?.startsWith(
+					APPLE_REVOKING_PREFIX,
+				)
 					? appleIdentity.providerSecret
-					: `REVOKING:${appleIdentity.providerSecret ?? ""}`;
+					: `${APPLE_REVOKING_PREFIX}${appleIdentity.providerSecret ?? ""}`;
 				if (
 					current.providerSecret !== expected ||
 					!current.providerSubject ||
@@ -297,7 +301,7 @@ export async function deleteAccount(
 					await updateAppleProviderSecret(tx, {
 						userId: input.user.id,
 						subject,
-						providerSecret: `APPLE_REVOCATION_COMPLETED:${grantHash}`,
+						providerSecret: `${APPLE_REVOCATION_COMPLETED_PREFIX}${grantHash}`,
 					});
 					await clearAppleOperation(tx, key, owner);
 				});
