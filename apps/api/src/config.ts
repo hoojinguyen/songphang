@@ -1,7 +1,7 @@
-import { createPrivateKey } from "node:crypto";
 import path from "node:path";
 import { z } from "@hono/zod-openapi";
 import { AppVersion } from "@songphang/contract";
+import { validateEcP256PrivateKey } from "@songphang/core/ec-key";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 
@@ -17,38 +17,6 @@ const FAKE_RECEIPT_FIXTURES = [
 ] as const;
 
 export type FakeReceiptFixture = (typeof FAKE_RECEIPT_FIXTURES)[number];
-
-function validateEcP256PrivateKey(
-	rawPem: string,
-	fieldPath: string,
-	context: z.RefinementCtx,
-): void {
-	try {
-		const key = createPrivateKey(rawPem);
-		if (key.asymmetricKeyType !== "ec") {
-			context.addIssue({
-				code: "custom",
-				path: [fieldPath],
-				message: `${fieldPath} must be an EC private key`,
-			});
-		} else {
-			const curve = key.asymmetricKeyDetails?.namedCurve;
-			if (curve !== "prime256v1" && curve !== "p256") {
-				context.addIssue({
-					code: "custom",
-					path: [fieldPath],
-					message: `${fieldPath} must use the P-256 (prime256v1) curve`,
-				});
-			}
-		}
-	} catch {
-		context.addIssue({
-			code: "custom",
-			path: [fieldPath],
-			message: `${fieldPath} is invalid or malformed PEM`,
-		});
-	}
-}
 
 const CONFIG_SCHEMA = z
 	.object({
@@ -425,12 +393,10 @@ export type Config = z.infer<typeof CONFIG_SCHEMA>;
 export function loadConfig(env: Record<string, string | undefined>): Config {
 	const result = CONFIG_SCHEMA.safeParse(env);
 	if (!result.success) {
-		const invalidNames = [
-			...new Set(result.error.issues.map((issue) => issue.path[0])),
-		];
-		throw new Error(
-			`Invalid environment variables: ${invalidNames.join(", ")}`,
-		);
+		const details = result.error.issues
+			.map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
+			.join("\n");
+		throw new Error(`Invalid environment configuration:\n${details}`);
 	}
 	return result.data;
 }

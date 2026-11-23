@@ -409,6 +409,23 @@ export async function findNotificationForPush(
 	};
 }
 
+export async function recordPushDeviceDelivered(
+	executor: DbExecutor,
+	notificationId: string,
+	deviceId: string,
+) {
+	await executor
+		.update(notifications)
+		.set({
+			payload: sql`jsonb_set(
+				${notifications.payload},
+				'{_deliveredDeviceIds}',
+				coalesce(${notifications.payload}->'_deliveredDeviceIds', '[]'::jsonb) || jsonb_build_array(${deviceId}::text)
+			)`,
+		})
+		.where(eq(notifications.id, notificationId));
+}
+
 function digestEligibilityWhere(input: {
 	since: Date | null;
 	until: Date;

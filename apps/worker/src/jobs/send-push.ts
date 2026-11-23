@@ -4,6 +4,7 @@ import {
 	deletePushDeviceIfUnchanged,
 	findNotificationForPush,
 	listActivePushDevicesForUser,
+	recordPushDeviceDelivered,
 } from "@songphang/db";
 import type { PgBoss } from "pg-boss";
 import { sanitizePushTarget } from "../push/types.js";
@@ -61,10 +62,24 @@ export async function runSendPush(
 
 	let sentCount = 0;
 	let hasFailure = false;
-	const delivered = deliveredNotificationDevices.get(notificationId);
+	const inMemoryDelivered = deliveredNotificationDevices.get(notificationId);
+	const payloadObj =
+		typeof row.payload === "object" && row.payload !== null
+			? (row.payload as Record<string, unknown>)
+			: null;
+	const durableDeliveredIds = new Set<string>(
+		Array.isArray(payloadObj?._deliveredDeviceIds)
+			? payloadObj._deliveredDeviceIds.filter(
+					(id): id is string => typeof id === "string",
+				)
+			: [],
+	);
 
 	for (const device of devices) {
-		if (delivered?.has(device.id)) {
+		if (
+			inMemoryDelivered?.has(device.id) ||
+			durableDeliveredIds.has(device.id)
+		) {
 			// Already delivered to this device in a previous attempt of this notification
 			continue;
 		}
@@ -78,8 +93,10 @@ export async function runSendPush(
 			if (result === "sent") {
 				sentCount += 1;
 				recordDelivered(notificationId, device.id);
+				await recordPushDeviceDelivered(deps.db, notificationId, device.id);
 			} else if (result === "gone") {
 				recordDelivered(notificationId, device.id);
+				await recordPushDeviceDelivered(deps.db, notificationId, device.id);
 				await deletePushDeviceIfUnchanged(deps.db, {
 					id: device.id,
 					userId: device.userId,
@@ -89,6 +106,7 @@ export async function runSendPush(
 				});
 			} else if (result === "permanent_failure") {
 				recordDelivered(notificationId, device.id);
+				await recordPushDeviceDelivered(deps.db, notificationId, device.id);
 				console.warn(
 					JSON.stringify({
 						event: "push.send.permanent_failure",
