@@ -1,12 +1,19 @@
 import { createPrivateKey, sign } from "node:crypto";
 import { z } from "@hono/zod-openapi";
 import type { Config } from "../../config.js";
+import { AppError } from "../../errors.js";
 
 const APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
 const APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
 
+export type AppleTokenExchangeResult = {
+	refreshToken: string | null;
+	idToken?: string;
+	subject?: string;
+};
+
 export type AppleTokenAdapter = {
-	exchangeAuthorizationCode(code: string): Promise<string | null>;
+	exchangeAuthorizationCode(code: string): Promise<AppleTokenExchangeResult>;
 	revokeRefreshToken(input: {
 		refreshToken: string | null;
 		userId: string;
@@ -48,10 +55,35 @@ export function createAppleTokenAdapter(
 	config: Config,
 	now: () => Date,
 ): AppleTokenAdapter {
+	const consumedFakeCodes = new Set<string>();
+
 	return {
-		async exchangeAuthorizationCode(code: string): Promise<string | null> {
+		async exchangeAuthorizationCode(
+			code: string,
+		): Promise<AppleTokenExchangeResult> {
 			if (config.appleProvider === "fake") {
-				return null;
+				if (consumedFakeCodes.has(code)) {
+					throw new AppError(
+						401,
+						"INVALID_CREDENTIALS",
+						"Apple authorization code has already been used",
+					);
+				}
+				if (consumedFakeCodes.size >= 10_000) {
+					const oldest = consumedFakeCodes.values().next().value;
+					if (oldest !== undefined) {
+						consumedFakeCodes.delete(oldest);
+					}
+				}
+				consumedFakeCodes.add(code);
+				if (code.startsWith("sub=")) {
+					const afterPrefix = code.slice(4);
+					const separator = afterPrefix.indexOf(":");
+					const subject =
+						separator >= 0 ? afterPrefix.slice(0, separator) : afterPrefix;
+					return { refreshToken: "fake-refresh-token", subject };
+				}
+				return { refreshToken: "fake-refresh-token" };
 			}
 			if (
 				config.appleProvider !== "apple" ||
@@ -83,13 +115,26 @@ export function createAppleTokenAdapter(
 					grant_type: "authorization_code",
 				}),
 			});
+			if (response.status === 400) {
+				throw new AppError(
+					401,
+					"INVALID_CREDENTIALS",
+					"Apple authorization code is invalid or already used",
+				);
+			}
 			if (!response.ok) {
 				throw new Error("Apple token exchange failed");
 			}
 			const body = z
-				.object({ refresh_token: z.string().min(1) })
+				.object({
+					refresh_token: z.string().min(1),
+					id_token: z.string().min(1),
+				})
 				.parse(await response.json());
-			return body.refresh_token;
+			return {
+				refreshToken: body.refresh_token,
+				idToken: body.id_token,
+			};
 		},
 
 		async revokeRefreshToken(input: {

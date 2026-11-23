@@ -13,12 +13,15 @@ const JwtHeaderSchema = z.object({
 	kid: z.string().min(1).max(256),
 });
 
-const ApplePayloadSchema = z.object({
+const BaseApplePayloadSchema = z.object({
 	iss: z.literal(APPLE_ISSUER),
 	aud: z.string().min(1).max(255),
 	sub: z.string().min(1).max(255),
 	iat: z.number().int(),
 	exp: z.number().int(),
+});
+
+const ApplePayloadSchema = BaseApplePayloadSchema.extend({
 	nonce: z.string().regex(/^[0-9a-fA-F]{64}$/),
 	email: EmailAddress.optional(),
 	email_verified: z
@@ -48,17 +51,17 @@ function parseBase64UrlJson(segment: string): unknown {
 	return JSON.parse(Buffer.from(segment, "base64url").toString("utf8"));
 }
 
-export async function verifyAppleIdentityToken(input: {
-	identityToken: string;
-	rawNonce: string;
+async function verifyAppleJwt<TSchema extends z.ZodTypeAny>(input: {
+	token: string;
 	config: Config;
 	keySet: AppleKeySetProvider;
 	now: Date;
-}): Promise<VerifiedAppleClaims> {
+	schema: TSchema;
+}): Promise<z.infer<TSchema>> {
 	if (!input.config.appleBundleId) {
 		throw new AppError(404, "NOT_FOUND", "Apple sign-in is not configured");
 	}
-	const segments = input.identityToken.split(".");
+	const segments = input.token.split(".");
 	const [headerSegment, payloadSegment, signatureSegment] = segments;
 	if (
 		segments.length !== 3 ||
@@ -111,7 +114,7 @@ export async function verifyAppleIdentityToken(input: {
 		);
 	}
 
-	const parsedPayload = ApplePayloadSchema.safeParse(rawPayload);
+	const parsedPayload = input.schema.safeParse(rawPayload);
 	if (!parsedPayload.success) {
 		throw new AppError(
 			401,
@@ -119,7 +122,7 @@ export async function verifyAppleIdentityToken(input: {
 			"Apple identity token claims are invalid",
 		);
 	}
-	const claims = parsedPayload.data;
+	const claims = parsedPayload.data as z.infer<typeof BaseApplePayloadSchema>;
 	if (claims.aud !== input.config.appleBundleId) {
 		throw new AppError(
 			401,
@@ -143,6 +146,24 @@ export async function verifyAppleIdentityToken(input: {
 			"Apple identity token has expired",
 		);
 	}
+
+	return parsedPayload.data;
+}
+
+export async function verifyAppleIdentityToken(input: {
+	identityToken: string;
+	rawNonce: string;
+	config: Config;
+	keySet: AppleKeySetProvider;
+	now: Date;
+}): Promise<VerifiedAppleClaims> {
+	const claims = await verifyAppleJwt({
+		token: input.identityToken,
+		config: input.config,
+		keySet: input.keySet,
+		now: input.now,
+		schema: ApplePayloadSchema,
+	});
 
 	const expectedNonce = createHash("sha256")
 		.update(input.rawNonce)
@@ -169,4 +190,20 @@ export async function verifyAppleIdentityToken(input: {
 		...(claims.email === undefined ? {} : { email: claims.email }),
 		emailVerified,
 	};
+}
+
+export async function verifyAppleExchangedIdToken(input: {
+	idToken: string;
+	config: Config;
+	keySet: AppleKeySetProvider;
+	now: Date;
+}): Promise<{ sub: string }> {
+	const claims = await verifyAppleJwt({
+		token: input.idToken,
+		config: input.config,
+		keySet: input.keySet,
+		now: input.now,
+		schema: BaseApplePayloadSchema,
+	});
+	return { sub: claims.sub };
 }

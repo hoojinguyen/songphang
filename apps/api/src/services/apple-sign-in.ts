@@ -11,8 +11,14 @@ import {
 import type { AppDeps } from "../app.js";
 import { createAppleKeySetProvider } from "../auth/apple/key-set.js";
 import { encryptSecret } from "../auth/apple/secret-box.js";
-import { createAppleTokenAdapter } from "../auth/apple/token-adapter.js";
-import { verifyAppleIdentityToken } from "../auth/apple/verify.js";
+import {
+	type AppleTokenExchangeResult,
+	createAppleTokenAdapter,
+} from "../auth/apple/token-adapter.js";
+import {
+	verifyAppleExchangedIdToken,
+	verifyAppleIdentityToken,
+} from "../auth/apple/verify.js";
 import { createSession } from "../auth/sessions.js";
 import { AppError } from "../errors.js";
 
@@ -70,39 +76,75 @@ export async function appleSignIn(
 		}
 	}
 
-	let encryptedSecret: string | null = null;
-	const needsExchange =
-		deps.config.appleProvider === "apple" &&
-		(existingIdentity === null || existingIdentity.providerSecret === null);
-	if (needsExchange) {
-		if (!deps.config.dataEncryptionKey) {
+	if (deps.config.appleProvider === "apple" && !deps.config.dataEncryptionKey) {
+		throw new AppError(
+			503,
+			"APPLE_REVOCATION_FAILED",
+			"Apple credential encryption key is missing",
+		);
+	}
+
+	const adapter =
+		deps.appleTokenAdapter ?? createAppleTokenAdapter(deps.config, deps.now);
+	let exchanged: AppleTokenExchangeResult;
+	try {
+		exchanged = await adapter.exchangeAuthorizationCode(
+			input.request.authorizationCode,
+		);
+	} catch (error) {
+		if (error instanceof AppError) {
+			throw error;
+		}
+		throw new AppError(
+			503,
+			"APPLE_REVOCATION_FAILED",
+			"Could not complete Apple token exchange",
+		);
+	}
+
+	if (exchanged.idToken !== undefined) {
+		const exchangedClaims = await verifyAppleExchangedIdToken({
+			idToken: exchanged.idToken,
+			config: deps.config,
+			keySet,
+			now: deps.now(),
+		});
+		if (exchangedClaims.sub !== claims.sub) {
 			throw new AppError(
-				503,
-				"APPLE_REVOCATION_FAILED",
-				"Apple credential encryption key is missing",
+				401,
+				"INVALID_CREDENTIALS",
+				"Apple authorization identity mismatch",
 			);
 		}
-		try {
-			const adapter =
-				deps.appleTokenAdapter ??
-				createAppleTokenAdapter(deps.config, deps.now);
-			const refreshToken = await adapter.exchangeAuthorizationCode(
-				input.request.authorizationCode,
+	} else if (exchanged.subject !== undefined) {
+		if (exchanged.subject !== claims.sub) {
+			throw new AppError(
+				401,
+				"INVALID_CREDENTIALS",
+				"Apple authorization identity mismatch",
 			);
-			if (!refreshToken) {
-				throw new Error("Empty Apple refresh token");
-			}
-			encryptedSecret = encryptSecret(
-				refreshToken,
-				deps.config.dataEncryptionKey,
-			);
-		} catch {
+		}
+	} else if (deps.config.appleProvider === "apple") {
+		throw new AppError(
+			401,
+			"INVALID_CREDENTIALS",
+			"Apple token exchange missing identity token",
+		);
+	}
+
+	let encryptedSecret: string | null = null;
+	if (deps.config.appleProvider === "apple") {
+		if (!exchanged.refreshToken || !deps.config.dataEncryptionKey) {
 			throw new AppError(
 				503,
 				"APPLE_REVOCATION_FAILED",
 				"Could not complete Apple token exchange",
 			);
 		}
+		encryptedSecret = encryptSecret(
+			exchanged.refreshToken,
+			deps.config.dataEncryptionKey,
+		);
 	}
 
 	return deps.db.transaction(async (transaction) => {
@@ -112,7 +154,7 @@ export async function appleSignIn(
 
 		if (known !== null) {
 			userId = known.userId;
-			if (encryptedSecret !== null && known.providerSecret === null) {
+			if (encryptedSecret !== null) {
 				await updateAppleProviderSecret(transaction, {
 					userId,
 					subject: claims.sub,
