@@ -178,6 +178,12 @@ function compareNode(
 			continue;
 		}
 		if (!(key in oldValue)) {
+			const addedNode = newValue[key];
+			const isRequiredRequestBody =
+				key === "requestBody" &&
+				isRecord(addedNode) &&
+				addedNode.required === true;
+			const isAddedRequiredTrue = key === "required" && addedNode === true;
 			const isBreakingConstraint =
 				key === "minLength" ||
 				key === "maxLength" ||
@@ -186,12 +192,17 @@ function compareNode(
 				key === "pattern" ||
 				key === "minItems" ||
 				key === "maxItems";
+			const isBreaking =
+				isRequiredRequestBody || isAddedRequiredTrue || isBreakingConstraint;
 			changes.push({
-				severity: isBreakingConstraint ? "breaking" : "additive",
+				severity: isBreaking ? "breaking" : "additive",
 				path: childPath,
-				reason: isBreakingConstraint
-					? `Added stricter constraint "${key}"`
-					: `Added "${key}"`,
+				reason:
+					isRequiredRequestBody || isAddedRequiredTrue
+						? `Added required "${key}"`
+						: isBreakingConstraint
+							? `Added stricter constraint "${key}"`
+							: `Added "${key}"`,
 			});
 			continue;
 		}
