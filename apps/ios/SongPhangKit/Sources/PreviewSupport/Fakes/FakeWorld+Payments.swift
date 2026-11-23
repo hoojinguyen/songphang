@@ -85,7 +85,8 @@
           currency: bal.currency,
           minimized: bal.minimized,
           balances: bal.balances,
-          transfers: updatedTransfers
+          transfers: updatedTransfers,
+          fund: bal.fund
         )
       }
     }
@@ -123,6 +124,44 @@
         resolvedAt: "2026-11-22T10:05:00.000Z"
       )
       settlementRequestsByGroup[groupId] = list
+
+      if let bal = balancesByGroup[groupId] {
+        let updatedTransfers: [SuggestedTransfer]
+        switch decision {
+        case .confirm:
+          updatedTransfers = bal.transfers.filter { candidate in
+            !(candidate.fromMemberId == current.fromMemberId
+              && candidate.toMemberId == current.toMemberId
+              && (candidate.pendingSettlement?.id == current.id
+                || candidate.pendingSettlement != nil))
+          }
+        case .reject, .cancel:
+          updatedTransfers = bal.transfers.map { candidate in
+            if candidate.fromMemberId == current.fromMemberId
+              && candidate.toMemberId == current.toMemberId
+              && (candidate.pendingSettlement?.id == current.id
+                || candidate.pendingSettlement != nil)
+            {
+              return SuggestedTransfer(
+                fromMemberId: candidate.fromMemberId,
+                toMemberId: candidate.toMemberId,
+                amount: candidate.amount,
+                paymentMethods: candidate.paymentMethods,
+                purpose: candidate.purpose,
+                pendingSettlement: nil
+              )
+            }
+            return candidate
+          }
+        }
+        balancesByGroup[groupId] = GroupBalances(
+          currency: bal.currency,
+          minimized: bal.minimized,
+          balances: bal.balances,
+          transfers: updatedTransfers,
+          fund: bal.fund
+        )
+      }
     }
   }
 #endif

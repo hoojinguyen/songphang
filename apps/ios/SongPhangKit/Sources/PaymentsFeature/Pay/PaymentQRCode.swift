@@ -3,8 +3,26 @@ import CoreImage
 import CoreImage.CIFilterBuiltins
 import Foundation
 
-enum PaymentQRCode {
+enum PaymentQRCode: Sendable {
+  private final class Storage: @unchecked Sendable {
+    let context = CIContext()
+    let lock = NSLock()
+    var cachedPayload: String?
+    var cachedImage: CGImage?
+  }
+
+  private static let storage = Storage()
+
   static func render(payload: String) -> CGImage? {
+    storage.lock.lock()
+    defer { storage.lock.unlock() }
+
+    if let cachedPayload = storage.cachedPayload, cachedPayload == payload,
+      let cachedImage = storage.cachedImage
+    {
+      return cachedImage
+    }
+
     let filter = CIFilter.qrCodeGenerator()
     filter.message = Data(payload.utf8)
     filter.correctionLevel = "M"
@@ -15,6 +33,11 @@ enum PaymentQRCode {
       .cropped(to: quietZone)
     let image = code.composited(over: background)
       .transformed(by: CGAffineTransform(scaleX: 12, y: 12))
-    return CIContext().createCGImage(image, from: image.extent)
+    guard let cgImage = storage.context.createCGImage(image, from: image.extent) else {
+      return nil
+    }
+    storage.cachedPayload = payload
+    storage.cachedImage = cgImage
+    return cgImage
   }
 }

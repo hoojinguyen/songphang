@@ -57,7 +57,7 @@ public final class LiveAttachmentsRepository: AttachmentsRepository, Sendable {
     request.httpBody = body
 
     do {
-      let (responseData, http, snapshot) = try await environment.performAuthorizedDataRequest(
+      let (responseData, http, snapshot) = try await environment.performAuthorizedUploadRequest(
         request
       )
       guard (200..<300).contains(http.statusCode) else {

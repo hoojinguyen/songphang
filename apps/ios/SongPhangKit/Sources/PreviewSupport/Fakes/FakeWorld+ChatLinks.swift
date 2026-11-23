@@ -3,15 +3,18 @@
   import Foundation
 
   extension FakeWorld {
-    public func listChatIdentities() -> [ChatIdentity] {
-      chatIdentities
+    public func listChatIdentities() async throws(AppError) -> [ChatIdentity] {
+      try await simulateNetwork()
+      return chatIdentities
     }
 
-    public func unlinkChatIdentity(platform: ChatPlatform) {
+    public func unlinkChatIdentity(platform: ChatPlatform) async throws(AppError) {
+      try await simulateNetwork()
       chatIdentities.removeAll { $0.platform == platform }
     }
 
-    public func startTelegramPairing() -> StartedTelegramPairing {
+    public func startTelegramPairing() async throws(AppError) -> StartedTelegramPairing {
+      try await simulateNetwork()
       let id = TelegramPairing.ID(UUID().uuidString.lowercased())
       let pairing = TelegramPairing(
         id: id,
@@ -29,8 +32,11 @@
       )
     }
 
-    public func fetchTelegramPairing(id: TelegramPairing.ID) -> TelegramPairing {
-      pairingsById[id]
+    public func fetchTelegramPairing(id: TelegramPairing.ID) async throws(AppError)
+      -> TelegramPairing
+    {
+      try await simulateNetwork()
+      return pairingsById[id]
         ?? TelegramPairing(
           id: id,
           status: .telegramConfirmed,
@@ -41,17 +47,21 @@
         )
     }
 
-    public func confirmTelegramPairing(id: TelegramPairing.ID) {
-      if let existing = pairingsById[id] {
-        pairingsById[id] = TelegramPairing(
-          id: existing.id,
-          status: .completed,
-          botUsername: existing.botUsername,
-          stagedPlatformUserId: existing.stagedPlatformUserId,
-          stagedPlatformName: existing.stagedPlatformName,
-          expiresAt: existing.expiresAt
-        )
+    public func confirmTelegramPairing(id: TelegramPairing.ID) async throws(AppError) {
+      try await simulateNetwork()
+      guard let existing = pairingsById[id],
+        existing.status == .pendingTelegram || existing.status == .telegramConfirmed
+      else {
+        return
       }
+      pairingsById[id] = TelegramPairing(
+        id: existing.id,
+        status: .completed,
+        botUsername: existing.botUsername,
+        stagedPlatformUserId: existing.stagedPlatformUserId,
+        stagedPlatformName: existing.stagedPlatformName,
+        expiresAt: existing.expiresAt
+      )
       if !chatIdentities.contains(where: { $0.platform == .telegram }) {
         chatIdentities.append(
           ChatIdentity(platform: .telegram, linkedAt: "2026-11-23T10:00:00.000Z")
@@ -59,7 +69,8 @@
       }
     }
 
-    public func cancelTelegramPairing(id: TelegramPairing.ID) {
+    public func cancelTelegramPairing(id: TelegramPairing.ID) async throws(AppError) {
+      try await simulateNetwork()
       if let existing = pairingsById[id] {
         pairingsById[id] = TelegramPairing(
           id: existing.id,
@@ -72,22 +83,31 @@
       }
     }
 
-    public func listGroupChatLinks(groupId: ExpenseGroup.ID) -> GroupChatLinks {
-      GroupChatLinks(
+    public func listGroupChatLinks(groupId: ExpenseGroup.ID) async throws(AppError)
+      -> GroupChatLinks
+    {
+      try await simulateNetwork()
+      return GroupChatLinks(
         botUsername: "SongPhangBot",
         chatLinks: groupChatLinksByGroup[groupId] ?? []
       )
     }
 
-    public func createGroupChatLinkCode(groupId: ExpenseGroup.ID) -> GroupChatLinkCode {
-      GroupChatLinkCode(
+    public func createGroupChatLinkCode(groupId: ExpenseGroup.ID) async throws(AppError)
+      -> GroupChatLinkCode
+    {
+      try await simulateNetwork()
+      return GroupChatLinkCode(
         command: "/link 123456",
         botUsername: "SongPhangBot",
         expiresAt: "2026-11-23T12:00:00.000Z"
       )
     }
 
-    public func unlinkGroupChat(groupId: ExpenseGroup.ID, chatLinkId: ChatLink.ID) {
+    public func unlinkGroupChat(groupId: ExpenseGroup.ID, chatLinkId: ChatLink.ID)
+      async throws(AppError)
+    {
+      try await simulateNetwork()
       groupChatLinksByGroup[groupId]?.removeAll { $0.id == chatLinkId }
     }
   }

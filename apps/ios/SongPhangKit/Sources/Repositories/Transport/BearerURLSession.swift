@@ -28,6 +28,19 @@ enum BearerURLSession {
     return URLSession(configuration: configuration)
   }
 
+  static func makeUploadSession() -> URLSession {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.httpShouldSetCookies = false
+    configuration.httpCookieAcceptPolicy = .never
+    configuration.httpCookieStorage = nil
+    configuration.urlCache = nil
+    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+    configuration.waitsForConnectivity = false
+    configuration.timeoutIntervalForRequest = 60
+    configuration.timeoutIntervalForResource = 300
+    return URLSession(configuration: configuration)
+  }
+
   static func makeTransport(session: URLSession) -> URLSessionTransport {
     URLSessionTransport(configuration: .init(session: session))
   }

@@ -3,85 +3,97 @@
   import Foundation
 
   extension FakeWorld {
-    public func listNotifications(cursor: String?, limit: Int) -> (
+    public func listNotifications(cursor: String?, limit: Int) async throws(AppError) -> (
       notifications: [AppNotification], nextCursor: String?
     ) {
-      let sampleNotifications = [
-        AppNotification(
-          id: AppNotification.ID("00000000-0000-7000-8000-000000000901"),
-          kind: "expense_added",
-          groupId: ExpenseGroup.ID("00000000-0000-7000-8000-000000000001"),
-          groupName: "Đà Lạt 2026",
-          read: false,
-          createdAt: "2026-11-22T10:00:00.000Z",
-          payload: .expenseAdded(
-            actorName: "Lan",
-            groupName: "Đà Lạt 2026",
-            transactionId: "00000000-0000-7000-8000-000000000101",
-            description: "Cà phê",
-            share: Money(50_000)
-          ),
-          target: .transaction(
-            groupId: ExpenseGroup.ID("00000000-0000-7000-8000-000000000001"),
-            transactionId: "00000000-0000-7000-8000-000000000101"
+      try await simulateNetwork()
+      return (storedNotifications, nil)
+    }
+
+    public func unreadNotificationCount() async throws(AppError) -> Int {
+      try await simulateNetwork()
+      return storedNotifications.filter { !$0.read }.count
+    }
+
+    public func markNotificationsRead(ids: [AppNotification.ID]) async throws(AppError) {
+      try await simulateNetwork()
+      let idSet = Set(ids)
+      storedNotifications = storedNotifications.map { notif in
+        if idSet.contains(notif.id) {
+          return AppNotification(
+            id: notif.id,
+            kind: notif.kind,
+            groupId: notif.groupId,
+            groupName: notif.groupName,
+            read: true,
+            createdAt: notif.createdAt,
+            payload: notif.payload,
+            target: notif.target
           )
-        ),
+        }
+        return notif
+      }
+    }
+
+    public func markAllNotificationsRead() async throws(AppError) {
+      try await simulateNetwork()
+      storedNotifications = storedNotifications.map { notif in
         AppNotification(
-          id: AppNotification.ID("00000000-0000-7000-8000-000000000902"),
-          kind: "settlement_requested",
-          groupId: ExpenseGroup.ID("00000000-0000-7000-8000-000000000001"),
-          groupName: "Đà Lạt 2026",
+          id: notif.id,
+          kind: notif.kind,
+          groupId: notif.groupId,
+          groupName: notif.groupName,
           read: true,
-          createdAt: "2026-11-21T15:30:00.000Z",
-          payload: .settlementRequested(
-            actorName: "Hoa",
-            groupName: "Đà Lạt 2026",
-            amount: Money(120_000)
-          ),
-          target: .balances(groupId: ExpenseGroup.ID("00000000-0000-7000-8000-000000000001"))
-        ),
-      ]
-      return (sampleNotifications, nil)
+          createdAt: notif.createdAt,
+          payload: notif.payload,
+          target: notif.target
+        )
+      }
     }
 
-    public func unreadNotificationCount() -> Int {
-      1
-    }
-
-    public func markNotificationsRead(ids: [AppNotification.ID]) {}
-
-    public func markAllNotificationsRead() {}
-
-    public func getNotificationSettings() -> NotificationSettings {
-      NotificationSettings(emailImmediate: true, emailDigest: false)
+    public func getNotificationSettings() async throws(AppError) -> NotificationSettings {
+      try await simulateNetwork()
+      return notificationSettings
     }
 
     public func updateNotificationSettings(emailImmediate: Bool?, emailDigest: Bool?)
-      -> NotificationSettings
+      async throws(AppError) -> NotificationSettings
     {
-      NotificationSettings(
-        emailImmediate: emailImmediate ?? true,
-        emailDigest: emailDigest ?? false
+      try await simulateNetwork()
+      let updated = NotificationSettings(
+        emailImmediate: emailImmediate ?? notificationSettings.emailImmediate,
+        emailDigest: emailDigest ?? notificationSettings.emailDigest
       )
+      self.notificationSettings = updated
+      return updated
     }
 
     public func sendReminder(
       groupId: ExpenseGroup.ID,
       fromMemberId: Member.ID,
       toMemberId: Member.ID
-    ) -> SendReminderResult {
-      SendReminderResult(
+    ) async throws(AppError) -> SendReminderResult {
+      try await simulateNetwork()
+      return SendReminderResult(
         reminded: [ReminderPair(fromMemberId: fromMemberId, toMemberId: toMemberId)],
         skipped: []
       )
     }
 
-    public func sendAllReminders(groupId: ExpenseGroup.ID) -> SendReminderResult {
-      SendReminderResult(reminded: [], skipped: [])
+    public func sendAllReminders(groupId: ExpenseGroup.ID) async throws(AppError)
+      -> SendReminderResult
+    {
+      try await simulateNetwork()
+      return SendReminderResult(reminded: [], skipped: [])
     }
 
-    public func setGroupMuted(id: ExpenseGroup.ID, muted: Bool) -> Bool {
-      muted
+    public func setGroupMuted(id: ExpenseGroup.ID, muted: Bool) async throws(AppError) -> Bool {
+      try await simulateNetwork()
+      if var group = groupsById[id] {
+        group.muted = muted
+        groupsById[id] = group
+      }
+      return muted
     }
   }
 #endif

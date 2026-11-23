@@ -2,9 +2,9 @@
   public import Domain
 
   public nonisolated struct FakeSettlementRequestsRepository: SettlementRequestsRepository {
-    private let world: FakeWorld?
+    private let world: FakeWorld
 
-    public init(world: FakeWorld? = nil) {
+    public init(world: FakeWorld) {
       self.world = world
     }
 
@@ -12,8 +12,7 @@
       groupId: ExpenseGroup.ID,
       status: SettlementRequestStatus?
     ) async throws(AppError) -> [SettlementRequest] {
-      guard let world else { return [] }
-      return try await world.listSettlementRequests(groupId: groupId, status: status)
+      try await world.listSettlementRequests(groupId: groupId, status: status)
     }
 
     public func request(
@@ -21,7 +20,6 @@
       transfer: SuggestedTransfer,
       idempotencyKey: String
     ) async throws(AppError) {
-      guard let world else { throw .unexpected }
       try await world.createSettlementRequest(
         groupId: groupId, transfer: transfer, idempotencyKey: idempotencyKey)
     }
@@ -31,7 +29,6 @@
       requestId: String,
       decision: SettlementDecision
     ) async throws(AppError) {
-      guard let world else { throw .unexpected }
       try await world.resolveSettlementRequest(
         groupId: groupId, requestId: requestId, decision: decision)
     }

@@ -9,6 +9,7 @@ public final class LiveAPIEnvironment: Sendable {
   let snapshots: SnapshotStore
   let urlSession: URLSession
   let streamingSession: URLSession
+  let uploadSession: URLSession
   let client: Client
   let errorMapper: ErrorMapper
   private let invalidationHub: SessionInvalidationHub
@@ -40,6 +41,7 @@ public final class LiveAPIEnvironment: Sendable {
     let session = BearerURLSession.makeSession()
     self.urlSession = session
     self.streamingSession = BearerURLSession.makeStreamingSession()
+    self.uploadSession = BearerURLSession.makeUploadSession()
     let middleware = AuthMiddleware(
       tokenStore: store,
       appVersion: configuration.appVersion,
@@ -111,6 +113,26 @@ public final class LiveAPIEnvironment: Sendable {
       modified.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     }
     let (data, response) = try await urlSession.data(for: modified)
+    let currentGeneration = await tokenStore.currentGeneration()
+    if currentGeneration != snapshot.generation {
+      throw StaleSessionError()
+    }
+    guard let http = response as? HTTPURLResponse else {
+      throw AppError.unexpected
+    }
+    return (data, http, snapshot)
+  }
+
+  func performAuthorizedUploadRequest(
+    _ request: URLRequest
+  ) async throws -> (Data, HTTPURLResponse, TokenStore.TokenSnapshot) {
+    let snapshot = await tokenStore.readSnapshot()
+    var modified = request
+    modified.setValue(configuration.appVersion, forHTTPHeaderField: "X-App-Version")
+    if let token = snapshot.token, !token.isEmpty {
+      modified.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+    }
+    let (data, response) = try await uploadSession.data(for: modified)
     let currentGeneration = await tokenStore.currentGeneration()
     if currentGeneration != snapshot.generation {
       throw StaleSessionError()

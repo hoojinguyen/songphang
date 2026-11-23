@@ -118,7 +118,7 @@
     }
 
     public func setMuted(id: ExpenseGroup.ID, muted: Bool) async throws(AppError) -> Bool {
-      await world.setGroupMuted(id: id, muted: muted)
+      try await world.setGroupMuted(id: id, muted: muted)
     }
 
     public func delete(id: ExpenseGroup.ID, confirmName: String) async throws(AppError) {
@@ -620,29 +620,29 @@
     public func list(cursor: String?, limit: Int) async throws(AppError) -> (
       notifications: [AppNotification], nextCursor: String?
     ) {
-      await world.listNotifications(cursor: cursor, limit: limit)
+      try await world.listNotifications(cursor: cursor, limit: limit)
     }
 
     public func unreadCount() async throws(AppError) -> Int {
-      await world.unreadNotificationCount()
+      try await world.unreadNotificationCount()
     }
 
     public func markRead(ids: [AppNotification.ID]) async throws(AppError) {
-      await world.markNotificationsRead(ids: ids)
+      try await world.markNotificationsRead(ids: ids)
     }
 
     public func markAllRead() async throws(AppError) {
-      await world.markAllNotificationsRead()
+      try await world.markAllNotificationsRead()
     }
 
     public func settings() async throws(AppError) -> NotificationSettings {
-      await world.getNotificationSettings()
+      try await world.getNotificationSettings()
     }
 
     public func updateSettings(emailImmediate: Bool?, emailDigest: Bool?) async throws(AppError)
       -> NotificationSettings
     {
-      await world.updateNotificationSettings(
+      try await world.updateNotificationSettings(
         emailImmediate: emailImmediate, emailDigest: emailDigest)
     }
   }
@@ -656,13 +656,14 @@
       fromMemberId: Member.ID,
       toMemberId: Member.ID
     ) async throws(AppError) -> SendReminderResult {
-      await world.sendReminder(groupId: groupId, fromMemberId: fromMemberId, toMemberId: toMemberId)
+      try await world.sendReminder(
+        groupId: groupId, fromMemberId: fromMemberId, toMemberId: toMemberId)
     }
 
     public func sendAllReminders(groupId: ExpenseGroup.ID) async throws(AppError)
       -> SendReminderResult
     {
-      await world.sendAllReminders(groupId: groupId)
+      try await world.sendAllReminders(groupId: groupId)
     }
   }
 
@@ -671,44 +672,44 @@
     public init(world: FakeWorld) { self.world = world }
 
     public func myIdentities() async throws(AppError) -> [ChatIdentity] {
-      await world.listChatIdentities()
+      try await world.listChatIdentities()
     }
 
     public func unlinkMyIdentity(platform: ChatPlatform) async throws(AppError) {
-      await world.unlinkChatIdentity(platform: platform)
+      try await world.unlinkChatIdentity(platform: platform)
     }
 
     public func startTelegramPairing() async throws(AppError) -> StartedTelegramPairing {
-      await world.startTelegramPairing()
+      try await world.startTelegramPairing()
     }
 
     public func telegramPairing(id: TelegramPairing.ID) async throws(AppError) -> TelegramPairing {
-      await world.fetchTelegramPairing(id: id)
+      try await world.fetchTelegramPairing(id: id)
     }
 
     public func confirmTelegramPairing(id: TelegramPairing.ID) async throws(AppError) {
-      await world.confirmTelegramPairing(id: id)
+      try await world.confirmTelegramPairing(id: id)
     }
 
     public func cancelTelegramPairing(id: TelegramPairing.ID) async throws(AppError) {
-      await world.cancelTelegramPairing(id: id)
+      try await world.cancelTelegramPairing(id: id)
     }
 
     public func groupChatLinks(groupId: ExpenseGroup.ID) async throws(AppError) -> GroupChatLinks {
-      await world.listGroupChatLinks(groupId: groupId)
+      try await world.listGroupChatLinks(groupId: groupId)
     }
 
     public func createGroupChatLinkCode(groupId: ExpenseGroup.ID) async throws(AppError)
       -> GroupChatLinkCode
     {
-      await world.createGroupChatLinkCode(groupId: groupId)
+      try await world.createGroupChatLinkCode(groupId: groupId)
     }
 
     public func unlinkGroupChat(
       groupId: ExpenseGroup.ID,
       chatLinkId: ChatLink.ID
     ) async throws(AppError) {
-      await world.unlinkGroupChat(groupId: groupId, chatLinkId: chatLinkId)
+      try await world.unlinkGroupChat(groupId: groupId, chatLinkId: chatLinkId)
     }
   }
 #endif

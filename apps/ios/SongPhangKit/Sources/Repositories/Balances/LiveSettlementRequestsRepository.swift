@@ -30,18 +30,48 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
       queryStatus = nil
     }
 
+    var allRequests: [SettlementRequest] = []
+    var currentCursor: String?
+    let maxPages = 10
+
+    for _ in 0..<maxPages {
+      let page = try await fetchPage(
+        groupId: groupId,
+        queryStatus: queryStatus,
+        cursor: currentCursor
+      )
+      allRequests.append(contentsOf: page.requests)
+      guard let next = page.nextCursor, !next.isEmpty else {
+        break
+      }
+      currentCursor = next
+    }
+
+    return allRequests
+  }
+
+  private func fetchPage(
+    groupId: ExpenseGroup.ID,
+    queryStatus: Operations
+      .get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_settlement_hyphen_requests
+      .Input.Query.statusPayload?,
+    cursor: String?
+  ) async throws(AppError) -> (requests: [SettlementRequest], nextCursor: String?) {
     do {
       return try await ResponseBodyCapture.withCapture {
         let output = try await environment.client
           .get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_settlement_hyphen_requests(
             .init(
               path: .init(groupId: groupId.rawValue),
-              query: .init(status: queryStatus)
+              query: .init(status: queryStatus, cursor: cursor)
             )
           )
         switch output {
         case .ok(let ok):
-          return try ok.body.json.requests.map(Self.mapRequest)
+          let json = try ok.body.json
+          let requests = json.requests.map(Self.mapRequest)
+          let nextCursor = json.nextCursor
+          return (requests: requests, nextCursor: nextCursor)
         case .undocumented(let statusCode, let payload):
           throw await environment.errorMapper.mapUndocumented(
             statusCode: statusCode,
@@ -49,7 +79,8 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
           )
         }
       } fallback: { data in
-        try Self.decodeResilientRequests(from: data)
+        let raw = try JSONDecoder().decode(RawSettlementRequestsResponse.self, from: data)
+        return (requests: raw.requests.map { $0.toDomain() }, nextCursor: raw.nextCursor)
       }
     } catch let error as AppError {
       throw error
@@ -194,6 +225,7 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
 
   private struct RawSettlementRequestsResponse: Codable, Sendable {
     let requests: [RawSettlementRequest]
+    let nextCursor: String?
   }
 
   private static func decodeResilientRequests(from data: Data) throws -> [SettlementRequest] {
