@@ -17,6 +17,21 @@ import { registerJob, type WorkerDeps } from "../queue.js";
 const deliveredNotificationDevices = new Map<string, Set<string>>();
 const MAX_TRACKED_NOTIFICATIONS = 10_000;
 
+function recordDelivered(notificationId: string, deviceId: string): void {
+	let set = deliveredNotificationDevices.get(notificationId);
+	if (!set) {
+		if (deliveredNotificationDevices.size >= MAX_TRACKED_NOTIFICATIONS) {
+			const oldest = deliveredNotificationDevices.keys().next().value;
+			if (oldest !== undefined) {
+				deliveredNotificationDevices.delete(oldest);
+			}
+		}
+		set = new Set<string>();
+		deliveredNotificationDevices.set(notificationId, set);
+	}
+	set.add(deviceId);
+}
+
 export async function runSendPush(
 	deps: WorkerDeps,
 	notificationId: string,
@@ -62,19 +77,9 @@ export async function runSendPush(
 			});
 			if (result === "sent") {
 				sentCount += 1;
-				let set = deliveredNotificationDevices.get(notificationId);
-				if (!set) {
-					if (deliveredNotificationDevices.size >= MAX_TRACKED_NOTIFICATIONS) {
-						const oldest = deliveredNotificationDevices.keys().next().value;
-						if (oldest !== undefined) {
-							deliveredNotificationDevices.delete(oldest);
-						}
-					}
-					set = new Set<string>();
-					deliveredNotificationDevices.set(notificationId, set);
-				}
-				set.add(device.id);
+				recordDelivered(notificationId, device.id);
 			} else if (result === "gone") {
+				recordDelivered(notificationId, device.id);
 				await deletePushDeviceIfUnchanged(deps.db, {
 					id: device.id,
 					userId: device.userId,
@@ -83,6 +88,7 @@ export async function runSendPush(
 					lastSeenAt: device.lastSeenAt,
 				});
 			} else if (result === "permanent_failure") {
+				recordDelivered(notificationId, device.id);
 				console.warn(
 					JSON.stringify({
 						event: "push.send.permanent_failure",
@@ -98,6 +104,7 @@ export async function runSendPush(
 					event: "push.send.device_exception",
 					deviceId: device.id,
 					category: error instanceof Error ? error.name : "unknown",
+					message: error instanceof Error ? error.message : undefined,
 				}),
 			);
 			hasFailure = true;

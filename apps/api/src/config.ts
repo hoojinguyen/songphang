@@ -18,6 +18,38 @@ const FAKE_RECEIPT_FIXTURES = [
 
 export type FakeReceiptFixture = (typeof FAKE_RECEIPT_FIXTURES)[number];
 
+function validateEcP256PrivateKey(
+	rawPem: string,
+	fieldPath: string,
+	context: z.RefinementCtx,
+): void {
+	try {
+		const key = createPrivateKey(rawPem);
+		if (key.asymmetricKeyType !== "ec") {
+			context.addIssue({
+				code: "custom",
+				path: [fieldPath],
+				message: `${fieldPath} must be an EC private key`,
+			});
+		} else {
+			const curve = key.asymmetricKeyDetails?.namedCurve;
+			if (curve !== "prime256v1" && curve !== "p256") {
+				context.addIssue({
+					code: "custom",
+					path: [fieldPath],
+					message: `${fieldPath} must use the P-256 (prime256v1) curve`,
+				});
+			}
+		}
+	} catch {
+		context.addIssue({
+			code: "custom",
+			path: [fieldPath],
+			message: `${fieldPath} is invalid or malformed PEM`,
+		});
+	}
+}
+
 const CONFIG_SCHEMA = z
 	.object({
 		APP_ENV: z.enum(["development", "production"]),
@@ -238,6 +270,9 @@ const CONFIG_SCHEMA = z
 						"APNS_KEY_ID or APPLE_KEY_ID is required when PUSH_PROVIDER=apns",
 				});
 			}
+			const privateKeySource = env.APNS_PRIVATE_KEY
+				? "APNS_PRIVATE_KEY"
+				: "APPLE_PRIVATE_KEY";
 			const privateKeyRaw = (
 				env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY
 			)?.replace(/\\n/g, "\n");
@@ -249,32 +284,7 @@ const CONFIG_SCHEMA = z
 						"APNS_PRIVATE_KEY or APPLE_PRIVATE_KEY is required when PUSH_PROVIDER=apns",
 				});
 			} else {
-				try {
-					const key = createPrivateKey(privateKeyRaw);
-					if (key.asymmetricKeyType !== "ec") {
-						context.addIssue({
-							code: "custom",
-							path: ["APNS_PRIVATE_KEY"],
-							message: "APNS private key must be an EC private key",
-						});
-					} else {
-						const curve = key.asymmetricKeyDetails?.namedCurve;
-						if (curve !== "prime256v1" && curve !== "p256") {
-							context.addIssue({
-								code: "custom",
-								path: ["APNS_PRIVATE_KEY"],
-								message:
-									"APNS private key must use the P-256 (prime256v1) curve",
-							});
-						}
-					}
-				} catch {
-					context.addIssue({
-						code: "custom",
-						path: ["APNS_PRIVATE_KEY"],
-						message: "APNS private key is invalid or malformed PEM",
-					});
-				}
+				validateEcP256PrivateKey(privateKeyRaw, privateKeySource, context);
 			}
 		}
 		if (env.APPLE_PROVIDER === "apple") {
@@ -293,34 +303,11 @@ const CONFIG_SCHEMA = z
 				}
 			}
 			if (env.APPLE_PRIVATE_KEY) {
-				try {
-					const appleKey = createPrivateKey(
-						env.APPLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-					);
-					if (appleKey.asymmetricKeyType !== "ec") {
-						context.addIssue({
-							code: "custom",
-							path: ["APPLE_PRIVATE_KEY"],
-							message: "APPLE_PRIVATE_KEY must be an EC private key",
-						});
-					} else {
-						const curve = appleKey.asymmetricKeyDetails?.namedCurve;
-						if (curve !== "prime256v1" && curve !== "p256") {
-							context.addIssue({
-								code: "custom",
-								path: ["APPLE_PRIVATE_KEY"],
-								message:
-									"APPLE_PRIVATE_KEY must use the P-256 (prime256v1) curve",
-							});
-						}
-					}
-				} catch {
-					context.addIssue({
-						code: "custom",
-						path: ["APPLE_PRIVATE_KEY"],
-						message: "APPLE_PRIVATE_KEY is invalid or malformed PEM",
-					});
-				}
+				validateEcP256PrivateKey(
+					env.APPLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+					"APPLE_PRIVATE_KEY",
+					context,
+				);
 			}
 			const rawDek = env.DATA_ENCRYPTION_KEY;
 			if (!rawDek || Buffer.from(rawDek, "base64").length !== 32) {

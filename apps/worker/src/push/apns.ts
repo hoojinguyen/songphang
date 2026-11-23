@@ -64,7 +64,7 @@ export function createApnsPushSender(input: {
 						deviceId: device.id,
 					}),
 				);
-				return "sent";
+				return "permanent_failure";
 			}
 			const authority = apnsAuthority(device.environment);
 			const client = getSession(authority);
