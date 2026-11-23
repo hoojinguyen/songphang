@@ -58,6 +58,7 @@ public final class SettleModel {
   public var isRecorded = false
 
   private func resetIntent() {
+    guard !isSubmitting else { return }
     capturedOccurredAt = nil
     idempotencyKey = IdempotencyKey()
     submitError = nil
@@ -126,6 +127,7 @@ public final class SettleModel {
   }
 
   public func updateAmountText(_ raw: String) {
+    guard !isSubmitting else { return }
     let digits = raw.filter { $0.isWholeNumber && $0.isASCII }
     if digits.isEmpty {
       amountText = ""
@@ -166,11 +168,12 @@ public final class SettleModel {
       )
     )
 
+    let submitKey = idempotencyKey
     do throws(AppError) {
       _ = try await transactionsRepository.create(
         groupId: groupId,
         draft: draft,
-        key: idempotencyKey
+        key: submitKey
       )
       capturedOccurredAt = nil
       isRecorded = true

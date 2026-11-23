@@ -3,6 +3,11 @@ import Domain
 import SwiftUI
 
 struct ApprovalCardView: View {
+  private enum PendingAction: Equatable {
+    case save(Money)
+    case disable
+  }
+
   let group: ExpenseGroup
   let isDisabled: Bool
   let isPending: Bool
@@ -11,6 +16,7 @@ struct ApprovalCardView: View {
   @State private var isEnabled: Bool
   @State private var amountText: String
   @State private var hasDraftEdit = false
+  @State private var pendingAction: PendingAction?
 
   init(
     group: ExpenseGroup,
@@ -50,11 +56,13 @@ struct ApprovalCardView: View {
               isEnabled = next
               if !next {
                 if group.approvalThreshold != nil {
+                  pendingAction = .disable
+                  hasDraftEdit = false
                   onSave(nil)
                 } else {
                   amountText = ""
+                  hasDraftEdit = false
                 }
-                hasDraftEdit = false
               } else {
                 hasDraftEdit = true
               }
@@ -96,8 +104,8 @@ struct ApprovalCardView: View {
           isPending: isPending
         ) {
           if let parsed {
+            pendingAction = .save(parsed)
             onSave(parsed)
-            hasDraftEdit = false
           }
         }
       }
@@ -107,23 +115,42 @@ struct ApprovalCardView: View {
     .background(Tokens.surface)
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     .onChange(of: group.approvalThreshold) { _, newThreshold in
-      if !hasDraftEdit {
+      let matchesPending: Bool = {
+        switch pendingAction {
+        case .save(let target): return newThreshold == target
+        case .disable: return newThreshold == nil
+        case nil: return false
+        }
+      }()
+      if matchesPending || !hasDraftEdit {
         isEnabled = newThreshold != nil
         if let newThreshold {
           amountText = MoneyFormat.amount(newThreshold)
         } else {
           amountText = ""
         }
+        hasDraftEdit = false
+        pendingAction = nil
       }
     }
     .onChange(of: isPending) { wasPending, nowPending in
-      if wasPending && !nowPending && !hasDraftEdit {
-        isEnabled = group.approvalThreshold != nil
-        if let threshold = group.approvalThreshold {
-          amountText = MoneyFormat.amount(threshold)
-        } else {
-          amountText = ""
+      if wasPending && !nowPending {
+        switch pendingAction {
+        case .disable:
+          isEnabled = group.approvalThreshold != nil
+          if let threshold = group.approvalThreshold {
+            amountText = MoneyFormat.amount(threshold)
+          } else {
+            amountText = ""
+          }
+        case .save(let target):
+          if group.approvalThreshold == target {
+            hasDraftEdit = false
+          }
+        case nil:
+          break
         }
+        pendingAction = nil
       }
     }
   }

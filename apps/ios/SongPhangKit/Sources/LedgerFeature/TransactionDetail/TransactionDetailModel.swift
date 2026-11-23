@@ -49,7 +49,8 @@ public final class TransactionDetailModel: Sendable {
   private let currentUserProvider: (@Sendable () -> User?)?
   private let onUnauthorized: (@Sendable () -> Void)?
   private var pendingSilentRefresh = false
-  private var refreshGeneration: UInt64 = 0
+  private var transactionGeneration: UInt64 = 0
+  private var commentsGeneration: UInt64 = 0
   private var auxiliaryRefreshGeneration: UInt64 = 0
 
   public init(
@@ -82,8 +83,9 @@ public final class TransactionDetailModel: Sendable {
   }
 
   public func load() async {
-    let gen = refreshGeneration &+ 1
-    refreshGeneration = gen
+    let txGen = transactionGeneration &+ 1
+    transactionGeneration = txGen
+    commentsGeneration &+= 1
     state = .loading
     actionError = nil
     do throws(AppError) {
@@ -92,7 +94,7 @@ public final class TransactionDetailModel: Sendable {
       let mems = try await membersRepository.members(groupId: groupId)
       let cats = try await categoriesRepository.list(groupId: groupId)
       let user = currentUserProvider?()
-      guard refreshGeneration == gen, !Task.isCancelled else { return }
+      guard transactionGeneration == txGen, !Task.isCancelled else { return }
       state = .loaded(
         TransactionDetailData(
           group: g,
@@ -108,7 +110,7 @@ public final class TransactionDetailModel: Sendable {
         await refreshSilently(resources: nil)
       }
     } catch {
-      guard refreshGeneration == gen, !Task.isCancelled else { return }
+      guard transactionGeneration == txGen, !Task.isCancelled else { return }
       if case .unauthorized = error {
         onUnauthorized?()
       }
@@ -139,14 +141,17 @@ public final class TransactionDetailModel: Sendable {
       return
     }
     let shouldReloadAll = resources == nil
-    let refreshesComments =
+    let refreshesTx =
       shouldReloadAll
       || resources?.contains("transactions") == true
       || resources?.contains("comments") == true
       || resources?.contains("attachments") == true
-    if refreshesComments { refreshGeneration &+= 1 }
+    let refreshesComments = refreshesTx
+    if refreshesTx { transactionGeneration &+= 1 }
+    if refreshesComments { commentsGeneration &+= 1 }
     auxiliaryRefreshGeneration &+= 1
-    let gen = refreshGeneration
+    let txGen = transactionGeneration
+    let commentGen = commentsGeneration
     let auxiliaryGen = auxiliaryRefreshGeneration
     do throws(AppError) {
       let fetchedGroup =
@@ -160,39 +165,47 @@ public final class TransactionDetailModel: Sendable {
         ? try await categoriesRepository.list(groupId: groupId) : nil
 
       var fetchedTx: LedgerTransaction?
-      var fetchedCommentsRes: (comments: [Comment], nextCursor: String?)?
-      if refreshesComments {
+      if refreshesTx {
         fetchedTx = try await transactionsRepository.transaction(
           groupId: groupId,
           id: transactionId
         )
+      }
+
+      var fetchedCommentsRes: (comments: [Comment], nextCursor: String?)?
+      if refreshesComments {
         let previouslyLoadedCount = comments.count
         var accumulated: [Comment] = []
         var nextCursor: String? = nil
-        let page1 = try await transactionsRepository.comments(
-          groupId: groupId,
-          id: transactionId,
-          cursor: nil,
-          limit: 50
-        )
-        accumulated.append(contentsOf: page1.comments)
-        nextCursor = page1.nextCursor
-
-        while let cursor = nextCursor, accumulated.count < previouslyLoadedCount {
-          let nextPage = try await transactionsRepository.comments(
+        if !Task.isCancelled && commentsGeneration == commentGen {
+          let page1 = try await transactionsRepository.comments(
             groupId: groupId,
             id: transactionId,
-            cursor: cursor,
+            cursor: nil,
             limit: 50
           )
-          accumulated.append(contentsOf: nextPage.comments)
-          nextCursor = nextPage.nextCursor
-        }
+          accumulated.append(contentsOf: page1.comments)
+          nextCursor = page1.nextCursor
 
-        fetchedCommentsRes = (comments: accumulated, nextCursor: nextCursor)
+          while let cursor = nextCursor, accumulated.count < previouslyLoadedCount {
+            if Task.isCancelled || commentsGeneration != commentGen { break }
+            let nextPage = try await transactionsRepository.comments(
+              groupId: groupId,
+              id: transactionId,
+              cursor: cursor,
+              limit: 50
+            )
+            accumulated.append(contentsOf: nextPage.comments)
+            nextCursor = nextPage.nextCursor
+          }
+
+          if !Task.isCancelled && commentsGeneration == commentGen {
+            fetchedCommentsRes = (comments: accumulated, nextCursor: nextCursor)
+          }
+        }
       }
 
-      guard !Task.isCancelled, refreshGeneration == gen, case .loaded(var current) = state else {
+      guard !Task.isCancelled, case .loaded(var current) = state else {
         return
       }
       if auxiliaryRefreshGeneration == auxiliaryGen {
@@ -200,17 +213,21 @@ public final class TransactionDetailModel: Sendable {
         if let fetchedMembers { current.members = fetchedMembers }
         if let fetchedCategories { current.categories = fetchedCategories }
       }
-      if let fetchedTx { current.transaction = fetchedTx }
+      if transactionGeneration == txGen, let fetchedTx {
+        current.transaction = fetchedTx
+      }
       current.currentUser = currentUserProvider?()
       state = .loaded(current)
 
-      if let fetchedCommentsRes {
+      if commentsGeneration == commentGen, let fetchedCommentsRes {
         comments = fetchedCommentsRes.comments
         commentsNextCursor = fetchedCommentsRes.nextCursor
         commentsError = nil
       }
     } catch {
-      guard refreshGeneration == gen, !Task.isCancelled else { return }
+      guard !Task.isCancelled,
+        transactionGeneration == txGen || commentsGeneration == commentGen
+      else { return }
       if case .unauthorized = error {
         onUnauthorized?()
       }
@@ -218,18 +235,21 @@ public final class TransactionDetailModel: Sendable {
   }
 
   public func loadComments(initial: Bool = false) async {
-    let gen = refreshGeneration
-    guard !isFetchingComments else { return }
+    let commentGen = commentsGeneration
     if initial {
+      guard !isFetchingComments else { return }
       isFetchingComments = true
       commentsError = nil
     } else {
-      guard commentsNextCursor != nil, !isFetchingNextComments else { return }
+      guard commentsNextCursor != nil, !isFetchingComments, !isFetchingNextComments else { return }
       isFetchingNextComments = true
     }
     defer {
-      isFetchingComments = false
-      isFetchingNextComments = false
+      if initial {
+        isFetchingComments = false
+      } else {
+        isFetchingNextComments = false
+      }
     }
 
     do throws(AppError) {
@@ -240,7 +260,7 @@ public final class TransactionDetailModel: Sendable {
         cursor: cursor,
         limit: 50
       )
-      guard refreshGeneration == gen, !Task.isCancelled else { return }
+      guard commentsGeneration == commentGen, !Task.isCancelled else { return }
       if initial {
         comments = res.comments
       } else {
@@ -248,7 +268,7 @@ public final class TransactionDetailModel: Sendable {
       }
       commentsNextCursor = res.nextCursor
     } catch {
-      guard refreshGeneration == gen, !Task.isCancelled else { return }
+      guard commentsGeneration == commentGen, !Task.isCancelled else { return }
       if case .unauthorized = error {
         onUnauthorized?()
       }
@@ -270,11 +290,16 @@ public final class TransactionDetailModel: Sendable {
         body: body,
         key: key
       )
-      refreshGeneration += 1
+      let hadInFlightComments = isFetchingComments || isFetchingNextComments
+      commentsGeneration &+= 1
+      transactionGeneration &+= 1
       comments.append(comment)
       if case .loaded(var cur) = state {
         cur.transaction.commentCount += 1
         state = .loaded(cur)
+      }
+      if hadInFlightComments {
+        await refreshSilently(resources: ["comments"])
       }
       return true
     } catch {
@@ -295,11 +320,16 @@ public final class TransactionDetailModel: Sendable {
         id: transactionId,
         commentId: id
       )
-      refreshGeneration += 1
+      let hadInFlightComments = isFetchingComments || isFetchingNextComments
+      commentsGeneration &+= 1
+      transactionGeneration &+= 1
       comments.removeAll(where: { $0.id == id })
       if case .loaded(var cur) = state {
         cur.transaction.commentCount = max(0, cur.transaction.commentCount - 1)
         state = .loaded(cur)
+      }
+      if hadInFlightComments {
+        await refreshSilently(resources: ["comments"])
       }
     } catch {
       actionError = error
@@ -318,7 +348,7 @@ public final class TransactionDetailModel: Sendable {
         id: transactionId,
         reason: reason
       )
-      refreshGeneration += 1
+      transactionGeneration &+= 1
       if case .loaded(var cur) = state {
         cur.transaction.dispute = dispute
         state = .loaded(cur)
@@ -338,7 +368,7 @@ public final class TransactionDetailModel: Sendable {
 
     do throws(AppError) {
       try await transactionsRepository.resolveDispute(groupId: groupId, id: transactionId)
-      refreshGeneration += 1
+      transactionGeneration &+= 1
       if case .loaded(var cur) = state {
         cur.transaction.dispute = nil
         state = .loaded(cur)
@@ -357,7 +387,7 @@ public final class TransactionDetailModel: Sendable {
 
     do throws(AppError) {
       let updated = try await transactionsRepository.approve(groupId: groupId, id: transactionId)
-      refreshGeneration += 1
+      transactionGeneration &+= 1
       if case .loaded(var cur) = state {
         cur.transaction = updated
         state = .loaded(cur)
@@ -379,7 +409,7 @@ public final class TransactionDetailModel: Sendable {
         id: transactionId,
         note: note
       )
-      refreshGeneration += 1
+      transactionGeneration &+= 1
       if case .loaded(var cur) = state {
         cur.transaction = updated
         state = .loaded(cur)

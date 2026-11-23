@@ -41,6 +41,7 @@ public final class NotificationsModel {
 
   public func load() async {
     mutationGeneration += 1
+    let gen = mutationGeneration
     state = .loading
     markError = nil
     nextPageError = nil
@@ -48,6 +49,7 @@ public final class NotificationsModel {
       async let countFetch = repository.unreadCount()
       async let listFetch = repository.list(cursor: nil, limit: 30)
       let (count, list) = try await (countFetch, listFetch)
+      guard mutationGeneration == gen, !Task.isCancelled else { return }
       state = .loaded(
         ScreenData(
           notifications: list.notifications,
@@ -56,12 +58,14 @@ public final class NotificationsModel {
         )
       )
     } catch let error as AppError {
+      guard mutationGeneration == gen, !Task.isCancelled else { return }
       if error == .unauthorized {
         onUnauthorized()
         return
       }
       state = .failed(error)
     } catch {
+      guard mutationGeneration == gen, !Task.isCancelled else { return }
       state = .failed(.unexpected)
     }
   }
@@ -120,6 +124,7 @@ public final class NotificationsModel {
   public func markAllRead() async {
     guard case .loaded(var data) = state, !isMarkingAll, !isFetchingNextPage else { return }
     isMarkingAll = true
+    markError = nil
     mutationGeneration += 1
     let gen = mutationGeneration
     defer { isMarkingAll = false }
