@@ -731,21 +731,7 @@ public struct RouteDestination: View {
             Task {
               await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
             }
-            switch target {
-            case .transaction(let groupId, let txId):
-              onNavigate(
-                .editTransaction(
-                  groupId: groupId,
-                  transactionId: LedgerTransaction.ID(txId)
-                )
-              )
-            case .balances(let groupId):
-              onNavigate(.groupBalances(groupId: groupId))
-            case .stats(let groupId):
-              onNavigate(.groupStats(groupId: groupId))
-            case .group(let groupId):
-              onNavigate(.groupFeed(groupId: groupId))
-            }
+            onNavigate(Self.notificationDestination(for: target))
           }
         )
       }
@@ -776,5 +762,21 @@ public struct RouteDestination: View {
         Task { await sessionModel.signOut() }
       }
     )
+  }
+
+  public static func notificationDestination(for target: AppNotification.Target) -> Route {
+    switch target {
+    case .transaction(let groupId, let txId):
+      return .transactionDetail(
+        groupId: groupId,
+        transactionId: LedgerTransaction.ID(txId)
+      )
+    case .balances(let groupId):
+      return .groupBalances(groupId: groupId)
+    case .stats(let groupId):
+      return .groupStats(groupId: groupId)
+    case .group(let groupId):
+      return .groupFeed(groupId: groupId)
+    }
   }
 }
