@@ -15,7 +15,7 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
     let snapshot = await environment.tokenStore.readSnapshot()
     guard let token = snapshot.token, !token.isEmpty else {
       if snapshot.isDefinitivelyNotFound {
-        await environment.snapshots.invalidateSession()
+        _ = await environment.invalidateSessionIfMatching(snapshot.generation)
       }
       return nil
     }
@@ -29,10 +29,10 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
     let snapshot = await environment.tokenStore.readSnapshot()
     guard let token = snapshot.token, !token.isEmpty else {
       if snapshot.isDefinitivelyNotFound {
-        await environment.snapshots.invalidateSession()
+        _ = await environment.invalidateSessionIfMatching(snapshot.generation)
         return nil
       }
-      throw AppError.offline
+      throw AppError.unexpected
     }
     do {
       let user: User = try await ResponseBodyCapture.withCapture {

@@ -25,6 +25,7 @@ actor TokenStore {
 
   private let service: String
   private let account: String
+  private static let tombstoneKey = "sp.session.tombstoned"
   private var cachedToken: String?
   private var hasLoaded = false
   private var generation: UInt64 = 0
@@ -58,6 +59,21 @@ actor TokenStore {
         return .notFound
       }
     }
+    if UserDefaults.standard.bool(forKey: Self.tombstoneKey) {
+      let query: [String: Any] = [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: service,
+        kSecAttrAccount as String: account,
+      ]
+      let status = SecItemDelete(query as CFDictionary)
+      if status == errSecSuccess || status == errSecItemNotFound {
+        UserDefaults.standard.removeObject(forKey: Self.tombstoneKey)
+      }
+      hasLoaded = true
+      cachedToken = nil
+      return .notFound
+    }
+
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
@@ -66,7 +82,13 @@ actor TokenStore {
       kSecMatchLimit as String: kSecMatchLimitOne,
     ]
     var item: CFTypeRef?
-    let status = SecItemCopyMatching(query as CFDictionary, &item)
+    var status = SecItemCopyMatching(query as CFDictionary, &item)
+    var retries = 0
+    while (status == errSecInteractionNotAllowed || status == errSecAuthFailed) && retries < 3 {
+      Thread.sleep(forTimeInterval: 0.02)
+      retries += 1
+      status = SecItemCopyMatching(query as CFDictionary, &item)
+    }
     guard status == errSecSuccess else {
       if status == errSecItemNotFound {
         hasLoaded = true
@@ -112,6 +134,7 @@ actor TokenStore {
     guard status == errSecSuccess else {
       throw .unexpected
     }
+    UserDefaults.standard.removeObject(forKey: Self.tombstoneKey)
     cachedToken = token
     hasLoaded = true
     generation &+= 1
@@ -126,12 +149,12 @@ actor TokenStore {
       kSecAttrAccount as String: account,
     ]
     let status = SecItemDelete(query as CFDictionary)
-    if status == errSecSuccess || status == errSecItemNotFound {
-      cachedToken = nil
-      hasLoaded = true
+    cachedToken = nil
+    hasLoaded = true
+    if status != errSecSuccess && status != errSecItemNotFound {
+      UserDefaults.standard.set(true, forKey: Self.tombstoneKey)
     } else {
-      cachedToken = nil
-      hasLoaded = false
+      UserDefaults.standard.removeObject(forKey: Self.tombstoneKey)
     }
     generation &+= 1
     return generation

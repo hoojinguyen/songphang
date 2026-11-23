@@ -102,7 +102,8 @@ actor SnapshotStore {
     return initial
   }
 
-  func recordActiveGroup(_ groupId: String) {
+  func recordActiveGroup(_ groupId: String, scope: Scope) {
+    guard activeScope == scope else { return }
     authoritativeGroupIds?.insert(groupId)
   }
 

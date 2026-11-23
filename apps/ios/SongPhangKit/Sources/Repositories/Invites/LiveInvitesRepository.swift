@@ -116,6 +116,7 @@ public final class LiveInvitesRepository: InvitesRepository, Sendable {
       )
     }
 
+    let scope = await environment.snapshots.currentScope()
     do {
       let output = try await environment.client
         .post_sol_api_sol_v1_sol_invites_sol__lcub_token_rcub__sol_join(
@@ -128,7 +129,9 @@ public final class LiveInvitesRepository: InvitesRepository, Sendable {
       switch output {
       case .ok(let ok):
         let groupId = ExpenseGroup.ID(try ok.body.json.groupId)
-        await environment.snapshots.recordActiveGroup(groupId.rawValue)
+        if let scope {
+          await environment.snapshots.recordActiveGroup(groupId.rawValue, scope: scope)
+        }
         return groupId
       case .undocumented(let status, let payload):
         throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
