@@ -106,6 +106,27 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 - **Choice:** Option 2.
 - **Reason:** Zero duplication when one key is shared, clean key separation when a dedicated APNs `.p8` key exists, identical fail-closed startup checks (and `PUSH_PROVIDER=console` production refusal) in both API and worker, and mixed Debug/TestFlight device support per device row.
 
+### D9 — Production worker mailer refusal and push dispatch deferral (Task 5F remediation)
+- **Problem:** In Phase 5, `apps/worker/src/main.ts` unconditionally throws `"Mailer is not configured for production"` on startup when `APP_ENV=production` because only `createConsoleMailer()` exists in this phase and real mailer configuration is deferred to Phase 7. `README.md` previously implied that a production mailer configuration was available to enable production APNs delivery, which conflicted with the worker code.
+- **Choice:** Clarify in `README.md` and documentation that `apps/worker` strictly refuses production startup until Phase 7 introduces the production mailer adapter, and that production worker operations (including APNs push dispatch) remain deferred until then.
+
+### D10 — Fake Apple JWKS workflow and fixture format (`APPLE_FAKE_JWKS_FILE`) (Task 5F remediation)
+- **Problem:** Offline development and automated local regression of Sign in with Apple require validating Apple ID token JWTs without hitting Apple's external servers.
+- **Choice:** Document `APPLE_FAKE_JWKS_FILE` in `README.md`. When `APPLE_PROVIDER=fake`, the server reads a local JSON file containing an RFC 7517 JWKS object (`{"keys": [{"kty": "RSA", "kid": "...", "n": "...", "e": "...", "alg": "RS256", "use": "sig"}]}`) matching the private key used to sign test JWTs. Fake authorization codes (`fake-code-*` and `sub=<custom_sub>:<code_body>`) are single-use with in-memory replay rejection. Both `APPLE_PROVIDER=fake` and `APPLE_FAKE_JWKS_FILE` are strictly forbidden in production.
+
+### D11 — App Store subtitle character limit compliance (`listing.vi.md`) (Task 5F remediation)
+- **Problem:** Apple App Store Connect enforces a strict 30-character maximum for app subtitles. The initial draft subtitle in `apps/ios/Store/listing.vi.md` was 31 characters, risking rejection during App Store metadata validation.
+- **Choice:** Shorten the subtitle to `"Chia tiền nhóm sòng phẳng"` (25 characters).
+- **Reason:** Fully preserves the product's Vietnamese value proposition while complying strictly with the App Store 30-character ceiling ($25 \le 30$).
+
+### D12 — PATCH category edit semantics and separation from create schema (Task 5F remediation)
+- **Problem:** Conflating the create schema (`CreateLedgerFields` where `category` has `.default(null)`) with the edit schema (`UpdateSplitTransactionRequest`) caused PATCH requests that omitted `category` to inadvertently clear any existing category to `null`.
+- **Choice:** Split `LedgerFields` in `@songphang/contract` into `CreateLedgerFields` (with `.default(null)` for backward-compatible creation) and `UpdateSplitTransactionRequest` (where `category` is `nullable().optional()`). In `apps/api/src/services/transaction-changes.ts`, `resolveCategoryForEdit` preserves existing categories when omitted (`undefined`), updates when explicitly provided, and clears to `null` only when explicitly passed as `null`.
+
+### D13 — Durable per-device push retry tracking via notification payload (Task 5F remediation)
+- **Problem:** When multiple devices are registered to a user and APNs push delivery fails transiently for one device, retrying the worker job previously re-delivered pushes to devices that had already received them. In-memory deduplication was lost on worker restart.
+- **Choice:** Record delivered device IDs durably in PostgreSQL within `notifications.payload._deliveredDeviceIds`. On job retry (including after worker crash/restart), devices listed in `_deliveredDeviceIds` are skipped, preventing duplicate push alerts while ensuring failed devices are retried.
+
 ## Standing Documentation Follow-ups
 
 - Codex reconciles the approved design §9 changes (`docs/04-adr.md` ADR-014/029/030/032, `docs/05-api-spec.md`, `docs/05-database-design.md`, `docs/03-srs.md`, root `AGENTS.md`) with the reviewed implementation before merge.

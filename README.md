@@ -144,9 +144,18 @@ When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to A
 | `APNS_PRIVATE_KEY`        | Optional APNs `.p8` EC private key PEM overriding `APPLE_PRIVATE_KEY`         | _(unset)_                 |
 | `APPLE_APP_ID`            | Web AASA `<TeamID>.<BundleID>` for `/.well-known/apple-app-site-association`  | _(unset)_                 |
 
-## Development mail and optional Google sign-in
+## Development mail, background worker, and optional sign-in providers
 
-Mail is printed by the API process to its development console. Read the verification/reset link there and open it locally; no mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration without a real mailer is refused. Similarly, `PUSH_PROVIDER=console` is refused in production; production APNs requires `PUSH_PROVIDER=apns` alongside real mailer configuration.
+Mail is printed by the API and worker processes to their development console. Read the verification/reset link there and open it locally; no external mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration (`APP_ENV=production`) without a real mailer is refused by the API, and `apps/worker` unconditionally refuses production startup (`Mailer is not configured for production`) because production mailer adapters are deferred to Phase 7. Consequently, production worker operations (including production APNs push dispatch) remain deferred until production mail delivery is implemented. Similarly, `PUSH_PROVIDER=console` is refused in production.
+
+### Local Apple Sign-In and Fake JWKS Testing
+
+When `APPLE_PROVIDER=fake`, Apple identity token verification uses a local JWKS fixture file configured via `APPLE_FAKE_JWKS_FILE`:
+
+- The file must contain a valid JSON Web Key Set (`{"keys": [{"kty": "RSA", "kid": "...", "n": "...", "e": "...", "alg": "RS256", "use": "sig"}]}`) matching the private key used to sign test JWTs.
+- Test tokens must specify `iss: "https://appleid.apple.com"`, `aud: APPLE_BUNDLE_ID`, valid timestamps (`iat`, `exp`), and `nonce: sha256(rawNonce)`.
+- Test authorization codes are single-use; the fake adapter tracks exchanged codes and rejects replayed codes with 401. A custom Apple subject can be injected in tests using the prefix `sub=<custom_sub>:<code_body>`.
+- Both `APPLE_PROVIDER=fake` and `APPLE_FAKE_JWKS_FILE` are strictly forbidden when `APP_ENV=production`.
 
 `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are optional; keep real values only in the local `.env`. Without both, the Google button/routes are disabled. The local callback is `http://localhost:3000/api/v1/auth/google/callback`. Google sign-in remains unverified until an OAuth app exists and the manual checklist has been completed.
 
