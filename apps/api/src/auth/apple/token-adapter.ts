@@ -21,9 +21,16 @@ export class AppleTokenAdapterError extends Error {
 const AppleErrorResponseSchema = z
 	.object({
 		error: z.string().max(100),
-		error_description: z.string().optional(),
 	})
 	.passthrough();
+
+const KNOWN_APPLE_ERROR_TYPES = new Set([
+	"invalid_request",
+	"invalid_client",
+	"invalid_grant",
+	"unauthorized_client",
+	"unsupported_grant_type",
+]);
 
 export type AppleTokenExchangeResult = {
 	refreshToken: string | null;
@@ -70,12 +77,16 @@ export function createAppleClientSecret(
 	return `${signingInput}.${signature}`;
 }
 
+const consumedFakeCodes = new Map<string, number>();
+
+export function clearFakeAppleReplayCodes(): void {
+	consumedFakeCodes.clear();
+}
+
 export function createAppleTokenAdapter(
 	config: Config,
 	now: () => Date,
 ): AppleTokenAdapter {
-	const consumedFakeCodes = new Map<string, number>();
-
 	return {
 		async exchangeAuthorizationCode(
 			code: string,
@@ -158,9 +169,12 @@ export function createAppleTokenAdapter(
 					);
 				}
 				if (errorType) {
+					const category = KNOWN_APPLE_ERROR_TYPES.has(errorType)
+						? `rejected:${errorType}`
+						: "rejected:unknown";
 					throw new AppleTokenAdapterError(
 						`Apple token exchange rejected: ${errorType}`,
-						`rejected:${errorType}`,
+						category,
 					);
 				}
 				throw new AppleTokenAdapterError(

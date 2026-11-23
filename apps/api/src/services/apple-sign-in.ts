@@ -206,6 +206,13 @@ export async function appleSignIn(
 		let userId: string;
 
 		if (known !== null) {
+			await lockAccount(transaction, known.userId);
+			if (
+				known.providerSecret?.startsWith("REVOKING:") ||
+				known.providerSecret?.startsWith("APPLE_REVOCATION_COMPLETED:")
+			) {
+				throw new AppError(403, "FORBIDDEN", "Account is undergoing deletion");
+			}
 			userId = known.userId;
 			if (encryptedSecret !== null) {
 				await updateAppleProviderSecret(transaction, {

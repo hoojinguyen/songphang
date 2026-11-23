@@ -34,6 +34,7 @@ export function createAppleKeySetProvider(
 	let fetchedAtMs: number | null = null;
 	let lastRefreshAttemptMs = Number.NEGATIVE_INFINITY;
 	let lastUnknownRefreshMs = Number.NEGATIVE_INFINITY;
+	let lastUnknownRefreshError: Error | null = null;
 	let inflight: Promise<Map<string, KeyObject>> | null = null;
 
 	async function loadKeys(): Promise<Map<string, KeyObject>> {
@@ -119,17 +120,23 @@ export function createAppleKeySetProvider(
 				lastUnknownRefreshMs = currentMs;
 				try {
 					await refresh();
+					lastUnknownRefreshError = null;
 					return keys.get(kid) ?? null;
 				} catch (error) {
+					lastUnknownRefreshError =
+						error instanceof Error ? error : new Error(String(error));
 					console.warn(
 						JSON.stringify({
 							event: "apple.unknown_kid_refresh.failed",
-							category: error instanceof Error ? error.name : "unknown",
+							category: lastUnknownRefreshError.name,
 							kid,
 						}),
 					);
-					throw error;
+					throw lastUnknownRefreshError;
 				}
+			}
+			if (lastUnknownRefreshError !== null) {
+				throw lastUnknownRefreshError;
 			}
 			return null;
 		},
