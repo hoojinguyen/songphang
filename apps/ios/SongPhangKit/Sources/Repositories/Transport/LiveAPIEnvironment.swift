@@ -81,6 +81,10 @@ public final class LiveAPIEnvironment: Sendable {
     )
   }
 
+  func clearSnapshotsWithoutSession(atLeastTokenGeneration generation: UInt64) async {
+    await snapshots.invalidateSession(atLeastTokenGeneration: generation)
+  }
+
   private static func performInvalidation(
     expectedGeneration: UInt64?,
     tokenStore: TokenStore,

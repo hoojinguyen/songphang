@@ -15,7 +15,9 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
     let snapshot = await environment.tokenStore.readSnapshot()
     guard let token = snapshot.token, !token.isEmpty else {
       if snapshot.isDefinitivelyNotFound {
-        _ = await environment.invalidateSessionIfMatching(snapshot.generation)
+        await environment.clearSnapshotsWithoutSession(
+          atLeastTokenGeneration: snapshot.generation
+        )
       }
       return nil
     }
@@ -29,7 +31,9 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
     let snapshot = await environment.tokenStore.readSnapshot()
     guard let token = snapshot.token, !token.isEmpty else {
       if snapshot.isDefinitivelyNotFound {
-        _ = await environment.invalidateSessionIfMatching(snapshot.generation)
+        await environment.clearSnapshotsWithoutSession(
+          atLeastTokenGeneration: snapshot.generation
+        )
         return nil
       }
       throw AppError.unexpected
@@ -431,7 +435,7 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
     try await environment.fetchServerFeatures()
   }
 
-  public func sessionGeneration() async -> UInt64 {
+  public func currentTokenGeneration() async -> UInt64 {
     await environment.tokenStore.currentGeneration()
   }
 

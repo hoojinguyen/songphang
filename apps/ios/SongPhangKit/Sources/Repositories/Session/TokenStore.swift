@@ -42,16 +42,16 @@ actor TokenStore {
     generation
   }
 
-  func readSnapshot() -> TokenSnapshot {
-    let res = readResult()
+  func readSnapshot() async -> TokenSnapshot {
+    let res = await readResult()
     return TokenSnapshot(result: res, generation: generation)
   }
 
-  func read() -> String? {
-    readSnapshot().token
+  func read() async -> String? {
+    await readSnapshot().token
   }
 
-  private func readResult() -> TokenReadResult {
+  private func readResult() async -> TokenReadResult {
     if hasLoaded {
       if let token = cachedToken {
         return .token(token)
@@ -74,6 +74,7 @@ actor TokenStore {
       return .notFound
     }
 
+    let initialGeneration = generation
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
@@ -85,7 +86,13 @@ actor TokenStore {
     var status = SecItemCopyMatching(query as CFDictionary, &item)
     var retries = 0
     while (status == errSecInteractionNotAllowed || status == errSecAuthFailed) && retries < 3 {
-      Thread.sleep(forTimeInterval: 0.02)
+      try? await Task.sleep(for: .milliseconds(20))
+      if hasLoaded || generation != initialGeneration {
+        if let token = cachedToken {
+          return .token(token)
+        }
+        return .notFound
+      }
       retries += 1
       status = SecItemCopyMatching(query as CFDictionary, &item)
     }
@@ -143,6 +150,7 @@ actor TokenStore {
 
   @discardableResult
   func clear() -> UInt64 {
+    UserDefaults.standard.set(true, forKey: Self.tombstoneKey)
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
@@ -151,9 +159,7 @@ actor TokenStore {
     let status = SecItemDelete(query as CFDictionary)
     cachedToken = nil
     hasLoaded = true
-    if status != errSecSuccess && status != errSecItemNotFound {
-      UserDefaults.standard.set(true, forKey: Self.tombstoneKey)
-    } else {
+    if status == errSecSuccess || status == errSecItemNotFound {
       UserDefaults.standard.removeObject(forKey: Self.tombstoneKey)
     }
     generation &+= 1

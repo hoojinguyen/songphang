@@ -73,7 +73,7 @@
       )
     }
 
-    public func sessionGeneration() async -> UInt64 {
+    public func currentTokenGeneration() async -> UInt64 {
       0
     }
 

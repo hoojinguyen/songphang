@@ -110,6 +110,7 @@ public final class PushCoordinator {
   }
 
   public func registerDeviceToken(_ hexToken: String) async {
+    guard !hexToken.isEmpty else { return }
     lastDeviceToken = hexToken
     let gen = sessionGeneration
     await registerDeviceToken(hexToken, expectedGeneration: gen)

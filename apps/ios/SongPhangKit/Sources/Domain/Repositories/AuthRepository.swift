@@ -16,8 +16,8 @@ public protocol AuthRepository: Sendable {
   func sessions() async throws(AppError) -> [UserSession]
   func revokeSession(id: UserSession.ID) async throws(AppError)
   func serverFeatures() async throws(AppError) -> ServerFeatures
-  /// Returns the current monotonic generation counter of the local auth token store.
-  /// Used by callers to detect if the local session changed across asynchronous suspension points.
-  func sessionGeneration() async -> UInt64
+  /// Returns the current monotonic generation counter of the local Keychain token store.
+  /// Increments whenever the stored token is written or cleared.
+  func currentTokenGeneration() async -> UInt64
   func signOut() async throws(AppError)
 }

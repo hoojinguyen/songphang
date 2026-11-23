@@ -25,6 +25,7 @@ public final class SessionModel {
   private let authRepository: any AuthRepository
   private let appVersion: String
   private var sessionGeneration: UInt64 = 0
+  private var needsColdLaunchRecovery = false
 
   public init(
     authRepository: any AuthRepository,
@@ -36,7 +37,7 @@ public final class SessionModel {
     self.state = initialState
   }
 
-  public func loadSession() async {
+  public func loadSession(fetchFeatures: Bool = true) async {
     let generation = sessionGeneration
     let shouldCheckCache: Bool
     switch state {
@@ -50,7 +51,8 @@ public final class SessionModel {
       state = .signedIn(cached)
     }
 
-    async let featuresTask: ServerFeatures? = try? await authRepository.serverFeatures()
+    async let featuresTask: ServerFeatures? =
+      fetchFeatures ? (try? await authRepository.serverFeatures()) : nil
     async let userTask: Result<User?, AppError> = {
       do throws(AppError) {
         return .success(try await authRepository.currentUser())
@@ -77,7 +79,11 @@ public final class SessionModel {
       applyFeatures(features)
     }
     guard case .signedIn = state else {
-      await loadSession()
+      if case .loading = state {
+        await loadSession(fetchFeatures: false)
+      } else if needsColdLaunchRecovery {
+        await loadSession(fetchFeatures: false)
+      }
       return
     }
     let generation = sessionGeneration
@@ -105,6 +111,7 @@ public final class SessionModel {
 
   public func didSignIn(_ user: User) {
     sessionGeneration &+= 1
+    needsColdLaunchRecovery = false
     state = .signedIn(user)
     isOffline = false
     unreadNotificationCount = 0
@@ -130,7 +137,7 @@ public final class SessionModel {
   }
 
   public func handleSessionInvalidation(atGeneration generation: UInt64) async -> Bool {
-    let current = await authRepository.sessionGeneration()
+    let current = await authRepository.currentTokenGeneration()
     guard generation >= current else {
       return false
     }
@@ -140,6 +147,7 @@ public final class SessionModel {
 
   public func markSignedOut() {
     sessionGeneration &+= 1
+    needsColdLaunchRecovery = false
     state = .signedOut
     isOffline = false
     unreadNotificationCount = 0
@@ -163,6 +171,7 @@ public final class SessionModel {
     switch result {
     case .success(let user):
       isOffline = false
+      needsColdLaunchRecovery = false
       if let user {
         state = .signedIn(user)
       } else {
@@ -172,8 +181,10 @@ public final class SessionModel {
       if error == .unauthorized {
         markSignedOut()
       } else if case .signedIn = state {
+        needsColdLaunchRecovery = false
         isOffline = (error == .offline)
       } else {
+        needsColdLaunchRecovery = true
         state = .signedOut
       }
     }
