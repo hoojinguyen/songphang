@@ -9,7 +9,7 @@ Metadata chuẩn cho App Store Connect theo thiết kế Phase 5 (`docs/superpow
 - **Bundle ID:** `vn.songphang.app`
 - **Ngôn ngữ chính:** Tiếng Việt (`vi`)
 - **Tên ứng dụng (App Name):** `Sòng Phẳng`
-- **Phụ đề (Subtitle):** `Chia tiền nhóm, gõ như nhắn tin`
+- **Phụ đề (Subtitle):** `Chia tiền nhóm sòng phẳng`
 - **Danh mục chính (Primary Category):** Tài chính (Finance)
 - **Danh mục phụ (Secondary Category):** Tiện ích (Utilities)
 
@@ -62,6 +62,7 @@ Phiên bản đầu tiên của Sòng Phẳng trên iOS:
 - **Theo dõi (Tracking):** Không theo dõi người dùng (`NSPrivacyTracking = false`).
 - **Dữ liệu liên kết với danh tính người dùng (`Data Linked to You`, chỉ dùng cho `App Functionality`):**
   - **Thông tin liên hệ:** Địa chỉ email (`NSPrivacyCollectedDataTypeEmailAddress`), Tên (`NSPrivacyCollectedDataTypeName`)
+  - **Thông tin tài chính:** Thông tin tài chính khác (`NSPrivacyCollectedDataTypeOtherFinancialInfo` — số tiền chi tiêu, số dư công nợ, thông tin tài khoản VietQR để thanh toán)
   - **Định danh:** Mã người dùng (`NSPrivacyCollectedDataTypeUserID`)
   - **Nội dung người dùng:** Ảnh hoá đơn / chứng từ (`NSPrivacyCollectedDataTypePhotosorVideos`), Mô tả khoản chi, bình luận và nội dung nhập nhanh (`NSPrivacyCollectedDataTypeOtherUserContent`)
 - **API yêu cầu khai báo lý do:** `NSPrivacyAccessedAPICategoryUserDefaults` — mã lý do `CA92.1` (lưu trạng thái hoãn lời nhắc bật thông báo cục bộ).
