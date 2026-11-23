@@ -30,8 +30,14 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
         try GroupMapping.decodeResilientGroups(from: data)
       }
 
-      if let scope, let encoded = GroupMapping.encodeGroupsSnapshot(list) {
-        await environment.snapshots.writeData(encoded, for: .groups, scope: scope)
+      if let scope {
+        await environment.snapshots.reconcileGroups(
+          keeping: Set(list.map(\.id.rawValue)),
+          scope: scope
+        )
+        if let encoded = GroupMapping.encodeGroupsSnapshot(list) {
+          await environment.snapshots.writeData(encoded, for: .groups, scope: scope)
+        }
       }
       return list
     } catch let error as AppError {

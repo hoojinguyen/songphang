@@ -239,6 +239,51 @@ actor SnapshotStore {
     }
   }
 
+  func reconcileGroups(keeping activeGroupIds: Set<String>, scope: Scope) {
+    guard activeScope == scope else {
+      return
+    }
+    var removedIds = Set<String>()
+    for id in recentGroupIds where !activeGroupIds.contains(id) {
+      removedIds.insert(id)
+    }
+    for key in memoryCache.keys {
+      if let groupId = key.groupId, !activeGroupIds.contains(groupId) {
+        removedIds.insert(groupId)
+      }
+    }
+    for groupId in groupGenerations.keys where !activeGroupIds.contains(groupId) {
+      removedIds.insert(groupId)
+    }
+
+    let fm = FileManager.default
+    let groupsRoot = userDirectory(for: scope.userId).appending(
+      path: "groups",
+      directoryHint: .isDirectory
+    )
+    let sanitizedActive = Set(activeGroupIds.map(SnapshotKey.sanitize))
+    if let dirs = try? fm.contentsOfDirectory(
+      at: groupsRoot,
+      includingPropertiesForKeys: nil,
+      options: [.skipsHiddenFiles]
+    ) {
+      for dir in dirs where !sanitizedActive.contains(dir.lastPathComponent) {
+        removedIds.insert(dir.lastPathComponent)
+        try? fm.removeItem(at: dir)
+      }
+    }
+
+    for groupId in removedIds {
+      groupGenerations[groupId] = (groupGenerations[groupId] ?? 0) &+ 1
+      memoryCache = memoryCache.filter { $0.key.groupId != groupId }
+      let dir = groupDirectory(groupId: groupId, userId: scope.userId)
+      try? fm.removeItem(at: dir)
+    }
+
+    recentGroupIds.removeAll { !activeGroupIds.contains($0) }
+    saveRecentGroups(for: scope.userId)
+  }
+
   func invalidateSession(atLeastTokenGeneration minGeneration: UInt64? = nil) {
     if let minGeneration, minGeneration > minAllowedTokenGeneration {
       minAllowedTokenGeneration = minGeneration
