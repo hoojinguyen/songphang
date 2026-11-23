@@ -13,6 +13,7 @@ The local repository keeps placeholder hosts (`example.invalid`) and unsigned si
 | Production API host | `https://example.invalid/api/v1` | Deployed HTTPS API URL (`https://api.<domain>/api/v1`) |
 | Production Web host | `https://example.invalid` | Deployed HTTPS Web URL (`https://<domain>`) |
 | Associated domain host | `example.invalid` | Exact Web hostname for Universal Links (`/join/*`) |
+| App Store destination (`APP_STORE_URL`) | Empty (`""`) in `Release.xcconfig` | Optional `https://apps.apple.com/app/id<APP_ID>` URL opened by `Mở App Store` when blocked by minimum version; leave empty until the App Store Connect listing ID is assigned |
 | Apple Developer Team ID | Not committed | 10-character Apple Developer Team ID (`<TEAM_ID>`) |
 | APNs `.p8` Auth Key | Console provider locally | Apple Push Notifications key ID, `.p8` private key, Team ID (`PUSH_PROVIDER=apns`) |
 | Privacy Policy & Support URLs | Pending production host | Public HTTPS pages required by App Store Connect |
@@ -63,7 +64,9 @@ DEVELOPMENT_TEAM = <TEAM_ID>
 API_BASE_URL = https:/$()/api.songphang.example/api/v1
 WEB_BASE_URL = https:/$()/songphang.example
 ASSOCIATED_DOMAIN_HOST = songphang.example
+APP_STORE_URL = https:/$()/apps.apple.com/app/id<APP_ID>
 ```
+*(In `.xcconfig` files, keep `/$()` between `https:` and `//` so Xcode does not treat `//` as a comment. Leave `APP_STORE_URL` empty if the App Store URL is not yet created — `Mở App Store` stays safely disabled when unset.)*
 
 Verify key Release invariants before archiving:
 - `MARKETING_VERSION = 1.0.0`, `CURRENT_PROJECT_VERSION` incremented for every upload (`1`, `2`, …).
@@ -103,7 +106,7 @@ Inspect the archive before exporting/uploading:
 plutil -p /tmp/SongPhang.xcarchive/Products/Applications/SongPhang.app/Info.plist
 plutil -lint /tmp/SongPhang.xcarchive/Products/Applications/SongPhang.app/PrivacyInfo.xcprivacy
 ```
-Ensure `Info.plist` contains no `NSAppTransportSecurity` dictionary and uses your HTTPS `API_BASE_URL` / `WEB_BASE_URL` (never `example.invalid` or `127.0.0.1`).
+Ensure `Info.plist` contains no `NSAppTransportSecurity` dictionary, includes `APP_STORE_URL` (empty or your `https://apps.apple.com/...` URL, never an unexpanded `$(...)`), and uses your HTTPS `API_BASE_URL` / `WEB_BASE_URL` (never `example.invalid` or `127.0.0.1`).
 
 Then create `/tmp/ExportOptions.plist`:
 ```xml

@@ -192,9 +192,7 @@ public struct RootView: View {
     let webURL = URL(string: webString) ?? URL(filePath: "/")
     let rawStoreURL = (info?["APP_STORE_URL"] as? String)?
       .trimmingCharacters(in: .whitespacesAndNewlines)
-    let appStoreURL = rawStoreURL.flatMap { value in
-      value.isEmpty ? nil : URL(string: value)
-    }
+    let appStoreURL = Self.parseOptionalHTTPURL(rawStoreURL)
     let rawDevice = UIDevice.current.name.trimmingCharacters(in: .whitespacesAndNewlines)
     let deviceName = rawDevice.isEmpty ? "iPhone" : String(rawDevice.prefix(60))
     return APIConfiguration(
@@ -204,6 +202,20 @@ public struct RootView: View {
       deviceName: deviceName,
       appStoreURL: appStoreURL
     )
+  }
+
+  public static func parseOptionalHTTPURL(_ rawValue: String?) -> URL? {
+    guard let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+      !trimmed.isEmpty,
+      !trimmed.contains("$("),
+      let url = URL(string: trimmed),
+      let scheme = url.scheme?.lowercased(),
+      scheme == "https" || scheme == "http",
+      url.host?.isEmpty == false
+    else {
+      return nil
+    }
+    return url
   }
 
   public var body: some View {
