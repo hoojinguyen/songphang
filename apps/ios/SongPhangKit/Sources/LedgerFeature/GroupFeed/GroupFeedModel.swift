@@ -96,6 +96,9 @@ public final class GroupFeedModel {
   }
 
   public func load() async {
+    let generation = invalidatePagination()
+    let requestedFilter = filter
+
     async let cachedGroup = groupsRepository.lastKnownGroup(id: groupId)
     async let cachedMembers = membersRepository.lastKnownMembers(groupId: groupId)
     async let cachedBalances = balancesRepository.lastKnownBalances(groupId: groupId)
@@ -103,7 +106,7 @@ public final class GroupFeedModel {
     async let cachedBudget = budgetRepository.lastKnownBudget(groupId: groupId)
     async let cachedPage = transactionsRepository.lastKnownFirstPage(groupId: groupId)
 
-    if filter.isEmpty,
+    if requestedFilter.isEmpty,
       let g = await cachedGroup,
       let m = await cachedMembers,
       let b = await cachedBalances,
@@ -111,6 +114,9 @@ public final class GroupFeedModel {
     {
       let c = await cachedCategories ?? []
       let bud = await cachedBudget
+      guard listGeneration == generation, filter == requestedFilter else {
+        return
+      }
       state = .loaded(
         ScreenData(
           group: g,
@@ -123,11 +129,11 @@ public final class GroupFeedModel {
         )
       )
     } else if case .failed = state {
+      guard listGeneration == generation, filter == requestedFilter else {
+        return
+      }
       state = .loading
     }
-
-    let generation = invalidatePagination()
-    let requestedFilter = filter
 
     do {
       async let fetchedGroup = groupsRepository.group(id: groupId)
@@ -163,14 +169,14 @@ public final class GroupFeedModel {
       )
       refreshError = nil
     } catch let error as AppError {
-      guard listGeneration == generation else { return }
+      guard listGeneration == generation, filter == requestedFilter else { return }
       if case .loaded = state {
         refreshError = error
       } else {
         state = .failed(error)
       }
     } catch {
-      guard listGeneration == generation else { return }
+      guard listGeneration == generation, filter == requestedFilter else { return }
       if case .loaded = state {
         refreshError = .unexpected
       } else {
@@ -303,10 +309,9 @@ public final class GroupFeedModel {
   private func refetch(resources: [String]) async {
     guard case .loaded(let initial) = state else { return }
     let previousNewestId = initial.transactions.first?.id
-    let refetchGeneration = listGeneration
     let refetchFilter = filter
-    var pageGeneration: UInt64?
-    var pageFilter: TransactionFilter?
+    let shouldInvalidatePagination = resources.contains("transactions")
+    let refetchGeneration = shouldInvalidatePagination ? invalidatePagination() : listGeneration
 
     do throws(AppError) {
       let fetchedGroup =
@@ -323,23 +328,19 @@ public final class GroupFeedModel {
         (resources.contains("budget") || resources.contains("transactions"))
         ? try await budgetRepository.budget(groupId: groupId) : nil
 
+      guard listGeneration == refetchGeneration, filter == refetchFilter else { return }
+
       var fetchedPage: Page<LedgerTransaction>?
-      if resources.contains("transactions") {
-        let gen = invalidatePagination()
-        let reqFilter = filter
-        pageGeneration = gen
-        pageFilter = reqFilter
+      if shouldInvalidatePagination {
         fetchedPage = try await transactionsRepository.page(
           groupId: groupId,
-          filter: reqFilter,
+          filter: refetchFilter,
           cursor: nil
         )
       }
 
-      let expectedGeneration = pageGeneration ?? refetchGeneration
-      let expectedFilter = pageFilter ?? refetchFilter
-      guard listGeneration == expectedGeneration,
-        filter == expectedFilter,
+      guard listGeneration == refetchGeneration,
+        filter == refetchFilter,
         case .loaded(var current) = state
       else { return }
 
@@ -361,8 +362,7 @@ public final class GroupFeedModel {
         hasNewItemsPill = true
       }
     } catch {
-      let expectedGeneration = pageGeneration ?? refetchGeneration
-      guard listGeneration == expectedGeneration else { return }
+      guard listGeneration == refetchGeneration, filter == refetchFilter else { return }
       refreshError = error
     }
   }

@@ -81,7 +81,8 @@ public final class TransactionDetailModel: Sendable {
   }
 
   public func load() async {
-    refreshGeneration += 1
+    let gen = refreshGeneration &+ 1
+    refreshGeneration = gen
     state = .loading
     actionError = nil
     do throws(AppError) {
@@ -90,6 +91,7 @@ public final class TransactionDetailModel: Sendable {
       let mems = try await membersRepository.members(groupId: groupId)
       let cats = try await categoriesRepository.list(groupId: groupId)
       let user = currentUserProvider?()
+      guard refreshGeneration == gen, !Task.isCancelled else { return }
       state = .loaded(
         TransactionDetailData(
           group: g,
@@ -105,6 +107,7 @@ public final class TransactionDetailModel: Sendable {
         await refreshSilently(resources: nil)
       }
     } catch {
+      guard refreshGeneration == gen, !Task.isCancelled else { return }
       if case .unauthorized = error {
         onUnauthorized?()
       }
@@ -178,16 +181,28 @@ public final class TransactionDetailModel: Sendable {
       state = .loaded(current)
 
       if let fetchedCommentsRes {
-        var merged = fetchedCommentsRes.comments
-        let newIds = Set(merged.map(\.id))
-        for existing in comments where !newIds.contains(existing.id) {
-          merged.append(existing)
-        }
-        comments = merged
-        if commentsNextCursor != nil && comments.count > fetchedCommentsRes.comments.count {
-          // Keep existing commentsNextCursor because user has more pages loaded
-        } else {
+        let pageComments = fetchedCommentsRes.comments
+        let pageCount = pageComments.count
+        if fetchedCommentsRes.nextCursor == nil || comments.count <= pageCount {
+          comments = pageComments
           commentsNextCursor = fetchedCommentsRes.nextCursor
+        } else {
+          // Multiple pages loaded: replace page 1, retain comments strictly after page 1's last item
+          if let last = pageComments.last {
+            let tail = comments.filter { existing in
+              if existing.createdAt > last.createdAt {
+                return true
+              }
+              if existing.createdAt == last.createdAt {
+                return existing.id > last.id
+              }
+              return false
+            }
+            comments = pageComments + tail
+          } else {
+            comments = pageComments
+          }
+          commentsNextCursor = fetchedCommentsRes.nextCursor != nil ? commentsNextCursor : nil
         }
         commentsError = nil
       }
@@ -199,6 +214,7 @@ public final class TransactionDetailModel: Sendable {
   }
 
   public func loadComments(initial: Bool = false) async {
+    let gen = refreshGeneration
     guard !isFetchingComments else { return }
     if initial {
       isFetchingComments = true
@@ -220,6 +236,7 @@ public final class TransactionDetailModel: Sendable {
         cursor: cursor,
         limit: 50
       )
+      guard refreshGeneration == gen, !Task.isCancelled else { return }
       if initial {
         comments = res.comments
       } else {
@@ -227,6 +244,7 @@ public final class TransactionDetailModel: Sendable {
       }
       commentsNextCursor = res.nextCursor
     } catch {
+      guard refreshGeneration == gen, !Task.isCancelled else { return }
       if case .unauthorized = error {
         onUnauthorized?()
       }
