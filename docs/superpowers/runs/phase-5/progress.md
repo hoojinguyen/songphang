@@ -5,7 +5,7 @@
 - Approved plan and branch base: `eac8aa7`
 - Implementation: Antigravity
 - Advisor and reviewer: Codex
-- Status: Stage 5D in progress (5D.1 verified; continuing through 5D.2–5E.2).
+- Status: Complete (Tasks 0 through 5E.2 verified locally; ready for advisor review).
 
 ## Tasks
 
