@@ -18,9 +18,26 @@ public final class PushCoordinator {
   public private(set) var currentDeviceId: String?
 
   private let devicesRepository: any DevicesRepository
+  private let authorizationStatusProvider: @Sendable () async -> AuthorizationStatus
+  private let requestRemoteRegistration: @MainActor () -> Void
+  private var sessionGeneration: UInt64 = 0
+  private var lastDeviceToken: String?
 
-  public init(devicesRepository: any DevicesRepository) {
+  public init(
+    devicesRepository: any DevicesRepository,
+    authorizationStatusProvider: (@Sendable () async -> AuthorizationStatus)? = nil,
+    requestRemoteRegistration: (@MainActor () -> Void)? = nil
+  ) {
     self.devicesRepository = devicesRepository
+    self.authorizationStatusProvider =
+      authorizationStatusProvider ?? {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        return Self.mapAuthorizationStatus(settings.authorizationStatus)
+      }
+    self.requestRemoteRegistration =
+      requestRemoteRegistration ?? {
+        UIApplication.shared.registerForRemoteNotifications()
+      }
   }
 
   private func deferralKey(userId: User.ID) -> String {
@@ -37,16 +54,21 @@ public final class PushCoordinator {
   }
 
   public func refreshAuthorizationStatus() async -> AuthorizationStatus {
-    let settings = await UNUserNotificationCenter.current().notificationSettings()
-    let mapped = Self.mapAuthorizationStatus(settings.authorizationStatus)
+    let mapped = await authorizationStatusProvider()
     authorizationStatus = mapped
     return mapped
   }
 
   public func handleFirstExpenseSaved(userId: User.ID, features: ServerFeatures?) async {
     guard features?.push == true else { return }
-    guard !hasDeferred(userId: userId) else { return }
+    let gen = sessionGeneration
     let status = await refreshAuthorizationStatus()
+    guard sessionGeneration == gen else { return }
+    if status == .authorized {
+      await syncRegistrationIfAuthorized(features: features)
+      return
+    }
+    guard !hasDeferred(userId: userId) else { return }
     guard status == .notDetermined else { return }
     isPermissionSheetPresented = true
   }
@@ -57,34 +79,63 @@ public final class PushCoordinator {
   }
 
   public func requestPermissionAndRegister() async -> AuthorizationStatus {
+    let gen = sessionGeneration
     _ = try? await UNUserNotificationCenter.current().requestAuthorization(
       options: [.alert, .sound, .badge]
     )
     let status = await refreshAuthorizationStatus()
+    guard sessionGeneration == gen else { return status }
     if status == .authorized {
-      UIApplication.shared.registerForRemoteNotifications()
+      requestRemoteRegistration()
+      if let token = lastDeviceToken {
+        await registerDeviceToken(token, expectedGeneration: gen)
+      }
     }
     return status
   }
 
+  public func syncRegistrationIfAuthorized(features: ServerFeatures?) async {
+    guard features?.push == true else { return }
+    let gen = sessionGeneration
+    let status = await refreshAuthorizationStatus()
+    guard sessionGeneration == gen, status == .authorized else { return }
+    guard currentDeviceId == nil else { return }
+    requestRemoteRegistration()
+    if let token = lastDeviceToken {
+      await registerDeviceToken(token, expectedGeneration: gen)
+    }
+  }
+
   public func registerDeviceToken(_ hexToken: String) async {
+    let gen = sessionGeneration
+    await registerDeviceToken(hexToken, expectedGeneration: gen)
+  }
+
+  private func registerDeviceToken(_ hexToken: String, expectedGeneration: UInt64) async {
     guard !hexToken.isEmpty else { return }
+    lastDeviceToken = hexToken
     let env: PushRegistrationEnvironment
     #if DEBUG
       env = .sandbox
     #else
       env = .production
     #endif
-    if let deviceId = try? await devicesRepository.registerDevice(token: hexToken, environment: env)
-    {
+    if let deviceId = try? await devicesRepository.registerDevice(
+      token: hexToken,
+      environment: env
+    ), sessionGeneration == expectedGeneration {
       currentDeviceId = deviceId
     }
   }
 
   #if DEBUG
     public func registerDebugDeviceToken(_ token: String) async throws(AppError) -> String {
+      let gen = sessionGeneration
+      lastDeviceToken = token
       let id = try await devicesRepository.registerDevice(token: token, environment: .sandbox)
-      currentDeviceId = id
+      if sessionGeneration == gen {
+        currentDeviceId = id
+      }
       return id
     }
 
@@ -96,11 +147,12 @@ public final class PushCoordinator {
   #endif
 
   public func clearSessionState() {
+    sessionGeneration &+= 1
     currentDeviceId = nil
     isPermissionSheetPresented = false
   }
 
-  private static func mapAuthorizationStatus(
+  nonisolated private static func mapAuthorizationStatus(
     _ status: UNAuthorizationStatus
   ) -> AuthorizationStatus {
     switch status {

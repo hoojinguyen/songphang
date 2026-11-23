@@ -351,7 +351,7 @@ public struct RootView: View {
         Task {
           await sessionModel.refreshOnForeground()
           await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
-          _ = await pushCoordinator.refreshAuthorizationStatus()
+          await syncPushRegistrationIfSignedIn()
         }
       }
     }
@@ -376,6 +376,7 @@ public struct RootView: View {
           return
         }
         if case .signedIn = oldState {
+          pushCoordinator.clearSessionState()
           path.removeAll()
           statusNotice = nil
         }
@@ -384,11 +385,13 @@ public struct RootView: View {
         Task {
           await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
           await consumePendingPushIfSignedIn()
+          await syncPushRegistrationIfSignedIn()
         }
       }
     }
     .task {
       PushEventBridge.shared.onDeviceTokenRegistered = { hexToken in
+        guard isSignedIn else { return }
         Task { await pushCoordinator.registerDeviceToken(hexToken) }
       }
       PushEventBridge.shared.onPushTapReceived = { payload in
@@ -399,6 +402,7 @@ public struct RootView: View {
       }
       await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
       await consumePendingPushIfSignedIn()
+      await syncPushRegistrationIfSignedIn()
       hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
@@ -503,6 +507,20 @@ public struct RootView: View {
     if let route = pendingInviteState.consumeIfSignedIn(isSignedIn) {
       path.append(route)
     }
+  }
+
+  private func syncPushRegistrationIfSignedIn() async {
+    guard isSignedIn else {
+      _ = await pushCoordinator.refreshAuthorizationStatus()
+      return
+    }
+    let features: ServerFeatures?
+    if let latest = sessionModel.latestFeatures {
+      features = latest
+    } else {
+      features = try? await dependencies.auth.serverFeatures()
+    }
+    await pushCoordinator.syncRegistrationIfAuthorized(features: features)
   }
 
   private func resetToSignedOut() {
