@@ -16,13 +16,15 @@ export async function runMigrations(url: string): Promise<void> {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	try {
-		await runMigrations(process.env.DATABASE_URL ?? "");
-		console.log("Migrations applied");
-	} catch {
-		console.error(
-			"Migration failed: check DATABASE_URL and database availability",
-		);
-		process.exitCode = 1;
-	}
+	void (async () => {
+		try {
+			await runMigrations(process.env.DATABASE_URL ?? "");
+			console.log("Migrations applied");
+		} catch {
+			console.error(
+				"Migration failed: check DATABASE_URL and database availability",
+			);
+			process.exitCode = 1;
+		}
+	})();
 }

@@ -20,6 +20,7 @@ function readJsonRecord(filePath: string): Record<string, unknown> {
 function parseArgs(argv: string[]): {
 	command: "write" | "check" | "diff";
 	snapshotPath: string;
+	force: boolean;
 	compareBase?: string;
 	compareCandidate?: string;
 } {
@@ -32,23 +33,29 @@ function parseArgs(argv: string[]): {
 		return {
 			command: "diff",
 			snapshotPath: DEFAULT_SNAPSHOT_PATH,
+			force: false,
 			compareBase: path.resolve(base),
 			compareCandidate: path.resolve(candidate),
 		};
 	}
 	if (command !== "write" && command !== "check") {
-		throw new Error("Usage: cli.ts <write|check|diff> [--snapshot <path>]");
+		throw new Error(
+			"Usage: cli.ts <write|check|diff> [--snapshot <path>] [--force]",
+		);
 	}
 	let snapshotPath = DEFAULT_SNAPSHOT_PATH;
+	let force = false;
 	for (let index = 0; index < rest.length; index++) {
 		if (rest[index] === "--snapshot") {
 			const next = rest[index + 1];
 			if (!next) throw new Error("--snapshot requires a path");
 			snapshotPath = path.resolve(next);
 			index++;
+		} else if (rest[index] === "--force") {
+			force = true;
 		}
 	}
-	return { command, snapshotPath };
+	return { command, snapshotPath, force };
 }
 
 function printDiffReport(
@@ -84,6 +91,30 @@ function main(): void {
 	const serialized = serializeOpenApiSnapshot(generated);
 
 	if (parsed.command === "write") {
+		if (fs.existsSync(parsed.snapshotPath)) {
+			try {
+				const committedDoc = readJsonRecord(parsed.snapshotPath);
+				const diff = diffOpenApiSnapshots(committedDoc, generated);
+				if (diff.breakingCount > 0 && !parsed.force) {
+					console.error(
+						`Refusing to overwrite ${parsed.snapshotPath} because generated contract contains ${diff.breakingCount} breaking change(s) against existing snapshot:`,
+					);
+					printDiffReport(committedDoc, generated);
+					process.exit(2);
+				}
+				if (diff.breakingCount > 0 && parsed.force) {
+					console.warn(
+						`Warning: Overwriting ${parsed.snapshotPath} with ${diff.breakingCount} breaking change(s) via --force approved exception.`,
+					);
+				}
+			} catch (error) {
+				console.error(
+					`Failed to diff candidate against existing snapshot at ${parsed.snapshotPath}:`,
+					error,
+				);
+				process.exit(2);
+			}
+		}
 		fs.writeFileSync(parsed.snapshotPath, serialized, "utf8");
 		console.log(`Wrote OpenAPI snapshot to ${parsed.snapshotPath}`);
 		return;

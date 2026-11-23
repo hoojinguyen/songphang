@@ -71,7 +71,7 @@ export const authTokens = pgTable(
 		),
 		check(
 			"auth_tokens_mobile_exchange_check",
-			sql`(${table.purpose} = 'mobile_exchange' and ${table.codeChallenge} is not null and ${table.client} in ('ios','android')) or (${table.purpose} <> 'mobile_exchange' and ${table.codeChallenge} is null and ${table.client} is null)`,
+			sql`(${table.purpose} = 'mobile_exchange' and ${table.codeChallenge} is not null and ${table.client} is not null and ${table.client} in ('ios','android')) or (${table.purpose} <> 'mobile_exchange' and ${table.codeChallenge} is null and ${table.client} is null)`,
 		),
 	],
 );

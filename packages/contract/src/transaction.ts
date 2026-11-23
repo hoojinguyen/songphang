@@ -125,7 +125,7 @@ const LedgerFields = {
 	description: z.string().trim().min(1).max(200),
 	amount: MoneyAmount,
 	occurredAt: z.iso.datetime(),
-	category: TransactionCategory.nullable().default(null),
+	category: TransactionCategory.nullable(),
 	categoryId: z.uuid().nullable().default(null),
 	payers: Payers,
 	split: SplitInput,

@@ -55,6 +55,16 @@ function compareEnumList(
 	newList: unknown,
 	changes: OpenApiDiffEntry[],
 ): void {
+	if (!Array.isArray(oldList)) {
+		if (Array.isArray(newList)) {
+			changes.push({
+				severity: "breaking",
+				path: `${path}.enum`,
+				reason: "Added enum constraint to unconstrained schema",
+			});
+		}
+		return;
+	}
 	const oldItems = Array.isArray(oldList) ? oldList : [];
 	const newItems = Array.isArray(newList) ? newList : [];
 	for (const item of oldItems) {
@@ -72,6 +82,48 @@ function compareEnumList(
 				severity: "additive",
 				path: `${path}.enum`,
 				reason: `Enum value ${JSON.stringify(item)} added`,
+			});
+		}
+	}
+}
+
+function compareParameterList(
+	path: string,
+	oldList: unknown,
+	newList: unknown,
+	changes: OpenApiDiffEntry[],
+): void {
+	const oldParams = (Array.isArray(oldList) ? oldList : []).filter(isRecord);
+	const newParams = (Array.isArray(newList) ? newList : []).filter(isRecord);
+
+	const paramKey = (p: Record<string, unknown>) =>
+		`${String(p.in)}:${String(p.name)}`;
+	const oldMap = new Map(oldParams.map((p) => [paramKey(p), p]));
+	const newMap = new Map(newParams.map((p) => [paramKey(p), p]));
+
+	for (const [key, newP] of newMap.entries()) {
+		const childPath = `${path}.parameters[${key}]`;
+		const oldP = oldMap.get(key);
+		if (!oldP) {
+			const isRequired = newP.required === true;
+			changes.push({
+				severity: isRequired ? "breaking" : "additive",
+				path: childPath,
+				reason: isRequired
+					? `Required parameter "${String(newP.name)}" in "${String(newP.in)}" added`
+					: `Optional parameter "${String(newP.name)}" in "${String(newP.in)}" added`,
+			});
+		} else {
+			compareNode(childPath, oldP, newP, changes);
+		}
+	}
+
+	for (const [key, oldP] of oldMap.entries()) {
+		if (!newMap.has(key)) {
+			changes.push({
+				severity: "breaking",
+				path: `${path}.parameters[${key}]`,
+				reason: `Parameter "${String(oldP.name)}" in "${String(oldP.in)}" removed`,
 			});
 		}
 	}
@@ -124,6 +176,42 @@ function compareNode(
 			path.endsWith(".summary") ||
 			path.endsWith(".example") ||
 			path.startsWith("info.");
+		if (typeof oldValue === "number" && typeof newValue === "number") {
+			if (
+				path.endsWith(".minLength") ||
+				path.endsWith(".minItems") ||
+				path.endsWith(".minProperties") ||
+				path.endsWith(".minimum") ||
+				path.endsWith(".exclusiveMinimum")
+			) {
+				const isNarrowing = newValue > oldValue;
+				changes.push({
+					severity: isNarrowing ? "breaking" : "additive",
+					path,
+					reason: isNarrowing
+						? `Constraint tightened (${oldValue} -> ${newValue})`
+						: `Constraint relaxed (${oldValue} -> ${newValue})`,
+				});
+				return;
+			}
+			if (
+				path.endsWith(".maxLength") ||
+				path.endsWith(".maxItems") ||
+				path.endsWith(".maxProperties") ||
+				path.endsWith(".maximum") ||
+				path.endsWith(".exclusiveMaximum")
+			) {
+				const isNarrowing = newValue < oldValue;
+				changes.push({
+					severity: isNarrowing ? "breaking" : "additive",
+					path,
+					reason: isNarrowing
+						? `Constraint tightened (${oldValue} -> ${newValue})`
+						: `Constraint relaxed (${oldValue} -> ${newValue})`,
+				});
+				return;
+			}
+		}
 		changes.push({
 			severity: isMetadata ? "additive" : "breaking",
 			path,
@@ -144,6 +232,18 @@ function compareNode(
 			(Array.isArray(oldValue.required) || Array.isArray(newValue.required))
 		) {
 			compareRequiredList(path, oldValue.required, newValue.required, changes);
+			continue;
+		}
+		if (
+			key === "parameters" &&
+			(Array.isArray(oldValue.parameters) || Array.isArray(newValue.parameters))
+		) {
+			compareParameterList(
+				path,
+				oldValue.parameters,
+				newValue.parameters,
+				changes,
+			);
 			continue;
 		}
 		if (
@@ -168,12 +268,16 @@ function compareNode(
 			continue;
 		}
 		if (!(key in newValue)) {
+			const isRemovedRequiredTrue =
+				key === "required" && oldValue[key] === true;
 			const isMetadata =
 				key === "description" || key === "summary" || key === "example";
 			changes.push({
-				severity: isMetadata ? "additive" : "breaking",
+				severity: isMetadata || isRemovedRequiredTrue ? "additive" : "breaking",
 				path: childPath,
-				reason: `Removed "${key}"`,
+				reason: isRemovedRequiredTrue
+					? `Required constraint removed from "${key}"`
+					: `Removed "${key}"`,
 			});
 			continue;
 		}
@@ -189,9 +293,16 @@ function compareNode(
 				key === "maxLength" ||
 				key === "minimum" ||
 				key === "maximum" ||
+				key === "exclusiveMinimum" ||
+				key === "exclusiveMaximum" ||
+				key === "multipleOf" ||
 				key === "pattern" ||
 				key === "minItems" ||
-				key === "maxItems";
+				key === "maxItems" ||
+				key === "uniqueItems" ||
+				key === "minProperties" ||
+				key === "maxProperties" ||
+				key === "const";
 			const isBreaking =
 				isRequiredRequestBody || isAddedRequiredTrue || isBreakingConstraint;
 			changes.push({
