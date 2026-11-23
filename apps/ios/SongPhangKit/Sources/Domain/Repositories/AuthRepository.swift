@@ -16,5 +16,6 @@ public protocol AuthRepository: Sendable {
   func sessions() async throws(AppError) -> [UserSession]
   func revokeSession(id: UserSession.ID) async throws(AppError)
   func serverFeatures() async throws(AppError) -> ServerFeatures
+  func sessionGeneration() async -> UInt64
   func signOut() async throws(AppError)
 }

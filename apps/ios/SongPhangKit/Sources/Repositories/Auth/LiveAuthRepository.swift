@@ -14,7 +14,9 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
   public func lastKnownUser() async -> User? {
     let snapshot = await environment.tokenStore.readSnapshot()
     guard let token = snapshot.token, !token.isEmpty else {
-      await environment.invalidateSessionIfMatching(snapshot.generation)
+      if snapshot.isDefinitivelyNotFound {
+        await environment.snapshots.invalidateSession()
+      }
       return nil
     }
     return await environment.snapshots.restoreLastUser(tokenGeneration: snapshot.generation) {
@@ -26,8 +28,11 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
   public func currentUser() async throws(AppError) -> User? {
     let snapshot = await environment.tokenStore.readSnapshot()
     guard let token = snapshot.token, !token.isEmpty else {
-      await environment.invalidateSessionIfMatching(snapshot.generation)
-      return nil
+      if snapshot.isDefinitivelyNotFound {
+        await environment.snapshots.invalidateSession()
+        return nil
+      }
+      throw AppError.offline
     }
     do {
       let user: User = try await ResponseBodyCapture.withCapture {
@@ -424,6 +429,10 @@ public final class LiveAuthRepository: AuthRepository, Sendable {
 
   public func serverFeatures() async throws(AppError) -> ServerFeatures {
     try await environment.fetchServerFeatures()
+  }
+
+  public func sessionGeneration() async -> UInt64 {
+    await environment.tokenStore.currentGeneration()
   }
 
   public func signOut() async throws(AppError) {

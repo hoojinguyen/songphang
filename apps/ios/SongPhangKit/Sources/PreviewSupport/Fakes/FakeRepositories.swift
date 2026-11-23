@@ -73,6 +73,10 @@
       )
     }
 
+    public func sessionGeneration() async -> UInt64 {
+      0
+    }
+
     public func signOut() async throws(AppError) {
       try await world.signOut()
     }

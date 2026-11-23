@@ -2,11 +2,11 @@ import Foundation
 import os
 
 final class SessionInvalidationHub: Sendable {
-  private let continuations = OSAllocatedUnfairLock<[UUID: AsyncStream<Void>.Continuation]>(
+  private let continuations = OSAllocatedUnfairLock<[UUID: AsyncStream<UInt64>.Continuation]>(
     initialState: [:]
   )
 
-  func makeStream() -> AsyncStream<Void> {
+  func makeStream() -> AsyncStream<UInt64> {
     let id = UUID()
     return AsyncStream { continuation in
       self.continuations.withLock { $0[id] = continuation }
@@ -16,10 +16,10 @@ final class SessionInvalidationHub: Sendable {
     }
   }
 
-  func broadcast() {
+  func broadcast(_ generation: UInt64) {
     let active = continuations.withLock { Array($0.values) }
     for continuation in active {
-      continuation.yield(())
+      continuation.yield(generation)
     }
   }
 }

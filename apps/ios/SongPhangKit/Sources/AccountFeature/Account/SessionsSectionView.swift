@@ -65,7 +65,8 @@ struct SessionsSectionView: View {
       SPButton(
         L10n.tr("common.logout"),
         variant: .surface,
-        isDisabled: isOffline || revokingSessionId != nil,
+        isDisabled: revokingSessionId != nil,
+        isOfflineBlocked: isOffline,
         isPending: revokingSessionId == session.id
       ) {
         onRevoke(session)

@@ -72,6 +72,7 @@ actor SnapshotStore {
   private var sessionGeneration: UInt64 = 0
   private var minAllowedTokenGeneration: UInt64 = 0
   private var activeScope: Scope?
+  private var authoritativeGroupIds: Set<String>?
   private var groupGenerations: [String: UInt64] = [:]
   private var memoryCache: [SnapshotKey: Data] = [:]
   private var recentGroupIds: [String] = []
@@ -93,7 +94,16 @@ actor SnapshotStore {
   }
 
   func groupGeneration(for groupId: String) -> UInt64 {
-    groupGenerations[groupId] ?? 0
+    if let existing = groupGenerations[groupId] {
+      return existing
+    }
+    let initial: UInt64 = 1
+    groupGenerations[groupId] = initial
+    return initial
+  }
+
+  func recordActiveGroup(_ groupId: String) {
+    authoritativeGroupIds?.insert(groupId)
   }
 
   @discardableResult
@@ -109,6 +119,7 @@ actor SnapshotStore {
     if let current = activeScope, current.userId == userId {
       return current
     }
+    authoritativeGroupIds = nil
     sessionGeneration &+= 1
     let scope = Scope(userId: userId, generation: sessionGeneration)
     activeScope = scope
@@ -199,6 +210,9 @@ actor SnapshotStore {
       return
     }
     if let groupId = key.groupId {
+      if let authoritative = authoritativeGroupIds, !authoritative.contains(groupId) {
+        return
+      }
       let expected = self.groupGeneration(for: groupId)
       guard groupGeneration == nil || groupGeneration == expected else {
         return
@@ -229,6 +243,7 @@ actor SnapshotStore {
   }
 
   func invalidateGroup(_ groupId: String) {
+    authoritativeGroupIds?.remove(groupId)
     groupGenerations[groupId] = (groupGenerations[groupId] ?? 0) &+ 1
     memoryCache = memoryCache.filter { $0.key.groupId != groupId }
     if let userId = activeScope?.userId {
@@ -243,6 +258,7 @@ actor SnapshotStore {
     guard activeScope == scope else {
       return
     }
+    authoritativeGroupIds = activeGroupIds
     var removedIds = Set<String>()
     for id in recentGroupIds where !activeGroupIds.contains(id) {
       removedIds.insert(id)
@@ -285,9 +301,13 @@ actor SnapshotStore {
   }
 
   func invalidateSession(atLeastTokenGeneration minGeneration: UInt64? = nil) {
-    if let minGeneration, minGeneration > minAllowedTokenGeneration {
+    if let minGeneration {
+      guard minGeneration >= minAllowedTokenGeneration else {
+        return
+      }
       minAllowedTokenGeneration = minGeneration
     }
+    authoritativeGroupIds = nil
     sessionGeneration &+= 1
     activeScope = nil
     groupGenerations.removeAll()

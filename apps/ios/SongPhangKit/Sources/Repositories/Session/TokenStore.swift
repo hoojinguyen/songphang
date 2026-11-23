@@ -3,9 +3,24 @@ import Foundation
 import Security
 
 actor TokenStore {
+  enum TokenReadResult: Sendable, Equatable {
+    case token(String)
+    case notFound
+    case transientFailure(OSStatus)
+  }
+
   struct TokenSnapshot: Sendable, Equatable {
-    let token: String?
+    let result: TokenReadResult
     let generation: UInt64
+
+    var token: String? {
+      if case .token(let t) = result { return t }
+      return nil
+    }
+
+    var isDefinitivelyNotFound: Bool {
+      result == .notFound
+    }
   }
 
   private let service: String
@@ -27,14 +42,22 @@ actor TokenStore {
   }
 
   func readSnapshot() -> TokenSnapshot {
-    TokenSnapshot(token: read(), generation: generation)
+    let res = readResult()
+    return TokenSnapshot(result: res, generation: generation)
   }
 
   func read() -> String? {
+    readSnapshot().token
+  }
+
+  private func readResult() -> TokenReadResult {
     if hasLoaded {
-      return cachedToken
+      if let token = cachedToken {
+        return .token(token)
+      } else {
+        return .notFound
+      }
     }
-    hasLoaded = true
     let query: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
@@ -44,16 +67,25 @@ actor TokenStore {
     ]
     var item: CFTypeRef?
     let status = SecItemCopyMatching(query as CFDictionary, &item)
-    guard status == errSecSuccess,
-      let data = item as? Data,
+    guard status == errSecSuccess else {
+      if status == errSecItemNotFound {
+        hasLoaded = true
+        cachedToken = nil
+        return .notFound
+      }
+      return .transientFailure(status)
+    }
+    guard let data = item as? Data,
       let token = String(data: data, encoding: .utf8),
       !token.isEmpty
     else {
+      hasLoaded = true
       cachedToken = nil
-      return nil
+      return .notFound
     }
+    hasLoaded = true
     cachedToken = token
-    return token
+    return .token(token)
   }
 
   @discardableResult
@@ -61,21 +93,22 @@ actor TokenStore {
     guard let data = token.data(using: .utf8), !data.isEmpty else {
       throw .unexpected
     }
-    let deleteQuery: [String: Any] = [
+    let searchQuery: [String: Any] = [
       kSecClass as String: kSecClassGenericPassword,
       kSecAttrService as String: service,
       kSecAttrAccount as String: account,
     ]
-    SecItemDelete(deleteQuery as CFDictionary)
-
-    let addQuery: [String: Any] = [
-      kSecClass as String: kSecClassGenericPassword,
-      kSecAttrService as String: service,
-      kSecAttrAccount as String: account,
-      kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+    let updateAttributes: [String: Any] = [
       kSecValueData as String: data,
+      kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
     ]
-    let status = SecItemAdd(addQuery as CFDictionary, nil)
+    var status = SecItemUpdate(searchQuery as CFDictionary, updateAttributes as CFDictionary)
+    if status == errSecItemNotFound {
+      var addQuery = searchQuery
+      addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+      addQuery[kSecValueData as String] = data
+      status = SecItemAdd(addQuery as CFDictionary, nil)
+    }
     guard status == errSecSuccess else {
       throw .unexpected
     }
@@ -92,9 +125,14 @@ actor TokenStore {
       kSecAttrService as String: service,
       kSecAttrAccount as String: account,
     ]
-    SecItemDelete(query as CFDictionary)
-    cachedToken = nil
-    hasLoaded = true
+    let status = SecItemDelete(query as CFDictionary)
+    if status == errSecSuccess || status == errSecItemNotFound {
+      cachedToken = nil
+      hasLoaded = true
+    } else {
+      cachedToken = nil
+      hasLoaded = false
+    }
     generation &+= 1
     return generation
   }

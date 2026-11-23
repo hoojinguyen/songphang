@@ -354,8 +354,10 @@ public struct RootView: View {
       _ = handleIncomingURL(url)
     }
     .task {
-      for await _ in dependencies.makeSessionInvalidations() {
-        resetToSignedOut()
+      for await generation in dependencies.makeSessionInvalidations() {
+        if await sessionModel.handleSessionInvalidation(atGeneration: generation) {
+          resetToSignedOut()
+        }
       }
     }
     .onChange(of: scenePhase) { _, newPhase in

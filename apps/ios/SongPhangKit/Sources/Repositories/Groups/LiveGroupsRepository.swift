@@ -130,6 +130,7 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
       }
 
       if let scope, let encoded = GroupMapping.encodeGroupSnapshot(detail) {
+        await environment.snapshots.recordActiveGroup(detail.id.rawValue)
         let groupGen = await environment.snapshots.groupGeneration(for: detail.id.rawValue)
         await environment.snapshots.writeData(
           encoded,

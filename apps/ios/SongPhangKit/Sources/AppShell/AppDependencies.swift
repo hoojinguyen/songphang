@@ -31,7 +31,7 @@ public struct AppDependencies: Sendable {
   public let webBaseURL: URL
   public let appVersion: String
   public let appStoreURL: URL?
-  public let makeSessionInvalidations: @Sendable () -> AsyncStream<Void>
+  public let makeSessionInvalidations: @Sendable () -> AsyncStream<UInt64>
 
   #if DEBUG
     public let world: FakeWorld?

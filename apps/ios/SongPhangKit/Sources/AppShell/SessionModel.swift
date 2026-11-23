@@ -80,8 +80,7 @@ public final class SessionModel {
         state = .signedIn(user)
         isOffline = false
       } else {
-        state = .signedOut
-        isOffline = false
+        markSignedOut()
       }
     } catch {
       guard sessionGeneration == generation else { return }
@@ -89,8 +88,7 @@ public final class SessionModel {
         return
       }
       if error == .unauthorized {
-        state = .signedOut
-        isOffline = false
+        markSignedOut()
       } else if error == .offline {
         isOffline = true
       }
@@ -101,11 +99,14 @@ public final class SessionModel {
     sessionGeneration &+= 1
     state = .signedIn(user)
     isOffline = false
+    unreadNotificationCount = 0
   }
 
   public func refreshUnreadNotificationCount(using repo: any NotificationsRepository) async {
+    let generation = sessionGeneration
     guard case .signedIn = state else { return }
     if let count = try? await repo.unreadCount() {
+      guard sessionGeneration == generation, case .signedIn = state else { return }
       unreadNotificationCount = count
     }
   }
@@ -120,10 +121,20 @@ public final class SessionModel {
     }
   }
 
+  public func handleSessionInvalidation(atGeneration generation: UInt64) async -> Bool {
+    let current = await authRepository.sessionGeneration()
+    guard generation >= current else {
+      return false
+    }
+    markSignedOut()
+    return true
+  }
+
   public func markSignedOut() {
     sessionGeneration &+= 1
     state = .signedOut
     isOffline = false
+    unreadNotificationCount = 0
   }
 
   public func signOut() async {

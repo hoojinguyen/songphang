@@ -127,7 +127,9 @@ public final class LiveInvitesRepository: InvitesRepository, Sendable {
         )
       switch output {
       case .ok(let ok):
-        return ExpenseGroup.ID(try ok.body.json.groupId)
+        let groupId = ExpenseGroup.ID(try ok.body.json.groupId)
+        await environment.snapshots.recordActiveGroup(groupId.rawValue)
+        return groupId
       case .undocumented(let status, let payload):
         throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
       }
