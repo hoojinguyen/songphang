@@ -12,10 +12,12 @@ import type { AppDeps } from "../app.js";
 import { createAppleKeySetProvider } from "../auth/apple/key-set.js";
 import { encryptSecret } from "../auth/apple/secret-box.js";
 import {
+	AppleTokenAdapterError,
 	type AppleTokenExchangeResult,
 	createAppleTokenAdapter,
 } from "../auth/apple/token-adapter.js";
 import {
+	type VerifiedAppleClaims,
 	verifyAppleExchangedIdToken,
 	verifyAppleIdentityToken,
 } from "../auth/apple/verify.js";
@@ -49,13 +51,31 @@ export async function appleSignIn(
 	}
 	const keySet =
 		deps.appleKeySet ?? createAppleKeySetProvider(deps.config, deps.now);
-	const claims = await verifyAppleIdentityToken({
-		identityToken: input.request.identityToken,
-		rawNonce: input.request.rawNonce,
-		config: deps.config,
-		keySet,
-		now: deps.now(),
-	});
+	let claims: VerifiedAppleClaims;
+	try {
+		claims = await verifyAppleIdentityToken({
+			identityToken: input.request.identityToken,
+			rawNonce: input.request.rawNonce,
+			config: deps.config,
+			keySet,
+			now: deps.now(),
+		});
+	} catch (error) {
+		if (error instanceof AppError) {
+			throw error;
+		}
+		console.warn(
+			JSON.stringify({
+				event: "apple.verify_identity_token.failed",
+				category: error instanceof Error ? error.name : "unknown",
+			}),
+		);
+		throw new AppError(
+			503,
+			"APPLE_REVOCATION_FAILED",
+			"Could not verify Apple identity token with upstream provider",
+		);
+	}
 
 	const existingIdentity = await findAppleIdentity(deps.db, claims.sub);
 	if (existingIdentity === null) {
@@ -95,10 +115,18 @@ export async function appleSignIn(
 		if (error instanceof AppError) {
 			throw error;
 		}
+		const category =
+			error instanceof AppleTokenAdapterError
+				? error.category
+				: error instanceof Error
+					? error.name === "TimeoutError"
+						? "timeout"
+						: "unknown"
+					: "unknown";
 		console.warn(
 			JSON.stringify({
 				event: "apple.token_exchange.failed",
-				category: error instanceof Error ? error.name : "unknown",
+				category,
 				operation: "exchangeAuthorizationCode",
 			}),
 		);
@@ -110,12 +138,30 @@ export async function appleSignIn(
 	}
 
 	if (exchanged.idToken !== undefined) {
-		const exchangedClaims = await verifyAppleExchangedIdToken({
-			idToken: exchanged.idToken,
-			config: deps.config,
-			keySet,
-			now: deps.now(),
-		});
+		let exchangedClaims: { sub: string };
+		try {
+			exchangedClaims = await verifyAppleExchangedIdToken({
+				idToken: exchanged.idToken,
+				config: deps.config,
+				keySet,
+				now: deps.now(),
+			});
+		} catch (error) {
+			if (error instanceof AppError) {
+				throw error;
+			}
+			console.warn(
+				JSON.stringify({
+					event: "apple.verify_exchanged_token.failed",
+					category: error instanceof Error ? error.name : "unknown",
+				}),
+			);
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Could not verify Apple exchanged identity token with upstream provider",
+			);
+		}
 		if (exchangedClaims.sub !== claims.sub) {
 			throw new AppError(
 				401,

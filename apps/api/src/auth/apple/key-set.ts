@@ -110,6 +110,9 @@ export function createAppleKeySetProvider(
 					);
 				}
 			}
+			if (fetchedAtMs !== null && currentMs - fetchedAtMs >= MAX_STALE_MS) {
+				return null;
+			}
 			const cached = keys.get(kid);
 			if (cached) return cached;
 			if (currentMs - lastUnknownRefreshMs >= UNKNOWN_KID_COOLDOWN_MS) {
@@ -125,7 +128,7 @@ export function createAppleKeySetProvider(
 							kid,
 						}),
 					);
-					return null;
+					throw error;
 				}
 			}
 			return null;

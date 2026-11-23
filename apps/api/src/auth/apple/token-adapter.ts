@@ -8,10 +8,22 @@ const APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
 const FAKE_CODE_TTL_MS = 5 * 60 * 1000;
 const MAX_FAKE_CODES = 10_000;
 
-const AppleErrorResponseSchema = z.object({
-	error: z.string().max(100),
-	error_description: z.string().max(500).optional(),
-});
+export class AppleTokenAdapterError extends Error {
+	constructor(
+		message: string,
+		public readonly category: string,
+	) {
+		super(message);
+		this.name = "AppleTokenAdapterError";
+	}
+}
+
+const AppleErrorResponseSchema = z
+	.object({
+		error: z.string().max(100),
+		error_description: z.string().optional(),
+	})
+	.passthrough();
 
 export type AppleTokenExchangeResult = {
 	refreshToken: string | null;
@@ -146,15 +158,20 @@ export function createAppleTokenAdapter(
 					);
 				}
 				if (errorType) {
-					throw new Error(`Apple token exchange rejected: ${errorType}`);
+					throw new AppleTokenAdapterError(
+						`Apple token exchange rejected: ${errorType}`,
+						`rejected:${errorType}`,
+					);
 				}
-				throw new Error(
+				throw new AppleTokenAdapterError(
 					"Apple token exchange failed with malformed 400 response",
+					"malformed_response",
 				);
 			}
 			if (!response.ok) {
-				throw new Error(
+				throw new AppleTokenAdapterError(
 					`Apple token exchange failed with status ${response.status}`,
+					`http_status:${response.status}`,
 				);
 			}
 			const body = z
@@ -214,7 +231,10 @@ export function createAppleTokenAdapter(
 				}),
 			});
 			if (!response.ok) {
-				throw new Error("Apple token revocation failed");
+				throw new AppleTokenAdapterError(
+					`Apple token revocation failed with status ${response.status}`,
+					`http_status:${response.status}`,
+				);
 			}
 		},
 	};
