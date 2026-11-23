@@ -412,7 +412,6 @@ public struct RootView: View {
     }
     .task {
       PushEventBridge.shared.onDeviceTokenRegistered = { hexToken in
-        guard isSignedIn else { return }
         Task { await pushCoordinator.registerDeviceToken(hexToken) }
       }
       PushEventBridge.shared.onPushTapReceived = { payload in

@@ -49,10 +49,11 @@
 
     public func confirmTelegramPairing(id: TelegramPairing.ID) async throws(AppError) {
       try await simulateNetwork()
-      guard let existing = pairingsById[id],
-        existing.status == .pendingTelegram || existing.status == .telegramConfirmed
-      else {
-        return
+      guard let existing = pairingsById[id] else {
+        throw .api(code: "NOT_FOUND", status: 404)
+      }
+      guard existing.status == .telegramConfirmed else {
+        throw .api(code: "INVALID_PAIRING_STATUS", status: 409)
       }
       pairingsById[id] = TelegramPairing(
         id: existing.id,

@@ -7,6 +7,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
   private let members: [Member]
   private let categories: [GroupCategory]
   private let isDisabled: Bool
+  private let isSaveDisabled: Bool?
   private let isBudgetOver: Bool
   private let indexLabel: String?
   private let saveLabel: String?
@@ -21,6 +22,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
     members: [Member],
     categories: [GroupCategory] = [],
     isDisabled: Bool = false,
+    isSaveDisabled: Bool? = nil,
     isBudgetOver: Bool = false,
     indexLabel: String? = nil,
     saveLabel: String? = nil,
@@ -34,6 +36,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
     self.members = members
     self.categories = categories
     self.isDisabled = isDisabled
+    self.isSaveDisabled = isSaveDisabled
     self.isBudgetOver = isBudgetOver
     self.indexLabel = indexLabel
     self.saveLabel = saveLabel
@@ -239,7 +242,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
             variant: .accent,
             size: .lg,
             isFullWidth: true,
-            isDisabled: isDisabled,
+            isDisabled: isSaveDisabled ?? isDisabled,
             action: onSave
           )
           HStack(spacing: 12) {
@@ -274,7 +277,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
             variant: .accent,
             size: .lg,
             isFullWidth: true,
-            isDisabled: isDisabled,
+            isDisabled: isSaveDisabled ?? isDisabled,
             action: onSave
           )
         }
@@ -291,6 +294,7 @@ extension ConfirmationCardView where ExtraContent == EmptyView {
     members: [Member],
     categories: [GroupCategory] = [],
     isDisabled: Bool = false,
+    isSaveDisabled: Bool? = nil,
     isBudgetOver: Bool = false,
     indexLabel: String? = nil,
     saveLabel: String? = nil,
@@ -304,6 +308,7 @@ extension ConfirmationCardView where ExtraContent == EmptyView {
       members: members,
       categories: categories,
       isDisabled: isDisabled,
+      isSaveDisabled: isSaveDisabled,
       isBudgetOver: isBudgetOver,
       indexLabel: indexLabel,
       saveLabel: saveLabel,

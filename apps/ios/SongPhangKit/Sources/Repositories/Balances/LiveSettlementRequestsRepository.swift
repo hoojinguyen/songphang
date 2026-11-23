@@ -32,18 +32,19 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
 
     var allRequests: [SettlementRequest] = []
     var currentCursor: String?
-    let maxPages = 10
+    var visitedCursors = Set<String>()
 
-    for _ in 0..<maxPages {
+    while true {
       let page = try await fetchPage(
         groupId: groupId,
         queryStatus: queryStatus,
         cursor: currentCursor
       )
       allRequests.append(contentsOf: page.requests)
-      guard let next = page.nextCursor, !next.isEmpty else {
+      guard let next = page.nextCursor, !next.isEmpty, !visitedCursors.contains(next) else {
         break
       }
+      visitedCursors.insert(next)
       currentCursor = next
     }
 

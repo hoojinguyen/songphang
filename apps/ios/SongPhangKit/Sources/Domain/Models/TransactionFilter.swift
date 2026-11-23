@@ -72,7 +72,7 @@ public struct TransactionFilter: Sendable, Hashable {
 
   private static func parseCalendarDateParts(_ value: String) -> (year: Int, month: Int, day: Int)?
   {
-    let parts = value.split(separator: "-")
+    let parts = value.split(separator: "-", omittingEmptySubsequences: false)
     guard parts.count == 3,
       parts[0].count == 4,
       parts[1].count == 2,
@@ -80,7 +80,7 @@ public struct TransactionFilter: Sendable, Hashable {
       let y = Int(parts[0]),
       let m = Int(parts[1]),
       let d = Int(parts[2]),
-      y >= 2000, y <= 2100,
+      y >= 1000, y <= 9999,
       m >= 1, m <= 12,
       d >= 1, d <= 31
     else { return nil }

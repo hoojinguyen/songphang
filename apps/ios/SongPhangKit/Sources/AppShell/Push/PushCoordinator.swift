@@ -16,6 +16,7 @@ public final class PushCoordinator {
   public var isPermissionSheetPresented = false
   public private(set) var authorizationStatus: AuthorizationStatus = .notDetermined
   public private(set) var currentDeviceId: String?
+  private var registeredToken: String?
 
   private let devicesRepository: any DevicesRepository
   private let authorizationStatusProvider: @Sendable () async -> AuthorizationStatus
@@ -100,7 +101,8 @@ public final class PushCoordinator {
     let gen = sessionGeneration
     let status = await refreshAuthorizationStatus()
     guard sessionGeneration == gen, status == .authorized else { return }
-    guard currentDeviceId == nil else { return }
+    guard currentDeviceId == nil || (lastDeviceToken != nil && lastDeviceToken != registeredToken)
+    else { return }
     requestRemoteRegistration()
     if let token = lastDeviceToken {
       await registerDeviceToken(token, expectedGeneration: gen)
@@ -108,6 +110,7 @@ public final class PushCoordinator {
   }
 
   public func registerDeviceToken(_ hexToken: String) async {
+    lastDeviceToken = hexToken
     let gen = sessionGeneration
     await registerDeviceToken(hexToken, expectedGeneration: gen)
   }
@@ -116,9 +119,13 @@ public final class PushCoordinator {
     guard !hexToken.isEmpty else { return }
     lastDeviceToken = hexToken
     guard !isRegistering else { return }
-    guard currentDeviceId == nil else { return }
+    guard currentDeviceId == nil || registeredToken != hexToken else { return }
     isRegistering = true
-    defer { isRegistering = false }
+    defer {
+      if sessionGeneration == expectedGeneration {
+        isRegistering = false
+      }
+    }
 
     let env: PushRegistrationEnvironment
     #if DEBUG
@@ -131,6 +138,7 @@ public final class PushCoordinator {
       environment: env
     ), sessionGeneration == expectedGeneration {
       currentDeviceId = deviceId
+      registeredToken = hexToken
     }
   }
 
@@ -141,6 +149,7 @@ public final class PushCoordinator {
       let id = try await devicesRepository.registerDevice(token: token, environment: .sandbox)
       if sessionGeneration == gen {
         currentDeviceId = id
+        registeredToken = token
       }
       return id
     }
@@ -149,12 +158,14 @@ public final class PushCoordinator {
       guard let id = currentDeviceId else { return }
       try await devicesRepository.removeDevice(id: id)
       currentDeviceId = nil
+      registeredToken = nil
     }
   #endif
 
   public func clearSessionState() {
     sessionGeneration &+= 1
     currentDeviceId = nil
+    registeredToken = nil
     isPermissionSheetPresented = false
     isRegistering = false
   }

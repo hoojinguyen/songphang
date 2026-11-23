@@ -26,6 +26,13 @@ public struct NotificationsView: View {
       VStack(alignment: .leading, spacing: 16) {
         headerView
 
+        if model.markError != nil {
+          Text(L10n.tr("common.saveError"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 4)
+        }
+
         switch model.state {
         case .loading:
           LoadingSkeleton(rowCount: 4, rowHeight: 80)
@@ -57,7 +64,26 @@ public struct NotificationsView: View {
               }
             }
 
-            if data.nextCursor != nil {
+            if model.nextPageError != nil {
+              VStack(spacing: 8) {
+                Text(L10n.tr("common.loadError"))
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.ink)
+                Button(action: {
+                  Task { await model.fetchNextPage() }
+                }) {
+                  Text(L10n.tr("common.retry"))
+                    .font(Typography.captionBold)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Tokens.surface)
+                    .foregroundStyle(Tokens.ink)
+                    .clipShape(Capsule())
+                }
+              }
+              .frame(maxWidth: .infinity)
+              .padding(.top, 8)
+            } else if data.nextCursor != nil {
               Button(action: {
                 Task { await model.fetchNextPage() }
               }) {

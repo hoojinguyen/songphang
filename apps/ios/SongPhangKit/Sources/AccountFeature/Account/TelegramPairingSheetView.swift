@@ -84,6 +84,20 @@ struct TelegramPairingSheetView: View {
       } else {
         privateStep(started: started, pairing: pairing, identity: identity)
       }
+    } else if let pairingError = model.pairingError {
+      Text(pairingError)
+        .font(Typography.subheadlineBold)
+        .foregroundStyle(Tokens.ink)
+
+      SPButton(
+        L10n.tr("common.retry"),
+        variant: .primary,
+        isFullWidth: true,
+        isDisabled: model.isOffline || model.isStartingPairing,
+        isPending: model.isStartingPairing
+      ) {
+        Task { await model.startTelegramPairing() }
+      }
     } else {
       LoadingSkeleton(rowCount: 2, rowHeight: 56)
     }

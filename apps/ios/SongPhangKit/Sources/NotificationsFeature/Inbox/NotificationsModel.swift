@@ -24,6 +24,7 @@ public final class NotificationsModel {
 
   private let repository: any NotificationsRepository
   private let onUnauthorized: () -> Void
+  private var mutationGeneration: Int = 0
 
   public init(
     repository: any NotificationsRepository,
@@ -39,6 +40,7 @@ public final class NotificationsModel {
   }
 
   public func load() async {
+    mutationGeneration += 1
     state = .loading
     markError = nil
     nextPageError = nil
@@ -65,20 +67,27 @@ public final class NotificationsModel {
   }
 
   public func fetchNextPage() async {
-    guard case .loaded(var data) = state, let cursor = data.nextCursor, !isFetchingNextPage else {
+    guard case .loaded(var data) = state,
+      let cursor = data.nextCursor,
+      !isFetchingNextPage,
+      !isMarkingAll
+    else {
       return
     }
     isFetchingNextPage = true
     nextPageError = nil
+    let gen = mutationGeneration
     defer { isFetchingNextPage = false }
 
     do throws(AppError) {
       let page = try await repository.list(cursor: cursor, limit: 30)
+      guard mutationGeneration == gen else { return }
       data.notifications.append(contentsOf: page.notifications)
       data.nextCursor = page.nextCursor
       nextPageError = nil
       state = .loaded(data)
     } catch {
+      guard mutationGeneration == gen else { return }
       if error == .unauthorized {
         onUnauthorized()
       } else {
@@ -109,8 +118,10 @@ public final class NotificationsModel {
   }
 
   public func markAllRead() async {
-    guard case .loaded(var data) = state, !isMarkingAll else { return }
+    guard case .loaded(var data) = state, !isMarkingAll, !isFetchingNextPage else { return }
     isMarkingAll = true
+    mutationGeneration += 1
+    let gen = mutationGeneration
     defer { isMarkingAll = false }
 
     let previousNotifications = data.notifications
@@ -124,17 +135,23 @@ public final class NotificationsModel {
 
     do throws(AppError) {
       try await repository.markAllRead()
+      guard mutationGeneration == gen else { return }
       markError = nil
     } catch {
+      guard mutationGeneration == gen else { return }
       if error == .unauthorized {
         onUnauthorized()
         return
       }
       markError = error
       if case .loaded(var current) = state {
-        for (idx, prev) in previousNotifications.enumerated() {
-          if idx < current.notifications.count && current.notifications[idx].id == prev.id {
-            current.notifications[idx].read = prev.read
+        var prevMap = [AppNotification.ID: Bool]()
+        for prev in previousNotifications {
+          prevMap[prev.id] = prev.read
+        }
+        for i in current.notifications.indices {
+          if let prevRead = prevMap[current.notifications[i].id] {
+            current.notifications[i].read = prevRead
           }
         }
         current.unreadCount = previousUnreadCount

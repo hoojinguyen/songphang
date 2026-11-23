@@ -78,26 +78,26 @@
       AppNotification(
         id: AppNotification.ID("00000000-0000-7000-8000-000000000901"),
         kind: "expense_added",
-        groupId: ExpenseGroup.ID("00000000-0000-7000-8000-000000000001"),
+        groupId: TripScenario.groupId,
         groupName: "Đà Lạt 2026",
         read: false,
         createdAt: "2026-11-22T10:00:00.000Z",
         payload: .expenseAdded(
           actorName: "Lan",
           groupName: "Đà Lạt 2026",
-          transactionId: "00000000-0000-7000-8000-000000000101",
-          description: "Cà phê",
-          share: Money(50_000)
+          transactionId: TripScenario.t1Transaction.id.rawValue,
+          description: "Lẩu",
+          share: Money(100_000)
         ),
         target: .transaction(
-          groupId: ExpenseGroup.ID("00000000-0000-7000-8000-000000000001"),
-          transactionId: "00000000-0000-7000-8000-000000000101"
+          groupId: TripScenario.groupId,
+          transactionId: TripScenario.t1Transaction.id.rawValue
         )
       ),
       AppNotification(
         id: AppNotification.ID("00000000-0000-7000-8000-000000000902"),
         kind: "settlement_requested",
-        groupId: ExpenseGroup.ID("00000000-0000-7000-8000-000000000001"),
+        groupId: TripScenario.groupId,
         groupName: "Đà Lạt 2026",
         read: true,
         createdAt: "2026-11-21T15:30:00.000Z",
@@ -106,7 +106,7 @@
           groupName: "Đà Lạt 2026",
           amount: Money(120_000)
         ),
-        target: .balances(groupId: ExpenseGroup.ID("00000000-0000-7000-8000-000000000001"))
+        target: .balances(groupId: TripScenario.groupId)
       ),
     ]
     internal var notificationSettings: NotificationSettings = NotificationSettings(

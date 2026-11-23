@@ -111,13 +111,43 @@
         case .reject: .rejected
         case .cancel: .cancelled
         }
+      let newTxId = "tx-settle-\(UUID().uuidString)"
+      var assignedTxId: LedgerTransaction.ID? = current.transactionId
+      if decision == .confirm {
+        let txId = LedgerTransaction.ID(newTxId)
+        assignedTxId = txId
+        let tx = LedgerTransaction(
+          id: txId,
+          type: .transfer,
+          description: "Thanh toán",
+          amount: current.amount,
+          currency: "VND",
+          occurredAt: "2026-11-22T10:05:00.000Z",
+          category: nil,
+          categoryId: nil,
+          payers: [MemberAmount(memberId: current.fromMemberId, amount: current.amount)],
+          split: .exact(
+            members: [current.toMemberId],
+            entries: [SplitSpec.ExactEntry(memberId: current.toMemberId, amount: current.amount)],
+            remainder: .none
+          ),
+          shares: [MemberAmount(memberId: current.toMemberId, amount: current.amount)],
+          version: 1,
+          updatedBy: TripScenario.actorMinh,
+          createdBy: TripScenario.actorMinh,
+          attachments: []
+        )
+        var txList = transactionsByGroup[groupId] ?? []
+        txList.insert(tx, at: 0)
+        transactionsByGroup[groupId] = txList
+      }
       list[idx] = SettlementRequest(
         id: current.id,
         fromMemberId: current.fromMemberId,
         toMemberId: current.toMemberId,
         amount: current.amount,
         status: nextStatus,
-        transactionId: current.transactionId,
+        transactionId: assignedTxId,
         createdByUserId: current.createdByUserId,
         createdByName: current.createdByName,
         createdAt: current.createdAt,
@@ -127,21 +157,24 @@
 
       if let bal = balancesByGroup[groupId] {
         let updatedTransfers: [SuggestedTransfer]
+        let updatedBalances: [Balance]
         switch decision {
         case .confirm:
           updatedTransfers = bal.transfers.filter { candidate in
-            !(candidate.fromMemberId == current.fromMemberId
-              && candidate.toMemberId == current.toMemberId
-              && (candidate.pendingSettlement?.id == current.id
-                || candidate.pendingSettlement != nil))
+            candidate.pendingSettlement?.id != current.id
+          }
+          updatedBalances = bal.balances.map { item in
+            if item.memberId == current.fromMemberId {
+              return Balance(memberId: item.memberId, balance: item.balance + current.amount)
+            } else if item.memberId == current.toMemberId {
+              return Balance(memberId: item.memberId, balance: item.balance - current.amount)
+            }
+            return item
           }
         case .reject, .cancel:
+          updatedBalances = bal.balances
           updatedTransfers = bal.transfers.map { candidate in
-            if candidate.fromMemberId == current.fromMemberId
-              && candidate.toMemberId == current.toMemberId
-              && (candidate.pendingSettlement?.id == current.id
-                || candidate.pendingSettlement != nil)
-            {
+            if candidate.pendingSettlement?.id == current.id {
               return SuggestedTransfer(
                 fromMemberId: candidate.fromMemberId,
                 toMemberId: candidate.toMemberId,
@@ -157,7 +190,7 @@
         balancesByGroup[groupId] = GroupBalances(
           currency: bal.currency,
           minimized: bal.minimized,
-          balances: bal.balances,
+          balances: updatedBalances,
           transfers: updatedTransfers,
           fund: bal.fund
         )

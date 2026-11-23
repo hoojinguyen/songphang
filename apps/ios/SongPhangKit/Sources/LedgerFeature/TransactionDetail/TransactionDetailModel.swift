@@ -194,7 +194,7 @@ public final class TransactionDetailModel: Sendable {
                 return true
               }
               if existing.createdAt == last.createdAt {
-                return existing.id > last.id
+                return existing.id.rawValue > last.id.rawValue
               }
               return false
             }

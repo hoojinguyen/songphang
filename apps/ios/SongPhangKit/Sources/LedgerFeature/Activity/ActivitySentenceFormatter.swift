@@ -219,8 +219,8 @@ public enum ActivitySentenceFormatter {
       case .percent(let entries):
         return entries.map { "\(memberName($0.memberId)) \($0.percent)" }
           .joined(separator: " · ")
-      case .items(let items, _):
-        return items.map { item in
+      case .items(let items, let extras):
+        var parts = items.map { item in
           let membersStr = item.memberIds.map(memberName).joined(separator: ", ")
           let amountStr = MoneyFormat.amount(item.amount)
           if membersStr.isEmpty {
@@ -228,7 +228,12 @@ public enum ActivitySentenceFormatter {
           } else {
             return "\(item.name) \(amountStr) (\(membersStr))"
           }
-        }.joined(separator: " · ")
+        }
+        for extra in extras {
+          let label = extra.label.isEmpty ? "\(extra.kind)" : extra.label
+          parts.append("\(label) \(MoneyFormat.amount(extra.amount))")
+        }
+        return parts.joined(separator: " · ")
       }
     }
 

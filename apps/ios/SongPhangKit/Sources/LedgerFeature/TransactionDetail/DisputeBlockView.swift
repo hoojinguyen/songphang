@@ -13,6 +13,7 @@ struct DisputeBlockView: View {
 
   @State private var isDisputeSheetOpen = false
   @State private var disputeReason = ""
+  @State private var submissionError: String? = nil
 
   var body: some View {
     if let dispute {
@@ -47,6 +48,7 @@ struct DisputeBlockView: View {
     } else if !deleted && verified {
       Button {
         disputeReason = ""
+        submissionError = nil
         isDisputeSheetOpen = true
       } label: {
         Text(L10n.tr("transactionView.openDispute"))
@@ -64,6 +66,7 @@ struct DisputeBlockView: View {
             SPTextField(
               label: L10n.tr("transactionView.disputeReasonLabel"),
               text: $disputeReason,
+              error: submissionError,
               maxLength: 500
             )
 
@@ -87,9 +90,13 @@ struct DisputeBlockView: View {
                 isPending: isPending
               ) {
                 Task {
+                  submissionError = nil
                   if await onOpenDispute(trimmed) {
                     disputeReason = ""
+                    submissionError = nil
                     isDisputeSheetOpen = false
+                  } else {
+                    submissionError = L10n.tr("common.saveError")
                   }
                 }
               }
@@ -99,6 +106,11 @@ struct DisputeBlockView: View {
           .navigationTitle(L10n.tr("transactionView.disputeTitle"))
           .navigationBarTitleDisplayMode(.inline)
           .presentationDetents([.height(280)])
+          .onChange(of: disputeReason) { _, _ in
+            if submissionError != nil {
+              submissionError = nil
+            }
+          }
         }
       }
     }

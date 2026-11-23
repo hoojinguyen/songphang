@@ -51,6 +51,8 @@ struct ApprovalCardView: View {
               if !next {
                 if group.approvalThreshold != nil {
                   onSave(nil)
+                } else {
+                  amountText = ""
                 }
                 hasDraftEdit = false
               } else {
@@ -109,6 +111,18 @@ struct ApprovalCardView: View {
         isEnabled = newThreshold != nil
         if let newThreshold {
           amountText = MoneyFormat.amount(newThreshold)
+        } else {
+          amountText = ""
+        }
+      }
+    }
+    .onChange(of: isPending) { wasPending, nowPending in
+      if wasPending && !nowPending && !hasDraftEdit {
+        isEnabled = group.approvalThreshold != nil
+        if let threshold = group.approvalThreshold {
+          amountText = MoneyFormat.amount(threshold)
+        } else {
+          amountText = ""
         }
       }
     }

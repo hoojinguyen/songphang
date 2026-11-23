@@ -103,8 +103,9 @@ public final class LiveAPIEnvironment: Sendable {
     return true
   }
 
-  func performAuthorizedDataRequest(
-    _ request: URLRequest
+  private func performAuthorizedRequest(
+    _ request: URLRequest,
+    session: URLSession
   ) async throws -> (Data, HTTPURLResponse, TokenStore.TokenSnapshot) {
     let snapshot = await tokenStore.readSnapshot()
     var modified = request
@@ -112,7 +113,7 @@ public final class LiveAPIEnvironment: Sendable {
     if let token = snapshot.token, !token.isEmpty {
       modified.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     }
-    let (data, response) = try await urlSession.data(for: modified)
+    let (data, response) = try await session.data(for: modified)
     let currentGeneration = await tokenStore.currentGeneration()
     if currentGeneration != snapshot.generation {
       throw StaleSessionError()
@@ -123,24 +124,16 @@ public final class LiveAPIEnvironment: Sendable {
     return (data, http, snapshot)
   }
 
+  func performAuthorizedDataRequest(
+    _ request: URLRequest
+  ) async throws -> (Data, HTTPURLResponse, TokenStore.TokenSnapshot) {
+    try await performAuthorizedRequest(request, session: urlSession)
+  }
+
   func performAuthorizedUploadRequest(
     _ request: URLRequest
   ) async throws -> (Data, HTTPURLResponse, TokenStore.TokenSnapshot) {
-    let snapshot = await tokenStore.readSnapshot()
-    var modified = request
-    modified.setValue(configuration.appVersion, forHTTPHeaderField: "X-App-Version")
-    if let token = snapshot.token, !token.isEmpty {
-      modified.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    }
-    let (data, response) = try await uploadSession.data(for: modified)
-    let currentGeneration = await tokenStore.currentGeneration()
-    if currentGeneration != snapshot.generation {
-      throw StaleSessionError()
-    }
-    guard let http = response as? HTTPURLResponse else {
-      throw AppError.unexpected
-    }
-    return (data, http, snapshot)
+    try await performAuthorizedRequest(request, session: uploadSession)
   }
 
   func hasToken() async -> Bool {

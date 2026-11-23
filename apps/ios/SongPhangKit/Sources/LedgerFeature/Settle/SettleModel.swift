@@ -22,7 +22,7 @@ public final class SettleModel {
   public let fromMemberId: Member.ID
   public let toMemberId: Member.ID
   public let initialAmount: Money
-  public let idempotencyKey: IdempotencyKey
+  public private(set) var idempotencyKey: IdempotencyKey
 
   private let groupsRepository: any GroupsRepository
   private let membersRepository: any MembersRepository
@@ -32,12 +32,36 @@ public final class SettleModel {
   private var capturedOccurredAt: String?
 
   public private(set) var state: Loadable<ScreenData> = .loading
-  public var amountText: String
-  public var daySelection: DaySelection = .today
-  public var customDate: Date = Date()
+  public var amountText: String {
+    didSet {
+      if amountText != oldValue {
+        resetIntent()
+      }
+    }
+  }
+  public var daySelection: DaySelection = .today {
+    didSet {
+      if daySelection != oldValue {
+        resetIntent()
+      }
+    }
+  }
+  public var customDate: Date = Date() {
+    didSet {
+      if customDate != oldValue {
+        resetIntent()
+      }
+    }
+  }
   public private(set) var isSubmitting = false
   public private(set) var submitError: AppError?
   public var isRecorded = false
+
+  private func resetIntent() {
+    capturedOccurredAt = nil
+    idempotencyKey = IdempotencyKey()
+    submitError = nil
+  }
 
   public init(
     groupId: ExpenseGroup.ID,
