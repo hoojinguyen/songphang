@@ -26,6 +26,7 @@ export async function findUserAppleIdentity(
 	const [identity] = await executor
 		.select({
 			id: userIdentities.id,
+			providerSubject: userIdentities.providerSubject,
 			providerSecret: userIdentities.providerSecret,
 		})
 		.from(userIdentities)
@@ -62,7 +63,7 @@ export function insertAppleIdentity(
 
 export function updateAppleProviderSecret(
 	executor: DbExecutor,
-	input: { userId: string; subject: string; providerSecret: string },
+	input: { userId: string; subject: string; providerSecret: string | null },
 ) {
 	return executor
 		.update(userIdentities)

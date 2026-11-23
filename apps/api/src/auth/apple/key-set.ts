@@ -6,6 +6,8 @@ import type { Config } from "../../config.js";
 const APPLE_KEYS_URL = "https://appleid.apple.com/auth/keys";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const UNKNOWN_KID_COOLDOWN_MS = 60 * 1000;
+const MAX_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+const FAILED_REFRESH_BACKOFF_MS = 5 * 60 * 1000;
 
 const JwkSchema = z.object({
 	kty: z.literal("RSA"),
@@ -30,6 +32,7 @@ export function createAppleKeySetProvider(
 ): AppleKeySetProvider {
 	let keys = new Map<string, KeyObject>();
 	let fetchedAtMs: number | null = null;
+	let lastRefreshAttemptMs = Number.NEGATIVE_INFINITY;
 	let lastUnknownRefreshMs = Number.NEGATIVE_INFINITY;
 	let inflight: Promise<Map<string, KeyObject>> | null = null;
 
@@ -46,7 +49,9 @@ export function createAppleKeySetProvider(
 				signal: AbortSignal.timeout(10_000),
 			});
 			if (!response.ok) {
-				throw new Error("Failed to fetch Apple public keys");
+				throw new Error(
+					`Failed to fetch Apple public keys: ${response.status}`,
+				);
 			}
 			rawText = await response.text();
 		}
@@ -81,18 +86,47 @@ export function createAppleKeySetProvider(
 			const currentMs = now().getTime();
 			const isExpired =
 				fetchedAtMs === null || currentMs - fetchedAtMs >= CACHE_TTL_MS;
-			if (isExpired) {
-				await refresh();
+			if (
+				isExpired &&
+				currentMs - lastRefreshAttemptMs >= FAILED_REFRESH_BACKOFF_MS
+			) {
+				lastRefreshAttemptMs = currentMs;
+				try {
+					await refresh();
+				} catch (error) {
+					// Retain last successful JWKS on refresh failure if within bounded stale limit
+					if (
+						keys.size === 0 ||
+						(fetchedAtMs !== null && currentMs - fetchedAtMs >= MAX_STALE_MS)
+					) {
+						throw error;
+					}
+					console.warn(
+						JSON.stringify({
+							event: "apple.keyset_refresh.failed",
+							category: error instanceof Error ? error.name : "unknown",
+							operation: "refresh",
+						}),
+					);
+				}
 			}
 			const cached = keys.get(kid);
 			if (cached) return cached;
-			if (
-				!isExpired &&
-				currentMs - lastUnknownRefreshMs >= UNKNOWN_KID_COOLDOWN_MS
-			) {
+			if (currentMs - lastUnknownRefreshMs >= UNKNOWN_KID_COOLDOWN_MS) {
 				lastUnknownRefreshMs = currentMs;
-				await refresh();
-				return keys.get(kid) ?? null;
+				try {
+					await refresh();
+					return keys.get(kid) ?? null;
+				} catch (error) {
+					console.warn(
+						JSON.stringify({
+							event: "apple.unknown_kid_refresh.failed",
+							category: error instanceof Error ? error.name : "unknown",
+							kid,
+						}),
+					);
+					return null;
+				}
 			}
 			return null;
 		},

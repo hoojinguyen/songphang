@@ -95,6 +95,13 @@ export async function appleSignIn(
 		if (error instanceof AppError) {
 			throw error;
 		}
+		console.warn(
+			JSON.stringify({
+				event: "apple.token_exchange.failed",
+				category: error instanceof Error ? error.name : "unknown",
+				operation: "exchangeAuthorizationCode",
+			}),
+		);
 		throw new AppError(
 			503,
 			"APPLE_REVOCATION_FAILED",

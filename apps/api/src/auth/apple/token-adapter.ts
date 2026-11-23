@@ -5,6 +5,13 @@ import { AppError } from "../../errors.js";
 
 const APPLE_TOKEN_URL = "https://appleid.apple.com/auth/token";
 const APPLE_REVOKE_URL = "https://appleid.apple.com/auth/revoke";
+const FAKE_CODE_TTL_MS = 5 * 60 * 1000;
+const MAX_FAKE_CODES = 10_000;
+
+const AppleErrorResponseSchema = z.object({
+	error: z.string().max(100),
+	error_description: z.string().max(500).optional(),
+});
 
 export type AppleTokenExchangeResult = {
 	refreshToken: string | null;
@@ -55,13 +62,19 @@ export function createAppleTokenAdapter(
 	config: Config,
 	now: () => Date,
 ): AppleTokenAdapter {
-	const consumedFakeCodes = new Set<string>();
+	const consumedFakeCodes = new Map<string, number>();
 
 	return {
 		async exchangeAuthorizationCode(
 			code: string,
 		): Promise<AppleTokenExchangeResult> {
 			if (config.appleProvider === "fake") {
+				const nowMs = now().getTime();
+				for (const [consumedCode, expiresAt] of consumedFakeCodes.entries()) {
+					if (expiresAt <= nowMs) {
+						consumedFakeCodes.delete(consumedCode);
+					}
+				}
 				if (consumedFakeCodes.has(code)) {
 					throw new AppError(
 						401,
@@ -69,13 +82,12 @@ export function createAppleTokenAdapter(
 						"Apple authorization code has already been used",
 					);
 				}
-				if (consumedFakeCodes.size >= 10_000) {
-					const oldest = consumedFakeCodes.values().next().value;
-					if (oldest !== undefined) {
-						consumedFakeCodes.delete(oldest);
-					}
+				if (consumedFakeCodes.size >= MAX_FAKE_CODES) {
+					throw new Error(
+						"Fake Apple provider code capacity reached; retry shortly",
+					);
 				}
-				consumedFakeCodes.add(code);
+				consumedFakeCodes.set(code, nowMs + FAKE_CODE_TTL_MS);
 				if (code.startsWith("sub=")) {
 					const afterPrefix = code.slice(4);
 					const separator = afterPrefix.indexOf(":");
@@ -116,14 +128,34 @@ export function createAppleTokenAdapter(
 				}),
 			});
 			if (response.status === 400) {
-				throw new AppError(
-					401,
-					"INVALID_CREDENTIALS",
-					"Apple authorization code is invalid or already used",
+				let errorType = "";
+				try {
+					const json = await response.json();
+					const parsed = AppleErrorResponseSchema.safeParse(json);
+					if (parsed.success) {
+						errorType = parsed.data.error;
+					}
+				} catch {
+					// Malformed or non-JSON body
+				}
+				if (errorType === "invalid_grant") {
+					throw new AppError(
+						401,
+						"INVALID_CREDENTIALS",
+						"Apple authorization code is invalid or already used",
+					);
+				}
+				if (errorType) {
+					throw new Error(`Apple token exchange rejected: ${errorType}`);
+				}
+				throw new Error(
+					"Apple token exchange failed with malformed 400 response",
 				);
 			}
 			if (!response.ok) {
-				throw new Error("Apple token exchange failed");
+				throw new Error(
+					`Apple token exchange failed with status ${response.status}`,
+				);
 			}
 			const body = z
 				.object({

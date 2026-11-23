@@ -14,6 +14,7 @@ import {
 	findUserAppleIdentity,
 	listUserGroups,
 	lockAccount,
+	updateAppleProviderSecret,
 	updatePasswordHash,
 	verifyAccountEmail,
 } from "@songphang/db";
@@ -136,41 +137,66 @@ export async function deleteAccount(
 				"Apple provider is disabled; cannot revoke Apple authorization",
 			);
 		}
-		const adapter =
-			deps.appleTokenAdapter ?? createAppleTokenAdapter(deps.config, deps.now);
-		let refreshToken: string | null = null;
-		if (deps.config.appleProvider === "apple") {
-			if (!appleIdentity.providerSecret || !deps.config.dataEncryptionKey) {
-				throw new AppError(
-					503,
-					"APPLE_REVOCATION_FAILED",
-					"Missing Apple revocation material",
-				);
+		if (appleIdentity.providerSecret !== null) {
+			const adapter =
+				deps.appleTokenAdapter ??
+				createAppleTokenAdapter(deps.config, deps.now);
+			let refreshToken: string | null = null;
+			if (deps.config.appleProvider === "apple") {
+				if (!deps.config.dataEncryptionKey) {
+					throw new AppError(
+						503,
+						"APPLE_REVOCATION_FAILED",
+						"Missing Apple revocation material",
+					);
+				}
+				try {
+					refreshToken = decryptSecret(
+						appleIdentity.providerSecret,
+						deps.config.dataEncryptionKey,
+					);
+				} catch {
+					throw new AppError(
+						503,
+						"APPLE_REVOCATION_FAILED",
+						"Could not decrypt Apple revocation material",
+					);
+				}
 			}
 			try {
-				refreshToken = decryptSecret(
-					appleIdentity.providerSecret,
-					deps.config.dataEncryptionKey,
+				await adapter.revokeRefreshToken({
+					refreshToken,
+					userId: input.user.id,
+				});
+			} catch (error) {
+				console.warn(
+					JSON.stringify({
+						event: "apple.revoke.failed",
+						category: error instanceof Error ? error.name : "unknown",
+						operation: "revokeRefreshToken",
+					}),
 				);
-			} catch {
 				throw new AppError(
 					503,
 					"APPLE_REVOCATION_FAILED",
-					"Could not decrypt Apple revocation material",
+					"Could not revoke Apple authorization",
 				);
 			}
-		}
-		try {
+			if (appleIdentity.providerSubject) {
+				await updateAppleProviderSecret(deps.db, {
+					userId: input.user.id,
+					subject: appleIdentity.providerSubject,
+					providerSecret: null,
+				});
+			}
+		} else if (deps.config.appleProvider === "fake") {
+			const adapter =
+				deps.appleTokenAdapter ??
+				createAppleTokenAdapter(deps.config, deps.now);
 			await adapter.revokeRefreshToken({
-				refreshToken,
+				refreshToken: null,
 				userId: input.user.id,
 			});
-		} catch {
-			throw new AppError(
-				503,
-				"APPLE_REVOCATION_FAILED",
-				"Could not revoke Apple authorization",
-			);
 		}
 	}
 	const groups = await deps.db.transaction(async (transaction) => {

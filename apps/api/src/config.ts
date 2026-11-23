@@ -287,6 +287,12 @@ const CONFIG_SCHEMA = z
 					message: "APPLE_BUNDLE_ID is required when APPLE_PROVIDER=fake",
 				});
 			}
+			// Local generated-JWKS exercise workflow for APPLE_PROVIDER=fake:
+			// 1. Generate an ephemeral RSA key pair: crypto.generateKeyPairSync('rsa', { modulusLength: 2048 })
+			// 2. Export public JWK: key.export({ format: 'jwk' }) with kid: 'test-key-1', use: 'sig', alg: 'RS256'
+			// 3. Write { keys: [jwk] } to a temporary file, pass path via APPLE_FAKE_JWKS_FILE
+			// 4. Sign test JWTs with private key using RS256, aud: APPLE_BUNDLE_ID, iss: https://appleid.apple.com
+			// 5. Clean up temporary files on exit. Never commit reusable private keys.
 			if (!env.APPLE_FAKE_JWKS_FILE) {
 				context.addIssue({
 					code: "custom",
