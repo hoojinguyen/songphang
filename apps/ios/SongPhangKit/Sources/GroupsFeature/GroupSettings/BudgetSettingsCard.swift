@@ -83,7 +83,6 @@ struct BudgetSettingsCard: View {
         ) {
           if let parsed {
             onSave(activePeriod, parsed)
-            hasDraftEdit = false
           }
         }
 
@@ -95,11 +94,13 @@ struct BudgetSettingsCard: View {
             isDisabled: isDisabled || isPending
           ) {
             onRemove()
-            amountText = ""
-            hasDraftEdit = false
           }
         }
       }
+    }
+    .onChange(of: budget) { _, _ in
+      hasDraftEdit = false
+      amountText = ""
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)

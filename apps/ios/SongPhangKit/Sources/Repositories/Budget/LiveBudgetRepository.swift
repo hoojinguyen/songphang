@@ -26,7 +26,7 @@ public final class LiveBudgetRepository: BudgetRepository, Sendable {
           )
         switch output {
         case .ok(let ok):
-          return try ok.body.json.budget.map(BudgetMapping.mapBudget)
+          return try ok.body.json.budget.flatMap(BudgetMapping.mapBudget)
         case .undocumented(let status, let payload):
           throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
         }
@@ -69,7 +69,7 @@ public final class LiveBudgetRepository: BudgetRepository, Sendable {
           )
         switch output {
         case .ok(let ok):
-          guard let budget = try ok.body.json.budget.map(BudgetMapping.mapBudget) else {
+          guard let budget = try ok.body.json.budget.flatMap(BudgetMapping.mapBudget) else {
             throw AppError.unexpected
           }
           return budget

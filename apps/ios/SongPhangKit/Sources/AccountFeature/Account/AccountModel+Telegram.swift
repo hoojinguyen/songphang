@@ -22,6 +22,8 @@ extension AccountModel {
   public func startTelegramPairing() async {
     guard let chatLinksRepository, !isStartingPairing, !isOffline else { return }
     isStartingPairing = true
+    startedPairing = nil
+    currentPairing = nil
     telegramError = nil
     pairingError = nil
     pairingCompleted = false
@@ -32,15 +34,19 @@ extension AccountModel {
       startedPairing = started
       currentPairing = started.pairing
     } catch {
+      let message: String
       if error == .unauthorized {
         onSignedOut()
+        return
       } else if error == .rateLimited {
-        telegramError = L10n.tr("login.tooMany")
+        message = L10n.tr("login.tooMany")
       } else if case .api(_, 404) = error {
-        telegramError = L10n.tr("telegram.linkInvalid")
+        message = L10n.tr("telegram.linkInvalid")
       } else {
-        telegramError = L10n.tr("common.saveError")
+        message = L10n.tr("common.saveError")
       }
+      telegramError = message
+      pairingError = message
     }
   }
 

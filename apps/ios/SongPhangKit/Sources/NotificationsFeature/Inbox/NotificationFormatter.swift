@@ -141,18 +141,18 @@ public enum NotificationFormatter {
     let now = Date()
     let components = calendar.dateComponents([.minute, .hour, .day], from: date, to: now)
 
-    if let minute = components.minute, minute < 1 {
-      return "vừa xong"
-    } else if let minute = components.minute, let hour = components.hour, hour < 1 {
-      return "\(minute) phút trước"
-    } else if let hour = components.hour, let day = components.day, day < 1 {
-      return "\(hour) giờ trước"
-    } else {
+    if let day = components.day, day >= 1 {
       let printFormatter = DateFormatter()
       printFormatter.locale = Locale(identifier: "vi_VN")
       printFormatter.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh")
       printFormatter.dateFormat = "HH:mm dd/MM"
       return printFormatter.string(from: date)
+    } else if let hour = components.hour, hour >= 1 {
+      return "\(hour) giờ trước"
+    } else if let minute = components.minute, minute >= 1 {
+      return "\(minute) phút trước"
+    } else {
+      return "vừa xong"
     }
   }
 }

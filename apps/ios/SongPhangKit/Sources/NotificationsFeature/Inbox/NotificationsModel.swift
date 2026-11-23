@@ -18,6 +18,7 @@ public final class NotificationsModel {
 
   public private(set) var state: Loadable<ScreenData> = .loading
   public private(set) var isFetchingNextPage = false
+  public private(set) var nextPageError: AppError?
   public private(set) var isMarkingAll = false
   public private(set) var markError: AppError?
 
@@ -40,6 +41,7 @@ public final class NotificationsModel {
   public func load() async {
     state = .loading
     markError = nil
+    nextPageError = nil
     do {
       async let countFetch = repository.unreadCount()
       async let listFetch = repository.list(cursor: nil, limit: 30)
@@ -67,16 +69,20 @@ public final class NotificationsModel {
       return
     }
     isFetchingNextPage = true
+    nextPageError = nil
     defer { isFetchingNextPage = false }
 
     do throws(AppError) {
       let page = try await repository.list(cursor: cursor, limit: 30)
       data.notifications.append(contentsOf: page.notifications)
       data.nextCursor = page.nextCursor
+      nextPageError = nil
       state = .loaded(data)
     } catch {
       if error == .unauthorized {
         onUnauthorized()
+      } else {
+        nextPageError = error
       }
     }
   }
@@ -107,6 +113,9 @@ public final class NotificationsModel {
     isMarkingAll = true
     defer { isMarkingAll = false }
 
+    let previousNotifications = data.notifications
+    let previousUnreadCount = data.unreadCount
+
     for i in data.notifications.indices {
       data.notifications[i].read = true
     }
@@ -115,12 +124,22 @@ public final class NotificationsModel {
 
     do throws(AppError) {
       try await repository.markAllRead()
+      markError = nil
     } catch {
       if error == .unauthorized {
         onUnauthorized()
         return
       }
       markError = error
+      if case .loaded(var current) = state {
+        for (idx, prev) in previousNotifications.enumerated() {
+          if idx < current.notifications.count && current.notifications[idx].id == prev.id {
+            current.notifications[idx].read = prev.read
+          }
+        }
+        current.unreadCount = previousUnreadCount
+        state = .loaded(current)
+      }
     }
   }
 }

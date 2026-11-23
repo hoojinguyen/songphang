@@ -68,8 +68,8 @@ public struct JoinView: View {
   }
 
   private static func isInvalidInviteError(_ error: AppError) -> Bool {
-    guard case .api(let code, let status) = error else { return false }
-    return code == "INVITE_INVALID" || code == "VALIDATION_FAILED" || status == 404
+    guard case .api(let code, _) = error else { return false }
+    return code == "INVITE_INVALID"
   }
 
   @ViewBuilder

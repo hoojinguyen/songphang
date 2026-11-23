@@ -52,7 +52,6 @@ struct ApprovalCardView: View {
                 if group.approvalThreshold != nil {
                   onSave(nil)
                 }
-                amountText = ""
                 hasDraftEdit = false
               } else {
                 hasDraftEdit = true
@@ -105,5 +104,13 @@ struct ApprovalCardView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(Tokens.surface)
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .onChange(of: group.approvalThreshold) { _, newThreshold in
+      if !hasDraftEdit {
+        isEnabled = newThreshold != nil
+        if let newThreshold {
+          amountText = MoneyFormat.amount(newThreshold)
+        }
+      }
+    }
   }
 }

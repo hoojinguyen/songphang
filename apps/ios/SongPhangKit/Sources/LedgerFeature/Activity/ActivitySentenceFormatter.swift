@@ -233,14 +233,7 @@ public enum ActivitySentenceFormatter {
     }
 
     func formatCategory(_ category: TransactionCategory) -> String {
-      switch category {
-      case .food: return L10n.tr("expenseForm.categories.food")
-      case .transport: return L10n.tr("expenseForm.categories.transport")
-      case .lodging: return L10n.tr("expenseForm.categories.lodging")
-      case .shopping: return L10n.tr("expenseForm.categories.shopping")
-      case .entertainment, .bills, .other, .unknown:
-        return L10n.tr("expenseForm.categories.other")
-      }
+      CategoryDisplay.localizedName(for: category)
     }
 
     var chips: [ActivityChangeChip] = []
