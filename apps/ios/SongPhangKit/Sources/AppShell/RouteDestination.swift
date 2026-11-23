@@ -315,6 +315,7 @@ public struct RouteDestination: View {
           categoriesRepository: dependencies.categories,
           transactionsRepository: dependencies.transactions,
           attachmentsRepository: dependencies.attachments,
+          eventsRepository: dependencies.groupEvents,
           currentUserProvider: { sessionModel.currentUser },
           onUnauthorized: {
             onPopToRoot(nil)
@@ -698,6 +699,9 @@ public struct RouteDestination: View {
           onBack: onPop,
           onOpenEdit: { gid, tid in
             onNavigate(.editTransaction(groupId: gid, transactionId: tid))
+          },
+          onRemoved: {
+            onPopToRoot(L10n.tr("common.removed"))
           }
         )
       }

@@ -44,9 +44,11 @@ public final class TransactionDetailModel: Sendable {
   private let membersRepository: any MembersRepository
   private let categoriesRepository: any CategoriesRepository
   private let transactionsRepository: any TransactionsRepository
+  private let eventsRepository: (any GroupEventsRepository)?
   public let attachmentsRepository: (any AttachmentsRepository)?
   private let currentUserProvider: (@Sendable () -> User?)?
   private let onUnauthorized: (@Sendable () -> Void)?
+  private var pendingSilentRefresh = false
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -56,6 +58,7 @@ public final class TransactionDetailModel: Sendable {
     categoriesRepository: any CategoriesRepository,
     transactionsRepository: any TransactionsRepository,
     attachmentsRepository: (any AttachmentsRepository)? = nil,
+    eventsRepository: (any GroupEventsRepository)? = nil,
     currentUserProvider: (@Sendable () -> User?)? = nil,
     onUnauthorized: (@Sendable () -> Void)? = nil
   ) {
@@ -66,6 +69,7 @@ public final class TransactionDetailModel: Sendable {
     self.categoriesRepository = categoriesRepository
     self.transactionsRepository = transactionsRepository
     self.attachmentsRepository = attachmentsRepository
+    self.eventsRepository = eventsRepository
     self.currentUserProvider = currentUserProvider
     self.onUnauthorized = onUnauthorized
   }
@@ -94,11 +98,80 @@ public final class TransactionDetailModel: Sendable {
         )
       )
       await loadComments(initial: true)
+      if pendingSilentRefresh {
+        pendingSilentRefresh = false
+        await refreshSilently(resources: nil)
+      }
     } catch {
       if case .unauthorized = error {
         onUnauthorized?()
       }
       state = .failed(error)
+    }
+  }
+
+  public func listenForEvents(onRemoved: @escaping () -> Void) async {
+    guard let eventsRepository else { return }
+    let stream = eventsRepository.events(groupId: groupId)
+    for await event in stream {
+      if Task.isCancelled { return }
+      switch event {
+      case .removed:
+        onRemoved()
+        return
+      case .reconnected:
+        await refreshSilently(resources: nil)
+      case .changed(let resources):
+        await refreshSilently(resources: resources)
+      }
+    }
+  }
+
+  public func refreshSilently(resources: [String]? = nil) async {
+    guard case .loaded(var current) = state else {
+      pendingSilentRefresh = true
+      return
+    }
+    let shouldReloadAll = resources == nil
+    do throws(AppError) {
+      if shouldReloadAll || resources?.contains("group") == true {
+        current.group = try await groupsRepository.group(id: groupId)
+      }
+      if shouldReloadAll || resources?.contains("members") == true {
+        current.members = try await membersRepository.members(groupId: groupId)
+      }
+      if shouldReloadAll || resources?.contains("categories") == true {
+        current.categories = try await categoriesRepository.list(groupId: groupId)
+      }
+      if shouldReloadAll
+        || resources?.contains("transactions") == true
+        || resources?.contains("comments") == true
+        || resources?.contains("attachments") == true
+      {
+        current.transaction = try await transactionsRepository.transaction(
+          groupId: groupId,
+          id: transactionId
+        )
+        let res = try await transactionsRepository.comments(
+          groupId: groupId,
+          id: transactionId,
+          cursor: nil,
+          limit: 50
+        )
+        if !Task.isCancelled {
+          comments = res.comments
+          commentsNextCursor = res.nextCursor
+          commentsError = nil
+        }
+      }
+      if !Task.isCancelled {
+        current.currentUser = currentUserProvider?()
+        state = .loaded(current)
+      }
+    } catch {
+      if case .unauthorized = error {
+        onUnauthorized?()
+      }
     }
   }
 

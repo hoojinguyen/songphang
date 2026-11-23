@@ -7,17 +7,20 @@ public struct TransactionDetailView: View {
   private let verifyEmailBanner: AnyView?
   private let onBack: () -> Void
   private let onOpenEdit: (ExpenseGroup.ID, LedgerTransaction.ID) -> Void
+  private let onRemoved: (() -> Void)?
 
   public init(
     model: TransactionDetailModel,
     verifyEmailBanner: AnyView? = nil,
     onBack: @escaping () -> Void,
-    onOpenEdit: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void
+    onOpenEdit: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void,
+    onRemoved: (() -> Void)? = nil
   ) {
     self.model = model
     self.verifyEmailBanner = verifyEmailBanner
     self.onBack = onBack
     self.onOpenEdit = onOpenEdit
+    self.onRemoved = onRemoved
   }
 
   public var body: some View {
@@ -159,6 +162,11 @@ public struct TransactionDetailView: View {
     .background(Tokens.bg.ignoresSafeArea())
     .task {
       await model.load()
+    }
+    .task(id: model.transactionId) {
+      await model.listenForEvents {
+        onRemoved?()
+      }
     }
   }
 }
