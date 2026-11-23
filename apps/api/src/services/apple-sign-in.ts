@@ -2,15 +2,19 @@ import { randomUUID } from "node:crypto";
 import { type AppleSignInRequest, UserDto } from "@songphang/contract";
 import {
 	clearAppleOperation,
+	clearExpiredConflictingAppleExchanges,
 	findAccountByEmail,
 	findAppleIdentity,
 	findAppleOperation,
+	findUserAppleIdentity,
 	findUserById,
 	hasAppleExchange,
+	hasRecentAppleDeletion,
 	insertAccount,
 	insertAppleIdentity,
 	lockAccount,
 	lockAppleOperation,
+	pruneExpiredAppleOperations,
 	saveAppleOperation,
 	updateAppleProviderSecret,
 } from "@songphang/db";
@@ -55,6 +59,7 @@ export async function appleSignIn(
 	if (!deps.config.appleProvider) {
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	}
+	const verificationDeadline = performance.now() + 30_000;
 	const keySet =
 		deps.appleKeySet ?? createAppleKeySetProvider(deps.config, deps.now);
 	let claims: VerifiedAppleClaims;
@@ -83,6 +88,14 @@ export async function appleSignIn(
 		);
 	}
 
+	if (deps.config.appleProvider === "apple" && !deps.config.dataEncryptionKey) {
+		throw new AppError(
+			503,
+			"APPLE_REVOCATION_FAILED",
+			"Apple credential encryption key is missing",
+		);
+	}
+	await pruneExpiredAppleOperations(deps.db);
 	const operationKey = `exchange:${claims.sub}`;
 	const owner = randomUUID();
 	const hadPendingExchange = await deps.db.transaction(async (transaction) => {
@@ -101,7 +114,39 @@ export async function appleSignIn(
 		) {
 			throw new AppError(403, "FORBIDDEN", "Account is undergoing deletion");
 		}
+		if (performance.now() >= verificationDeadline) {
+			throw new AppError(
+				503,
+				"APPLE_REVOCATION_FAILED",
+				"Apple sign-in verification timed out",
+			);
+		}
 		const existingIdentity = await findAppleIdentity(transaction, claims.sub);
+		if (await hasRecentAppleDeletion(transaction, claims.sub, claims.email)) {
+			throw new AppError(
+				403,
+				"FORBIDDEN",
+				"Apple account was recently deleted",
+			);
+		}
+		if (accountId !== undefined) {
+			const linked = await findUserAppleIdentity(transaction, accountId);
+			if (linked?.providerSubject && linked.providerSubject !== claims.sub) {
+				throw new AppError(
+					403,
+					"FORBIDDEN",
+					"Account already has an Apple identity",
+				);
+			}
+			if (linked?.providerSubject === claims.sub) {
+				await clearExpiredConflictingAppleExchanges(
+					transaction,
+					accountId,
+					claims.email,
+					claims.sub,
+				);
+			}
+		}
 		if (
 			existingIdentity?.providerSecret?.startsWith("REVOKING:") ||
 			existingIdentity?.providerSecret?.startsWith(
@@ -160,17 +205,6 @@ export async function appleSignIn(
 	});
 
 	try {
-		if (
-			deps.config.appleProvider === "apple" &&
-			!deps.config.dataEncryptionKey
-		) {
-			throw new AppError(
-				503,
-				"APPLE_REVOCATION_FAILED",
-				"Apple credential encryption key is missing",
-			);
-		}
-
 		const adapter =
 			deps.appleTokenAdapter ?? createAppleTokenAdapter(deps.config, deps.now);
 		let exchanged: AppleTokenExchangeResult;
@@ -181,6 +215,14 @@ export async function appleSignIn(
 		} catch (error) {
 			if (error instanceof AppError) {
 				throw error;
+			}
+			if (
+				!hadPendingExchange &&
+				error instanceof AppleTokenAdapterError &&
+				error.category.startsWith("rejected:") &&
+				error.category !== "rejected:unknown"
+			) {
+				await clearAppleOperation(deps.db, operationKey, owner);
 			}
 			const category =
 				error instanceof AppleTokenAdapterError

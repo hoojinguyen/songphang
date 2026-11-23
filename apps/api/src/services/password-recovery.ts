@@ -8,6 +8,7 @@ import type {
 } from "@songphang/contract";
 import {
 	clearAppleOperation,
+	clearExpiredConflictingAppleExchanges,
 	countOwnedGroups,
 	deleteAccountRow,
 	deleteUserSessions,
@@ -19,6 +20,7 @@ import {
 	listUserGroups,
 	lockAccount,
 	lockAppleOperation,
+	recordAppleDeletion,
 	saveAppleOperation,
 	updateAppleProviderSecret,
 	updatePasswordHash,
@@ -139,6 +141,15 @@ export async function deleteAccount(
 	} = await deps.db.transaction(async (tx) => {
 		await lockAppleOperation(tx, `email:${input.user.email.toLowerCase()}`);
 		await lockAccount(tx, input.user.id);
+		const identity = await findUserAppleIdentity(tx, input.user.id);
+		if (identity?.providerSubject) {
+			await clearExpiredConflictingAppleExchanges(
+				tx,
+				input.user.id,
+				input.user.email,
+				identity.providerSubject,
+			);
+		}
 		if (
 			await hasAppleExchange(tx, input.user.id, input.user.email.toLowerCase())
 		) {
@@ -158,9 +169,9 @@ export async function deleteAccount(
 			);
 		}
 
-		const identity = await findUserAppleIdentity(tx, input.user.id);
 		if (identity === null) {
 			const groups = await listUserGroups(tx, input.user.id);
+			await recordAppleDeletion(tx, input.user.email);
 			await deleteAccountRow(tx, input.user.id);
 			return {
 				deletedGroups: groups,
@@ -292,7 +303,15 @@ export async function deleteAccount(
 				});
 			}
 		} catch (error) {
-			if (claimed) await clearAppleOperation(deps.db, key, owner);
+			if (claimed) {
+				try {
+					await clearAppleOperation(deps.db, key, owner);
+				} catch {
+					console.warn(
+						JSON.stringify({ event: "apple.revoke.cleanup_failed" }),
+					);
+				}
+			}
 
 			const category =
 				error instanceof AppleTokenAdapterError
@@ -319,7 +338,12 @@ export async function deleteAccount(
 	const groups =
 		deletedGroups ??
 		(await deps.db.transaction(async (transaction) => {
-			await lockAccount(transaction, input.user.id);
+			await lockAppleOperation(
+				transaction,
+				`email:${input.user.email.toLowerCase()}`,
+			);
+			if ((await lockAccount(transaction, input.user.id)).length === 0)
+				return [];
 			const groupCount = await countOwnedGroups(transaction, input.user.id);
 			if (groupCount > 0)
 				throw new AppError(
@@ -329,6 +353,11 @@ export async function deleteAccount(
 					{ groupCount },
 				);
 			const userGroups = await listUserGroups(transaction, input.user.id);
+			await recordAppleDeletion(
+				transaction,
+				input.user.email,
+				appleIdentity?.providerSubject,
+			);
 			await deleteAccountRow(transaction, input.user.id);
 			return userGroups;
 		}));

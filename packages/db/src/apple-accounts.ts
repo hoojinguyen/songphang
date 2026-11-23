@@ -1,4 +1,5 @@
-import { and, eq, ne, or, sql } from "drizzle-orm";
+import { createHash, randomUUID } from "node:crypto";
+import { and, eq, lt, ne, or, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { appleOperations, userIdentities } from "./schema-accounts.js";
 
@@ -109,7 +110,9 @@ export async function hasAppleExchange(
 					: ne(appleOperations.key, exceptKey),
 				or(
 					userId === undefined ? undefined : eq(appleOperations.userId, userId),
-					email === undefined ? undefined : eq(appleOperations.email, email),
+					email === undefined
+						? undefined
+						: eq(appleOperations.email, email.toLowerCase()),
 				),
 			),
 		)
@@ -123,13 +126,13 @@ export function saveAppleOperation(
 ) {
 	return executor
 		.insert(appleOperations)
-		.values(operation)
+		.values({ ...operation, email: operation.email?.toLowerCase() })
 		.onConflictDoUpdate({
 			target: appleOperations.key,
 			set: {
 				owner: operation.owner,
 				userId: operation.userId ?? null,
-				email: operation.email ?? null,
+				email: operation.email?.toLowerCase() ?? null,
 				expiresAt: operation.expiresAt,
 			},
 		});
@@ -143,4 +146,72 @@ export function clearAppleOperation(
 	return executor
 		.delete(appleOperations)
 		.where(and(eq(appleOperations.key, key), eq(appleOperations.owner, owner)));
+}
+
+function deletionKey(kind: "email" | "subject", value: string) {
+	return `deleted:${kind}:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+export async function hasRecentAppleDeletion(
+	executor: DbExecutor,
+	subject: string,
+	email?: string,
+) {
+	const keys = [deletionKey("subject", subject)];
+	if (email) keys.push(deletionKey("email", email.toLowerCase()));
+	const now = new Date();
+	for (const key of keys) {
+		const marker = await findAppleOperation(executor, key);
+		if (marker && marker.expiresAt > now) return true;
+	}
+	return false;
+}
+
+export async function recordAppleDeletion(
+	executor: DbExecutor,
+	email: string,
+	subject?: string | null,
+) {
+	const keys = [deletionKey("email", email.toLowerCase())];
+	if (subject) keys.push(deletionKey("subject", subject));
+	// Outlast token verification and allow a fresh registration after the guard window.
+	const expiresAt = new Date(Date.now() + 5 * 60_000);
+	for (const key of keys) {
+		await saveAppleOperation(executor, { key, owner: randomUUID(), expiresAt });
+	}
+}
+
+export async function clearExpiredConflictingAppleExchanges(
+	executor: DbExecutor,
+	userId: string,
+	email: string | undefined,
+	subject: string,
+) {
+	// A different subject cannot be associated with this account once its Apple identity exists.
+	await executor
+		.delete(appleOperations)
+		.where(
+			and(
+				sql`${appleOperations.key} like 'exchange:%'`,
+				ne(appleOperations.key, `exchange:${subject}`),
+				lt(appleOperations.expiresAt, new Date()),
+				or(
+					eq(appleOperations.userId, userId),
+					email === undefined
+						? undefined
+						: eq(appleOperations.email, email.toLowerCase()),
+				),
+			),
+		);
+}
+
+export function pruneExpiredAppleOperations(executor: DbExecutor) {
+	// Uncertain exchanges retain their outcome independently of the exclusive lease.
+	return executor.execute(sql`
+		delete from apple_operations where key in (
+			select key from apple_operations
+			where expires_at < now() and (key like 'deleted:%' or key like 'revoke:%')
+			order by expires_at limit 64 for update skip locked
+		)
+	`);
 }

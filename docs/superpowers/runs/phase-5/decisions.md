@@ -127,13 +127,26 @@ Diffing `bb1e0432fef6f1ceb4cf2ee960948129210626b2..eac8aa7` across `packages/con
 - **Problem:** When multiple devices are registered to a user and APNs push delivery fails transiently for one device, retrying the worker job previously re-delivered pushes to devices that had already received them. In-memory deduplication was lost on worker restart.
 - **Choice:** Record delivered device IDs durably in PostgreSQL within `notifications.payload._deliveredDeviceIds`. On job retry (including after worker crash/restart), devices listed in `_deliveredDeviceIds` are skipped, preventing repeats after a receipt is recorded while failed devices remain eligible for retry. A crash or database failure between provider acceptance and receipt persistence can still result in a duplicate on retry.
 
+### D14 — Apple operation reservations and deletion recovery
+
+- **Problem:** Apple exchange and revocation need durable ownership across network calls, process loss, and simultaneous requests.
+- **Options:** Hold database transactions across provider calls or use short transactions with durable reservations.
+- **Choice:** Use durable reservations. Reject a different Apple subject before exchanging against an already-linked account. Clean up expired conflicting reservations for that account's other subjects. Retain a genuinely uncertain exchange for the linked subject until a later verified exchange reconciles it. Record short-lived deletion markers for the email and linked subject and reject late Apple sign-in during that window.
+- **Reason:** Provider I/O stays outside transactions. A revoked grant can be retried after the revocation lease expires, and an authenticated session remains available until deletion succeeds.
+
+### D15 — PATCH schema compatibility
+
+- **Problem:** Extracting the PATCH request into a named component appeared as a breaking shape change.
+- **Choice:** Compare the resolved request shape. Limit the null-default removal exception to D12's transaction PATCH category fields.
+- **Reason:** D12 intentionally preserves category on omission. Other default removals remain breaking.
+
+### D16 — Calendar-date bounds
+
+- **Problem:** JavaScript UTC construction misinterpreted four-digit years below 0100.
+- **Choice:** Accept Gregorian years 0001–9999 on API and iOS.
+- **Reason:** Both clients now validate the same range and query PostgreSQL using epoch bounds.
+
 ## Standing Documentation Follow-ups
 
 - Codex reconciles the approved design §9 changes (`docs/04-adr.md` ADR-014/029/030/032, `docs/05-api-spec.md`, `docs/05-database-design.md`, `docs/03-srs.md`, root `AGENTS.md`) with the reviewed implementation before merge.
 - Note for advisor: `packages/db/package.json` scripts (`migrate`, `seed`, `check-balances`) use `--env-file=../../.env` instead of `--env-file-if-exists`, causing clean worktrees without `.env` to require `pnpm --filter @songphang/db exec tsx src/...`. Recorded as out-of-scope observation.
-
-### D14 — Apple operation reservations and PATCH compatibility gate
-
-- Apple exchange and revocation reserve ownership in PostgreSQL before provider I/O. The account and identity are rechecked against the reservation before committing a grant. An unresolved exchange blocks account deletion until a later confirmed exchange reconciles it. An interrupted revocation can retry the same grant after its short reservation expires. The authenticated session stays usable for retry and is invalidated by successful deletion.
-- D12 intentionally changes omission of PATCH category and categoryId from a null default to preserving the saved value. The comparator accepts removal of these two null defaults only in this PATCH request. Other default removals remain breaking.
-- Calendar-date validation intentionally accepts four-digit Gregorian years 0001–9999 on API and iOS.

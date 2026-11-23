@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
 	check,
+	index,
 	pgTable,
 	text,
 	timestamp,
@@ -76,10 +77,18 @@ export const authTokens = pgTable(
 	],
 );
 
-export const appleOperations = pgTable("apple_operations", {
-	key: text("key").primaryKey(),
-	owner: uuid("owner").notNull(),
-	userId: uuid("user_id"),
-	email: text("email"),
-	expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-});
+export const appleOperations = pgTable(
+	"apple_operations",
+	{
+		key: text("key").primaryKey(),
+		owner: uuid("owner").notNull(),
+		userId: uuid("user_id"),
+		email: text("email"),
+		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [
+		index("apple_operations_user_idx").on(table.userId),
+		index("apple_operations_email_idx").on(table.email),
+		index("apple_operations_expiry_idx").on(table.expiresAt),
+	],
+);

@@ -204,6 +204,13 @@
 			"when": 1795434771526,
 			"tag": "0028_apple_operations",
 			"breakpoints": true
+		},
+		{
+			"idx": 29,
+			"version": "7",
+			"when": 1795435816894,
+			"tag": "0029_apple_operation_indexes",
+			"breakpoints": true
 		}
 	]
 }
