@@ -146,7 +146,7 @@ When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to A
 
 ## Development mail and optional Google sign-in
 
-Mail is printed by the API process to its development console. Read the verification/reset link there and open it locally; no mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration without a real mailer is refused.
+Mail is printed by the API process to its development console. Read the verification/reset link there and open it locally; no mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration without a real mailer is refused. Similarly, `PUSH_PROVIDER=console` is refused in production; production APNs requires `PUSH_PROVIDER=apns` alongside real mailer configuration.
 
 `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are optional; keep real values only in the local `.env`. Without both, the Google button/routes are disabled. The local callback is `http://localhost:3000/api/v1/auth/google/callback`. Google sign-in remains unverified until an OAuth app exists and the manual checklist has been completed.
 

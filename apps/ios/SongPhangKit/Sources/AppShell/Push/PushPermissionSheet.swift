@@ -43,5 +43,6 @@ struct PushPermissionSheet: View {
     .background(Tokens.bg.ignoresSafeArea())
     .presentationDetents([.medium])
     .presentationDragIndicator(.visible)
+    .interactiveDismissDisabled(true)
   }
 }

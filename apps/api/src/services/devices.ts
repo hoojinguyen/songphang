@@ -21,6 +21,13 @@ export async function registerPushDevice(
 	if (!deps.config.pushProvider) {
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	}
+	if (deps.config.pushProvider === "apns" && input.request.platform !== "ios") {
+		throw new AppError(
+			400,
+			"VALIDATION_FAILED",
+			"APNs push provider only supports iOS devices",
+		);
+	}
 	const result = await deps.db.transaction(async (transaction) =>
 		upsertPushDevice(transaction, {
 			userId: input.userId,

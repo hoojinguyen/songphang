@@ -1,6 +1,10 @@
 import type { ActivePushDevice } from "@songphang/db";
 
-export type PushDeliveryResult = "sent" | "gone" | "failed";
+export type PushDeliveryResult =
+	| "sent"
+	| "gone"
+	| "failed"
+	| "permanent_failure";
 
 export type PushMessage = {
 	title: string;

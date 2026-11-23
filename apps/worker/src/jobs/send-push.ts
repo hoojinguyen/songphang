@@ -9,6 +9,14 @@ import type { PgBoss } from "pg-boss";
 import { sanitizePushTarget } from "../push/types.js";
 import { registerJob, type WorkerDeps } from "../queue.js";
 
+// In-memory tracking of delivered devices per notification to prevent duplicate delivery across queue retries.
+// Note on provider-accepted vs worker-crash ambiguity:
+// If a push was accepted by APNs but the worker process crashes before recording or completing,
+// a subsequent retry after restart might re-deliver to that device. In-memory tracking prevents
+// duplicate delivery across queue retries within the running worker.
+const deliveredNotificationDevices = new Map<string, Set<string>>();
+const MAX_TRACKED_NOTIFICATIONS = 10_000;
+
 export async function runSendPush(
 	deps: WorkerDeps,
 	notificationId: string,
@@ -38,24 +46,60 @@ export async function runSendPush(
 
 	let sentCount = 0;
 	let hasFailure = false;
+	const delivered = deliveredNotificationDevices.get(notificationId);
+
 	for (const device of devices) {
-		const result = await deps.pushSender.send(device, {
-			title: row.groupName,
-			body,
-			groupId: row.groupId,
-			target,
-		});
-		if (result === "sent") {
-			sentCount += 1;
-		} else if (result === "gone") {
-			await deletePushDeviceIfUnchanged(deps.db, {
-				id: device.id,
-				userId: device.userId,
-				sessionId: device.sessionId,
-				token: device.token,
-				lastSeenAt: device.lastSeenAt,
+		if (delivered?.has(device.id)) {
+			// Already delivered to this device in a previous attempt of this notification
+			continue;
+		}
+		try {
+			const result = await deps.pushSender.send(device, {
+				title: row.groupName,
+				body,
+				groupId: row.groupId,
+				target,
 			});
-		} else {
+			if (result === "sent") {
+				sentCount += 1;
+				let set = deliveredNotificationDevices.get(notificationId);
+				if (!set) {
+					if (deliveredNotificationDevices.size >= MAX_TRACKED_NOTIFICATIONS) {
+						const oldest = deliveredNotificationDevices.keys().next().value;
+						if (oldest !== undefined) {
+							deliveredNotificationDevices.delete(oldest);
+						}
+					}
+					set = new Set<string>();
+					deliveredNotificationDevices.set(notificationId, set);
+				}
+				set.add(device.id);
+			} else if (result === "gone") {
+				await deletePushDeviceIfUnchanged(deps.db, {
+					id: device.id,
+					userId: device.userId,
+					sessionId: device.sessionId,
+					token: device.token,
+					lastSeenAt: device.lastSeenAt,
+				});
+			} else if (result === "permanent_failure") {
+				console.warn(
+					JSON.stringify({
+						event: "push.send.permanent_failure",
+						deviceId: device.id,
+					}),
+				);
+			} else {
+				hasFailure = true;
+			}
+		} catch (error) {
+			console.warn(
+				JSON.stringify({
+					event: "push.send.device_exception",
+					deviceId: device.id,
+					category: error instanceof Error ? error.name : "unknown",
+				}),
+			);
 			hasFailure = true;
 		}
 	}
@@ -63,6 +107,7 @@ export async function runSendPush(
 	if (hasFailure) {
 		throw new Error("Push delivery failed for one or more active devices");
 	}
+	deliveredNotificationDevices.delete(notificationId);
 	return sentCount;
 }
 

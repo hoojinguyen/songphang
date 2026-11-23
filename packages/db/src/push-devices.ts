@@ -1,4 +1,4 @@
-import { and, count, eq, gt } from "drizzle-orm";
+import { and, count, eq, gt, ne } from "drizzle-orm";
 import { lockAccount } from "./accounts.js";
 import type { DbExecutor } from "./client.js";
 import { sessions, users } from "./schema.js";
@@ -31,26 +31,19 @@ export async function upsertPushDevice(
 	},
 ): Promise<{ status: "ok"; id: string } | { status: "limit_reached" }> {
 	await lockAccount(executor, input.userId);
-	const [existing] = await executor
-		.select({ id: pushDevices.id, userId: pushDevices.userId })
+	const [otherActive] = await executor
+		.select({ total: count() })
 		.from(pushDevices)
-		.where(eq(pushDevices.token, input.token))
-		.limit(1);
-
-	if (!existing || existing.userId !== input.userId) {
-		const [active] = await executor
-			.select({ total: count() })
-			.from(pushDevices)
-			.innerJoin(sessions, eq(pushDevices.sessionId, sessions.id))
-			.where(
-				and(
-					eq(pushDevices.userId, input.userId),
-					gt(sessions.expiresAt, input.now),
-				),
-			);
-		if (Number(active?.total ?? 0) >= MAX_ACTIVE_DEVICES_PER_USER) {
-			return { status: "limit_reached" };
-		}
+		.innerJoin(sessions, eq(pushDevices.sessionId, sessions.id))
+		.where(
+			and(
+				eq(pushDevices.userId, input.userId),
+				ne(pushDevices.token, input.token),
+				gt(sessions.expiresAt, input.now),
+			),
+		);
+	if (Number(otherActive?.total ?? 0) >= MAX_ACTIVE_DEVICES_PER_USER) {
+		return { status: "limit_reached" };
 	}
 
 	const [upserted] = await executor

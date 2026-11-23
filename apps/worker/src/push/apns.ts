@@ -11,14 +11,12 @@ function apnsAuthority(environment: ActivePushDevice["environment"]): string {
 		: "https://api.sandbox.push.apple.com";
 }
 
-function isGoneReason(body: string): boolean {
+function parseApnsReason(body: string): string | null {
 	try {
 		const parsed = JSON.parse(body) as { reason?: unknown };
-		return (
-			parsed.reason === "Unregistered" || parsed.reason === "BadDeviceToken"
-		);
+		return typeof parsed.reason === "string" ? parsed.reason : null;
 	} catch {
-		return false;
+		return null;
 	}
 }
 
@@ -59,7 +57,14 @@ export function createApnsPushSender(input: {
 			message: PushMessage,
 		): Promise<PushDeliveryResult> {
 			if (device.platform !== "ios") {
-				return "failed";
+				console.warn(
+					JSON.stringify({
+						event: "push.send.unsupported_platform",
+						platform: device.platform,
+						deviceId: device.id,
+					}),
+				);
+				return "sent";
 			}
 			const authority = apnsAuthority(device.environment);
 			const client = getSession(authority);
@@ -121,8 +126,13 @@ export function createApnsPushSender(input: {
 						tokenSource.invalidate();
 					}
 					const bodyText = Buffer.concat(chunks).toString("utf8");
-					if (status === 410 || (status === 400 && isGoneReason(bodyText))) {
+					const reason = parseApnsReason(bodyText);
+					if (status === 410 || (status === 400 && reason === "Unregistered")) {
 						finish("gone");
+						return;
+					}
+					if (status === 400 && reason === "BadDeviceToken") {
+						finish("permanent_failure");
 						return;
 					}
 					finish("failed");

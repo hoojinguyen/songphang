@@ -22,6 +22,7 @@ public final class PushCoordinator {
   private let requestRemoteRegistration: @MainActor () -> Void
   private var sessionGeneration: UInt64 = 0
   private var lastDeviceToken: String?
+  private var isRegistering = false
 
   public init(
     devicesRepository: any DevicesRepository,
@@ -114,6 +115,11 @@ public final class PushCoordinator {
   private func registerDeviceToken(_ hexToken: String, expectedGeneration: UInt64) async {
     guard !hexToken.isEmpty else { return }
     lastDeviceToken = hexToken
+    guard !isRegistering else { return }
+    guard currentDeviceId == nil else { return }
+    isRegistering = true
+    defer { isRegistering = false }
+
     let env: PushRegistrationEnvironment
     #if DEBUG
       env = .sandbox
@@ -150,6 +156,7 @@ public final class PushCoordinator {
     sessionGeneration &+= 1
     currentDeviceId = nil
     isPermissionSheetPresented = false
+    isRegistering = false
   }
 
   nonisolated private static func mapAuthorizationStatus(

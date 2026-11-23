@@ -1,3 +1,4 @@
+import { createPrivateKey } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 
@@ -171,13 +172,43 @@ const WORKER_CONFIG_SCHEMA = z
 						"APNS_KEY_ID or APPLE_KEY_ID is required when PUSH_PROVIDER=apns",
 				});
 			}
-			if (!(env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY)) {
+			const privateKeyRaw = (
+				env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY
+			)?.replace(/\\n/g, "\n");
+			if (!privateKeyRaw) {
 				context.addIssue({
 					code: "custom",
 					path: ["APNS_PRIVATE_KEY"],
 					message:
 						"APNS_PRIVATE_KEY or APPLE_PRIVATE_KEY is required when PUSH_PROVIDER=apns",
 				});
+			} else {
+				try {
+					const key = createPrivateKey(privateKeyRaw);
+					if (key.asymmetricKeyType !== "ec") {
+						context.addIssue({
+							code: "custom",
+							path: ["APNS_PRIVATE_KEY"],
+							message: "APNS private key must be an EC private key",
+						});
+					} else {
+						const curve = key.asymmetricKeyDetails?.namedCurve;
+						if (curve !== "prime256v1" && curve !== "p256") {
+							context.addIssue({
+								code: "custom",
+								path: ["APNS_PRIVATE_KEY"],
+								message:
+									"APNS private key must use the P-256 (prime256v1) curve",
+							});
+						}
+					}
+				} catch {
+					context.addIssue({
+						code: "custom",
+						path: ["APNS_PRIVATE_KEY"],
+						message: "APNS private key is invalid or malformed PEM",
+					});
+				}
 			}
 		}
 	})

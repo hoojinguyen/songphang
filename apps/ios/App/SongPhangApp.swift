@@ -3,6 +3,7 @@ import DesignSystem
 import SwiftUI
 import UIKit
 import UserNotifications
+import os
 
 final class SongPhangAppDelegate: NSObject, UIApplicationDelegate,
   UNUserNotificationCenterDelegate
@@ -28,7 +29,11 @@ final class SongPhangAppDelegate: NSObject, UIApplicationDelegate,
     _ application: UIApplication,
     didFailToRegisterForRemoteNotificationsWithError error: any Error
   ) {
-    _ = error
+    let logger = Logger(subsystem: "com.songphang.app", category: "Push")
+    let nsError = error as NSError
+    logger.error(
+      "APNs registration failed: \(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
+    )
   }
 
   nonisolated func userNotificationCenter(

@@ -334,7 +334,14 @@ public struct RootView: View {
         )
       }
     #endif
-    .sheet(isPresented: $pushCoordinator.isPermissionSheetPresented) {
+    .sheet(
+      isPresented: $pushCoordinator.isPermissionSheetPresented,
+      onDismiss: {
+        if case .signedIn(let user) = sessionModel.state {
+          pushCoordinator.deferPrompt(userId: user.id)
+        }
+      }
+    ) {
       if case .signedIn(let user) = sessionModel.state {
         PushPermissionSheet(
           onEnable: {
