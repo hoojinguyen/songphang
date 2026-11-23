@@ -35,6 +35,18 @@ public final class GroupFeedModel {
   private let transactionsRepository: any TransactionsRepository
   private let eventsRepository: any GroupEventsRepository
   private var searchTask: Task<Void, Never>?
+  private var loadMoreTask: Task<Void, Never>?
+  private var listGeneration: UInt64 = 0
+
+  @discardableResult
+  private func invalidatePagination() -> UInt64 {
+    listGeneration &+= 1
+    loadMoreTask?.cancel()
+    loadMoreTask = nil
+    isLoadingMore = false
+    loadMoreError = nil
+    return listGeneration
+  }
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -113,6 +125,9 @@ public final class GroupFeedModel {
       state = .loading
     }
 
+    let generation = invalidatePagination()
+    let requestedFilter = filter
+
     do {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedMembers = membersRepository.members(groupId: groupId)
@@ -121,7 +136,7 @@ public final class GroupFeedModel {
       async let fetchedBudget = budgetRepository.budget(groupId: groupId)
       async let fetchedPage = transactionsRepository.page(
         groupId: groupId,
-        filter: filter,
+        filter: requestedFilter,
         cursor: nil
       )
 
@@ -131,6 +146,18 @@ public final class GroupFeedModel {
       let c = try await fetchedCategories
       let bud = try await fetchedBudget
       let p = try await fetchedPage
+      guard listGeneration == generation, filter == requestedFilter else {
+        if case .loaded(var latest) = state {
+          latest.group = g
+          latest.members = m
+          latest.balances = b
+          latest.categories = c
+          latest.budget = bud
+          state = .loaded(latest)
+          refreshError = nil
+        }
+        return
+      }
       state = .loaded(
         ScreenData(
           group: g,
@@ -171,6 +198,7 @@ public final class GroupFeedModel {
       try? await Task.sleep(for: .milliseconds(300))
       guard !Task.isCancelled else { return }
       filter.query = normalized
+      invalidatePagination()
       await reloadTransactionsOnly()
     }
   }
@@ -179,6 +207,7 @@ public final class GroupFeedModel {
     searchTask?.cancel()
     filter = next
     searchText = next.query ?? ""
+    invalidatePagination()
     await reloadTransactionsOnly()
   }
 
@@ -187,47 +216,79 @@ public final class GroupFeedModel {
   }
 
   private func reloadTransactionsOnly() async {
-    guard case .loaded(var current) = state else {
+    guard case .loaded = state else {
       await load()
       return
     }
+    let generation = invalidatePagination()
+    let requestedFilter = filter
     isFiltering = true
-    defer { isFiltering = false }
+    defer {
+      if listGeneration == generation {
+        isFiltering = false
+      }
+    }
     do throws(AppError) {
       let page = try await transactionsRepository.page(
         groupId: groupId,
-        filter: filter,
+        filter: requestedFilter,
         cursor: nil
       )
-      current.transactions = page.items
-      current.nextCursor = page.nextCursor
-      state = .loaded(current)
+      guard listGeneration == generation,
+        filter == requestedFilter,
+        case .loaded(var latest) = state
+      else { return }
+      latest.transactions = page.items
+      latest.nextCursor = page.nextCursor
+      state = .loaded(latest)
       refreshError = nil
     } catch {
-      refreshError = error
+      if listGeneration == generation {
+        refreshError = error
+      }
     }
   }
 
   public func loadNextPageIfNeeded() async {
-    guard case .loaded(var current) = state,
+    guard case .loaded(let current) = state,
       let cursor = current.nextCursor,
-      !isLoadingMore
+      !isLoadingMore,
+      !isFiltering
     else { return }
+    let generation = listGeneration
+    let requestedFilter = filter
     isLoadingMore = true
     loadMoreError = nil
-    defer { isLoadingMore = false }
-    do throws(AppError) {
-      let nextPage = try await transactionsRepository.page(
-        groupId: groupId,
-        filter: filter,
-        cursor: cursor
-      )
-      current.transactions.append(contentsOf: nextPage.items)
-      current.nextCursor = nextPage.nextCursor
-      state = .loaded(current)
-    } catch {
-      loadMoreError = error
+
+    let task = Task {
+      defer {
+        if listGeneration == generation {
+          loadMoreTask = nil
+          isLoadingMore = false
+        }
+      }
+      do throws(AppError) {
+        let nextPage = try await transactionsRepository.page(
+          groupId: groupId,
+          filter: requestedFilter,
+          cursor: cursor
+        )
+        guard !Task.isCancelled,
+          listGeneration == generation,
+          filter == requestedFilter,
+          case .loaded(var latest) = state,
+          latest.nextCursor == cursor
+        else { return }
+        latest.transactions.append(contentsOf: nextPage.items)
+        latest.nextCursor = nextPage.nextCursor
+        state = .loaded(latest)
+      } catch {
+        guard !Task.isCancelled, listGeneration == generation else { return }
+        loadMoreError = error
+      }
     }
+    loadMoreTask = task
+    await task.value
   }
 
   public func listenForEvents(onRemoved: @escaping () -> Void) async {
@@ -246,33 +307,53 @@ public final class GroupFeedModel {
   }
 
   private func refetch(resources: [String]) async {
-    guard case .loaded(var current) = state else { return }
-    let previousNewestId = current.transactions.first?.id
+    guard case .loaded(let initial) = state else { return }
+    let previousNewestId = initial.transactions.first?.id
 
     do throws(AppError) {
-      if resources.contains("group") {
-        current.group = try await groupsRepository.group(id: groupId)
-      }
-      if resources.contains("members") {
-        current.members = try await membersRepository.members(groupId: groupId)
-      }
-      if resources.contains("balances") {
-        current.balances = try await balancesRepository.balances(groupId: groupId)
-      }
-      if resources.contains("categories") {
-        current.categories = try await categoriesRepository.list(groupId: groupId)
-      }
-      if resources.contains("budget") || resources.contains("transactions") {
-        current.budget = try await budgetRepository.budget(groupId: groupId)
-      }
+      let fetchedGroup =
+        resources.contains("group") ? try await groupsRepository.group(id: groupId) : nil
+      let fetchedMembers =
+        resources.contains("members") ? try await membersRepository.members(groupId: groupId) : nil
+      let fetchedBalances =
+        resources.contains("balances")
+        ? try await balancesRepository.balances(groupId: groupId) : nil
+      let fetchedCategories =
+        resources.contains("categories")
+        ? try await categoriesRepository.list(groupId: groupId) : nil
+      let fetchedBudget =
+        (resources.contains("budget") || resources.contains("transactions"))
+        ? try await budgetRepository.budget(groupId: groupId) : nil
+
+      var fetchedPage: Page<LedgerTransaction>?
+      var pageGeneration: UInt64?
+      var pageFilter: TransactionFilter?
       if resources.contains("transactions") {
-        let page = try await transactionsRepository.page(
+        let gen = invalidatePagination()
+        let reqFilter = filter
+        pageGeneration = gen
+        pageFilter = reqFilter
+        fetchedPage = try await transactionsRepository.page(
           groupId: groupId,
-          filter: filter,
+          filter: reqFilter,
           cursor: nil
         )
-        current.transactions = page.items
-        current.nextCursor = page.nextCursor
+      }
+
+      guard case .loaded(var current) = state else { return }
+      if let fetchedGroup { current.group = fetchedGroup }
+      if let fetchedMembers { current.members = fetchedMembers }
+      if let fetchedBalances { current.balances = fetchedBalances }
+      if let fetchedCategories { current.categories = fetchedCategories }
+      if let fetchedBudget { current.budget = fetchedBudget }
+      if let fetchedPage,
+        let pageGeneration,
+        let pageFilter,
+        listGeneration == pageGeneration,
+        filter == pageFilter
+      {
+        current.transactions = fetchedPage.items
+        current.nextCursor = fetchedPage.nextCursor
       }
       state = .loaded(current)
       refreshError = nil
