@@ -319,7 +319,7 @@ export async function createTransactionIn(
 ) {
 	const shares = await calculateShares(executor, input.groupId, input.request);
 	const request = normalizeTransaction(input.request);
-	await assertLiveCategory(executor, input.groupId, request.categoryId);
+	await assertLiveCategory(executor, input.groupId, request.categoryId ?? null);
 	const attachmentIds = input.request.attachmentIds ?? [];
 	await validateTransactionAttachmentIds(
 		executor,

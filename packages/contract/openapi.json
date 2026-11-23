@@ -4782,6 +4782,131 @@
 				],
 				"type": "object"
 			},
+			"UpdateSplitTransactionRequest": {
+				"properties": {
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": "integer"
+					},
+					"attachmentIds": {
+						"items": {
+							"format": "uuid",
+							"type": "string"
+						},
+						"maxItems": 3,
+						"type": "array"
+					},
+					"category": {
+						"enum": [
+							"food",
+							"transport",
+							"lodging",
+							"shopping",
+							"entertainment",
+							"bills",
+							"other",
+							null
+						],
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"categoryId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"description": {
+						"maxLength": 200,
+						"minLength": 1,
+						"type": "string"
+					},
+					"occurredAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"payers": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 1,
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId",
+								"amount"
+							],
+							"type": "object"
+						},
+						"maxItems": 100,
+						"minItems": 1,
+						"type": "array"
+					},
+					"split": {
+						"$ref": "#/components/schemas/SplitInput"
+					},
+					"type": {
+						"enum": [
+							"expense",
+							"income"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"type",
+					"description",
+					"amount",
+					"occurredAt",
+					"payers",
+					"split"
+				],
+				"type": "object"
+			},
+			"UpdateTransactionRequest": {
+				"allOf": [
+					{
+						"discriminator": {
+							"mapping": {
+								"expense": "#/components/schemas/UpdateSplitTransactionRequest",
+								"income": "#/components/schemas/UpdateSplitTransactionRequest",
+								"transfer": "#/components/schemas/TransferRequest"
+							},
+							"propertyName": "type"
+						},
+						"oneOf": [
+							{
+								"$ref": "#/components/schemas/UpdateSplitTransactionRequest"
+							},
+							{
+								"$ref": "#/components/schemas/TransferRequest"
+							}
+						]
+					},
+					{
+						"properties": {
+							"version": {
+								"exclusiveMinimum": 0,
+								"type": "integer"
+							}
+						},
+						"required": [
+							"version"
+						],
+						"type": "object"
+					}
+				]
+			},
 			"UserDto": {
 				"properties": {
 					"avatarUrl": {
@@ -7556,23 +7681,7 @@
 					"content": {
 						"application/json": {
 							"schema": {
-								"allOf": [
-									{
-										"$ref": "#/components/schemas/CreateTransactionRequest"
-									},
-									{
-										"properties": {
-											"version": {
-												"exclusiveMinimum": 0,
-												"type": "integer"
-											}
-										},
-										"required": [
-											"version"
-										],
-										"type": "object"
-									}
-								]
+								"$ref": "#/components/schemas/UpdateTransactionRequest"
 							}
 						}
 					},
@@ -8405,6 +8514,16 @@
 							}
 						},
 						"description": "Push device registered"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Invalid request payload"
 					},
 					"401": {
 						"content": {

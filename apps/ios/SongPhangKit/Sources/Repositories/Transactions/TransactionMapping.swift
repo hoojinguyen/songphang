@@ -356,6 +356,47 @@ enum TransactionMapping {
     }
   }
 
+  static func encodeUpdateSplitPayload(
+    _ payload: TransactionDraft.SplitPayload
+  ) -> Components.Schemas.UpdateSplitTransactionRequest {
+    Components.Schemas.UpdateSplitTransactionRequest(
+      amount: Int(payload.amount.amount),
+      attachmentIds: payload.attachmentIds?.map(\.rawValue),
+      category: payload.categoryId == nil
+        ? encodeCategory(payload.category).flatMap { .init(rawValue: $0.rawValue) }
+        : nil,
+      categoryId: payload.categoryId?.rawValue,
+      description: payload.description,
+      occurredAt: parseISO(payload.occurredAt),
+      payers: payload.payers.map {
+        .init(amount: Int($0.amount.amount), memberId: $0.memberId.rawValue)
+      },
+      split: encodeSplitInput(payload.split),
+      _type: payload.isIncome ? .income : .expense
+    )
+  }
+
+  static func encodeUpdateRequest(
+    _ draft: TransactionDraft
+  ) -> Components.Schemas.UpdateTransactionRequest.Value1Payload {
+    switch draft {
+    case .split(let payload):
+      let splitReq = encodeUpdateSplitPayload(payload)
+      return payload.isIncome ? .income(splitReq) : .expense(splitReq)
+    case .transfer(let payload):
+      let transferReq = Components.Schemas.TransferRequest(
+        amount: Int(payload.amount.amount),
+        attachmentIds: payload.attachmentIds?.map(\.rawValue),
+        description: payload.description,
+        fromMemberId: payload.fromMemberId.rawValue,
+        occurredAt: parseISO(payload.occurredAt),
+        toMemberId: payload.toMemberId.rawValue,
+        _type: .transfer
+      )
+      return .transfer(transferReq)
+    }
+  }
+
   // MARK: - Resilient snapshot & unknown-enum decoders
 
   struct RawMemberAmount: Codable, Sendable {

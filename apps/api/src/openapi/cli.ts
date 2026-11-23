@@ -108,11 +108,18 @@ function main(): void {
 					);
 				}
 			} catch (error) {
-				console.error(
-					`Failed to diff candidate against existing snapshot at ${parsed.snapshotPath}:`,
-					error,
-				);
-				process.exit(2);
+				if (parsed.force) {
+					console.warn(
+						`Warning: Existing snapshot at ${parsed.snapshotPath} could not be read or parsed; overwriting via --force approved exception:`,
+						error,
+					);
+				} else {
+					console.error(
+						`Failed to diff candidate against existing snapshot at ${parsed.snapshotPath}:`,
+						error,
+					);
+					process.exit(2);
+				}
 			}
 		}
 		fs.writeFileSync(parsed.snapshotPath, serialized, "utf8");

@@ -137,7 +137,8 @@ public final class TransactionDetailModel: Sendable {
       pendingSilentRefresh = true
       return
     }
-    let gen = refreshGeneration
+    let gen = refreshGeneration &+ 1
+    refreshGeneration = gen
     let shouldReloadAll = resources == nil
     do throws(AppError) {
       let fetchedGroup =
@@ -161,13 +162,30 @@ public final class TransactionDetailModel: Sendable {
           groupId: groupId,
           id: transactionId
         )
-        let res = try await transactionsRepository.comments(
+        let previouslyLoadedCount = comments.count
+        var accumulated: [Comment] = []
+        var nextCursor: String? = nil
+        let page1 = try await transactionsRepository.comments(
           groupId: groupId,
           id: transactionId,
           cursor: nil,
           limit: 50
         )
-        fetchedCommentsRes = (comments: res.comments, nextCursor: res.nextCursor)
+        accumulated.append(contentsOf: page1.comments)
+        nextCursor = page1.nextCursor
+
+        while let cursor = nextCursor, accumulated.count < previouslyLoadedCount {
+          let nextPage = try await transactionsRepository.comments(
+            groupId: groupId,
+            id: transactionId,
+            cursor: cursor,
+            limit: 50
+          )
+          accumulated.append(contentsOf: nextPage.comments)
+          nextCursor = nextPage.nextCursor
+        }
+
+        fetchedCommentsRes = (comments: accumulated, nextCursor: nextCursor)
       }
 
       guard !Task.isCancelled, refreshGeneration == gen, case .loaded(var current) = state else {
@@ -181,32 +199,12 @@ public final class TransactionDetailModel: Sendable {
       state = .loaded(current)
 
       if let fetchedCommentsRes {
-        let pageComments = fetchedCommentsRes.comments
-        let pageCount = pageComments.count
-        if fetchedCommentsRes.nextCursor == nil || comments.count <= pageCount {
-          comments = pageComments
-          commentsNextCursor = fetchedCommentsRes.nextCursor
-        } else {
-          // Multiple pages loaded: replace page 1, retain comments strictly after page 1's last item
-          if let last = pageComments.last {
-            let tail = comments.filter { existing in
-              if existing.createdAt > last.createdAt {
-                return true
-              }
-              if existing.createdAt == last.createdAt {
-                return existing.id.rawValue > last.id.rawValue
-              }
-              return false
-            }
-            comments = pageComments + tail
-          } else {
-            comments = pageComments
-          }
-          commentsNextCursor = fetchedCommentsRes.nextCursor != nil ? commentsNextCursor : nil
-        }
+        comments = fetchedCommentsRes.comments
+        commentsNextCursor = fetchedCommentsRes.nextCursor
         commentsError = nil
       }
     } catch {
+      guard refreshGeneration == gen, !Task.isCancelled else { return }
       if case .unauthorized = error {
         onUnauthorized?()
       }

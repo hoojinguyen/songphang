@@ -218,13 +218,13 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
     version: Int
   ) async throws(AppError) -> LedgerTransaction {
     do {
-      let createReq = TransactionMapping.encodeCreateRequest(draft)
+      let updateReq = TransactionMapping.encodeUpdateRequest(draft)
       return try await ResponseBodyCapture.withCapture {
         let output = try await environment.client
           .patch_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions_sol__lcub_id_rcub_(
             .init(
               path: .init(groupId: groupId.rawValue, id: id.rawValue),
-              body: .json(.init(value1: createReq, value2: .init(version: version)))
+              body: .json(.init(value1: updateReq, value2: .init(version: version)))
             )
           )
         switch output {

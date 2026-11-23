@@ -15,6 +15,7 @@ export const TransactionCategory = z.enum([
 	"bills",
 	"other",
 ]);
+export type TransactionCategory = z.infer<typeof TransactionCategory>;
 const MemberIds = z
 	.array(z.uuid())
 	.min(1)
@@ -121,14 +122,17 @@ const AttachmentIds = z
 	.array(z.uuid())
 	.max(3)
 	.refine((ids) => new Set(ids).size === ids.length);
-const LedgerFields = {
+const CommonLedgerFields = {
 	description: z.string().trim().min(1).max(200),
 	amount: MoneyAmount,
 	occurredAt: z.iso.datetime(),
-	category: TransactionCategory.nullable().default(null),
-	categoryId: z.uuid().nullable().default(null),
 	payers: Payers,
 	split: SplitInput,
+};
+const LedgerFields = {
+	...CommonLedgerFields,
+	category: TransactionCategory.nullable().default(null),
+	categoryId: z.uuid().nullable().default(null),
 };
 export const SplitTransactionRequest = z
 	.object({
@@ -328,8 +332,32 @@ export const TransactionsResponse = z
 	})
 	.openapi("TransactionsResponse");
 
-export const UpdateTransactionRequest = z.intersection(
-	CreateTransactionRequest,
-	z.object({ version: z.int().positive() }),
-);
+export const UpdateSplitTransactionRequest = z
+	.object({
+		type: z.enum(["expense", "income"]),
+		...CommonLedgerFields,
+		category: TransactionCategory.nullable().optional(),
+		categoryId: z.uuid().nullable().optional(),
+		attachmentIds: AttachmentIds.optional(),
+	})
+	.refine(
+		(request) =>
+			!(
+				request.category !== null &&
+				request.category !== undefined &&
+				request.categoryId !== null &&
+				request.categoryId !== undefined
+			) && !(request.type === "income" && request.split.method === "items"),
+	)
+	.openapi("UpdateSplitTransactionRequest");
+
+export const UpdateTransactionRequest = z
+	.intersection(
+		z.discriminatedUnion("type", [
+			UpdateSplitTransactionRequest,
+			TransferRequest,
+		]),
+		z.object({ version: z.int().positive() }),
+	)
+	.openapi("UpdateTransactionRequest");
 export type UpdateTransactionRequest = z.infer<typeof UpdateTransactionRequest>;

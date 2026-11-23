@@ -1,5 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import {
+	type CreateTransactionRequest,
+	type TransactionCategory,
 	type TransactionDto,
 	TransactionResponse,
 	type UpdateTransactionRequest,
@@ -84,6 +86,47 @@ const fields = [
 	"shares",
 	"split",
 ] as const;
+function resolveCategoryForEdit(
+	request: UpdateTransactionRequest,
+	before: {
+		category: TransactionCategory | null;
+		categoryId: string | null;
+		type: string;
+	},
+): { category: TransactionCategory | null; categoryId: string | null } {
+	if (request.type === "transfer" || before.type === "transfer") {
+		return { category: null, categoryId: null };
+	}
+	const reqCategory = request.category;
+	const reqCategoryId = request.categoryId;
+
+	if (reqCategory === undefined && reqCategoryId === undefined) {
+		return {
+			category: before.category,
+			categoryId: before.categoryId,
+		};
+	}
+
+	if (reqCategory !== undefined && reqCategory !== null) {
+		return {
+			category: reqCategory,
+			categoryId: null,
+		};
+	}
+
+	if (reqCategoryId !== undefined && reqCategoryId !== null) {
+		return {
+			category: null,
+			categoryId: reqCategoryId,
+		};
+	}
+
+	return {
+		category: null,
+		categoryId: null,
+	};
+}
+
 function snapshot(transaction: TransactionDto) {
 	return Object.fromEntries(
 		[...fields, "type" as const].map((field) => [field, transaction[field]]),
@@ -132,12 +175,16 @@ export async function editTransaction(
 			input.request,
 		);
 		const normalized = normalizeTransaction(input.request);
-		if (
-			normalized.categoryId !== null &&
-			normalized.categoryId !== before.categoryId
-		)
-			await assertLiveCategory(executor, input.groupId, normalized.categoryId);
-		const next = { ...normalized, shares };
+		const { category: resolvedCategory, categoryId: resolvedCategoryId } =
+			resolveCategoryForEdit(input.request, before);
+		if (resolvedCategoryId !== null && resolvedCategoryId !== before.categoryId)
+			await assertLiveCategory(executor, input.groupId, resolvedCategoryId);
+		const next = {
+			...normalized,
+			category: resolvedCategory,
+			categoryId: resolvedCategoryId,
+			shares,
+		};
 		const altered = fields.filter(
 			(field) => JSON.stringify(before[field]) !== JSON.stringify(next[field]),
 		);
@@ -180,8 +227,8 @@ export async function editTransaction(
 				descriptionSearch: foldVietnamese(normalized.description),
 				amount: normalized.amount,
 				occurredAt: new Date(normalized.occurredAt),
-				category: normalized.category,
-				categoryId: normalized.categoryId,
+				category: resolvedCategory,
+				categoryId: resolvedCategoryId,
 				splitMethod: normalized.split.method,
 				splitInput: normalized.split,
 				approvalStatus: nextApprovalStatus,
@@ -218,9 +265,17 @@ export async function editTransaction(
 		const after = (
 			await readTransaction(executor, input.groupId, input.id, input.userId)
 		).transaction;
+		const requestForWarnings: CreateTransactionRequest =
+			input.request.type === "transfer"
+				? input.request
+				: {
+						...input.request,
+						category: resolvedCategory,
+						categoryId: resolvedCategoryId,
+					};
 		const warnings = await transactionWarnings(executor, {
 			groupId: input.groupId,
-			request: input.request,
+			request: requestForWarnings,
 			applied: true,
 			now,
 			counted: nextApprovalStatus !== "pending",
