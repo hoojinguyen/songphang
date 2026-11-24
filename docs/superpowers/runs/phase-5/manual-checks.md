@@ -20,7 +20,7 @@ This recipe uses a **fresh disposable database** (never touching the primary `so
        APP_ENV=development \
        DATABASE_URL="postgres://songphang:songphang@localhost:54329/songphang_phase5_local" \
        API_PORT=4000 \
-       WEB_ORIGIN="http://127.0.0.1:3000" \
+       WEB_ORIGIN="http://localhost:3000" \
        DEV_LOGIN=true \
        STORAGE_DIR="/tmp/songphang-phase5-uploads" \
        AI_PROVIDER=fake \
@@ -34,16 +34,16 @@ This recipe uses a **fresh disposable database** (never touching the primary `so
      env -i PATH="$PATH" HOME="$HOME" \
        APP_ENV=development \
        DATABASE_URL="postgres://songphang:songphang@localhost:54329/songphang_phase5_local" \
-       WEB_ORIGIN="http://127.0.0.1:3000" \
+       WEB_ORIGIN="http://localhost:3000" \
        STORAGE_DIR="/tmp/songphang-phase5-uploads" \
        AI_PROVIDER=fake \
        pnpm --filter @songphang/worker exec tsx src/main.ts
      ```
-   - **Terminal 3 — Web (`http://127.0.0.1:3000`):**
+   - **Terminal 3 — Web (`http://localhost:3000`):**
      ```sh
      env -i PATH="$PATH" HOME="$HOME" \
        API_ORIGIN="http://127.0.0.1:4000" \
-       pnpm --filter @songphang/web exec next dev --hostname 127.0.0.1 --port 3000
+       pnpm --filter @songphang/web exec next dev --hostname localhost --port 3000
      ```
 3. **Establish two verified password accounts for 5B (the dev seed creates no password identities):**
    - Register two accounts (`POST /api/v1/auth/register` or `/register` on web), copy each verification token printed by the console mailer in Terminal 1, and verify each via `POST /api/v1/auth/verify-email` (or by opening the printed `/verify-email?token=...` link).

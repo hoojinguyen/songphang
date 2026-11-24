@@ -11,18 +11,20 @@ import UIKit
   import PreviewSupport
 #endif
 
-extension UIDevice {
-  static let deviceDidShakeNotification = Notification.Name("SPDeviceDidShakeNotification")
-}
+#if DEBUG
+  extension UIDevice {
+    static let deviceDidShakeNotification = Notification.Name("SPDeviceDidShakeNotification")
+  }
 
-extension UIWindow {
-  open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-    super.motionEnded(motion, with: event)
-    if motion == .motionShake {
-      NotificationCenter.default.post(name: UIDevice.deviceDidShakeNotification, object: nil)
+  extension UIWindow {
+    open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+      super.motionEnded(motion, with: event)
+      if motion == .motionShake {
+        NotificationCenter.default.post(name: UIDevice.deviceDidShakeNotification, object: nil)
+      }
     }
   }
-}
+#endif
 
 public struct RootView: View {
   private let dependencies: AppDependencies
@@ -36,7 +38,9 @@ public struct RootView: View {
   @State private var pendingPushTap: PushTapPayload?
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
-  @State private var isShowingDebugPanel = false
+  #if DEBUG
+    @State private var isShowingDebugPanel = false
+  #endif
   @State private var hasCompletedInitialAppear = false
 
   private var linkRouter: LinkRouter {
@@ -179,8 +183,15 @@ public struct RootView: View {
 
   private static func bundleConfiguration() -> APIConfiguration {
     let info = Bundle.main.infoDictionary
-    let apiString = (info?["API_BASE_URL"] as? String) ?? "http://127.0.0.1:4000/api/v1"
-    let webString = (info?["WEB_BASE_URL"] as? String) ?? "http://localhost:3000"
+    #if DEBUG
+      let defaultAPIString = "http://127.0.0.1:4000/api/v1"
+      let defaultWebString = "http://localhost:3000"
+    #else
+      let defaultAPIString = "https://example.invalid/api/v1"
+      let defaultWebString = "https://example.invalid"
+    #endif
+    let apiString = (info?["API_BASE_URL"] as? String) ?? defaultAPIString
+    let webString = (info?["WEB_BASE_URL"] as? String) ?? defaultWebString
     var version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
     #if DEBUG
       let args = ProcessInfo.processInfo.arguments
@@ -220,15 +231,20 @@ public struct RootView: View {
 
   public var body: some View {
     Group {
-      let args = ProcessInfo.processInfo.arguments
-      if args.contains("--gallery-tokens") || args.contains("--gallery-shapes")
-        || args.contains("--gallery-components")
-      {
-        DebugGalleryView()
-      } else {
+      #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--gallery-tokens") || args.contains("--gallery-shapes")
+          || args.contains("--gallery-components")
+        {
+          DebugGalleryView()
+        } else {
+          mainContent
+            .scrollDismissesKeyboard(.interactively)
+        }
+      #else
         mainContent
           .scrollDismissesKeyboard(.interactively)
-      }
+      #endif
     }
     #if DEBUG
       .onReceive(NotificationCenter.default.publisher(for: UIDevice.deviceDidShakeNotification)) {

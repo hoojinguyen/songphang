@@ -375,8 +375,10 @@ public struct RouteDestination: View {
           }
         )
       )
-    default:
-      break
+    #if DEBUG
+      case .debugGallery:
+        break
+    #endif
     }
   }
 
@@ -739,8 +741,10 @@ public struct RouteDestination: View {
           }
         )
       }
-    case .debugGallery:
-      DebugGalleryView()
+    #if DEBUG
+      case .debugGallery:
+        DebugGalleryView()
+    #endif
     }
   }
 

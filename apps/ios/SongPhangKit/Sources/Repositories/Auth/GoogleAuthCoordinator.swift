@@ -77,17 +77,62 @@ enum GoogleAuthCoordinator {
   }
 
   @MainActor
-  private final class PresentationAnchorProvider: NSObject,
+  private final class SessionHolder: NSObject,
     ASWebAuthenticationPresentationContextProviding
   {
     private let anchor: UIWindow
+    private var session: ASWebAuthenticationSession?
+    private var continuation: CheckedContinuation<URL, any Error>?
 
-    init(anchor: UIWindow) {
+    init(anchor: UIWindow, continuation: CheckedContinuation<URL, any Error>) {
       self.anchor = anchor
+      self.continuation = continuation
     }
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
       anchor
+    }
+
+    func start(url: URL) {
+      let session = ASWebAuthenticationSession(
+        url: url,
+        callbackURLScheme: "songphang"
+      ) { [weak self] callbackURL, error in
+        Task { @MainActor [weak self] in
+          self?.handleCompletion(callbackURL: callbackURL, error: error)
+        }
+      }
+      session.presentationContextProvider = self
+      session.prefersEphemeralWebBrowserSession = true
+      self.session = session
+      if !session.start() {
+        finish(.failure(AppError.api(code: "GOOGLE_FAILED", status: 400)))
+      }
+    }
+
+    private func handleCompletion(callbackURL: URL?, error: (any Error)?) {
+      if let error {
+        if let authError = error as? ASWebAuthenticationSessionError,
+          authError.code == .canceledLogin
+        {
+          finish(.failure(AppError.api(code: "AUTH_CANCELLED", status: 0)))
+        } else {
+          finish(.failure(AppError.api(code: "GOOGLE_FAILED", status: 400)))
+        }
+        return
+      }
+      guard let callbackURL else {
+        finish(.failure(AppError.api(code: "GOOGLE_FAILED", status: 400)))
+        return
+      }
+      finish(.success(callbackURL))
+    }
+
+    private func finish(_ result: Result<URL, any Error>) {
+      guard let cont = continuation else { return }
+      continuation = nil
+      session = nil
+      cont.resume(with: result)
     }
   }
 
@@ -134,34 +179,14 @@ enum GoogleAuthCoordinator {
       throw .unexpected
     }
 
-    let provider = PresentationAnchorProvider(anchor: anchor)
+    var retainedHolder: SessionHolder?
+    defer { _ = retainedHolder }
+
     do {
       return try await withCheckedThrowingContinuation { continuation in
-        let session = ASWebAuthenticationSession(
-          url: url,
-          callbackURLScheme: "songphang"
-        ) { callbackURL, error in
-          if let error {
-            if let authError = error as? ASWebAuthenticationSessionError,
-              authError.code == .canceledLogin
-            {
-              continuation.resume(throwing: AppError.api(code: "AUTH_CANCELLED", status: 0))
-            } else {
-              continuation.resume(throwing: AppError.api(code: "GOOGLE_FAILED", status: 400))
-            }
-            return
-          }
-          guard let callbackURL else {
-            continuation.resume(throwing: AppError.api(code: "GOOGLE_FAILED", status: 400))
-            return
-          }
-          continuation.resume(returning: callbackURL)
-        }
-        session.presentationContextProvider = provider
-        session.prefersEphemeralWebBrowserSession = true
-        if !session.start() {
-          continuation.resume(throwing: AppError.api(code: "GOOGLE_FAILED", status: 400))
-        }
+        let holder = SessionHolder(anchor: anchor, continuation: continuation)
+        retainedHolder = holder
+        holder.start(url: url)
       }
     } catch let error as AppError {
       throw error

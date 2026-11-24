@@ -29,7 +29,7 @@ final class SongPhangAppDelegate: NSObject, UIApplicationDelegate,
     _ application: UIApplication,
     didFailToRegisterForRemoteNotificationsWithError error: any Error
   ) {
-    let logger = Logger(subsystem: "com.songphang.app", category: "Push")
+    let logger = Logger(subsystem: "vn.songphang.app", category: "Push")
     let nsError = error as NSError
     logger.error(
       "APNs registration failed: \(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"

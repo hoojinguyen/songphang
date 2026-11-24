@@ -19,6 +19,7 @@ enum AppleAuthCoordinator {
     ASAuthorizationControllerPresentationContextProviding
   {
     private let anchor: UIWindow
+    private var controller: ASAuthorizationController?
     private var continuation: CheckedContinuation<AppleAuthorizationPayload, any Error>?
     private let rawNonce: String
 
@@ -30,6 +31,14 @@ enum AppleAuthCoordinator {
       self.anchor = anchor
       self.rawNonce = rawNonce
       self.continuation = continuation
+    }
+
+    func start(request: ASAuthorizationAppleIDRequest) {
+      let controller = ASAuthorizationController(authorizationRequests: [request])
+      controller.delegate = self
+      controller.presentationContextProvider = self
+      self.controller = controller
+      controller.performRequests()
     }
 
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
@@ -82,6 +91,7 @@ enum AppleAuthCoordinator {
     private func finish(_ result: Result<AppleAuthorizationPayload, any Error>) {
       guard let cont = continuation else { return }
       continuation = nil
+      controller = nil
       cont.resume(with: result)
     }
   }
@@ -131,10 +141,7 @@ enum AppleAuthCoordinator {
     return try await withCheckedThrowingContinuation { continuation in
       let delegate = Delegate(anchor: anchor, rawNonce: rawNonce, continuation: continuation)
       retainedDelegate = delegate
-      let controller = ASAuthorizationController(authorizationRequests: [request])
-      controller.delegate = delegate
-      controller.presentationContextProvider = delegate
-      controller.performRequests()
+      delegate.start(request: request)
     }
   }
 }
