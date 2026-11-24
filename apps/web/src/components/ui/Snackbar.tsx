@@ -25,7 +25,7 @@ export function SnackbarProvider({ children }: { children: ReactNode }) {
 			{notice && (
 				<div
 					role="status"
-					className="fixed bottom-5 left-1/2 z-50 flex w-[calc(100%-40px)] max-w-[390px] -translate-x-1/2 items-center gap-3 rounded-[22px] bg-ink p-4 text-surface"
+					className="fixed bottom-5 left-1/2 z-50 flex w-[calc(100%-40px)] max-w-[390px] -translate-x-1/2 items-center gap-3 rounded-[22px] bg-ink p-4 text-on-ink"
 				>
 					<span className="flex-1">{notice.text}</span>
 					{notice.action && (

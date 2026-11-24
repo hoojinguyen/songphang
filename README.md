@@ -25,6 +25,10 @@ Press Ctrl+C to stop the API and web app. PostgreSQL continues running in Docker
 
 Keep `.env` local and out of Git. `.env.example` contains configuration values intended only for local development.
 
+### Local `.local` / LAN device testing
+
+When testing the Next.js development server from a physical phone on the same network (for example `http://macbook.local:3000`), set `WEB_ORIGIN` (such as `http://macbook.local:3000`) or add a comma-separated list of dev hostnames in `ALLOWED_DEV_ORIGINS` (for example `ALLOWED_DEV_ORIGINS=macbook.local`). In development mode only, `apps/web/next.config.ts` populates `allowedDevOrigins` with clean hostnames parsed from those variables while continuing to reject unrelated origins (`403`). Wildcard entries are ignored and production origin checks are never relaxed.
+
 ## Common commands
 
 | Command                  | Purpose                                                                               |

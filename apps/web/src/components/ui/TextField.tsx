@@ -24,7 +24,7 @@ export function TextField({
 				type={type}
 				aria-invalid={error ? true : undefined}
 				aria-describedby={error || hint ? descriptionId : undefined}
-				className={`h-14 min-w-0 w-full rounded-[26px] bg-surface px-4 text-[17px] font-bold text-ink ${props.className ?? ""}`}
+				className={`h-14 min-w-0 w-full rounded-[26px] bg-surface px-4 text-[17px] font-bold text-ink placeholder:text-placeholder ${props.className ?? ""}`}
 			/>
 			{error ? (
 				<span id={descriptionId} role="alert" className="text-[13px]">

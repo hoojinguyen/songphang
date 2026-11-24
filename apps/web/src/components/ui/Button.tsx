@@ -10,8 +10,8 @@ type ButtonProps = {
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
 const VARIANTS = {
-	primary: "bg-ink text-surface",
-	accent: "bg-accent text-ink",
+	primary: "bg-ink text-on-ink",
+	accent: "bg-accent text-on-accent",
 	surface: "bg-surface text-ink",
 } as const;
 const SIZES = { md: "h-control-md", lg: "h-control-lg" } as const;

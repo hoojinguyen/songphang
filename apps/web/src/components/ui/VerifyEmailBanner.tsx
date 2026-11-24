@@ -10,7 +10,7 @@ export function VerifyEmailBanner() {
 	useSessionGuard(resend.error);
 	if (me.data?.emailVerified !== false) return null;
 	return (
-		<div className="grid gap-3 rounded-[30px] bg-accent p-5 text-sm font-bold">
+		<div className="grid gap-3 rounded-[30px] bg-accent p-5 text-sm font-bold text-on-accent">
 			<p>{vi.verify.banner}</p>
 			<Button
 				variant="surface"

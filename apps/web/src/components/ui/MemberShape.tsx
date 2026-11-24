@@ -43,7 +43,7 @@ export function MemberShape({
 			style={{ width: size, height: size }}
 		>
 			<span
-				className={`flex items-center justify-center text-ink ${fillColor}`}
+				className={`flex items-center justify-center text-on-accent ${fillColor}`}
 				style={{
 					width: size * geometry.scale,
 					height: size * geometry.scale,

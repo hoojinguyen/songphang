@@ -275,6 +275,12 @@ export const vi = {
 		clientIos: "iOS",
 		clientAndroid: "Android",
 	},
+	appearance: {
+		title: "Giao diện",
+		system: "Theo hệ thống",
+		light: "Sáng",
+		dark: "Tối",
+	},
 	resetPassword: {
 		title: "Đặt mật khẩu mới",
 		field: "Mật khẩu mới",
