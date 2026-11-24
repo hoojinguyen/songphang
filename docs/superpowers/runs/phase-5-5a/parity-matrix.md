@@ -10,11 +10,11 @@
 | `TD-003` Create group keyboard scroll | Existing `POST /groups` | Existing `/groups/new` | `CreateGroupView` | Pending |
 | `TD-004` Placeholder contrast | N/A | `placeholder:text-placeholder` | `Tokens.placeholder` | Pending |
 | `TD-005` Quick Entry 7+ wrap | Existing `/quick-entry/parse` | `ConfirmationCard`, `ShareShapes` | `ConfirmationCardView`, `ShareShapesView` | Pending |
-| `TD-006` Full-width feed cards + 3-segment Group | `myDelta` on transactions | `ExpenseRow`, `/g/[groupId]/layout` | `GroupContainerView`, `GroupFeedView` | Pending |
+| `TD-006` Full-width feed cards + 3-segment Group | `myDelta` on transactions (Complete) | `ExpenseRow`, `/g/[groupId]/layout` | `GroupContainerView`, `GroupFeedView` | In progress |
 | `TD-007` Trip total label | Existing `/stats` | Existing `vi.feed.tripTotal` | `Localizable.xcstrings` (`feed.tripTotal`) | Pending |
-| Cross-group Overview (`S0`) | `GET /me/overview` | `/` + `OverviewSummaryCard` | `OverviewFeature/OverviewView` | Pending |
-| Personal Ledger (`S0b`) | `GET /me/transactions` | `/ledger` + `PersonalLedgerList` | `OverviewFeature/PersonalLedgerView` | Pending |
-| Archive / Unarchive Group | `POST /groups/{id}/archive`, `unarchive`, `409 GROUP_ARCHIVED` | `/groups`, `ArchiveGroupDialog`, settings | `GroupListView`, `GroupSettingsView` | Pending |
-| Clone Group | `POST /groups/{id}/clone` | `CloneGroupDialog` | `CloneGroupSheetView` | Pending |
+| Cross-group Overview (`S0`) | `GET /me/overview` (Complete) | `/` + `OverviewSummaryCard` | `OverviewFeature/OverviewView` | In progress |
+| Personal Ledger (`S0b`) | `GET /me/transactions` (Complete) | `/ledger` + `PersonalLedgerList` | `OverviewFeature/PersonalLedgerView` | In progress |
+| Archive / Unarchive Group | `POST /groups/{id}/archive`, `unarchive`, `409 GROUP_ARCHIVED` (Complete) | `/groups`, `ArchiveGroupDialog`, settings | `GroupListView`, `GroupSettingsView` | In progress |
+| Clone Group | `POST /groups/{id}/clone` (Complete) | `CloneGroupDialog` | `CloneGroupSheetView` | In progress |
 | "Bơm hình" hold-to-grow split | Existing `/transactions/preview` | `SplitEditor` | `SplitEditorView` | Pending |
 | Web Desktop 2–3 column shell | N/A | `AppShell`, `DesktopSidebar`, `GroupInspector` | N/A (iOS uses 4-tab `TabView`) | Pending |

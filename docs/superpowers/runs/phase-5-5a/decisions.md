@@ -47,3 +47,15 @@
 - **Options:** (1) Fetch fonts in Task 0 inside `api-backend`'s workspace; (2) Defer font placement to `@design-system` in `5.5A.2.2` per coordinator assignment boundaries (`api-backend` must not touch `apps/ios/`).
 - **Choice:** Option 2.
 - **Reason:** Preserves strict swarm file ownership boundaries between `api-backend` and `design-system`.
+
+### D4 — OpenAPI additive response field rule (5.5A.1.2, 5.5A.1.3)
+- **Problem:** `apps/api/src/openapi/diff.ts` treats any new `required` property on an existing schema (`GroupDto`, `GroupSummaryDto`, `BaseTransactionFields`) as breaking, causing `pnpm contract:write` to abort with exit code 2.
+- **Options:** (1) Bypass breaking diff check via force write flag; (2) Declare additive fields on existing response schemas as `.optional()` or `.nullable().optional()` in OpenAPI schemas while always projecting them from server route handlers, following Overview Spec §7 (`nullable/optional response fields`).
+- **Choice:** Option 2.
+- **Reason:** Produces 0 breaking changes vs `33fe552` in `apps/api/src/openapi/cli.ts diff` while preserving backwards compatibility with older clients.
+
+### D5 — Invariant alignment for `myDelta` and counted transactions (5.5A.1.3)
+- **Problem:** `packages/db/src/balances.ts` counts only non-deleted transactions where `approval_status in ('none', 'approved')`. If pending or rejected transactions assigned non-zero `myDelta`, `sum(myDelta ?? 0)` would drift from `/balances`.
+- **Options:** (1) Include pending/rejected transactions in balance calculations; (2) Define `computeMyDelta` to return `null` on `TransactionDto` (and `0` on `PersonalTransactionDto`) when `approval_status !== "none" && approval_status !== "approved"` or when soft-deleted.
+- **Choice:** Option 2.
+- **Reason:** Guarantees `sum(myDelta ?? 0) === myBalance` across all states without altering established double-entry balance accounting or requiring database schema changes.

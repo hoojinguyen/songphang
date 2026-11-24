@@ -8,10 +8,10 @@
 ## Tasks
 
 - [x] 0 — Re-baseline `main` and prepare Wave 5.5A run
-- [ ] 5.5A.1.1 — Database migration (`groups.archived_at`) and `GROUP_ARCHIVED` write guard
-- [ ] 5.5A.1.2 — Archive, Unarchive, Clone Group & additive `GET /groups` metadata
-- [ ] 5.5A.1.3 — Cross-Group Overview (`GET /me/overview`), Personal Ledger (`GET /me/transactions`), `myDelta` & OpenAPI
-- [ ] 5.5A.1.4 — Stage 5.5A.1 API Gate
+- [x] 5.5A.1.1 — Database migration (`groups.archived_at`) and `GROUP_ARCHIVED` write guard
+- [x] 5.5A.1.2 — Archive, Unarchive, Clone Group & additive `GET /groups` metadata
+- [x] 5.5A.1.3 — Cross-Group Overview (`GET /me/overview`), Personal Ledger (`GET /me/transactions`), `myDelta` & OpenAPI
+- [x] 5.5A.1.4 — Stage 5.5A.1 API Gate
 - [ ] 5.5A.2.1 — Web Design System v2, Dark Mode, Tabular Numerals & `TD-001` / `TD-004`
 - [ ] 5.5A.2.2 — iOS Design System v2 (`Be Vietnam Pro` `.ttf`, Dynamic `Tokens`, `Haptics`, `TD-004` & String Parity)
 - [ ] 5.5A.2.3 — Stage 5.5A.2 Design System Gate
@@ -57,6 +57,63 @@
   - `check-balances.ts`: `01a20d53-5e1a-72ad-9bd1-e908ee62ab91 T0 Smoke Group: sum 0; mismatches 0` / `All groups balanced`
   - Disposable database `songphang_phase55a_t0` dropped and temporary upload directory removed.
 - Security review: documentation-only commit; no credentials, secrets, or personal data included.
+
+### Task 5.5A.1.1 — Database migration (`groups.archived_at`) and `GROUP_ARCHIVED` write guard
+
+**Approach**
+- Files created/modified: `packages/db/src/schema-groups.ts`, `packages/db/drizzle/0030_needy_bug.sql`, `packages/db/drizzle/meta/*`, `packages/db/src/{groups,chat}.ts`, `packages/contract/src/error.ts`, `packages/contract/openapi.json`, `apps/api/src/services/group-guards.ts`, and write service modules across `apps/api/src/services/` and `apps/api/src/bot/`.
+- Approach: Added `archivedAt` timestamp with index to `groups`; projected `archivedAt` from group reads; returned `{ id, archivedAt }` from `lockGroup`; added `GROUP_ARCHIVED` to `ErrorCode` and regenerated `openapi.json`; created `assertGroupRowNotArchived` guard and applied inside the group lock across every group write endpoint and Telegram bot webhook.
+- Why this is the simplest approach: Reuses the existing row lock from `lockGroup` so race conditions between writes and concurrent archive calls are prevented without introducing additional distributed locks.
+- Exercises: Verified on disposable DB `songphang_phase55a_1_1` with `T55A_1_1_ARCHIVED_GUARD_PASS: endpoints=22/22 outsider=404 tg_drafts=0` and `All groups balanced`.
+- Commit: `1e37c68` (`feat(db): add group archival schema and write guard`).
+- Security review: Archived groups reject writes with 409 without leaking internal group metadata; outsider returns 404 before reaching archive checks.
+
+### Task 5.5A.1.2 — Archive, Unarchive, Clone Group & additive `GET /groups` metadata
+
+**Approach**
+- Files created/modified: `packages/contract/src/group.ts`, `packages/contract/openapi.json`, `packages/db/src/{groups,payment-methods,categories,settlement-requests,transactions}.ts`, `apps/api/src/services/pending-actions.ts`, `apps/api/src/services/groups.ts`, `apps/api/src/routes/groups.ts`.
+- Approach: Added `GroupStatusFilter` (`all`, `active`, `archived`) to `GET /groups`; added additive `archivedAt`, `role`, and `pendingActionCount` to `GroupSummaryDto`; created `collectPendingActions` helper computing actionable confirmations and approvals; added `POST /groups/{id}/archive` and `unarchive` (owner only, idempotent, emitting SSE events); added `POST /groups/{id}/clone` (owner or editor, copying active person members, optional payment methods and categories, zero transactions or activity leaks).
+- Why this is the simplest approach: Reuses existing authorization helpers and batch loaders (`listMembersForGroups`, `listBalancesForGroups`) in single transactions with `repeatable read`.
+- Exercises: Verified on disposable DB `songphang_phase55a_1_2` with `T55A_1_2_LIST_GROUPS_PASS { minhCount: 2, lanCount: 1, hungCount: 0 }`, `T55A_1_2_ALL_PASS`, and `All groups balanced`.
+- Commit: `cd6118d` (`feat(api): add group archive, unarchive, clone, and summary metadata`).
+- Security review: Clone duplicates payment methods to new member IDs without recording account numbers in activity payloads or console logs.
+
+### Task 5.5A.1.3 — Cross-Group Overview (`GET /me/overview`), Personal Ledger (`GET /me/transactions`), `myDelta` & OpenAPI
+
+**Approach**
+- Files created/modified: `packages/contract/src/{overview,transaction,index}.ts`, `packages/contract/openapi.json`, `packages/db/src/{overview,index}.ts`, `apps/api/src/services/{transactions,overview}.ts`, `apps/api/src/routes/me.ts`.
+- Approach: Added `myDelta: z.int().nullable().optional()` on `BaseTransactionFields`; implemented `computeMyDelta` pure helper; added `GET /api/v1/me/overview` (`OverviewResponse`) aggregating `totalOwedToMe`, `totalIOwe`, `netBalance`, active/archived counts, top 20 pending actions, and non-zero group balances; added `GET /api/v1/me/transactions` (`PersonalTransactionsResponse`) with cursor pagination, Vietnamese accent-insensitive search, type filter, and group filter.
+- Why this is the simplest approach: Computes authoritative integers server-side; ensures `myDelta` returns `null` on uncounted transactions so `sum(myDelta ?? 0) === myBalance` holds exactly.
+- Exercises: Verified on disposable DB `songphang_phase55a_1_3` with `T55A_1_3_PASS`, exact balance matching on all member pairs, immediate removal exclusion, `All groups balanced`, and OpenAPI diff vs `33fe552` showing 0 breaking and 21 additive changes.
+- Commit: `c0a5a0c` (`feat(api): add cross-group overview, personal ledger, and transaction myDelta`).
+- Security review: Outsider `groupId` filter returns 404; removed users are immediately excluded from both overview and personal ledger queries.
+
+### Task 5.5A.1.4 — Stage 5.5A.1 API Gate
+
+**Approach**
+- Files modified: `docs/superpowers/runs/phase-5-5a/{decisions,progress,parity-matrix}.md`.
+- Approach: Replayed complete Stage 5.5A.1 API gate on clean disposable database `songphang_phase55a_1_4` with live worker:
+  - Verified `/health` and `/features` (receiptReading, sentenceAi, telegram).
+  - Verified Cookie and Bearer authentication across 4 users (owner, editor, viewer, outsider).
+  - Executed complete Phase 1-5 replay (quick entry parse, background worker receipt scan completion, expense, comment, dispute open and resolve, approval threshold, pending expense, confirmed settlement, pending settlement, Telegram pairing and group linking).
+  - Verified 34-point permission matrix across Cookie and Bearer callers (unauthenticated 401, outsider 404, viewer 403, editor 403, owner 200).
+  - Verified 33-point `409 GROUP_ARCHIVED` sweep across 29 group write routes, multipart upload, and Telegram bot `/chi` draft insertion.
+  - Verified permitted operations on archived groups (read endpoints, mute, clone with payment method copying and no secret leakage, unarchive).
+  - Verified `sum(myDelta ?? 0) === myBalance` on every member.
+  - Verified removed user is immediately excluded from `/me/overview` and `/me/transactions`.
+  - Verified revoked bearer session is immediately rejected with 401.
+  - Verified `pnpm db:check-balances` reports `All groups balanced`.
+  - Verified `pnpm check` and `pnpm build` pass cleanly.
+- Observed results:
+  - Gate script output: `{"status":"T55A_1_4_GATE_PASS","permChecks":34,"archivedGuardChecks":33,"scanStatus":"done","clonedMembersCount":3,"viewerExcludedAfterRemoval":true,"revokedBearerRejected401":true}`
+  - `check-balances.ts`: `01a20d8d-cd30-7da2-888b-0e485798fc10 Cổng Kiểm Định 5.5A: sum 0; mismatches 0` / `01a20d8d-d7b3-75dd-b4f2-8ad1be2bdb8d Chuyến Mới: sum 0; mismatches 0` / `All groups balanced`.
+  - `pnpm check`: PASS (522 files checked, 3 pre-existing warnings in web `noImgElement`, all 8 workspace projects typecheck cleanly, `OpenAPI contract snapshot is up to date.`).
+  - `pnpm build`: PASS (Next.js 16.4.6 compiled successfully, 14 static pages generated in 2.8s).
+- Security review:
+  - No secrets, real credentials, or payment account numbers in logs, git, or activity payloads.
+  - Outsiders strictly receive 404 for group resources.
+  - Removed users immediately lose group access and data from personal overview and ledger.
+  - Session revocation takes immediate effect across bearer-authenticated calls.
 
 ## Gate Not Passed
 
