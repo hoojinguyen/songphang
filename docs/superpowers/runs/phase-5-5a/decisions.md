@@ -84,3 +84,22 @@
 - **Choice:** Option 2.
 - **Reason:** Zero flash of unstyled content (FOUC), zero `dangerouslySetInnerHTML`, and instant cross-tab sync.
 
+### D10 — Semantic text-on-ink pairing for high-contrast dark buttons (5.5A.5.1)
+- **Problem:** Pairing `bg-ink` with `text-surface` in dark mode inverted contrast, causing dark-on-dark text on pill buttons and action CTAs.
+- **Options:** (1) Hardcode `#FFFFFF`; (2) Use semantic token `text-on-ink` with explicit dark mode override (`#1B1924` in dark, `#FFFFFF` in light) paired with `bg-ink`.
+- **Choice:** Option 2.
+- **Reason:** Ensures WCAG AAA contrast (> 7:1) across both appearance themes without breaking design system token encapsulation.
+
+### D11 — OverviewFeature module architecture and closure navigation (5.5A.3.2)
+- **Problem:** Cross-group overview and personal ledger need to navigate into group details and specific transactions without violating `apps/ios/AGENTS.md` §3 (no feature-to-feature dependencies).
+- **Options:** (1) Merge Overview into `GroupsFeature`; (2) Add `OverviewFeature` depending only on `Domain`, `DesignSystem`, and `PreviewSupport`, routing via action closures (`onOpenGroup`, `onOpenTransaction`, etc.) wired inside `AppShell/RootView.swift`.
+- **Choice:** Option 2.
+- **Reason:** Preserves strict compiler isolation between features and centralizes navigation in `AppShell`.
+
+### D12 — Hold-to-grow integer-only step progression (5.5A.4.2, 5.5A.4.3)
+- **Problem:** Rapid continuous scaling could cause floating-point drift or fractional currency units on VND amounts.
+- **Options:** (1) Continuous slider-like floats with rounding; (2) Discrete integer increments (`+1` weight in `shares`, `+5%` in `percent`, `+10.000 đ` / `+1.000 đ` in `exact`) debouncing server preview calls.
+- **Choice:** Option 2.
+- **Reason:** Strictly conforms to VND integer-only money rule while delivering responsive tactile feedback with zero rounding errors.
+
+

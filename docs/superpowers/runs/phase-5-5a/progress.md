@@ -3,7 +3,7 @@
 - Branch: `phase-5-5a` (Stage 5.5A.0–5.5A.1 share branch: `swarm-api-backend-bd62656b`)
 - Baseline `main`: `fbc0b7a` (`378df4d`, PR #2)
 - Approved specs & plan commit: `7f4f782`
-- Status: In progress (Swarm Batch 1: API/DB + Design System v2)
+- Status: Complete (Batch 1: API/DB + Design System v2; Batch 2: iOS + Web Shell, Group v2, Desktop Shell; Gate 5.5A.5.2 passed)
 
 ## Tasks
 
@@ -15,16 +15,16 @@
 - [x] 5.5A.2.1 — Web Design System v2, Dark Mode, Tabular Numerals & `TD-001` / `TD-004`
 - [x] 5.5A.2.2 — iOS Design System v2 (`Be Vietnam Pro` `.ttf`, Dynamic `Tokens`, `Haptics`, `TD-004` & String Parity)
 - [x] 5.5A.2.3 — Stage 5.5A.2 Design System Gate
-- [ ] 5.5A.3.1 — iOS `Domain`, `Repositories`, `SnapshotStore` & `PreviewSupport` for Overview, Personal Ledger, Archive & Clone
-- [ ] 5.5A.3.2 — iOS 4-Tab Shell, `OverviewFeature`, Segmented Group List & Archive/Clone UI
-- [ ] 5.5A.3.3 — Web 4-Tab Mobile Shell, Overview (`/`), Groups (`/groups`), Personal Ledger (`/ledger`), Archive & Clone
-- [ ] 5.5A.3.4 — Stage 5.5A.3 Shell & Overview Gate
-- [ ] 5.5A.4.1 — iOS Group Screen v2 (`GroupContainerView` 3-Segment Shell), Full-Width Feed Cards (`TD-006`), Collapsible Filters & Swipe Actions
-- [ ] 5.5A.4.2 — iOS Form/Quick-Entry Fixes (`TD-003`, `TD-005`, `TD-007`) & "Bơm hình"
-- [ ] 5.5A.4.3 — Web Group Screen v2 (3-Segment Shell), Full-Width Feed Cards, Quick Entry Wrap & Web "Bơm hình"
-- [ ] 5.5A.4.4 — Stage 5.5A.4 Group & Polish Gate
-- [ ] 5.5A.5.1 — Web Desktop Multi-Column Responsive Shell (`>= 1024px` / `>= 1280px`)
-- [ ] 5.5A.5.2 — Final Wave 5.5A Parity Gate & Owner Handoff
+- [x] 5.5A.3.1 — iOS `Domain`, `Repositories`, `SnapshotStore` & `PreviewSupport` for Overview, Personal Ledger, Archive & Clone
+- [x] 5.5A.3.2 — iOS 4-Tab Shell, `OverviewFeature`, Segmented Group List & Archive/Clone UI
+- [x] 5.5A.3.3 — Web 4-Tab Mobile Shell, Overview (`/`), Groups (`/groups`), Personal Ledger (`/ledger`), Archive & Clone
+- [x] 5.5A.3.4 — Stage 5.5A.3 Shell & Overview Gate
+- [x] 5.5A.4.1 — iOS Group Screen v2 (`GroupContainerView` 3-Segment Shell), Full-Width Feed Cards (`TD-006`), Collapsible Filters & Swipe Actions
+- [x] 5.5A.4.2 — iOS Form/Quick-Entry Fixes (`TD-003`, `TD-005`, `TD-007`) & "Bơm hình"
+- [x] 5.5A.4.3 — Web Group Screen v2 (3-Segment Shell), Full-Width Feed Cards, Quick Entry Wrap & Web "Bơm hình"
+- [x] 5.5A.4.4 — Stage 5.5A.4 Group & Polish Gate
+- [x] 5.5A.5.1 — Web Desktop Multi-Column Responsive Shell (`>= 1024px` / `>= 1280px`)
+- [x] 5.5A.5.2 — Final Wave 5.5A Parity Gate & Owner Handoff
 
 ## Task Reports
 
@@ -144,13 +144,104 @@
   - `swift-format lint --strict` passes with exit code 0.
   - Simulator build succeeded with warnings-as-errors.
 
+### Task 5.5A.3.1 — iOS `Domain`, `Repositories`, `SnapshotStore` & `PreviewSupport` for Overview, Personal Ledger, Archive & Clone
+
+**Approach**
+- Files created/modified: `Domain/AppError.swift`, `Domain/Models/{ExpenseGroup,LedgerTransaction,Overview,TransactionFilter}.swift`, `Domain/Repositories/{GroupsRepository,OverviewRepository}.swift`, `Repositories/Transport/ErrorMapper.swift`, `Repositories/Groups/{GroupMapping,LiveGroupsRepository}.swift`, `Repositories/Overview/{OverviewMapping,LiveOverviewRepository}.swift`, `Repositories/Snapshots/SnapshotStore.swift`, `Repositories/Transactions/TransactionMapping.swift`, `PreviewSupport/Fakes/{FakeRepositories,FakeWorld,FakeWorld+Overview}.swift`, `AppShell/AppDependencies.swift`.
+- Approach: Added `AppError.groupArchived` mapped from 409 `GROUP_ARCHIVED`; added `archivedAt`, `role`, `pendingActionCount` to `GroupSummary`; added `myDelta` to `LedgerTransaction`; implemented `OverviewRepository` and `LiveOverviewRepository` with clean snapshot storage in `overview.json` (wiped on sign-out); wired `FakeWorld` support.
+- Commit: `300a898` (`feat(ios): add overview, group archive, and clone repositories`).
+
+### Task 5.5A.3.2 — iOS 4-Tab Shell, `OverviewFeature`, Segmented Group List & Archive/Clone UI
+
+**Approach**
+- Files created/modified: `SongPhangKit/Package.swift`, `OverviewFeature/{OverviewModel,OverviewView,PersonalLedgerModel,PersonalLedgerView}.swift`, `GroupsFeature/GroupList/{GroupListModel,GroupListView}.swift`, `GroupsFeature/CloneGroup/CloneGroupSheetView.swift`, `GroupsFeature/GroupSettings/{GroupSettingsModel,GroupSettingsView}.swift`, `AppShell/{RootView,Route,RouteDestination}.swift`.
+- Approach: Added `OverviewFeature` target with strict architectural isolation (depends only on `Domain`, `DesignSystem`, `PreviewSupport`); created 4-tab `RootView` (`Tổng quan`, `Nhóm`, `Thông báo`, `Tài khoản`) with independent `NavigationStack`s; implemented segmented `Đang mở` / `Đã lưu trữ` toggle on `GroupListView` with swipe actions; created `CloneGroupSheetView` navigating to cloned active group.
+- Commit: `83ff86e` (`feat(ios): add 4-tab shell, overview feature, personal ledger, and group archive/clone`).
+
+### Task 5.5A.3.3 — Web 4-Tab Mobile Shell, Overview (`/`), Groups (`/groups`), Personal Ledger (`/ledger`), Archive & Clone
+
+**Approach**
+- Files created/modified: `apps/web/src/lib/{overview,groups}.ts`, `apps/web/src/components/layout/AppShell.tsx`, `apps/web/src/components/overview/{OverviewSummaryCard,PendingActionsList,PersonalLedgerList}.tsx`, `apps/web/src/components/groups/{GroupCard,FeaturedGroupCard,ArchiveGroupDialog,CloneGroupDialog}.tsx`, `apps/web/src/app/{page,groups/page,ledger/page}.tsx`, `apps/web/src/app/g/[groupId]/settings/page.tsx`.
+- Approach: Implemented mobile bottom 4-tab shell (`< 1024px`); created `/` Overview with net balance hero and pending action queues; created `/groups` with `Đang mở` / `Đã lưu trữ` tabs; created `/ledger` with search query `q` and type filter; wired archive and clone dialogs.
+- Commit: `0310b96` (`feat(web): add 4-tab shell, overview, personal ledger, and group archive/clone`).
+
+### Task 5.5A.3.4 — Stage 5.5A.3 Shell & Overview Gate
+
+**Approach**
+- Verified end-to-end parity between API, Web, and iOS Simulator:
+  - Net balance totals match double-entry server figures across active groups.
+  - Active and archived tab switching works identically on iOS and Web.
+  - Personal ledger search query `q` filters transactions with Vietnamese accent insensitivity.
+  - Snapshot wipe on sign-out clears `overview.json` completely.
+
+### Task 5.5A.4.1 — iOS Group Screen v2 (`GroupContainerView` 3-Segment Shell), Full-Width Feed Cards (`TD-006`), Collapsible Filters & Swipe Actions
+
+**Approach**
+- Files created/modified: `AppShell/GroupContainerView.swift`, `LedgerFeature/GroupFeed/{GroupFeedView,GroupFeedSubViews,GroupFeedModel}.swift`, `LedgerFeature/Balances/BalancesView.swift`, `PaymentsFeature/Fund/FundView.swift`, `StatisticsFeature/Stats/StatsView.swift`.
+- Approach: Created persistent header + 3-segment switcher (`Chi tiêu` | `Thanh toán` | `Quỹ & Thống kê`) in `AppShell`; redesigned feed cards into 3-row full-width cards with tabular numerals, server `myDelta`, and 5-avatar cluster (`TD-006` fix); added leading `Sửa` and trailing `Xoá` + `Chi tiết` swipe actions; displayed read-only dock `Nhóm đã lưu trữ — chỉ xem` when archived.
+- Commit: `961a612` (`feat(ios): redesign group screen with 3-segment shell, full-width cards, and swipe actions`).
+
+### Task 5.5A.4.2 — iOS Form/Quick-Entry Fixes (`TD-003`, `TD-005`, `TD-007`) & "Bơm hình"
+
+**Approach**
+- Files created/modified: `GroupsFeature/CreateGroup/CreateGroupView.swift`, `LedgerFeature/ConfirmCard/{ConfirmationCardView,ShareShapesView}.swift`, `LedgerFeature/SplitEditor/{SplitEditorView,SplitEditorState}.swift`.
+- Approach: Fixed `TD-003` with `ScrollViewReader` coordinate auto-scrolling to input row above keyboard; fixed `TD-005` with responsive wrapping `LazyVGrid` for 7–20 member splits without clipping; verified `TD-007` string `"Tổng chuyến đi"`; added "Bơm hình" hold-to-grow gesture with 250ms delay, 180ms repeat interval, integer-only VND increments, spring animations, and debounce server preview synchronization.
+- Commit: `ed48bf2` (`feat(ios): fix keyboard/confirmation layout debt and add hold-to-grow split interaction`).
+
+### Task 5.5A.4.3 — Web Group Screen v2 (3-Segment Shell), Full-Width Feed Cards, Quick Entry Wrap & Web "Bơm hình"
+
+**Approach**
+- Files created/modified: `apps/web/src/app/g/[groupId]/{layout,page,balances/page,stats/page,settings/page}.tsx`, `apps/web/src/components/layout/GroupNavHeader.tsx`, `apps/web/src/components/feed/ExpenseRow.tsx`, `apps/web/src/components/quick-entry/{ConfirmationCard,ShareShapes}.tsx`, `apps/web/src/components/expense-form/{SplitEditor.tsx,use-split-state.ts}`.
+- Approach: Created shared 3-segment group header; redesigned `ExpenseRow` to full-width 3-row card matching iOS; wrapped `ShareShapes` in responsive grid; added web pointer hold-to-grow "Bơm hình" with integer increments, CSS transitions, and debounced preview requests.
+- Commits: `f156ee7` (`feat(web): redesign group screen v2, full-width feed cards, and hold-to-grow split`), `4a7040b` (`refactor(web): fix dark mode contrast tokens and placeholder styling`).
+
+### Task 5.5A.4.4 — Stage 5.5A.4 Group & Polish Gate
+
+**Approach**
+- Verified full parity on dense group feeds (7–20 members), hold-to-grow split increments, and keyboard avoidance.
+- Biome linting, 8 workspace typechecks, contract check, and `check-strings.sh` pass cleanly.
+
+### Task 5.5A.5.1 — Web Desktop Multi-Column Responsive Shell (`>= 1024px` / `>= 1280px`)
+
+**Approach**
+- Files created/modified: `apps/web/src/components/layout/{AppShell,DesktopSidebar,GroupInspector}.tsx`, `apps/web/src/app/g/[groupId]/page.tsx`.
+- Approach: Implemented responsive desktop layout:
+  - `< 1024px`: Single-column with fixed bottom 4-tab bar.
+  - `1024px–1279px` (2-column): Fixed left `DesktopSidebar` (260px) + center workspace (up to 760px).
+  - `>= 1280px` on `/g/[groupId]*` (3-column): `DesktopSidebar` (260px) + center workspace (760px) + sticky right `GroupInspector` (340px) showing live net balance hero and top transfers.
+  - Auth, join, and unsubscribe routes remain clean focused single-column.
+- Commit: `5eb9b1f` (`feat(web): add multi-column responsive desktop shell and group inspector`).
+
+### Task 5.5A.5.2 — Final Wave 5.5A Parity Gate & Owner Handoff
+
+**Approach**
+- Replayed complete Phase 1–5 and Wave 5.5A journeys on clean disposable database `songphang_final_gate_55a`:
+  - Verified `/api/v1/health` and `/api/v1/features`.
+  - Verified dev login across 3 users (Minh, Lan, Hùng).
+  - Created group "Chuyến Đi Đà Lạt 5.5A", invited Lan and Hùng.
+  - Verified expense creation with server-computed `myDelta` (+200.000 VND for Minh, +75.000 VND for Lan).
+  - Verified `/api/v1/me/overview` net balance and owed totals matching double-entry accounting (+125.000 net for Minh, -25.000 net for Lan).
+  - Verified `/api/v1/me/transactions` invariant: `sum(myDelta) === myBalance` (125.000 === 125.000).
+  - Verified Vietnamese accent-insensitive search (`q=homestay`).
+  - Verified group archival and 409 `GROUP_ARCHIVED` write guard.
+  - Verified group clone with 0 transactions and unarchive.
+  - Verified `checkBalances`: `All groups balanced (sum 0; mismatches 0)`.
+- Verified automated build and code gates:
+  - `pnpm check`: Exit 0 (all 8 workspace packages clean, Biome clean, contract snapshot up to date).
+  - `pnpm build`: Exit 0 (all 16 static/dynamic routes compiled in Next.js 16.4.6).
+  - `./apps/ios/Scripts/check-strings.sh`: Exit 0 (`OK: 717 web keys verified, 0 missing, 0 differing`).
+  - `xcrun swift-format lint --strict --recursive apps/ios`: Exit 0 (clean).
+  - `xcodebuild` Simulator Debug: `** BUILD SUCCEEDED **`.
+  - `xcodebuild` unsigned Release: `** BUILD SUCCEEDED **`.
+  - Release bundle audit: `RELEASE_LEAK_MATCH_COUNT=0` (0 occurrences of debug symbols/hosts, `ATS_FREE_OK`, `PRIVACY_INFO_OK`).
+
 ## Gate Not Passed
 
-None.
+None. All Wave 5.5A gates verified and passed.
 
 ## Not Verified
 
-None. All Stage 5.5A.1 and Stage 5.5A.2 gates verified and passed.
+None. Full automated and replayed verification completed.
 
 ## Out of Scope
 
