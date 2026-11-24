@@ -102,6 +102,9 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
           Text(MoneyFormat.amount(amount))
             .font(.system(size: 48, weight: .black))
             .foregroundStyle(Tokens.ink)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
             .padding(.horizontal, 10)
             .padding(.vertical, 2)
             .background(
@@ -210,7 +213,10 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
           }
           return ShareShapeItem(member: member, amount: share.amount)
         }
-        ShareShapesView(shares: shapeItems)
+        ScrollView {
+          ShareShapesView(shares: shapeItems)
+        }
+        .frame(maxHeight: 220)
       }
 
       extraContent

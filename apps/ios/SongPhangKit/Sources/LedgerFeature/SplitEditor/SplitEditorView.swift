@@ -42,6 +42,11 @@ public struct SplitEditorView: View {
   private let onItemsChange: () -> Void
   private let onDone: () -> Void
 
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @State private var heldMemberId: Member.ID?
+  @State private var holdTask: Task<Void, Never>?
+  @State private var didHoldRepeat = false
+
   public init(
     splitState: Binding<SplitEditorState>,
     members: [Member],
@@ -70,6 +75,42 @@ public struct SplitEditorView: View {
     self.itemsPreviewError = itemsPreviewError
     self.onItemsChange = onItemsChange
     self.onDone = onDone
+  }
+
+  private func startHoldToGrow(for id: Member.ID) {
+    holdTask?.cancel()
+    heldMemberId = id
+    didHoldRepeat = false
+
+    holdTask = Task { @MainActor in
+      try? await Task.sleep(for: .milliseconds(250))
+      guard !Task.isCancelled else { return }
+
+      didHoldRepeat = true
+      Haptics.light()
+      splitState.pumpMember(id, members: members, totalAmount: amount)
+      onItemsChange()
+
+      while !Task.isCancelled {
+        try? await Task.sleep(for: .milliseconds(180))
+        guard !Task.isCancelled else { break }
+        Haptics.light()
+        splitState.pumpMember(id, members: members, totalAmount: amount)
+        onItemsChange()
+      }
+    }
+  }
+
+  private func stopHoldToGrow(for id: Member.ID) {
+    holdTask?.cancel()
+    holdTask = nil
+
+    if !didHoldRepeat && heldMemberId == id {
+      Haptics.light()
+      splitState.pumpMember(id, members: members, totalAmount: amount)
+      onItemsChange()
+    }
+    heldMemberId = nil
   }
 
   public var body: some View {
@@ -161,13 +202,99 @@ public struct SplitEditorView: View {
             }
           )
         } else {
+          let canPump =
+            splitState.method == .shares || splitState.method == .percent
+            || splitState.method == .exact
+
           if !selected.isEmpty {
-            let shapeItems = selected.map { member in
-              let shareAmount =
-                shares.first(where: { $0.memberId == member.id })?.amount ?? .zero
-              return ShareShapeItem(member: member, amount: shareAmount)
+            if canPump {
+              VStack(spacing: 8) {
+                Text(L10n.tr("split.holdToGrowHint"))
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.muted)
+                  .frame(maxWidth: .infinity, alignment: .center)
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 64), spacing: 10)], spacing: 12) {
+                  ForEach(selected) { member in
+                    let shareAmount = shares.first(where: { $0.memberId == member.id })?.amount
+                    let isHeld = heldMemberId == member.id
+
+                    VStack(spacing: 6) {
+                      MemberShapeView(
+                        shape: member.shape,
+                        color: member.color,
+                        name: member.name,
+                        size: 52
+                      )
+                      .scaleEffect(isHeld ? 1.15 : 1.0)
+                      .animation(
+                        reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.25),
+                        value: isHeld
+                      )
+
+                      Text(member.name)
+                        .font(Typography.captionBold)
+                        .foregroundStyle(Tokens.ink)
+                        .lineLimit(1)
+
+                      if let shareAmount {
+                        MoneyText(
+                          shareAmount,
+                          style: .amountOnly,
+                          font: Typography.captionBold,
+                          color: Tokens.ink
+                        )
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                      } else {
+                        Text(L10n.tr("common.pendingValue"))
+                          .font(Typography.caption)
+                          .foregroundStyle(Tokens.muted)
+                      }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(8)
+                    .contentShape(Rectangle())
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(member.name): \(L10n.tr("split.holdToGrowHint"))")
+                    .accessibilityHint(L10n.tr("split.holdToGrowHint"))
+                    .accessibilityAdjustableAction { direction in
+                      if direction == .increment {
+                        Haptics.light()
+                        splitState.pumpMember(member.id, members: members, totalAmount: amount)
+                        onItemsChange()
+                      }
+                    }
+                    .simultaneousGesture(
+                      DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                          if heldMemberId != member.id {
+                            startHoldToGrow(for: member.id)
+                          }
+                        }
+                        .onEnded { _ in
+                          if heldMemberId == member.id {
+                            stopHoldToGrow(for: member.id)
+                          }
+                        }
+                    )
+                  }
+                }
+                .padding(14)
+                .background(
+                  Tokens.surface,
+                  in: RoundedRectangle(cornerRadius: 24, style: .continuous)
+                )
+              }
+            } else {
+              let shapeItems = selected.map { member in
+                let shareAmount =
+                  shares.first(where: { $0.memberId == member.id })?.amount ?? .zero
+                return ShareShapeItem(member: member, amount: shareAmount)
+              }
+              ShareShapesView(shares: shapeItems, isDimmed: isPreviewPending)
             }
-            ShareShapesView(shares: shapeItems, isDimmed: isPreviewPending)
           }
 
           ForEach(selected) { member in

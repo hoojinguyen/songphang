@@ -316,6 +316,56 @@ public struct SplitEditorState: Sendable, Equatable {
     values[memberId] = value
   }
 
+  public mutating func pumpMember(_ id: Member.ID, members: [Member], totalAmount: Money) {
+    let selected = selectedMembers(from: members)
+    guard selected.contains(where: { $0.id == id }) else { return }
+
+    switch method {
+    case .shares:
+      let member = members.first(where: { $0.id == id })
+      let currentStr = values[id] ?? member?.defaultWeight ?? "1"
+      let currentVal = Int(currentStr) ?? 1
+      let nextVal = max(1, currentVal + 1)
+      values[id] = String(nextVal)
+
+    case .exact:
+      let currentStr = values[id] ?? ""
+      let currentVal = MoneyFormat.parseInput(currentStr) ?? .zero
+      let step: Money = totalAmount < Money(100_000) ? Money(1_000) : Money(10_000)
+      let nextVal = min(totalAmount, currentVal + step)
+      values[id] = MoneyFormat.amount(nextVal)
+
+    case .percent:
+      let currentStr = values[id] ?? ""
+      let currentHundredths = Self.parseHundredths(currentStr) ?? 0
+      if currentHundredths >= 10_000 { return }
+      let step = min(500, 10_000 - currentHundredths)
+      let otherMembers = selected.filter { $0.id != id }
+      let otherTotalHundredths = otherMembers.reduce(0) { sum, m in
+        sum + (Self.parseHundredths(values[m.id] ?? "") ?? 0)
+      }
+
+      values[id] = Self.formatHundredths(currentHundredths + step)
+      if otherTotalHundredths > 0 && !otherMembers.isEmpty {
+        var remainingToDeduct = step
+        for (i, m) in otherMembers.enumerated() {
+          let mHundredths = Self.parseHundredths(values[m.id] ?? "") ?? 0
+          if mHundredths <= 0 { continue }
+          let deduct =
+            (i == otherMembers.count - 1)
+            ? min(mHundredths, remainingToDeduct)
+            : min(mHundredths, (mHundredths * step) / otherTotalHundredths)
+          let nextM = max(0, mHundredths - deduct)
+          values[m.id] = Self.formatHundredths(nextM)
+          remainingToDeduct -= deduct
+        }
+      }
+
+    case .equal, .items:
+      break
+    }
+  }
+
   public mutating func toggle(_ memberId: Member.ID, members: [Member]) {
     if ids.contains(memberId) {
       ids.removeAll { $0 == memberId }
