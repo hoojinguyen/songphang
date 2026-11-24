@@ -6,23 +6,11 @@ import os
 
 public enum Typography {
   private static let logger = Logger(subsystem: "vn.songphang.app", category: "Typography")
-  private static let expectedFontNames = [
-    "BeVietnamPro-Regular",
-    "BeVietnamPro-Medium",
-    "BeVietnamPro-SemiBold",
-    "BeVietnamPro-Bold",
-    "BeVietnamPro-ExtraBold",
-    "BeVietnamPro-Black",
-  ]
   private static var didAttemptRegistration = false
-
-  public static var isCustomFontAvailable: Bool {
-    UIFont(name: "BeVietnamPro-Regular", size: 17) != nil
-  }
-
-  public static var registeredCustomFontNames: [String] {
-    expectedFontNames.filter { UIFont(name: $0, size: 17) != nil }
-  }
+  private static let hasCustomFonts: Bool = {
+    registerFontsIfAvailable()
+    return UIFont(name: "BeVietnamPro-Regular", size: 17) != nil
+  }()
 
   public static func registerFontsIfAvailable() {
     guard !didAttemptRegistration else { return }
@@ -53,96 +41,76 @@ public enum Typography {
     }
   }
 
-  public static var heroNumber: Font {
-    customOrSystem(
-      "BeVietnamPro-Black",
-      size: 40,
-      relativeTo: .largeTitle,
-      fallback: .system(size: 40, weight: .black, design: .default)
-    )
-    .leading(.tight)
-  }
+  public static let heroNumber: Font = customOrSystem(
+    "BeVietnamPro-Black",
+    size: 40,
+    relativeTo: .largeTitle,
+    fallback: .system(size: 40, weight: .black, design: .default)
+  )
+  .leading(.tight)
 
-  public static var pageTitle: Font {
-    customOrSystem(
-      "BeVietnamPro-Black",
-      size: 34,
-      relativeTo: .largeTitle,
-      fallback: .system(.largeTitle, design: .default, weight: .black)
-    )
-  }
+  public static let pageTitle: Font = customOrSystem(
+    "BeVietnamPro-Black",
+    size: 34,
+    relativeTo: .largeTitle,
+    fallback: .system(.largeTitle, design: .default, weight: .black)
+  )
 
-  public static var sectionTitle: Font {
-    customOrSystem(
-      "BeVietnamPro-Black",
-      size: 20,
-      relativeTo: .title3,
-      fallback: .system(.title3, design: .default, weight: .black)
-    )
-  }
+  public static let sectionTitle: Font = customOrSystem(
+    "BeVietnamPro-Black",
+    size: 20,
+    relativeTo: .title3,
+    fallback: .system(.title3, design: .default, weight: .black)
+  )
 
-  public static var screenHeaderTitle: Font {
-    customOrSystem(
-      "BeVietnamPro-ExtraBold",
-      size: 17,
-      relativeTo: .headline,
-      fallback: .system(.headline, design: .default, weight: .heavy)
-    )
-  }
+  public static let screenHeaderTitle: Font = customOrSystem(
+    "BeVietnamPro-ExtraBold",
+    size: 17,
+    relativeTo: .headline,
+    fallback: .system(.headline, design: .default, weight: .heavy)
+  )
 
-  public static var bodyBold: Font {
-    customOrSystem(
-      "BeVietnamPro-Bold",
-      size: 17,
-      relativeTo: .body,
-      fallback: .system(.body, design: .default, weight: .bold)
-    )
-  }
+  public static let bodyBold: Font = customOrSystem(
+    "BeVietnamPro-Bold",
+    size: 17,
+    relativeTo: .body,
+    fallback: .system(.body, design: .default, weight: .bold)
+  )
 
-  public static var body: Font {
-    customOrSystem(
-      "BeVietnamPro-Medium",
-      size: 17,
-      relativeTo: .body,
-      fallback: .system(.body, design: .default, weight: .medium)
-    )
-  }
+  public static let body: Font = customOrSystem(
+    "BeVietnamPro-Medium",
+    size: 17,
+    relativeTo: .body,
+    fallback: .system(.body, design: .default, weight: .medium)
+  )
 
-  public static var subheadlineBold: Font {
-    customOrSystem(
-      "BeVietnamPro-Bold",
-      size: 15,
-      relativeTo: .subheadline,
-      fallback: .system(.subheadline, design: .default, weight: .bold)
-    )
-  }
+  public static let subheadlineBold: Font = customOrSystem(
+    "BeVietnamPro-Bold",
+    size: 15,
+    relativeTo: .subheadline,
+    fallback: .system(.subheadline, design: .default, weight: .bold)
+  )
 
-  public static var subheadline: Font {
-    customOrSystem(
-      "BeVietnamPro-Medium",
-      size: 15,
-      relativeTo: .subheadline,
-      fallback: .system(.subheadline, design: .default, weight: .medium)
-    )
-  }
+  public static let subheadline: Font = customOrSystem(
+    "BeVietnamPro-Medium",
+    size: 15,
+    relativeTo: .subheadline,
+    fallback: .system(.subheadline, design: .default, weight: .medium)
+  )
 
-  public static var captionBold: Font {
-    customOrSystem(
-      "BeVietnamPro-SemiBold",
-      size: 13,
-      relativeTo: .footnote,
-      fallback: .system(.footnote, design: .default, weight: .semibold)
-    )
-  }
+  public static let captionBold: Font = customOrSystem(
+    "BeVietnamPro-SemiBold",
+    size: 13,
+    relativeTo: .footnote,
+    fallback: .system(.footnote, design: .default, weight: .semibold)
+  )
 
-  public static var caption: Font {
-    customOrSystem(
-      "BeVietnamPro-Medium",
-      size: 12,
-      relativeTo: .caption,
-      fallback: .system(.caption, design: .default, weight: .medium)
-    )
-  }
+  public static let caption: Font = customOrSystem(
+    "BeVietnamPro-Medium",
+    size: 12,
+    relativeTo: .caption,
+    fallback: .system(.caption, design: .default, weight: .medium)
+  )
 
   private static func customOrSystem(
     _ postScriptName: String,
@@ -150,7 +118,7 @@ public enum Typography {
     relativeTo textStyle: Font.TextStyle,
     fallback: Font
   ) -> Font {
-    if UIFont(name: postScriptName, size: size) != nil {
+    if hasCustomFonts, UIFont(name: postScriptName, size: size) != nil {
       return .custom(postScriptName, size: size, relativeTo: textStyle)
     }
     return fallback

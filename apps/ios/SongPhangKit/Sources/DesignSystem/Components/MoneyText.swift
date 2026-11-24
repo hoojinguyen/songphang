@@ -6,7 +6,6 @@ public struct MoneyText: View {
     case full
     case amountOnly
     case signed
-    case signedFull
     case compact
   }
 
@@ -44,8 +43,6 @@ public struct MoneyText: View {
       return MoneyFormat.amount(money)
     case .signed:
       return MoneyFormat.signedAmount(money)
-    case .signedFull:
-      return MoneyFormat.signedFull(money)
     case .compact:
       return MoneyFormat.compact(money)
     }

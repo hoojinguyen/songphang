@@ -139,7 +139,6 @@ public struct AccountView: View {
         },
         value: selectedMode.rawValue
       ) { nextValue in
-        Haptics.light()
         appearanceModeRaw = nextValue
       }
     }
