@@ -35,7 +35,7 @@ By default, the development API and web app bind to `127.0.0.1` (loopback) to pr
 When testing from a physical device on the same local network (such as an iPhone on Wi-Fi or `.local` hostname, for example `http://macbook.local:3000` or `http://192.168.1.x:3000`):
 
 1. **Host Binding:** Run the development server with host binding enabled, e.g. `pnpm --filter @songphang/web dev --hostname 0.0.0.0`.
-2. **Web Origin & Allowed Dev Origins:** Set `WEB_ORIGIN=http://macbook.local:3000` (or your LAN IP) and/or add comma-separated dev hostnames in `ALLOWED_DEV_ORIGINS` (e.g. `ALLOWED_DEV_ORIGINS=macbook.local,192.168.1.15`). In development mode only, `apps/web/next.config.ts` populates `allowedDevOrigins` with clean hostnames parsed from those variables while continuing to reject unrelated origins (`403`). Wildcard entries are ignored and production origin checks are never relaxed.
+2. **Web Origin & Allowed Dev Origins:** Set `WEB_ORIGIN` to the exact origin the device accesses (e.g. `WEB_ORIGIN=http://macbook.local:3000`). The API `requireSameOrigin` check enforces `Origin === WEB_ORIGIN` for cookie-backed login and mutations, so `ALLOWED_DEV_ORIGINS` is **not** an alternative to `WEB_ORIGIN` for API requests. `ALLOWED_DEV_ORIGINS` (comma-separated hostnames, e.g. `ALLOWED_DEV_ORIGINS=macbook.local,192.168.1.15`) only adds extra hostnames to Next.js `allowedDevOrigins` in development mode while continuing to reject unrelated origins (`403`). Wildcard entries are ignored and production origin checks are never relaxed.
 3. **iOS Native Client (`SongPhangKit`):** Set the backend API URL in your build scheme configuration or use the in-app Debug Panel (`Cấu hình API`) to point to `http://macbook.local:4000` (or `http://<LAN_IP>:4000`).
 
 ## Common commands

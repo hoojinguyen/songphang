@@ -29,7 +29,7 @@
 
 **Exercises:**
 - [ ] Run `xcodebuild` Debug + `xcrun swift-format lint --strict --recursive apps/ios`.
-- [ ] Exercise `LiveOverviewRepository` & `LiveGroupsRepository` against the local API (overview totals, personal ledger filtering, archive `409`, clone, and `SnapshotStore` wipe on sign-out/revocation).
+- [ ] Exercise `LiveOverviewRepository` & `LiveGroupsRepository` against the local API (overview totals, personal ledger filtering, repeated idempotent archive returning `200`, write-guarded mutations returning `409 GROUP_ARCHIVED` while archived, clone, and `SnapshotStore` wipe on sign-out/revocation).
 - [ ] Commit: `feat(ios): wire Wave 5.5A domain models, repositories, and overview snapshots`.
 
 ---
@@ -53,7 +53,7 @@
   - `.account` (`Tài khoản`) -> `AccountView`.
 - **Unified Routing:**
   - Each tab keeps its own `NavigationStack(path:)`.
-  - Deep links (`/join/{token}`), push notifications (`LinkRouter.pushDestination`), and Overview jumps switch cleanly to the target tab and push the destination stack without leaving stale screens.
+  - Deep links (`/join/{token}`), push notifications (`LinkRouter.pushDestination`), and Overview jumps replace/reset the target tab's navigation stack before pushing the destination route so stale screens never remain underneath.
   - `OfflineBanner` stays visible across all 4 tabs; mutating actions (`Tạo nhóm`, `Lưu trữ`, `Khôi phục`, `Nhân bản`) disable gracefully offline.
 - **Clone Sheet:** Pre-fills `"{oldName} (bản sao)"`, `Sao chép thông tin nhận tiền` toggle (default `true`), `Sao chép danh mục tuỳ chỉnh` toggle (default `false`), enforces single-instance `IdempotencyKey`, and navigates straight into the newly cloned active group.
 

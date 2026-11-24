@@ -62,7 +62,7 @@
   - Display selected participants in a wrapping grid of interactive `MemberShapeView` badges above/alongside the numeric input rows.
   - **Hold-to-grow gesture:** Pressing and holding a member shape triggers a repeating task (`250ms` initial press delay, then `180ms` step interval while pressed) that increments that member's allocation by a discrete step:
     - `Theo phần`: `+1` integer weight on held member.
-    - `Theo %`: `+5%` on held member (clamped to `100%`), reducing other selected members in clean integer percentage steps while preserving `100%` sum.
+    - `Theo %`: `+5%` on held member (clamped to remaining capacity up to `100%`), deducting proportionally from other positive-percentage members using rounded integer steps capped by each member's remaining percentage so total sum stays `<= 100%` (even if initial fields are blank or partial).
     - `Số tiền`: increments the held member's integer `Money` amount by a fixed integer step (`+10.000 đ`, or `+1.000 đ` when `totalAmount < 100.000 đ`, clamped to `[0, totalAmount]`) using **integer addition/subtraction only** — never floating-point arithmetic, multiplication, or division on `Money` (`apps/ios/AGENTS.md` §5).
   - Animate the held shape scale (`300ms` spring; instant when `accessibilityReduceMotion` is true) and emit `Haptics.light()` on each increment.
   - On gesture release (or short debounce), call the existing server preview (`transactions.preview`) so all displayed split totals and status banners remain 100% server-authoritative.
