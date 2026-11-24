@@ -10,10 +10,8 @@ import { ExpenseStream } from "../../../components/feed/ExpenseStream";
 import { FilterChips } from "../../../components/feed/FilterChips";
 import { FilterSheet } from "../../../components/feed/FilterSheet";
 import { StreamSearchBar } from "../../../components/feed/StreamSearchBar";
-import { Bell } from "../../../components/notifications/Bell";
+import { GroupNavHeader } from "../../../components/layout/GroupNavHeader";
 import { LoadError } from "../../../components/ui/LoadError";
-import { MemberShape } from "../../../components/ui/MemberShape";
-import { ScreenHeader } from "../../../components/ui/ScreenHeader";
 import { VerifyEmailBanner } from "../../../components/ui/VerifyEmailBanner";
 import { useBalances } from "../../../lib/balances";
 import { useBudget } from "../../../lib/budget";
@@ -138,28 +136,7 @@ function GroupScreen() {
 		)?.balance ?? 0;
 	return (
 		<main className="mx-auto flex h-dvh max-w-[430px] flex-col gap-4 px-5 pb-[100px] pt-6">
-			<ScreenHeader
-				title={group.data.name}
-				backHref="/"
-				backLabel={vi.common.back}
-				trailing={
-					<div className="flex items-center gap-2">
-						<Bell />
-						<Link
-							href={`/g/${groupId}/members`}
-							aria-label={vi.feed.membersLink}
-							className="flex h-12 items-center rounded-[24px] bg-surface px-3"
-						>
-							{members.data
-								.filter((member) => member.kind === "person")
-								.slice(0, 4)
-								.map((member) => (
-									<MemberShape key={member.id} {...member} size={24} />
-								))}
-						</Link>
-					</div>
-				}
-			/>
+			<GroupNavHeader groupId={groupId} />
 			{!filtersActive && <BalanceBlock groupId={groupId} balance={balance} />}
 			{group.data.myMemberId === null && (
 				<Link
@@ -242,7 +219,11 @@ function GroupScreen() {
 				onClear={() => applyFilters({})}
 				onClose={() => setSheetOpen(false)}
 			/>
-			{me.data.emailVerified ? (
+			{group.data.archivedAt ? (
+				<div className="fixed bottom-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 border-t border-sunken bg-surface px-5 py-4 text-center text-xs font-bold text-muted">
+					{vi.groups.archivedBanner}
+				</div>
+			) : me.data.emailVerified ? (
 				<EntryBar groupId={groupId} readOnly={group.data.role === "viewer"} />
 			) : (
 				<div className="fixed bottom-0 left-1/2 w-full max-w-[430px] -translate-x-1/2 bg-bg p-5">

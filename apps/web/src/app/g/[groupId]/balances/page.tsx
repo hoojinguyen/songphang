@@ -9,9 +9,9 @@ import { OwnSettlementCard } from "../../../../components/balances/OwnSettlement
 import { PendingRequestRow } from "../../../../components/balances/PendingRequestRow";
 import { SettlementCard } from "../../../../components/balances/SettlementCard";
 import { FundBlock } from "../../../../components/fund/FundBlock";
+import { GroupNavHeader } from "../../../../components/layout/GroupNavHeader";
 import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
-import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { useSnackbar } from "../../../../components/ui/Snackbar";
 import { useBalances } from "../../../../lib/balances";
 import { useGroup } from "../../../../lib/groups";
@@ -158,12 +158,8 @@ export default function BalancesPage() {
 	};
 
 	return (
-		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 py-6">
-			<ScreenHeader
-				title={group.data.name}
-				backHref={`/g/${groupId}`}
-				backLabel={vi.common.back}
-			/>
+		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 pb-24 pt-6">
+			<GroupNavHeader groupId={groupId} />
 			{balances.data.fund && (
 				<FundBlock
 					groupId={groupId}

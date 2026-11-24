@@ -331,6 +331,58 @@ export function useSplitState(
 		setValue: (id: string, value: string) => {
 			setValues((current) => ({ ...current, [id]: value }));
 		},
+		pumpMember: (id: string) => {
+			if (method === "shares") {
+				const member = members.find((m) => m.id === id);
+				const currentStr = values[id] ?? member?.defaultWeight ?? "1";
+				const currentVal = parseInt(currentStr, 10);
+				const nextVal =
+					Number.isSafeInteger(currentVal) && currentVal >= 1
+						? currentVal + 1
+						: 1;
+				setValues((current) => ({ ...current, [id]: String(nextVal) }));
+			} else if (method === "exact") {
+				const currentStr = values[id] ?? "";
+				const currentVal = parseAmountInput(currentStr) ?? 0;
+				const step = amount < 100_000 ? 1_000 : 10_000;
+				const nextVal = Math.min(amount, currentVal + step);
+				setValues((current) => ({ ...current, [id]: String(nextVal) }));
+			} else if (method === "percent") {
+				const currentStr = values[id] ?? "";
+				const currentHundredths = hundredths(currentStr) ?? 0;
+				if (currentHundredths >= 10000) return;
+				const step = Math.min(500, 10000 - currentHundredths);
+				const otherMembers = selected.filter((m) => m.id !== id);
+				const otherTotalHundredths = otherMembers.reduce(
+					(sum, m) => sum + (hundredths(values[m.id] ?? "") ?? 0),
+					0,
+				);
+				setValues((current) => {
+					const next = { ...current };
+					next[id] = percentText(currentHundredths + step);
+					if (otherTotalHundredths > 0 && otherMembers.length > 0) {
+						let remainingToDeduct = step;
+						for (let i = 0; i < otherMembers.length; i++) {
+							const m = otherMembers[i];
+							if (!m) continue;
+							const mHundredths = hundredths(current[m.id] ?? "") ?? 0;
+							if (mHundredths <= 0) continue;
+							const deduct =
+								i === otherMembers.length - 1
+									? Math.min(mHundredths, remainingToDeduct)
+									: Math.min(
+											mHundredths,
+											Math.round((mHundredths / otherTotalHundredths) * step),
+										);
+							const nextM = Math.max(0, mHundredths - deduct);
+							next[m.id] = percentText(nextM);
+							remainingToDeduct -= deduct;
+						}
+					}
+					return next;
+				});
+			}
+		},
 		toggle: (id: string) => {
 			setIds((current) =>
 				current.includes(id)

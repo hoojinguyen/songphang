@@ -1,17 +1,15 @@
+"use client";
 import type {
 	CategoryDto,
 	MemberDto,
 	TransactionListItemDto,
 } from "@songphang/contract";
-import {
-	formatAmount,
-	formatCompactAmount,
-	formatMoney,
-} from "../../lib/money";
+import { formatAmount, formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { CATEGORY_COLORS } from "../settings/CategoryRow";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
+
 export function ExpenseRow({
 	transaction,
 	members,
@@ -29,24 +27,34 @@ export function ExpenseRow({
 	const categoryLabel = transaction.category
 		? vi.expenseForm.categories[transaction.category]
 		: customCategory?.name;
+
 	const payer = members.find(
 		(member) => member.id === transaction.payers[0]?.memberId,
 	);
-	const isMine = transaction.payers.some(
-		(entry) => entry.memberId === myMemberId,
-	);
-	const payerLine = transaction.payers
-		.map((entry) => {
-			const member = members.find((member) => member.id === entry.memberId);
-			const label =
-				entry.memberId === myMemberId
-					? vi.feed.youPaid
-					: t(vi.feed.memberPaid, {
-							name: member?.name ?? vi.activity.someone,
-						});
-			return `${label} ${formatMoney(entry.amount)}`;
-		})
-		.join(" · ");
+	const isMine =
+		myMemberId !== null &&
+		transaction.payers.some((entry) => entry.memberId === myMemberId);
+
+	const payerLine =
+		transaction.payers.length > 1
+			? transaction.payers
+					.map((entry) => {
+						const member = members.find((m) => m.id === entry.memberId);
+						const label =
+							entry.memberId === myMemberId
+								? vi.feed.youPaid
+								: t(vi.feed.memberPaid, {
+										name: member?.name ?? vi.activity.someone,
+									});
+						return `${label} ${formatMoney(entry.amount)}`;
+					})
+					.join(" · ")
+			: isMine
+				? vi.feed.youPaid
+				: t(vi.feed.memberPaid, {
+						name: payer?.name ?? vi.activity.someone,
+					});
+
 	const method = transaction.split.method;
 	const methodLabel =
 		method === "exact"
@@ -55,149 +63,156 @@ export function ExpenseRow({
 				? vi.feed.splitShares
 				: method === "items"
 					? vi.split.methodItems
-					: vi.feed.splitPercent;
-	const myShare = transaction.shares.find(
-		(share) => share.memberId === myMemberId,
-	);
+					: method === "equal"
+						? vi.split.methodEqual
+						: vi.feed.splitPercent;
+
 	const approvalStatus = transaction.approval.status;
 	const uncounted =
 		approvalStatus === "pending" || approvalStatus === "rejected";
+
+	const timeStr = new Date(transaction.occurredAt).toLocaleTimeString("vi-VN", {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+
+	// Server myDelta
+	const delta = transaction.myDelta;
+	const myShare = transaction.shares.find(
+		(share) => share.memberId === myMemberId,
+	);
+
 	return (
 		<div
-			className={`flex items-end gap-2 ${isMine ? "justify-end" : "justify-start"} ${uncounted ? "opacity-85" : ""}`}
+			className={`w-full rounded-[24px] bg-surface p-4 text-ink transition-colors hover:bg-surface-raised ${uncounted ? "opacity-85" : ""}`}
 		>
-			{!isMine && payer && <MemberShape {...payer} size={36} />}
-			<div
-				className={`min-w-0 px-4 pb-[14px] pt-3 ${isMine ? "max-w-[300px] rounded-[26px] rounded-br-[8px] bg-ink text-surface" : "max-w-[270px] rounded-[26px] rounded-bl-[8px] bg-surface"}`}
-			>
-				<p
-					className={`text-xs font-semibold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
-				>
-					{transaction.payers.length > 1
-						? payerLine
-						: isMine
-							? vi.feed.youPaid
-							: t(vi.feed.memberPaid, {
-									name: payer?.name ?? vi.activity.someone,
+			{/* Top row: Payer shape + name + timestamp + indicators */}
+			<div className="flex items-center justify-between gap-2 text-xs font-semibold text-muted">
+				<div className="flex items-center gap-2 min-w-0">
+					{payer && <MemberShape {...payer} size={28} />}
+					<span className="truncate font-bold text-ink">{payerLine}</span>
+					<span>·</span>
+					<span className="shrink-0">{timeStr}</span>
+				</div>
+				<div className="flex items-center gap-1.5 shrink-0">
+					{approvalStatus === "pending" && (
+						<span className="rounded-[10px] bg-accent px-2 py-0.5 text-[11px] font-bold text-ink">
+							{vi.approval.pendingTag}
+						</span>
+					)}
+					{approvalStatus === "rejected" && (
+						<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
+							{vi.approval.rejectedTag}
+						</span>
+					)}
+					{transaction.dispute !== null && (
+						<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
+							{vi.transactionView.disputeTag}
+						</span>
+					)}
+					{transaction.commentCount > 0 && (
+						<span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted">
+							<Icon name="comment" size={13} />
+							<span aria-hidden="true">{transaction.commentCount}</span>
+							<span className="sr-only">
+								{t(vi.transactionView.commentCount, {
+									count: String(transaction.commentCount),
 								})}
-				</p>
-				<div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-					<p className="min-w-0 break-words text-[15px] font-bold">
+							</span>
+						</span>
+					)}
+					{transaction.version > 1 && (
+						<span className="text-[11px] font-bold text-muted">
+							{vi.feed.edited}
+						</span>
+					)}
+				</div>
+			</div>
+
+			{/* Middle row: Description + category on left; Total Amount above myDelta on right */}
+			<div className="mt-2.5 flex items-start justify-between gap-3">
+				<div className="min-w-0 flex-1">
+					<p className="line-clamp-2 text-[15px] font-extrabold text-ink">
 						{transaction.description}
 					</p>
-					<p className="text-[19px] font-black">
-						{formatAmount(transaction.amount)}
-					</p>
-				</div>
-				{(categoryLabel ||
-					transaction.version > 1 ||
-					transaction.attachmentCount > 0 ||
-					transaction.commentCount > 0 ||
-					transaction.dispute !== null ||
-					uncounted) && (
-					<div
-						className={`mt-1 flex flex-wrap items-center gap-2 text-[11px] font-bold ${isMine ? "text-on-ink-muted" : "text-muted"}`}
-					>
-						{approvalStatus === "pending" && (
-							<span className="rounded-[10px] bg-accent px-2 py-0.5 text-ink">
-								{vi.approval.pendingTag}
-							</span>
-						)}
-						{approvalStatus === "rejected" && (
-							<span className="rounded-[10px] bg-coral px-2 py-0.5 text-ink">
-								{vi.approval.rejectedTag}
-							</span>
-						)}
-						{transaction.dispute !== null && (
-							<span className="rounded-[10px] bg-coral px-2 py-0.5 text-ink">
-								{vi.transactionView.disputeTag}
-							</span>
-						)}
-						{categoryLabel && (
-							<span className="inline-flex items-center gap-1.5">
+					{categoryLabel && (
+						<div className="mt-1 flex items-center gap-1.5">
+							<span className="inline-flex items-center gap-1 rounded-md bg-sunken px-2 py-0.5 text-[11px] font-semibold text-ink">
 								{customCategory && (
 									<span
 										aria-hidden="true"
-										className={`h-2.5 w-2.5 shrink-0 rounded-full ${CATEGORY_COLORS[customCategory.color].bg}`}
+										className={`size-2 shrink-0 rounded-full ${CATEGORY_COLORS[customCategory.color].bg}`}
 									/>
 								)}
 								<span>{categoryLabel}</span>
 							</span>
-						)}
-						{transaction.attachmentCount > 0 && (
-							<span className="inline-flex items-center gap-1">
-								<Icon name="image" size={14} />
-								<span className="sr-only">{vi.attachments.hasPhotos}</span>
-								{transaction.attachmentCount > 1 && (
-									<span>{transaction.attachmentCount}</span>
-								)}
-							</span>
-						)}
-						{transaction.commentCount > 0 && (
-							<span className="inline-flex items-center gap-1">
-								<Icon name="comment" size={14} />
-								<span aria-hidden="true">{transaction.commentCount}</span>
-								<span className="sr-only">
-									{t(vi.transactionView.commentCount, {
-										count: String(transaction.commentCount),
-									})}
+							{transaction.attachmentCount > 0 && (
+								<span className="inline-flex items-center gap-1 text-[11px] text-muted">
+									<Icon name="image" size={13} />
+									{transaction.attachmentCount > 1 && (
+										<span>{transaction.attachmentCount}</span>
+									)}
 								</span>
-							</span>
-						)}
-						{transaction.version > 1 && <span>{vi.feed.edited}</span>}
-					</div>
-				)}
-				{isMine && (
-					<div className="mt-2 flex flex-wrap gap-1">
-						{transaction.shares.slice(0, 4).map((share) => {
-							const member = members.find(
-								(member) => member.id === share.memberId,
-							);
-							return (
-								<span
-									key={share.memberId}
-									className="flex items-center gap-1 rounded-[14px] bg-ink-raised px-[9px] py-[5px] text-xs font-bold"
-								>
-									{member && <MemberShape {...member} size={14} />}
-									<span>{formatCompactAmount(share.amount)}</span>
-								</span>
-							);
-						})}
-						{transaction.shares.length > 4 && (
-							<span className="px-2 py-1 text-xs">
-								{t(vi.feed.moreShares, {
-									count: String(transaction.shares.length - 4),
-								})}
-							</span>
-						)}
-					</div>
-				)}
-				{(!isMine || transaction.payers.length > 1) && (
-					<p
-						className={`mt-1 text-[13px] ${isMine ? "text-on-ink-muted" : "text-muted"}`}
-					>
-						{myShare
-							? t(
-									method === "equal"
-										? vi.feed.equalSplitMine
-										: vi.feed.splitMine,
-									{
-										method: methodLabel,
-										count: String(transaction.shares.length),
-										amount: formatAmount(myShare.amount),
-									},
-								)
-							: t(
-									method === "equal"
-										? vi.feed.equalSplitNotMine
-										: vi.feed.splitNotMine,
-									{
-										method: methodLabel,
-										count: String(transaction.shares.length),
-									},
-								)}
+							)}
+						</div>
+					)}
+				</div>
+
+				<div className="shrink-0 text-right">
+					<p className="tabular-nums text-lg font-black text-ink">
+						{formatAmount(transaction.amount)} {vi.common.currency}
 					</p>
-				)}
+					<div className="tabular-nums text-xs">
+						{delta !== undefined && delta !== null ? (
+							delta > 0 ? (
+								<span className="font-bold text-credit">
+									+{formatMoney(delta)}
+								</span>
+							) : delta < 0 ? (
+								<span className="font-bold text-debt">
+									−{formatMoney(Math.abs(delta))}
+								</span>
+							) : (
+								<span className="font-medium text-muted">
+									{vi.ledger.notParticipating}
+								</span>
+							)
+						) : myShare ? (
+							<span className="font-bold text-muted">
+								{formatMoney(myShare.amount)}
+							</span>
+						) : (
+							<span className="font-medium text-muted">
+								{vi.ledger.notParticipating}
+							</span>
+						)}
+					</div>
+				</div>
+			</div>
+
+			{/* Bottom row: Up to 5 participant shapes cluster + +N + split method label */}
+			<div className="mt-3 flex items-center justify-between border-t border-sunken pt-2.5 text-xs text-muted">
+				<div className="flex items-center gap-1.5">
+					<div className="flex -space-x-1.5">
+						{transaction.shares.slice(0, 5).map((share) => {
+							const member = members.find((m) => m.id === share.memberId);
+							return member ? (
+								<div
+									key={share.memberId}
+									className="rounded-full ring-2 ring-surface"
+								>
+									<MemberShape {...member} size={20} />
+								</div>
+							) : null;
+						})}
+					</div>
+					{transaction.shares.length > 5 && (
+						<span className="font-bold text-muted">
+							+{transaction.shares.length - 5}
+						</span>
+					)}
+				</div>
+				<span className="font-semibold text-muted">{methodLabel}</span>
 			</div>
 		</div>
 	);

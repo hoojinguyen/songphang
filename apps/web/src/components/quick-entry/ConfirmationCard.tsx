@@ -73,7 +73,7 @@ export function ConfirmationCard({
 			? draft.amount - split.entries.reduce((n, e) => n + e.amount, 0)
 			: 0;
 	return (
-		<section className="grid gap-4 rounded-[40px] bg-surface px-[18px] pb-[18px] pt-5">
+		<section className="grid max-h-[85dvh] gap-3 overflow-y-auto rounded-[36px] bg-surface px-[18px] pb-[18px] pt-4">
 			<div className="flex items-center justify-between gap-2">
 				<p className="text-[13px] font-semibold text-muted">
 					{vi.compose.understood}
@@ -93,14 +93,16 @@ export function ConfirmationCard({
 				</p>
 			)}
 			{draft.description && (
-				<h2 className="text-lg font-extrabold">{draft.description}</h2>
+				<h2 className="text-base font-extrabold text-ink">
+					{draft.description}
+				</h2>
 			)}
 			{draft.amount !== null && (
-				<p className="break-words text-[60px] font-black leading-tight">
-					<mark className="rounded-xl bg-phrase-amount">
+				<p className="break-words tabular-nums text-[36px] sm:text-[44px] font-black leading-tight">
+					<mark className="rounded-xl bg-phrase-amount px-1.5 py-0.5">
 						{formatAmount(draft.amount)}
 					</mark>{" "}
-					<span className="text-[22px] text-muted">{vi.common.currency}</span>
+					<span className="text-[20px] text-muted">{vi.common.currency}</span>
 				</p>
 			)}
 			<div className="flex flex-wrap gap-2 text-[13px] font-bold">
