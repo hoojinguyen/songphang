@@ -95,7 +95,7 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 											<>
 												<Link
 													href={payHref(groupId, transfer)}
-													className="flex h-9 flex-1 items-center justify-center rounded-pill bg-ink text-xs font-bold text-surface transition-opacity hover:opacity-90"
+													className="flex h-9 flex-1 items-center justify-center rounded-pill bg-ink text-xs font-bold text-on-ink transition-opacity hover:opacity-90"
 												>
 													{vi.feed.pay}
 												</Link>
@@ -109,7 +109,7 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 										) : (
 											<Link
 												href={settlementHref(groupId, transfer)}
-												className="flex h-9 flex-1 items-center justify-center rounded-pill bg-ink text-xs font-bold text-surface transition-opacity hover:opacity-90"
+												className="flex h-9 flex-1 items-center justify-center rounded-pill bg-ink text-xs font-bold text-on-ink transition-opacity hover:opacity-90"
 											>
 												{vi.balances.received}
 											</Link>

@@ -79,7 +79,7 @@ export function DesktopSidebar() {
 								aria-current={active ? "page" : undefined}
 								className={`flex items-center justify-between rounded-[16px] px-3.5 py-2.5 text-sm font-bold transition-colors ${
 									active
-										? "bg-ink text-surface"
+										? "bg-ink text-on-ink"
 										: "text-muted hover:bg-surface hover:text-ink"
 								}`}
 							>
@@ -160,7 +160,7 @@ export function DesktopSidebar() {
 			<div className="mt-4 grid gap-3 border-t border-sunken pt-4">
 				<Link
 					href="/groups/new"
-					className="flex h-11 items-center justify-center gap-2 rounded-pill bg-ink text-sm font-bold text-surface transition-opacity hover:opacity-90"
+					className="flex h-11 items-center justify-center gap-2 rounded-pill bg-ink text-sm font-bold text-on-ink transition-opacity hover:opacity-90"
 				>
 					<Icon name="plus" size={18} />
 					<span>{vi.groups.create}</span>

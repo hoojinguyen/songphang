@@ -201,7 +201,7 @@ export function GroupNavHeader({ groupId }: { groupId: string }) {
 						aria-current={seg.active ? "page" : undefined}
 						className={`flex h-10 flex-1 items-center justify-center rounded-[16px] text-xs font-extrabold transition-all ${
 							seg.active
-								? "bg-ink text-surface shadow-sm"
+								? "bg-ink text-on-ink shadow-sm"
 								: "text-muted hover:text-ink"
 						}`}
 					>

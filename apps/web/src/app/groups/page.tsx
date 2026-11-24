@@ -128,7 +128,7 @@ function GroupsContent({ name }: { name: string }) {
 				) : (
 					<OnlineLink
 						href="/groups/new"
-						className="flex h-control-lg items-center justify-center gap-2 rounded-pill bg-ink font-bold text-surface"
+						className="flex h-control-lg items-center justify-center gap-2 rounded-pill bg-ink font-bold text-on-ink"
 					>
 						<Icon name="plus" size={24} />
 						{vi.groups.create}

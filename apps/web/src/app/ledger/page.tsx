@@ -42,7 +42,7 @@ export default function PersonalLedgerPage() {
 					value={q}
 					onChange={(e) => setQ(e.target.value)}
 					placeholder={vi.ledger.searchPlaceholder}
-					className="h-12 w-full rounded-[22px] bg-surface pl-10 pr-4 text-sm font-semibold text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-ink"
+					className="h-12 w-full rounded-[22px] bg-surface pl-10 pr-4 text-sm font-semibold text-ink placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-ink"
 				/>
 				<span className="pointer-events-none absolute left-3.5 top-3.5 text-muted">
 					<Icon name="search" size={18} />
