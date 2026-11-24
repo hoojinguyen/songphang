@@ -269,6 +269,11 @@ export const vi = {
 			"Tên bạn vẫn ở lại trong các nhóm, nhưng không còn gắn với tài khoản nào. Gõ lại email của bạn để xác nhận.",
 		ownerRequired:
 			"Bạn còn là chủ của {count} nhóm. Hãy chuyển quyền chủ nhóm hoặc xoá nhóm trước.",
+		sessionsTitle: "Thiết bị đang đăng nhập",
+		currentDevice: "Thiết bị này",
+		clientWeb: "Web",
+		clientIos: "iOS",
+		clientAndroid: "Android",
 	},
 	resetPassword: {
 		title: "Đặt mật khẩu mới",

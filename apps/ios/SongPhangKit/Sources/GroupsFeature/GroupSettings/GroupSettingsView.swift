@@ -127,6 +127,7 @@ public struct GroupSettingsView: View {
           .foregroundStyle(Tokens.ink)
       }
     } else {
+      let isOffline = model.refreshError == .offline
       let trimmed = model.nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
 
       VStack(alignment: .leading, spacing: 8) {
@@ -153,7 +154,8 @@ public struct GroupSettingsView: View {
         L10n.tr("settings.saveName"),
         variant: .primary,
         isFullWidth: true,
-        isDisabled: model.isPerformingAction || trimmed.isEmpty || trimmed == data.group.name
+        isDisabled: isOffline || model.isPerformingAction || trimmed.isEmpty
+          || trimmed == data.group.name
       ) {
         Task { await model.saveName() }
       }
@@ -171,7 +173,7 @@ public struct GroupSettingsView: View {
         SPSwitch(
           checked: data.group.minimizeDebts,
           label: L10n.tr("settings.minimizeTitle"),
-          isDisabled: model.isPerformingAction
+          isDisabled: isOffline || model.isPerformingAction
         ) { newValue in
           Task { await model.setMinimizeDebts(newValue) }
         }
@@ -195,7 +197,7 @@ public struct GroupSettingsView: View {
             SPSegmentedControl.Option(value: "viewer", label: L10n.tr("members.roleViewer")),
           ],
           value: data.group.defaultRole.code,
-          isDisabled: model.isPerformingAction
+          isDisabled: isOffline || model.isPerformingAction
         ) { selected in
           let role: Role = selected == "viewer" ? .viewer : .editor
           Task { await model.setDefaultRole(role) }
@@ -205,7 +207,71 @@ public struct GroupSettingsView: View {
       .background(Tokens.surface)
       .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
+      VStack(alignment: .leading, spacing: 12) {
+        Text(L10n.tr("reminders.settingTitle"))
+          .font(Typography.bodyBold)
+          .foregroundStyle(Tokens.ink)
+
+        SPSegmentedControl(
+          label: L10n.tr("reminders.settingTitle"),
+          options: [
+            SPSegmentedControl.Option(value: "off", label: L10n.tr("reminders.intervalOff")),
+            SPSegmentedControl.Option(value: "3", label: L10n.tr("reminders.interval3")),
+            SPSegmentedControl.Option(value: "7", label: L10n.tr("reminders.interval7")),
+            SPSegmentedControl.Option(value: "14", label: L10n.tr("reminders.interval14")),
+          ],
+          value: data.group.reminderIntervalDays.map(String.init) ?? "off",
+          isDisabled: isOffline || model.isPerformingAction
+        ) { selected in
+          let interval: Int? = {
+            switch selected {
+            case "3": return 3
+            case "7": return 7
+            case "14": return 14
+            default: return nil
+            }
+          }()
+          Task { await model.setReminderInterval(interval) }
+        }
+      }
+      .padding(20)
+      .background(Tokens.surface)
+      .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+
       inviteLinkCard(invite: data.invite)
+      CategoryManagementSection(
+        groupId: model.groupId,
+        categories: data.categories,
+        categoriesRepository: model.categoriesRepository,
+        isDisabled: isOffline || model.isPerformingAction,
+        onChanged: { model.updateCategories($0) }
+      )
+      BudgetSettingsCard(
+        budget: data.budget,
+        isDisabled: isOffline || model.isPerformingAction,
+        isPending: model.isSavingBudget,
+        errorMessage: budgetErrorText,
+        onSave: { period, amount in
+          Task { await model.saveBudget(period: period, amount: amount) }
+        },
+        onRemove: {
+          Task { await model.removeBudget() }
+        }
+      )
+      ApprovalCardView(
+        group: data.group,
+        isDisabled: isOffline || model.isPerformingAction,
+        isPending: model.isPerformingAction,
+        onSave: { threshold in
+          Task { await model.setApprovalThreshold(threshold) }
+        }
+      )
+      if model.telegramFeatureEnabled {
+        TelegramGroupCardView(
+          model: model,
+          isDisabled: isOffline || model.isPerformingAction
+        )
+      }
       transferOwnershipCard(users: data.users)
       deleteGroupCard()
 
@@ -351,6 +417,14 @@ public struct GroupSettingsView: View {
     .background(Tokens.bg.ignoresSafeArea())
     .presentationDetents([.medium])
   }
+
+  private var budgetErrorText: String? {
+    guard let error = model.budgetError else { return nil }
+    if case .api(_, 403) = error {
+      return L10n.tr("common.forbidden")
+    }
+    return L10n.tr("common.saveError")
+  }
 }
 
 #if DEBUG
@@ -361,7 +435,9 @@ public struct GroupSettingsView: View {
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
-        membersRepository: FakeMembersRepository(world: world)
+        membersRepository: FakeMembersRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},
@@ -379,7 +455,9 @@ public struct GroupSettingsView: View {
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
-        membersRepository: FakeMembersRepository(world: world)
+        membersRepository: FakeMembersRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},
@@ -397,7 +475,9 @@ public struct GroupSettingsView: View {
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         invitesRepository: FakeInvitesRepository(world: world),
-        membersRepository: FakeMembersRepository(world: world)
+        membersRepository: FakeMembersRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
+        budgetRepository: FakeBudgetRepository(world: world)
       ),
       onBack: {},
       onBackToGroups: {},

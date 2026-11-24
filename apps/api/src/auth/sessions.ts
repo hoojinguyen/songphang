@@ -4,9 +4,10 @@ import { UserDto } from "@songphang/contract";
 import {
 	type Db,
 	type DbExecutor,
+	type DbSessionClient,
 	deleteSessionByHash,
+	findSessionRecordByHash,
 	findUserById,
-	findUserBySessionHash,
 	insertSession,
 } from "@songphang/db";
 import type { Config } from "../config.js";
@@ -30,19 +31,43 @@ export async function createSession(
 		userId: string;
 		now: Date;
 		userAgent?: string;
+		client?: DbSessionClient;
+		deviceName?: string;
 	},
-): Promise<{ token: string; expiresAt: Date }> {
+): Promise<{ id: string; token: string; expiresAt: Date }> {
 	if ((await findUserById(db, input.userId)) === null) {
 		throw new AppError(404, "NOT_FOUND", "User not found");
 	}
 	const token = randomBytes(32).toString("base64url");
 	const expiresAt = new Date(input.now.getTime() + SESSION_TTL_MS);
-	await insertSession(db, {
+	const { id } = await insertSession(db, {
 		...input,
 		tokenHash: hashSessionToken(token),
 		expiresAt,
 	});
-	return { token, expiresAt };
+	return { id, token, expiresAt };
+}
+
+export async function findSessionRecord(
+	db: Db,
+	token: string,
+	now: Date,
+): Promise<{
+	user: UserDto;
+	sessionId: string;
+	sessionClient: DbSessionClient;
+} | null> {
+	if (!SESSION_TOKEN_SCHEMA.safeParse(token).success) return null;
+	const record = await findSessionRecordByHash(db, {
+		tokenHash: hashSessionToken(token),
+		now,
+	});
+	if (record === null) return null;
+	return {
+		user: UserDto.parse(record.user),
+		sessionId: record.sessionId,
+		sessionClient: record.sessionClient,
+	};
 }
 
 export async function findSessionUser(
@@ -50,12 +75,8 @@ export async function findSessionUser(
 	token: string,
 	now: Date,
 ): Promise<UserDto | null> {
-	if (!SESSION_TOKEN_SCHEMA.safeParse(token).success) return null;
-	const user = await findUserBySessionHash(db, {
-		tokenHash: hashSessionToken(token),
-		now,
-	});
-	return user === null ? null : UserDto.parse(user);
+	const record = await findSessionRecord(db, token, now);
+	return record?.user ?? null;
 }
 
 export async function deleteSession(db: Db, token: string): Promise<void> {

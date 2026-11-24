@@ -4,6 +4,9 @@ import DesignSystem
 public import Domain
 import GroupsFeature
 import LedgerFeature
+import NotificationsFeature
+import PaymentsFeature
+import StatisticsFeature
 public import SwiftUI
 
 #if DEBUG
@@ -19,21 +22,38 @@ public struct RouteDestination: View {
   private let onReplaceTop: (Route) -> Void
   private let onPop: () -> Void
   private let onPopToRoot: (String?) -> Void
+  private let onExpenseSaved: () -> Void
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
+  private struct PaymentSheet: Identifiable {
+    var id: SuggestedTransfer.ID { transfer.id }
+    let transfer: SuggestedTransfer
+    let fromMember: Member
+    let toMember: Member
+  }
+
+  @State private var paymentSheet: PaymentSheet?
+  @State private var editingPaymentMember: Member?
+  @State private var isCreatingFund = false
+  @State private var isReceiptCaptureOpen = false
   @State private var registerModel: RegisterModel?
   @State private var forgotPasswordModel: ForgotPasswordModel?
   @State private var accountModel: AccountModel?
   @State private var createGroupModel: CreateGroupModel?
   @State private var joinModel: JoinModel?
   @State private var membersModel: MembersModel?
+  @State private var fundModel: FundModel?
   @State private var settingsModel: GroupSettingsModel?
   @State private var feedModel: GroupFeedModel?
   @State private var balancesModel: BalancesModel?
+  @State private var statsModel: StatsModel?
   @State private var activityModel: ActivityModel?
   @State private var quickEntryModel: QuickEntryModel?
   @State private var expenseFormModel: ExpenseFormModel?
+  @State private var receiptReviewModel: ReceiptReviewModel?
   @State private var settleModel: SettleModel?
+  @State private var notificationsModel: NotificationsModel?
+  @State private var transactionDetailModel: TransactionDetailModel?
 
   public init(
     route: Route,
@@ -44,6 +64,7 @@ public struct RouteDestination: View {
     onReplaceTop: @escaping (Route) -> Void,
     onPop: @escaping () -> Void,
     onPopToRoot: @escaping (String?) -> Void,
+    onExpenseSaved: @escaping () -> Void = {},
     deletedTransactionId: Binding<LedgerTransaction.ID?>
   ) {
     self._deletedTransactionId = deletedTransactionId
@@ -55,6 +76,7 @@ public struct RouteDestination: View {
     self.onReplaceTop = onReplaceTop
     self.onPop = onPop
     self.onPopToRoot = onPopToRoot
+    self.onExpenseSaved = onExpenseSaved
 
     let args = ProcessInfo.processInfo.arguments
     switch route {
@@ -77,10 +99,15 @@ public struct RouteDestination: View {
       self._accountModel = State(
         initialValue: AccountModel(
           repository: dependencies.auth,
+          devicesRepository: dependencies.devices,
+          notificationsRepository: dependencies.notifications,
+          chatLinksRepository: dependencies.chatLinks,
           initialUser: hasSnap ? currentUser : nil,
           onSignedOut: {
-            onPopToRoot(nil)
-            Task { await sessionModel.signOut() }
+            sessionModel.markSignedOut()
+          },
+          onUserUpdated: { updated in
+            sessionModel.didSignIn(updated)
           }
         )
       )
@@ -114,16 +141,34 @@ public struct RouteDestination: View {
           invitesRepository: dependencies.invites
         )
       )
+    case .groupFund(let groupId):
+      self._fundModel = State(
+        initialValue: FundModel(
+          groupId: groupId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
+          fundRepository: dependencies.fund,
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
+        )
+      )
     case .groupSettings(let groupId):
       self._settingsModel = State(
         initialValue: GroupSettingsModel(
           groupId: groupId,
           groupsRepository: dependencies.groups,
           invitesRepository: dependencies.invites,
-          membersRepository: dependencies.members
+          membersRepository: dependencies.members,
+          categoriesRepository: dependencies.categories,
+          budgetRepository: dependencies.budget,
+          chatLinksRepository: dependencies.chatLinks,
+          telegramFeatureEnabled: sessionModel.latestFeatures?.telegram == true
         )
       )
-    case .groupFeed(let groupId):
+    case .groupFeed(let groupId, let initialFilter):
       #if DEBUG
         let deletedId =
           args.contains("--delete-t4") ? TripScenario.t4Transaction.id : nil
@@ -136,10 +181,28 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
+          categoriesRepository: dependencies.categories,
+          budgetRepository: dependencies.budget,
           transactionsRepository: dependencies.transactions,
           eventsRepository: dependencies.groupEvents,
+          initialFilter: initialFilter,
           initialHasNewItemsPill: args.contains("--new-items-pill"),
           initialDeletedTransactionId: deletedId
+        )
+      )
+    case .groupStats(let groupId):
+      self._statsModel = State(
+        initialValue: StatsModel(
+          groupId: groupId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          categoriesRepository: dependencies.categories,
+          budgetRepository: dependencies.budget,
+          statisticsRepository: dependencies.statistics,
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
         )
       )
     case .groupBalances(let groupId):
@@ -150,6 +213,8 @@ public struct RouteDestination: View {
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
+          settlementRequests: dependencies.settlementRequests,
+          remindersRepository: dependencies.reminders,
           onUnauthorized: {
             onPopToRoot(nil)
             Task { await sessionModel.signOut() }
@@ -175,27 +240,49 @@ public struct RouteDestination: View {
         initialValue: QuickEntryModel(
           groupId: groupId,
           initialSentence: initialSentence,
+          canUseAI: sessionModel.latestFeatures?.sentenceAi == true,
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
+          categoriesRepository: dependencies.categories,
           quickEntryRepository: dependencies.quickEntry,
           transactionsRepository: dependencies.transactions,
-          onSaved: onPop,
+          onSaved: {
+            onPop()
+            onExpenseSaved()
+          },
+          onDraftSaved: onExpenseSaved,
+          onSkippedToFeed: onPop,
           onOpenManualForm: { reading in
             onReplaceTop(.newTransactionForm(groupId: groupId, initialReading: reading))
           }
         )
       )
-    case .newTransactionForm(let groupId, let initialReading):
+    case .newTransactionForm(
+      let groupId,
+      let initialReading,
+      let initialTransferFrom,
+      let initialTransferTo,
+      let initialAttachmentId
+    ):
       self._expenseFormModel = State(
         initialValue: ExpenseFormModel(
           groupId: groupId,
           editingTransactionId: nil,
           initialReading: initialReading,
+          initialTransferFrom: initialTransferFrom,
+          initialTransferTo: initialTransferTo,
+          initialAttachmentId: initialAttachmentId,
           initialSplitEditorOpen: args.contains("--open-split-editor"),
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
-          onSaved: onPop
+          categoriesRepository: dependencies.categories,
+          attachmentsRepository: dependencies.attachments,
+          onSaved: {
+            onPop()
+            onExpenseSaved()
+          }
         )
       )
     case .editTransaction(let groupId, let transactionId):
@@ -207,11 +294,60 @@ public struct RouteDestination: View {
           initialSplitEditorOpen: args.contains("--open-split-editor"),
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
+          balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
+          categoriesRepository: dependencies.categories,
+          attachmentsRepository: dependencies.attachments,
           onSaved: onPop,
           onDeleted: { id in
             deletedTransactionId.wrappedValue = id
             onPop()
+          }
+        )
+      )
+    case .transactionDetail(let groupId, let transactionId):
+      self._transactionDetailModel = State(
+        initialValue: TransactionDetailModel(
+          groupId: groupId,
+          transactionId: transactionId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          categoriesRepository: dependencies.categories,
+          transactionsRepository: dependencies.transactions,
+          attachmentsRepository: dependencies.attachments,
+          eventsRepository: dependencies.groupEvents,
+          currentUserProvider: { sessionModel.currentUser },
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
+        )
+      )
+    case .receiptReview(let groupId, let scanId):
+      self._receiptReviewModel = State(
+        initialValue: ReceiptReviewModel(
+          groupId: groupId,
+          scanId: scanId,
+          groupsRepository: dependencies.groups,
+          membersRepository: dependencies.members,
+          attachmentsRepository: dependencies.attachments,
+          receiptScansRepository: dependencies.receiptScans,
+          transactionsRepository: dependencies.transactions,
+          onSaved: {
+            onPop()
+            onExpenseSaved()
+          },
+          onManualFallback: { attachmentId in
+            onReplaceTop(
+              .newTransactionForm(
+                groupId: groupId,
+                initialAttachmentId: attachmentId
+              )
+            )
+          },
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
           }
         )
       )
@@ -229,8 +365,20 @@ public struct RouteDestination: View {
           onSaved: onPop
         )
       )
-    default:
-      break
+    case .notifications:
+      self._notificationsModel = State(
+        initialValue: NotificationsModel(
+          repository: dependencies.notifications,
+          onUnauthorized: {
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
+        )
+      )
+    #if DEBUG
+      case .debugGallery:
+        break
+    #endif
     }
   }
 
@@ -274,15 +422,83 @@ public struct RouteDestination: View {
           onBackToGroups: { onPopToRoot(nil) }
         )
       }
-    case .groupMembers:
+    case .groupMembers(let groupId):
       if let membersModel {
+        let people = (membersModel.state.value?.members ?? []).filter {
+          $0.kind == .person && $0.active
+        }
         MembersView(
           model: membersModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
           onBack: onPop,
           onOpenActivity: { id in onNavigate(.groupActivity(groupId: id)) },
           onOpenSettings: { id in onNavigate(.groupSettings(groupId: id)) },
+          onEditPaymentDetails: { member in editingPaymentMember = member },
+          onOpenFund: { id in onNavigate(.groupFund(groupId: id)) },
+          onCreateFund: { isCreatingFund = true },
           onLeftGroup: { onPopToRoot(nil) }
+        )
+        .sheet(isPresented: $isCreatingFund) {
+          createFundSheet(
+            groupId: groupId,
+            people: people,
+            isOffline: membersModel.refreshError == .offline,
+            reload: { await membersModel.load() }
+          )
+        }
+        .sheet(
+          item: $editingPaymentMember,
+          onDismiss: {
+            Task { await membersModel.load() }
+          },
+          content: { member in
+            PaymentDetailsView(
+              model: PaymentDetailsModel(
+                groupId: groupId,
+                member: member,
+                repository: dependencies.members,
+                onSaved: {
+                  Task { await membersModel.load() }
+                },
+                onUnauthorized: {
+                  editingPaymentMember = nil
+                  onPopToRoot(nil)
+                  Task { await sessionModel.signOut() }
+                }
+              ),
+              isOffline: membersModel.refreshError == .offline,
+              onDismiss: { editingPaymentMember = nil }
+            )
+          }
+        )
+      }
+    case .groupFund(let groupId):
+      if let fundModel {
+        FundView(
+          model: fundModel,
+          isEmailVerified: currentUser?.emailVerified ?? true,
+          onBack: onPop,
+          onContribute: { fundMemberId in
+            onNavigate(
+              .newTransactionForm(
+                groupId: groupId,
+                initialReading: nil,
+                initialTransferFrom: nil,
+                initialTransferTo: fundMemberId
+              )
+            )
+          },
+          onWithdraw: { fundMemberId in
+            onNavigate(
+              .newTransactionForm(
+                groupId: groupId,
+                initialReading: nil,
+                initialTransferFrom: fundMemberId,
+                initialTransferTo: nil
+              )
+            )
+          },
+          onDeleted: onPop
         )
       }
     case .groupSettings:
@@ -295,14 +511,16 @@ public struct RouteDestination: View {
           onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) }
         )
       }
-    case .groupFeed:
+    case .groupFeed(let groupId, _):
       if let feedModel {
         GroupFeedView(
           model: feedModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
+          unreadNotificationCount: sessionModel.unreadNotificationCount,
           onBack: onPop,
           onOpenMembers: { id in onNavigate(.groupMembers(groupId: id)) },
           onOpenBalances: { id in onNavigate(.groupBalances(groupId: id)) },
+          onOpenStats: { id in onNavigate(.groupStats(groupId: id)) },
           onOpenQuickEntry: { id, sentence in
             onNavigate(.quickEntry(groupId: id, initialSentence: sentence))
           },
@@ -312,18 +530,67 @@ public struct RouteDestination: View {
           onOpenEditTransaction: { id, txId in
             onNavigate(.editTransaction(groupId: id, transactionId: txId))
           },
+          onOpenTransactionDetail: { id, txId in
+            onNavigate(.transactionDetail(groupId: id, transactionId: txId))
+          },
+          onOpenReceiptCapture: sessionModel.latestFeatures?.receiptReading == true
+            ? { _ in isReceiptCaptureOpen = true }
+            : nil,
+          onOpenNotifications: { onNavigate(.notifications) },
           onRemovedFromGroup: {
             onPopToRoot(L10n.tr("common.removed"))
+          }
+        )
+        .sheet(isPresented: $isReceiptCaptureOpen) {
+          ReceiptCaptureSheet(
+            groupId: groupId,
+            attachmentsRepository: dependencies.attachments,
+            receiptScansRepository: dependencies.receiptScans,
+            onScanStarted: { scan in
+              isReceiptCaptureOpen = false
+              onNavigate(.receiptReview(groupId: groupId, scanId: scan.id))
+            },
+            onManualFallback: { attachmentId in
+              isReceiptCaptureOpen = false
+              onNavigate(
+                .newTransactionForm(
+                  groupId: groupId,
+                  initialAttachmentId: attachmentId
+                )
+              )
+            },
+            onDismiss: { isReceiptCaptureOpen = false }
+          )
+        }
+      }
+    case .groupStats(let groupId):
+      if let statsModel {
+        StatsView(
+          model: statsModel,
+          onBack: onPop,
+          onOpenFilteredFeed: { filter in
+            onNavigate(.groupFeed(groupId: groupId, initialFilter: filter))
           }
         )
       }
     case .groupBalances(let groupId):
       if let balancesModel {
+        let people = (balancesModel.state.value?.members ?? []).filter {
+          $0.kind == .person && $0.active
+        }
         BalancesView(
           model: balancesModel,
+          currentUserId: currentUser?.id,
           isEmailVerified: currentUser?.emailVerified ?? true,
           onBack: onPop,
           onBackToGroups: { onPopToRoot(nil) },
+          onOpenPay: { transfer, fromMember, toMember in
+            paymentSheet = PaymentSheet(
+              transfer: transfer,
+              fromMember: fromMember,
+              toMember: toMember
+            )
+          },
           onOpenSettle: { transfer in
             onNavigate(
               .settle(
@@ -332,6 +599,70 @@ public struct RouteDestination: View {
                 toMemberId: transfer.toMemberId,
                 initialAmount: transfer.amount
               )
+            )
+          },
+          onOpenFund: { id in onNavigate(.groupFund(groupId: id)) },
+          onCreateFund: { isCreatingFund = true }
+        )
+        .sheet(isPresented: $isCreatingFund) {
+          createFundSheet(
+            groupId: groupId,
+            people: people,
+            isOffline: balancesModel.refreshError == .offline,
+            reload: { await balancesModel.load() }
+          )
+        }
+        .sheet(
+          item: $paymentSheet,
+          onDismiss: {
+            Task { await balancesModel.load() }
+          },
+          content: { selection in
+            let group = balancesModel.state.value?.group
+            let isVerified = currentUser?.emailVerified == true
+            let isOffline = balancesModel.refreshError == .offline
+            let role = group?.role ?? .viewer
+            let myMemberId = group?.myMemberId
+            let canEdit = isVerified && role.canWrite
+            let payModel = PayModel(
+              transfer: selection.transfer,
+              fromMember: selection.fromMember,
+              toMember: selection.toMember,
+              groupId: groupId,
+              myMemberId: myMemberId,
+              role: role,
+              isEmailVerified: isVerified,
+              repository: dependencies.settlementRequests,
+              onReload: { await balancesModel.load() },
+              onUnauthorized: {
+                paymentSheet = nil
+                onPopToRoot(nil)
+                Task { await sessionModel.signOut() }
+              }
+            )
+            PayView(
+              model: payModel,
+              isOffline: isOffline,
+              onBack: { paymentSheet = nil },
+              onAddDetails: payModel.canAddDetails
+                ? {
+                  paymentSheet = nil
+                  onNavigate(.groupMembers(groupId: groupId))
+                } : nil,
+              onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
+                ? {
+                  paymentSheet = nil
+                  onNavigate(
+                    .settle(
+                      groupId: groupId,
+                      fromMemberId: selection.transfer.fromMemberId,
+                      toMemberId: selection.transfer.toMemberId,
+                      initialAmount: selection.transfer.amount
+                    ))
+                } : nil,
+              onFinished: { _ in
+                paymentSheet = nil
+              }
             )
           }
         )
@@ -360,6 +691,29 @@ public struct RouteDestination: View {
           onCancel: onPop
         )
       }
+    case .transactionDetail:
+      if let transactionDetailModel {
+        TransactionDetailView(
+          model: transactionDetailModel,
+          verifyEmailBanner: AnyView(
+            VerifyEmailBannerView(model: VerifyEmailBannerModel(repository: dependencies.auth))
+          ),
+          onBack: onPop,
+          onOpenEdit: { gid, tid in
+            onNavigate(.editTransaction(groupId: gid, transactionId: tid))
+          },
+          onRemoved: {
+            onPopToRoot(L10n.tr("common.removed"))
+          }
+        )
+      }
+    case .receiptReview:
+      if let receiptReviewModel {
+        ReceiptReviewView(
+          model: receiptReviewModel,
+          onBack: onPop
+        )
+      }
     case .settle:
       if let settleModel {
         SettleView(
@@ -369,8 +723,68 @@ public struct RouteDestination: View {
           onBackToGroups: { onPopToRoot(nil) }
         )
       }
-    case .debugGallery:
-      DebugGalleryView()
+    case .notifications:
+      if let notificationsModel {
+        NotificationsView(
+          model: notificationsModel,
+          onBack: {
+            Task {
+              await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+            }
+            onPop()
+          },
+          onSelectTarget: { target in
+            Task {
+              await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+            }
+            onNavigate(Self.notificationDestination(for: target))
+          }
+        )
+      }
+    #if DEBUG
+      case .debugGallery:
+        DebugGalleryView()
+    #endif
+    }
+  }
+
+  private func createFundSheet(
+    groupId: ExpenseGroup.ID,
+    people: [Member],
+    isOffline: Bool,
+    reload: @escaping () async -> Void
+  ) -> some View {
+    CreateFundSheetView(
+      groupId: groupId,
+      people: people,
+      fundRepository: dependencies.fund,
+      isOffline: isOffline,
+      onCreated: {
+        isCreatingFund = false
+        Task { await reload() }
+      },
+      onDismiss: { isCreatingFund = false },
+      onUnauthorized: {
+        isCreatingFund = false
+        onPopToRoot(nil)
+        Task { await sessionModel.signOut() }
+      }
+    )
+  }
+
+  public static func notificationDestination(for target: AppNotification.Target) -> Route {
+    switch target {
+    case .transaction(let groupId, let txId):
+      return .transactionDetail(
+        groupId: groupId,
+        transactionId: LedgerTransaction.ID(txId)
+      )
+    case .balances(let groupId):
+      return .groupBalances(groupId: groupId)
+    case .stats(let groupId):
+      return .groupStats(groupId: groupId)
+    case .group(let groupId):
+      return .groupFeed(groupId: groupId)
     }
   }
 }

@@ -25,6 +25,11 @@ public protocol MembersRepository: Sendable {
     memberId: Member.ID,
     input: UpdateMemberInput
   ) async throws(AppError) -> Member
+  func replacePaymentMethods(
+    groupId: ExpenseGroup.ID,
+    memberId: Member.ID,
+    methods: [PaymentMethod]
+  ) async throws(AppError)
   func delete(groupId: ExpenseGroup.ID, memberId: Member.ID) async throws(AppError)
   func chooseMyMember(groupId: ExpenseGroup.ID, memberId: Member.ID) async throws(AppError)
   func updateUserRole(

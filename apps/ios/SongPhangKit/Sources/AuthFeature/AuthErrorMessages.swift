@@ -13,6 +13,10 @@ enum AuthErrorMessages {
         return L10n.tr("login.tooMany")
       case "INVALID_CREDENTIALS":
         return L10n.tr("login.invalidCredentials")
+      case "GOOGLE_UNVERIFIED", "EMAIL_NOT_VERIFIED":
+        return L10n.tr("login.googleUnverified")
+      case "GOOGLE_FAILED", "TOKEN_INVALID":
+        return L10n.tr("login.googleError")
       case "WEAK_PASSWORD":
         return L10n.tr("auth.tooShort")
       default:

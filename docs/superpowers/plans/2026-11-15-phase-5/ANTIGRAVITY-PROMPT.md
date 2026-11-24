@@ -1,0 +1,13 @@
+# Antigravity Handoff — Sòng Phẳng Phase 5
+
+You are the implementation agent for Sòng Phẳng Phase 5. The owner approved the design and implementation plan on 2026-11-19. Codex is the advisor and reviewer. The owner performs manual acceptance and decides merge.
+
+1. Read the root `AGENTS.md`, `apps/ios/AGENTS.md`, and repository skills `.agents/skills/execute-task/SKILL.md` and `.agents/skills/security-review/SKILL.md` in phase-run mode.
+2. Read `docs/superpowers/specs/2026-11-15-roadmap-remaining-phases-overview.md`, the approved Phase 5 design `docs/superpowers/specs/2026-11-15-phase-5-ios-design.md`, and the iOS architecture design `docs/superpowers/specs/2026-11-16-ios-codebase-architecture-design.md`.
+3. Read the common phase plan `docs/superpowers/plans/2026-11-15-common.md` and the Phase 5 overview `docs/superpowers/plans/2026-11-15-phase-5/00-overview.md`. Use its stage table. The checked-in SwiftUI app under `apps/ios/` is the starting point.
+4. Verify `git branch --show-current` is `phase-5` and the approved plan commit `eac8aa7` is an ancestor. If either check fails, report the workspace issue. Use the prepared checkout. Do not change branches or modify the primary `main` checkout.
+5. Open `docs/superpowers/runs/phase-5/progress.md`. Start from the first unchecked task, initially Task 0 in `5a-api.md`. Read the whole stage file before implementing its first task. Implement and check each task, record observed results and decisions, and make one scoped commit per task after the applicable checks.
+6. At 5B.5, publish `docs/superpowers/runs/phase-5/handoff-5b.md` with the pinned tested code SHA, exact isolated setup and owner steps, screenshots and observed evidence. Notify the owner in the Antigravity conversation so they can verify the shared iOS/web Simulator journey. Continue the approved phase run after the stage gate. Preserve open findings and verify fixes before final acceptance.
+7. Proceed through 5C, then 5D and 5E. At 5E.2 replay the 5B journey on the final code revision and reconcile all parity rows with local evidence or an explicit external verification item. Report the final branch SHA, run evidence, failed gates, unavailable checks and owner steps to Codex for review. Stop after the Phase 5 handoff.
+
+Keep the no-automated-tests, additive API, integer-money, session isolation and group permission rules. Use isolated local fixtures and adapters. Never push, merge, deploy, archive, upload, create external provider accounts, or contact live providers during this run. Keep real AI verification deferred. Keep standing documents advisor-owned and record needed amendments in `decisions.md`. Do not mark owner acceptance or advisor review as passed.

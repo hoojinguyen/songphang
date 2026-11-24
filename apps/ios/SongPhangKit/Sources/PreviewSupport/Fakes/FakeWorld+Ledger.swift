@@ -16,11 +16,17 @@
 
     public func fetchTransactionsPage(
       groupId: ExpenseGroup.ID,
+      filter: TransactionFilter? = nil,
       cursor: String?
     ) async throws(AppError) -> Page<LedgerTransaction> {
       try await simulateNetwork()
-      guard let list = transactionsByGroup[groupId] else {
+      guard var list = transactionsByGroup[groupId] else {
         throw .api(code: "NOT_FOUND", status: 404)
+      }
+      if let filter, !filter.isEmpty {
+        list = list.filter { tx in
+          Self.matches(transaction: tx, filter: filter)
+        }
       }
       let offset = cursor.flatMap(Int.init) ?? 0
       guard offset < list.count else {
@@ -30,6 +36,46 @@
       let slice = Array(list[offset..<end])
       let nextCursor = end < list.count ? String(end) : nil
       return Page(items: slice, nextCursor: nextCursor)
+    }
+
+    private nonisolated static func matches(
+      transaction tx: LedgerTransaction,
+      filter: TransactionFilter
+    ) -> Bool {
+      if let q = filter.query,
+        !tx.description.localizedCaseInsensitiveContains(q)
+      {
+        return false
+      }
+      if let memberId = filter.memberId,
+        !tx.payers.contains(where: { $0.memberId == memberId })
+          && !tx.shares.contains(where: { $0.memberId == memberId })
+      {
+        return false
+      }
+      if let category = filter.category, tx.category != category {
+        return false
+      }
+      if let categoryId = filter.categoryId, tx.categoryId != categoryId {
+        return false
+      }
+      if filter.uncategorized && (tx.category != nil || tx.categoryId != nil) {
+        return false
+      }
+      if filter.spendingOnly && tx.type == .transfer {
+        return false
+      }
+      if let type = filter.type, tx.type != type {
+        return false
+      }
+      let dateStr = String(tx.occurredAt.prefix(10))
+      if let from = filter.from, dateStr < from {
+        return false
+      }
+      if let to = filter.to, dateStr > to {
+        return false
+      }
+      return true
     }
 
     public func fetchTransaction(
@@ -325,12 +371,52 @@
 
     public func parseSentence(
       groupId _: ExpenseGroup.ID,
-      text: String
+      text: String,
+      ai: Bool = false
     ) async throws(AppError) -> QuickEntryReading {
       try await simulateNetwork()
       let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
       if let reading = QuickEntryFixtures.readingsByText[trimmed] {
         return reading
+      }
+      if ai && trimmed == "cà phê 180k và bánh 50k" {
+        let allFour = [
+          TripScenario.minhId, TripScenario.lanId, TripScenario.hungId, TripScenario.thuId,
+        ]
+        let equal45k = allFour.map { MemberAmount(memberId: $0, amount: Money(45_000)) }
+        let equal12k5 = [
+          MemberAmount(memberId: TripScenario.minhId, amount: Money(12_500)),
+          MemberAmount(memberId: TripScenario.lanId, amount: Money(12_500)),
+          MemberAmount(memberId: TripScenario.hungId, amount: Money(12_500)),
+          MemberAmount(memberId: TripScenario.thuId, amount: Money(12_500)),
+        ]
+        return QuickEntryReading(
+          status: .ok,
+          text: trimmed,
+          draft: QuickEntryReading.Draft(
+            description: "cà phê",
+            amount: Money(180_000),
+            payers: [MemberAmount(memberId: TripScenario.minhId, amount: Money(180_000))],
+            split: .equal(members: allFour)
+          ),
+          shares: equal45k,
+          spans: [],
+          issues: [],
+          reader: .ai,
+          moreDrafts: [
+            QuickEntryReading.ParsedDraft(
+              status: .ok,
+              draft: QuickEntryReading.Draft(
+                description: "bánh",
+                amount: Money(50_000),
+                payers: [MemberAmount(memberId: TripScenario.minhId, amount: Money(50_000))],
+                split: .equal(members: allFour)
+              ),
+              issues: [],
+              shares: equal12k5
+            )
+          ]
+        )
       }
       return QuickEntryFixtures.unparsedReading(for: trimmed)
     }
@@ -353,6 +439,22 @@
           ids.count == 3
         {
           return ids.map { MemberAmount(memberId: $0, amount: Money(60_000)) }
+        }
+
+        if !payload.isIncome,
+          payload.amount == Money(340_000),
+          case .items = payload.split
+        {
+          return [
+            MemberAmount(memberId: TripScenario.minhId, amount: Money(170_000)),
+            MemberAmount(memberId: TripScenario.lanId, amount: Money(170_000)),
+          ]
+        }
+
+        if !payload.isIncome, payload.amount == Money(50_000),
+          case .equal(let ids) = payload.split, ids.count == 4
+        {
+          return ids.map { MemberAmount(memberId: $0, amount: Money(12_500)) }
         }
 
         for reading in QuickEntryFixtures.readingsByText.values {
@@ -412,6 +514,9 @@
           )
         }
         if let shares = scriptedShares(for: draft) {
+          let linked = (payload.attachmentIds ?? []).compactMap {
+            attachmentsByGroup[groupId]?[$0]
+          }
           let tx = LedgerTransaction(
             id: LedgerTransaction.ID("qe-\(UUID().uuidString)"),
             type: payload.isIncome ? .income : .expense,
@@ -420,12 +525,14 @@
             currency: "VND",
             occurredAt: payload.occurredAt,
             category: payload.category,
+            categoryId: payload.categoryId,
             payers: payload.payers,
             split: payload.split,
             shares: shares,
             version: 1,
             updatedBy: TripScenario.actorMinh,
-            createdBy: TripScenario.actorMinh
+            createdBy: TripScenario.actorMinh,
+            attachments: linked
           )
           let act = ActivityItem(
             id: ActivityItem.ID("act-\(UUID().uuidString)"),
@@ -542,6 +649,137 @@
         && payload.amount == TripScenario.t4Transaction.amount
         && payload.payers == TripScenario.t4Transaction.payers
         && payload.split == TripScenario.t4Transaction.split
+    }
+
+    public func fetchComments(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      cursor: String?,
+      limit: Int
+    ) async throws(AppError) -> (comments: [Comment], nextCursor: String?) {
+      try await simulateNetwork()
+      let all = commentsByTx[id] ?? []
+      let offset = cursor.flatMap(Int.init) ?? 0
+      guard offset < all.count else {
+        return ([], nil)
+      }
+      let end = min(offset + limit, all.count)
+      let slice = Array(all[offset..<end])
+      let nextCursor = end < all.count ? String(end) : nil
+      return (slice, nextCursor)
+    }
+
+    public func addComment(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      body: String,
+      key: IdempotencyKey
+    ) async throws(AppError) -> Comment {
+      try await simulateNetwork()
+      let comment = Comment(
+        id: Comment.ID(UUID().uuidString),
+        body: body,
+        authorName: "Minh",
+        createdAt: "2026-11-23T01:00:00.000Z",
+        mine: true
+      )
+      var list = commentsByTx[id] ?? []
+      list.insert(comment, at: 0)
+      commentsByTx[id] = list
+      if var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id }) {
+        txs[idx].commentCount += 1
+        transactionsByGroup[groupId] = txs
+      }
+      return comment
+    }
+
+    public func deleteComment(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      commentId: Comment.ID
+    ) async throws(AppError) {
+      try await simulateNetwork()
+      var list = commentsByTx[id] ?? []
+      if let idx = list.firstIndex(where: { $0.id == commentId }) {
+        list.remove(at: idx)
+        commentsByTx[id] = list
+        if var txs = transactionsByGroup[groupId],
+          let txIdx = txs.firstIndex(where: { $0.id == id })
+        {
+          txs[txIdx].commentCount = max(0, txs[txIdx].commentCount - 1)
+          transactionsByGroup[groupId] = txs
+        }
+      }
+    }
+
+    public func openDispute(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      reason: String
+    ) async throws(AppError) -> LedgerTransaction.TransactionDispute {
+      try await simulateNetwork()
+      let dispute = LedgerTransaction.TransactionDispute(
+        id: LedgerTransaction.TransactionDispute.ID(UUID().uuidString),
+        reason: reason,
+        openedByName: "Minh",
+        openedAt: "2026-11-23T01:00:00.000Z",
+        mine: true
+      )
+      if var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id }) {
+        txs[idx].dispute = dispute
+        transactionsByGroup[groupId] = txs
+      }
+      return dispute
+    }
+
+    public func resolveDispute(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID
+    ) async throws(AppError) {
+      try await simulateNetwork()
+      if var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id }) {
+        txs[idx].dispute = nil
+        transactionsByGroup[groupId] = txs
+      }
+    }
+
+    public func approveTransaction(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID
+    ) async throws(AppError) -> LedgerTransaction {
+      try await simulateNetwork()
+      guard var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id })
+      else {
+        throw .api(code: "NOT_FOUND", status: 404)
+      }
+      txs[idx].approval = LedgerTransaction.TransactionApproval(
+        status: .approved,
+        note: nil,
+        decidedByName: "Minh",
+        decidedAt: "2026-11-23T01:00:00.000Z"
+      )
+      transactionsByGroup[groupId] = txs
+      return txs[idx]
+    }
+
+    public func rejectTransaction(
+      groupId: ExpenseGroup.ID,
+      id: LedgerTransaction.ID,
+      note: String?
+    ) async throws(AppError) -> LedgerTransaction {
+      try await simulateNetwork()
+      guard var txs = transactionsByGroup[groupId], let idx = txs.firstIndex(where: { $0.id == id })
+      else {
+        throw .api(code: "NOT_FOUND", status: 404)
+      }
+      txs[idx].approval = LedgerTransaction.TransactionApproval(
+        status: .rejected,
+        note: note,
+        decidedByName: "Minh",
+        decidedAt: "2026-11-23T01:00:00.000Z"
+      )
+      transactionsByGroup[groupId] = txs
+      return txs[idx]
     }
   }
 #endif

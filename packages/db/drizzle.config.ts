@@ -21,6 +21,7 @@ export default defineConfig({
 		"./src/schema-notifications.ts",
 		"./src/schema-reminders.ts",
 		"./src/schema-chat.ts",
+		"./src/schema-push.ts",
 	],
 	out: "./drizzle",
 });

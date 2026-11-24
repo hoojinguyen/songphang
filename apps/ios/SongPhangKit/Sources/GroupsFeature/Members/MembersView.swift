@@ -14,6 +14,9 @@ public struct MembersView: View {
   private let onBack: () -> Void
   private let onOpenActivity: (ExpenseGroup.ID) -> Void
   private let onOpenSettings: (ExpenseGroup.ID) -> Void
+  private let onEditPaymentDetails: ((Member) -> Void)?
+  private let onOpenFund: ((ExpenseGroup.ID) -> Void)?
+  private let onCreateFund: (() -> Void)?
   private let onLeftGroup: () -> Void
 
   @State private var editingNames: [Member.ID: String] = [:]
@@ -28,6 +31,9 @@ public struct MembersView: View {
     onBack: @escaping () -> Void,
     onOpenActivity: @escaping (ExpenseGroup.ID) -> Void,
     onOpenSettings: @escaping (ExpenseGroup.ID) -> Void,
+    onEditPaymentDetails: ((Member) -> Void)? = nil,
+    onOpenFund: ((ExpenseGroup.ID) -> Void)? = nil,
+    onCreateFund: (() -> Void)? = nil,
     onLeftGroup: @escaping () -> Void
   ) {
     self.model = model
@@ -35,6 +41,9 @@ public struct MembersView: View {
     self.onBack = onBack
     self.onOpenActivity = onOpenActivity
     self.onOpenSettings = onOpenSettings
+    self.onEditPaymentDetails = onEditPaymentDetails
+    self.onOpenFund = onOpenFund
+    self.onCreateFund = onCreateFund
     self.onLeftGroup = onLeftGroup
   }
 
@@ -115,25 +124,44 @@ public struct MembersView: View {
 
   @ViewBuilder
   private func loadedContent(_ data: MembersModel.ScreenData) -> some View {
-    let canWrite = isEmailVerified && data.group.role.canWrite
+    let isOffline = model.refreshError == .offline
+    let canWrite = isEmailVerified && data.group.role.canWrite && !isOffline
+    let people = data.members.filter { $0.kind == .person }
 
     SPScreenHeader(
       title: data.group.name,
-      subtitle: L10n.t("members.memberCount", ["count": String(data.members.count)]),
+      subtitle: L10n.t("members.memberCount", ["count": String(people.count)]),
       onBack: onBack
     )
 
-    ForEach(data.members) { member in
+    if let fund = data.balances.fund {
+      FundBlockView(fund: fund, members: people) {
+        onOpenFund?(model.groupId)
+      }
+    }
+
+    ForEach(people) { member in
       let memberRole = data.users.first(where: { $0.memberId == member.id })?.role
       let isExpanded = model.expandedMemberId == member.id
 
       VStack(alignment: .leading, spacing: 8) {
-        memberRow(member: member, role: memberRole, canEdit: canWrite, isExpanded: isExpanded)
+        memberRow(member: member, role: memberRole, canExpand: true, isExpanded: isExpanded)
 
         if canWrite && isExpanded {
           let memberBalance =
             data.balances.balances.first(where: { $0.memberId == member.id })?.balance ?? .zero
           memberEditor(member: member, balance: memberBalance)
+        }
+
+        if isExpanded {
+          let canEditPayment =
+            isEmailVerified
+            && model.hasCurrentPaymentDetails
+            && !isOffline
+            && (data.group.role.canWrite || member.isMe)
+          if !member.paymentMethods.isEmpty || (canEditPayment && onEditPaymentDetails != nil) {
+            paymentMethodsCard(member: member, canEdit: canEditPayment)
+          }
         }
 
         if isEmailVerified && member.active && !member.claimed {
@@ -155,7 +183,16 @@ public struct MembersView: View {
     }
 
     if canWrite {
-      addMemberSection(members: data.members)
+      addMemberSection(members: people)
+
+      if data.balances.fund == nil, let onCreateFund {
+        SPButton(
+          L10n.tr("fund.createEntry"),
+          variant: .surface,
+          isFullWidth: true,
+          action: onCreateFund
+        )
+      }
     } else if !isEmailVerified {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))
@@ -193,6 +230,28 @@ public struct MembersView: View {
         .font(Typography.subheadlineBold)
         .foregroundStyle(Tokens.ink)
     }
+
+    HStack {
+      Text(L10n.tr("notifications.muteGroup"))
+        .font(Typography.bodyBold)
+        .foregroundStyle(Tokens.ink)
+      Spacer()
+      Toggle(
+        "",
+        isOn: Binding(
+          get: { data.group.muted },
+          set: { newValue in
+            Task { await model.setMuted(newValue) }
+          }
+        )
+      )
+      .labelsHidden()
+      .tint(Tokens.ink)
+      .disabled(model.isPerformingAction)
+    }
+    .padding(20)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
     if !data.group.role.isOwner && isEmailVerified {
       SPButton(
@@ -241,7 +300,7 @@ public struct MembersView: View {
   private func memberRow(
     member: Member,
     role: Role?,
-    canEdit: Bool,
+    canExpand: Bool,
     isExpanded: Bool
   ) -> some View {
     let statusTag =
@@ -295,7 +354,7 @@ public struct MembersView: View {
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
     return Group {
-      if canEdit {
+      if canExpand {
         Button {
           if isExpanded {
             model.expandedMemberId = nil
@@ -313,6 +372,50 @@ public struct MembersView: View {
         content
       }
     }
+  }
+
+  private func paymentMethodsCard(member: Member, canEdit: Bool) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text(L10n.tr("payment.title"))
+        .font(Typography.bodyBold)
+        .foregroundStyle(Tokens.ink)
+
+      Text(L10n.t("payment.hint", ["name": member.name]))
+        .font(Typography.caption)
+        .foregroundStyle(Tokens.muted)
+
+      ForEach(member.paymentMethods, id: \.self) { method in
+        switch method {
+        case .bank(let bank):
+          VStack(alignment: .leading, spacing: 2) {
+            Text("\(bank.name) · \(bank.accountNumber)")
+              .font(Typography.subheadlineBold)
+              .foregroundStyle(Tokens.ink)
+            Text(bank.accountName)
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.muted)
+          }
+        case .momo(let phone):
+          Text(L10n.t("pay.momoRow", ["phone": phone]))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+        case .zalopay(let phone):
+          Text(L10n.t("pay.zalopayRow", ["phone": phone]))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+        }
+      }
+
+      if canEdit, let onEditPaymentDetails {
+        SPButton(L10n.tr("payment.title"), variant: .surface, isFullWidth: true) {
+          onEditPaymentDetails(member)
+        }
+      }
+    }
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
   }
 
   private func memberEditor(member: Member, balance: Money) -> some View {

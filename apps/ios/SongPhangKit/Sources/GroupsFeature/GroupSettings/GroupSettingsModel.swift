@@ -8,39 +8,63 @@ public final class GroupSettingsModel {
     public var group: ExpenseGroup
     public var invite: Invite
     public var users: [GroupUser]
+    public var categories: [GroupCategory]
+    public var budget: GroupBudget?
   }
 
   public let groupId: ExpenseGroup.ID
+  public let telegramFeatureEnabled: Bool
   public private(set) var state: Loadable<ScreenData> = .loading
   public private(set) var refreshError: AppError?
   public private(set) var actionError: AppError?
+  public private(set) var budgetError: AppError?
   public private(set) var isPerformingAction = false
+  public private(set) var isSavingBudget = false
+  public private(set) var groupChatLinks: Loadable<GroupChatLinks> = .loading
+  public private(set) var generatedLinkCode: GroupChatLinkCode?
+  public private(set) var isPerformingTelegramAction = false
+  public private(set) var telegramError: AppError?
   public var nameDraft = ""
 
   private let groupsRepository: any GroupsRepository
   private let invitesRepository: any InvitesRepository
   private let membersRepository: any MembersRepository
+  public let categoriesRepository: any CategoriesRepository
+  private let budgetRepository: any BudgetRepository
+  private let chatLinksRepository: (any ChatLinksRepository)?
 
   public init(
     groupId: ExpenseGroup.ID,
     groupsRepository: any GroupsRepository,
     invitesRepository: any InvitesRepository,
-    membersRepository: any MembersRepository
+    membersRepository: any MembersRepository,
+    categoriesRepository: any CategoriesRepository,
+    budgetRepository: any BudgetRepository,
+    chatLinksRepository: (any ChatLinksRepository)? = nil,
+    telegramFeatureEnabled: Bool = false
   ) {
     self.groupId = groupId
     self.groupsRepository = groupsRepository
     self.invitesRepository = invitesRepository
     self.membersRepository = membersRepository
+    self.categoriesRepository = categoriesRepository
+    self.budgetRepository = budgetRepository
+    self.chatLinksRepository = chatLinksRepository
+    self.telegramFeatureEnabled = telegramFeatureEnabled
   }
 
   public func load() async {
     async let cachedGroup = groupsRepository.lastKnownGroup(id: groupId)
     async let cachedInvite = invitesRepository.lastKnownInvite(groupId: groupId)
     async let cachedUsers = membersRepository.lastKnownGroupUsers(groupId: groupId)
+    async let cachedCategories = categoriesRepository.lastKnownCategories(groupId: groupId)
+    async let cachedBudget = budgetRepository.lastKnownBudget(groupId: groupId)
 
     if let g = await cachedGroup, let inv = await cachedInvite, let u = await cachedUsers {
+      let c = await cachedCategories ?? []
+      let b = await cachedBudget
       if nameDraft.isEmpty { nameDraft = g.name }
-      state = .loaded(ScreenData(group: g, invite: inv, users: u))
+      state = .loaded(ScreenData(group: g, invite: inv, users: u, categories: c, budget: b))
     } else if case .failed = state {
       state = .loading
     }
@@ -49,13 +73,20 @@ public final class GroupSettingsModel {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedInvite = invitesRepository.invite(groupId: groupId)
       async let fetchedUsers = membersRepository.groupUsers(groupId: groupId)
+      async let fetchedCategories = categoriesRepository.list(groupId: groupId)
+      async let fetchedBudget = budgetRepository.budget(groupId: groupId)
 
       let g = try await fetchedGroup
       let inv = try await fetchedInvite
       let u = try await fetchedUsers
+      let c = try await fetchedCategories
+      let b = try await fetchedBudget
       nameDraft = g.name
-      state = .loaded(ScreenData(group: g, invite: inv, users: u))
+      state = .loaded(ScreenData(group: g, invite: inv, users: u, categories: c, budget: b))
       refreshError = nil
+      if telegramFeatureEnabled, g.role.isOwner {
+        await reloadChatLinks()
+      }
     } catch let error as AppError {
       if case .loaded = state {
         refreshError = error
@@ -120,6 +151,64 @@ public final class GroupSettingsModel {
     }
   }
 
+  public func setReminderInterval(_ interval: Int?) async {
+    guard !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      let setting: UpdateGroupInput.ReminderIntervalSetting =
+        (interval != nil) ? .interval(interval!) : .off
+      _ = try await groupsRepository.update(
+        id: groupId,
+        input: UpdateGroupInput(reminderInterval: setting)
+      )
+      if case .loaded(var current) = state {
+        current.group.reminderIntervalDays = interval
+        state = .loaded(current)
+      }
+    } catch {
+      actionError = error
+    }
+  }
+
+  public func setApprovalThreshold(_ threshold: Money?) async {
+    guard !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      let setting: UpdateGroupInput.ApprovalThresholdSetting =
+        (threshold != nil) ? .threshold(threshold!) : .off
+      _ = try await groupsRepository.update(
+        id: groupId,
+        input: UpdateGroupInput(approvalThreshold: setting)
+      )
+      if case .loaded(var current) = state {
+        current.group.approvalThreshold = threshold
+        state = .loaded(current)
+      }
+    } catch {
+      actionError = error
+    }
+  }
+
+  public func setMuted(_ muted: Bool) async {
+    guard !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      _ = try await groupsRepository.setMuted(id: groupId, muted: muted)
+      if case .loaded(var current) = state {
+        current.group.muted = muted
+        state = .loaded(current)
+      }
+    } catch {
+      actionError = error
+    }
+  }
+
   public func setInviteActive(_ active: Bool) async {
     guard !isPerformingAction else { return }
     isPerformingAction = true
@@ -169,6 +258,99 @@ public final class GroupSettingsModel {
       onDeleted()
     } catch {
       actionError = error
+    }
+  }
+
+  public func updateCategories(_ next: [GroupCategory]) {
+    if case .loaded(var current) = state {
+      current.categories = next
+      state = .loaded(current)
+    }
+  }
+
+  public func saveBudget(period: BudgetPeriod, amount: Money) async {
+    guard !isSavingBudget else { return }
+    isSavingBudget = true
+    budgetError = nil
+    defer { isSavingBudget = false }
+    do throws(AppError) {
+      let saved = try await budgetRepository.setBudget(
+        groupId: groupId,
+        period: period,
+        amount: amount
+      )
+      if case .loaded(var current) = state {
+        current.budget = saved
+        state = .loaded(current)
+      }
+    } catch {
+      budgetError = error
+    }
+  }
+
+  public func removeBudget() async {
+    guard !isSavingBudget else { return }
+    isSavingBudget = true
+    budgetError = nil
+    defer { isSavingBudget = false }
+    do throws(AppError) {
+      try await budgetRepository.deleteBudget(groupId: groupId)
+      if case .loaded(var current) = state {
+        current.budget = nil
+        state = .loaded(current)
+      }
+    } catch {
+      budgetError = error
+    }
+  }
+
+  public func reloadChatLinks() async {
+    guard let chatLinksRepository, telegramFeatureEnabled else { return }
+    do throws(AppError) {
+      let links = try await chatLinksRepository.groupChatLinks(groupId: groupId)
+      groupChatLinks = .loaded(links)
+      telegramError = nil
+    } catch {
+      if case .loaded = groupChatLinks {
+        telegramError = error
+      } else {
+        groupChatLinks = .failed(error)
+      }
+    }
+  }
+
+  public func generateTelegramLinkCode() async {
+    guard let chatLinksRepository, telegramFeatureEnabled, !isPerformingTelegramAction else {
+      return
+    }
+    isPerformingTelegramAction = true
+    telegramError = nil
+    defer { isPerformingTelegramAction = false }
+    do throws(AppError) {
+      generatedLinkCode = try await chatLinksRepository.createGroupChatLinkCode(groupId: groupId)
+    } catch {
+      telegramError = error
+    }
+  }
+
+  public func unlinkGroupChat(_ chatLinkId: ChatLink.ID) async {
+    guard let chatLinksRepository, telegramFeatureEnabled, !isPerformingTelegramAction else {
+      return
+    }
+    isPerformingTelegramAction = true
+    telegramError = nil
+    defer { isPerformingTelegramAction = false }
+    do throws(AppError) {
+      try await chatLinksRepository.unlinkGroupChat(groupId: groupId, chatLinkId: chatLinkId)
+      if case .loaded(var current) = groupChatLinks {
+        current = GroupChatLinks(
+          botUsername: current.botUsername,
+          chatLinks: current.chatLinks.filter { $0.id != chatLinkId }
+        )
+        groupChatLinks = .loaded(current)
+      }
+    } catch {
+      telegramError = error
     }
   }
 }

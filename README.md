@@ -27,15 +27,17 @@ Keep `.env` local and out of Git. `.env.example` contains configuration values i
 
 ## Common commands
 
-| Command                  | Purpose                                                                          |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| `pnpm dev`               | Start PostgreSQL, migrate and seed the database, then start the API and web app. |
-| `pnpm check`             | Run linting and strict TypeScript checks across the workspace.                   |
-| `pnpm build`             | Build every workspace package that defines a `build` script.                     |
-| `pnpm db:migrate`        | Apply database migrations; PostgreSQL must be running.                           |
-| `pnpm db:check-balances` | Check ledger totals and group balances after changing or importing expenses.     |
-| `pnpm db:seed`           | Insert missing development users; PostgreSQL must be running and migrated.       |
-| `docker compose down`    | Stop and remove the database container while preserving its data volume.         |
+| Command                  | Purpose                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| `pnpm dev`               | Start PostgreSQL, migrate and seed the database, then start the API and web app.      |
+| `pnpm check`             | Run linting, strict TypeScript checks, and OpenAPI contract snapshot check.           |
+| `pnpm contract:write`    | Regenerate the deterministic v1 OpenAPI snapshot at `packages/contract/openapi.json`. |
+| `pnpm contract:check`    | Verify `packages/contract/openapi.json` matches the live v1 route registry.           |
+| `pnpm build`             | Build every workspace package that defines a `build` script.                          |
+| `pnpm db:migrate`        | Apply database migrations; PostgreSQL must be running.                                |
+| `pnpm db:check-balances` | Check ledger totals and group balances after changing or importing expenses.          |
+| `pnpm db:seed`           | Insert missing development users; PostgreSQL must be running and migrated.            |
+| `docker compose down`    | Stop and remove the database container while preserving its data volume.              |
 
 **Reset local data:** stop the application with Ctrl+C, then run:
 
@@ -103,6 +105,7 @@ Offline fake fixtures used when `AI_PROVIDER=fake`:
 | Job                      | Schedule / trigger                                              | Purpose                                                                                                                                                |
 | ------------------------ | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `send-notification-mail` | Enqueued transactionally on notification write (`singletonKey`) | Sends immediate notification emails (at-least-once retry via `pg-boss`) using durable hashed one-click unsubscribe tokens and emits reminder refreshes |
+| `send-push`              | Enqueued transactionally on notification write (`singletonKey`) | Checks unread status, membership, group mute, active device sessions, and `hidePushContent`, then dispatches alerts via APNs or `console`              |
 | `send-digest`            | `0 20 * * *` (daily 20:00)                                      | Sends unread digest emails created since the `job_checkpoints` cursor                                                                                  |
 | `auto-reminders`         | `0 9 * * *` (daily 09:00)                                       | Creates scheduled debt reminders when the group interval has elapsed, enqueuing `send-notification-mail` and `songphang_events` in the same tx         |
 | `prune-notifications`    | `15 3 * * *` (daily 03:15)                                      | Deletes notifications older than 90 days                                                                                                               |
@@ -121,9 +124,75 @@ Leave `TELEGRAM_PROVIDER` unset to keep bot routes and linking cards disabled (`
 
 When `TELEGRAM_PROVIDER=console`, outgoing replies print as structured JSON to API logs instead of calling `api.telegram.org` (refused in production). Supported bot commands: `/chi`, `/sodu`, `/huy`, `/lienket`, `/trogiup`, and `/start` (private chat pairing).
 
-## Development mail and optional Google sign-in
+## Phase 5 contract and native app configuration
 
-Mail is printed by the API process to its development console. Read the verification/reset link there and open it locally; no mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration without a real mailer is refused.
+`packages/contract/openapi.json` is the deterministic OpenAPI 3.1 snapshot of the v1 API registry (excluding development-only `/api/v1/dev/*` routes). Version 1 evolves strictly by addition; clients ignore unknown fields and map unknown enum values to safe fallbacks.
+
+| Variable                  | Purpose                                                                                                                           | Default in `.env.example` |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `MIN_APP_VERSION_IOS`     | Minimum allowed iOS app version (`major.minor.patch`) in `GET /features`                                                          | `0.0.0`                   |
+| `MIN_APP_VERSION_ANDROID` | Minimum allowed Android version (`major.minor.patch`) in `GET /features`                                                          | `0.0.0`                   |
+| `APPLE_PROVIDER`          | Leave empty to disable, `fake` for local JWKS testing, or `apple`                                                                 | _(unset)_                 |
+| `APPLE_BUNDLE_ID`         | iOS bundle identifier validated as Apple ID token `aud`                                                                           | _(unset)_                 |
+| `APPLE_TEAM_ID`           | Apple Developer Team ID (10 characters, required for `apple` mode)                                                                | _(unset)_                 |
+| `APPLE_KEY_ID`            | Sign in with Apple Key ID (10 characters, required for `apple` mode)                                                              | _(unset)_                 |
+| `APPLE_PRIVATE_KEY`       | Sign in with Apple `.p8` EC private key PEM (`apple` mode)                                                                        | _(unset)_                 |
+| `DATA_ENCRYPTION_KEY`     | 32-byte base64 key encrypting Apple refresh tokens (`apple` mode)                                                                 | _(unset)_                 |
+| `APPLE_FAKE_JWKS_FILE`    | Path to local JWKS fixture file (`fake` mode only; refused in prod)                                                               | _(unset)_                 |
+| `PUSH_PROVIDER`           | Leave empty to disable, `console` for local logs (refused in prod), or `apns` (production dispatch deferred until Phase 7 mailer) | _(unset)_                 |
+| `APNS_KEY_ID`             | Optional 10-character APNs `.p8` key ID overriding `APPLE_KEY_ID`                                                                 | _(unset)_                 |
+| `APNS_PRIVATE_KEY`        | Optional APNs `.p8` EC private key PEM overriding `APPLE_PRIVATE_KEY`                                                             | _(unset)_                 |
+| `APPLE_APP_ID`            | Web AASA `<TeamID>.<BundleID>` for `/.well-known/apple-app-site-association`                                                      | _(unset)_                 |
+
+## Development mail, background worker, and optional sign-in providers
+
+Mail is printed by the API and worker processes to their development console. Read the verification/reset link there and open it locally; no external mail delivery service is called. Treat these links as secrets and do not copy them into Git or reports. A production configuration (`APP_ENV=production`) without a real mailer is refused by the API, and `apps/worker` unconditionally refuses production startup (`Mailer is not configured for production`) because production mailer adapters are deferred to Phase 7. Consequently, production worker operations (including production APNs push dispatch) remain deferred until production mail delivery is implemented. Similarly, `PUSH_PROVIDER=console` is refused in production.
+
+### Local Apple Sign-In and Fake JWKS Testing
+
+When `APPLE_PROVIDER=fake`, Apple identity token verification uses a local JWKS fixture file configured via `APPLE_FAKE_JWKS_FILE`:
+
+- The file must contain a valid JSON Web Key Set (`{"keys": [{"kty": "RSA", "kid": "...", "n": "...", "e": "...", "alg": "RS256", "use": "sig"}]}`) matching the private key used to sign test JWTs.
+- Test tokens must specify `iss: "https://appleid.apple.com"`, `aud: APPLE_BUNDLE_ID`, valid timestamps (`iat`, `exp`), and `nonce` as the lowercase hex SHA-256 digest of `rawNonce` (64 characters).
+- Test authorization codes are single-use; the fake adapter keeps hashed receipts in the JWKS path’s adjacent `.replay` directory and rejects replayed codes with 401 across restarts. Put the JWKS and receipts in a writable disposable directory outside the repository. Use a fresh key set for each disposable fixture run. A custom Apple subject can be injected in tests using the prefix `sub=<custom_sub>:<code_body>`.
+- Both `APPLE_PROVIDER=fake` and `APPLE_FAKE_JWKS_FILE` are strictly forbidden when `APP_ENV=production`.
+
+Use this disposable fixture from a shell with Node.js. Configure the local API
+with `APPLE_PROVIDER=fake`, the printed `APPLE_FAKE_JWKS_FILE` and
+`APPLE_BUNDLE_ID=vn.songphang.app` before submitting the request.
+
+```sh
+fixture=$(mktemp -d)
+node --input-type=module - "$fixture" <<'NODE'
+import { createHash, generateKeyPairSync, randomUUID, sign } from "node:crypto";
+import { writeFileSync } from "node:fs";
+
+const directory = process.argv[2];
+const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const kid = "local-fixture";
+writeFileSync(directory + "/jwks.json", JSON.stringify({
+  keys: [{ ...publicKey.export({ format: "jwk" }), kid, alg: "RS256" }],
+}));
+const rawNonce = randomUUID();
+const now = Math.floor(Date.now() / 1000);
+const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+const input = encode({ alg: "RS256", kid }) + "." + encode({
+  iss: "https://appleid.apple.com", aud: "vn.songphang.app",
+  sub: randomUUID(), email: "apple-local@example.test", email_verified: true,
+  iat: now, exp: now + 300, nonce: createHash("sha256").update(rawNonce).digest("hex"),
+});
+writeFileSync(directory + "/request.json", JSON.stringify({
+  identityToken: input + "." + sign("sha256", Buffer.from(input), privateKey).toString("base64url"),
+  rawNonce, authorizationCode: randomUUID(), client: "ios", deviceName: "Local fixture",
+}), { mode: 0o600 });
+NODE
+printf 'APPLE_FAKE_JWKS_FILE=%s/jwks.json\n' "$fixture"
+# After starting the local API, expect 200 once and 401 on repeat.
+for attempt in 1 2; do
+  curl -sS -o /dev/null -w '%{http_code}\n' -H 'Content-Type: application/json' \
+    --data-binary @"$fixture/request.json" http://127.0.0.1:4000/api/v1/auth/apple
+done
+```
 
 `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are optional; keep real values only in the local `.env`. Without both, the Google button/routes are disabled. The local callback is `http://localhost:3000/api/v1/auth/google/callback`. Google sign-in remains unverified until an OAuth app exists and the manual checklist has been completed.
 

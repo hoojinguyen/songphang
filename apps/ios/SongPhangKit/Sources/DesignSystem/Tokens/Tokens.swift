@@ -42,7 +42,7 @@ public enum Tokens {
     case .sky: return sky
     case .coral: return coral
     case .lilac: return lilac
-    case .unknown: return mint
+    case .unknown(let raw): return raw == "sun" ? accent : mint
     }
   }
 

@@ -1,5 +1,6 @@
 import DesignSystem
 import Domain
+import PhotosUI
 public import SwiftUI
 
 #if DEBUG
@@ -11,6 +12,8 @@ public struct ExpenseFormView: View {
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
   @FocusState private var isDescriptionFocused: Bool
+  @State private var isManagingCategories = false
+  @State private var pickedPhotoItem: PhotosPickerItem?
 
   public init(
     model: ExpenseFormModel,
@@ -87,8 +90,8 @@ public struct ExpenseFormView: View {
           }
           .padding(20)
         } else if model.isSplitEditorOpen {
-          let active = model.activeMembers
-          let payerNames = active.filter { model.payerIds.contains($0.id) }
+          let active = model.sharerMembers
+          let payerNames = model.payerMembers.filter { model.payerIds.contains($0.id) }
             .map(\.name)
             .joined(separator: ", ")
           SplitEditorView(
@@ -97,14 +100,24 @@ public struct ExpenseFormView: View {
               set: {
                 model.splitState = $0
                 model.schedulePreview()
+                if $0.method == .items {
+                  model.scheduleItemsPreview()
+                }
               }
             ),
             members: active,
-            amount: model.amount,
+            amount: model.effectiveAmount,
             description: model.descriptionText.isEmpty ? model.headerTitle : model.descriptionText,
             payerLine: L10n.t("expenseForm.payerAmountLabel", ["name": payerNames]),
             shares: model.previewShares,
             isPreviewPending: model.isPreviewPending,
+            allowItems: model.transactionType == .expense,
+            itemsPreview: model.itemsPreview,
+            isItemsPreviewCurrent: model.isItemsPreviewCurrent,
+            itemsPreviewError: model.itemsPreviewError,
+            onItemsChange: {
+              model.scheduleItemsPreview()
+            },
             onDone: { model.isSplitEditorOpen = false }
           )
         } else {
@@ -114,6 +127,32 @@ public struct ExpenseFormView: View {
     }
     .background(Tokens.bg.ignoresSafeArea())
     .navigationBarBackButtonHidden(true)
+    .sheet(isPresented: $isManagingCategories) {
+      NavigationStack {
+        ScrollView {
+          CategoryManagementSection(
+            groupId: model.groupId,
+            categories: model.state.value?.categories ?? [],
+            categoriesRepository: model.categoriesRepository,
+            onChanged: { updated in
+              model.updateCategories(updated)
+            }
+          )
+          .padding(20)
+        }
+        .background(Tokens.bg.ignoresSafeArea())
+        .navigationTitle(L10n.tr("categories.title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button(L10n.tr("common.back")) {
+              isManagingCategories = false
+            }
+          }
+        }
+      }
+      .presentationDetents([.medium, .large])
+    }
     .task {
       if model.state.value == nil {
         await model.load()
@@ -126,7 +165,7 @@ public struct ExpenseFormView: View {
 
   @ViewBuilder
   private func formContent(data: ExpenseFormModel.ScreenData) -> some View {
-    let active = model.activeMembers
+    let active = model.sharerMembers
     let myMemberId = data.group.myMemberId
     let isEditing = (data.editingTransaction != nil)
 
@@ -203,7 +242,7 @@ public struct ExpenseFormView: View {
 
           if model.transactionType == .transfer {
             TransferFieldsView(
-              members: active,
+              members: model.transferMembers,
               fromId: model.transferFrom,
               toId: model.transferTo,
               onFrom: { model.setTransferFrom($0) },
@@ -211,8 +250,12 @@ public struct ExpenseFormView: View {
             )
           } else {
             CategoryPickerView(
+              categories: data.categories,
               selected: model.category,
-              onSelect: { model.category = $0 }
+              selectedCustomId: model.categoryId,
+              onSelect: { model.selectBuiltinCategory($0) },
+              onSelectCustom: { model.selectCustomCategory($0) },
+              onManageCategories: { isManagingCategories = true }
             )
 
             VStack(alignment: .leading, spacing: 8) {
@@ -225,12 +268,15 @@ public struct ExpenseFormView: View {
               .foregroundStyle(Tokens.ink)
 
               MemberToggleGridView(
-                members: active,
+                members: model.payerMembers,
                 selectedIds: model.payerIds,
                 disabledIds: [],
                 isCaptionDimmed: false,
                 captionFor: { member in
-                  member.id == myMemberId ? L10n.tr("common.you") : member.name
+                  if member.kind == .fund {
+                    return L10n.t("fund.payerOption", ["name": member.name])
+                  }
+                  return member.id == myMemberId ? L10n.tr("common.you") : member.name
                 },
                 onToggle: { model.togglePayer($0) }
               )
@@ -240,7 +286,7 @@ public struct ExpenseFormView: View {
 
             if model.payerIds.count > 1 {
               PayerAmountsView(
-                members: active.filter { model.payerIds.contains($0.id) },
+                members: model.payerMembers.filter { model.payerIds.contains($0.id) },
                 values: model.payerAmounts,
                 totalAmount: model.amount,
                 onChange: { id, val in model.setPayerAmount(val, for: id) }
@@ -318,6 +364,59 @@ public struct ExpenseFormView: View {
             .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
           }
 
+          PhotoRowView(
+            attachments: model.attachments,
+            readOnly: false,
+            isUploading: model.isUploadingAttachment,
+            errorMessage: photoRowErrorMessage,
+            loadContent: { attachmentId in
+              try await model.attachmentsRepository.content(
+                groupId: model.groupId,
+                attachmentId: attachmentId
+              )
+            },
+            onRemove: { attachmentId in
+              model.removeAttachment(id: attachmentId)
+            }
+          ) {
+            if model.attachments.count >= 3 {
+              Text("+ \(L10n.tr("attachments.add"))")
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.muted)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Tokens.sunken, in: Capsule())
+                .opacity(0.5)
+            } else {
+              PhotosPicker(
+                selection: $pickedPhotoItem,
+                matching: .images,
+                photoLibrary: .shared()
+              ) {
+                HStack(spacing: 6) {
+                  Image(systemName: "plus")
+                    .font(.system(size: 13, weight: .bold))
+                  Text(L10n.tr("attachments.add"))
+                    .font(Typography.captionBold)
+                }
+                .foregroundStyle(Tokens.ink)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Tokens.sunken, in: Capsule())
+              }
+              .disabled(model.isUploadingAttachment)
+            }
+          }
+          .onChange(of: pickedPhotoItem) { _, item in
+            guard let item else { return }
+            pickedPhotoItem = nil
+            Task {
+              if let rawData = try? await item.loadTransferable(type: Data.self) {
+                await model.uploadAttachment(rawImageData: rawData)
+              }
+            }
+          }
+
           if let submitError = model.submitError {
             Text(
               submitError == .api(code: "FORBIDDEN", status: 403)
@@ -335,8 +434,31 @@ public struct ExpenseFormView: View {
           }
 
           if model.transactionType != .transfer, model.amount.isPositive {
+            if let overdraft = model.fundOverdrawnAmount() {
+              SPCard(tone: .accent, padding: 14) {
+                Text(L10n.t("fund.overdrawnWarning", ["amount": MoneyFormat.full(overdraft)]))
+                  .font(Typography.subheadlineBold)
+                  .foregroundStyle(Tokens.ink)
+              }
+            }
+
+            if model.previewWarnings.contains(.budgetOver) {
+              Text(L10n.tr("budget.overWarning"))
+                .font(Typography.subheadlineBold)
+                .foregroundStyle(Tokens.ink)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                  Tokens.coral, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+
             SplitStatusBannerView(
-              status: model.splitState.status(from: active, totalAmount: model.amount)
+              status: model.splitState.status(
+                from: active,
+                totalAmount: model.effectiveAmount,
+                itemsPreview: model.itemsPreview,
+                isItemsPreviewCurrent: model.isItemsPreviewCurrent
+              )
             )
           }
 
@@ -384,6 +506,19 @@ public struct ExpenseFormView: View {
 }
 
 extension ExpenseFormView {
+  private var photoRowErrorMessage: String? {
+    if model.isAttachmentLimitError {
+      return L10n.tr("attachments.maxLimit")
+    }
+    if let imgErr = model.attachmentImageError {
+      return UploadErrorFormatter.message(for: imgErr)
+    }
+    if let err = model.attachmentError {
+      return UploadErrorFormatter.message(for: err)
+    }
+    return nil
+  }
+
   private var saveButton: some View {
     SPButton(
       model.saveButtonTitle,
@@ -410,7 +545,10 @@ extension ExpenseFormView {
         groupId: TripScenario.groupId,
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
+        balancesRepository: FakeBalancesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
+        attachmentsRepository: FakeAttachmentsRepository(world: world),
         onSaved: {}
       ),
       onCancel: {}
@@ -425,7 +563,10 @@ extension ExpenseFormView {
         editingTransactionId: TripScenario.t1Transaction.id,
         groupsRepository: FakeGroupsRepository(world: world),
         membersRepository: FakeMembersRepository(world: world),
+        balancesRepository: FakeBalancesRepository(world: world),
         transactionsRepository: FakeTransactionsRepository(world: world),
+        categoriesRepository: FakeCategoriesRepository(world: world),
+        attachmentsRepository: FakeAttachmentsRepository(world: world),
         onSaved: {}
       ),
       onCancel: {}

@@ -2,6 +2,7 @@ export { sql as drizzleSql } from "drizzle-orm";
 export * from "./accounts.js";
 export * from "./activity.js";
 export * from "./ai-calls.js";
+export * from "./apple-accounts.js";
 export * from "./attachments.js";
 export * from "./balances.js";
 export * from "./budgets.js";
@@ -27,6 +28,7 @@ export * from "./members.js";
 export { runMigrations } from "./migrate.js";
 export * from "./notifications.js";
 export * from "./payment-methods.js";
+export * from "./push-devices.js";
 export * from "./receipt-scans.js";
 export * from "./reminders.js";
 export { sessions, users } from "./schema.js";
@@ -53,6 +55,7 @@ export {
 	notificationUnsubscribeTokens,
 } from "./schema-notifications.js";
 export * from "./schema-payments.js";
+export { pushDevices } from "./schema-push.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";
 export { debtReminders } from "./schema-reminders.js";
 export { receiptScans } from "./schema-scans.js";
@@ -64,10 +67,14 @@ export {
 } from "./schema-transactions.js";
 export { DEV_USERS, seedDevUsers } from "./seed.js";
 export {
+	type DbSessionClient,
 	deleteSessionByHash,
+	deleteUserSessionById,
 	deleteUserSessions,
+	findSessionRecordByHash,
 	findUserBySessionHash,
 	insertSession,
+	listUserSessions,
 } from "./sessions.js";
 export * from "./settlement-requests.js";
 export * from "./stats.js";

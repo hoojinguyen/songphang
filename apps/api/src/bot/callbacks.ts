@@ -220,6 +220,7 @@ export async function handleBotCallback(
 					request,
 					now,
 					enqueue: deps.enqueue,
+					pushEnabled: Boolean(deps.config.pushProvider),
 				});
 				const savedNow = await markBotDraftSaved(tx, {
 					draftId: locked.id,

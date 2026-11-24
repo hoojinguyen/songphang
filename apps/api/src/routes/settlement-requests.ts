@@ -102,6 +102,7 @@ export function registerSettlementRoutes(
 						request,
 						now: deps.now(),
 						enqueue: deps.enqueue,
+						pushEnabled: Boolean(deps.config.pushProvider),
 					}),
 				}),
 			);

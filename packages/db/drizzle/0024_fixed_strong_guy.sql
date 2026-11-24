@@ -1,0 +1,5 @@
+ALTER TABLE "auth_tokens" DROP CONSTRAINT "auth_tokens_purpose_check";--> statement-breakpoint
+ALTER TABLE "auth_tokens" ADD COLUMN "code_challenge" text;--> statement-breakpoint
+ALTER TABLE "auth_tokens" ADD COLUMN "client" text;--> statement-breakpoint
+ALTER TABLE "auth_tokens" ADD CONSTRAINT "auth_tokens_mobile_exchange_check" CHECK (("auth_tokens"."purpose" = 'mobile_exchange' and "auth_tokens"."code_challenge" is not null and "auth_tokens"."client" in ('ios','android')) or ("auth_tokens"."purpose" <> 'mobile_exchange' and "auth_tokens"."code_challenge" is null and "auth_tokens"."client" is null));--> statement-breakpoint
+ALTER TABLE "auth_tokens" ADD CONSTRAINT "auth_tokens_purpose_check" CHECK ("auth_tokens"."purpose" in ('verify_email','reset_password','mobile_exchange'));

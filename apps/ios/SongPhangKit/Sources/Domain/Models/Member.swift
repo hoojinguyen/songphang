@@ -1,3 +1,25 @@
+public enum MemberKind: Sendable, Hashable {
+  case person
+  case fund
+  case unknown(String)
+
+  public init(code: String) {
+    switch code {
+    case "person": self = .person
+    case "fund": self = .fund
+    default: self = .unknown(code)
+    }
+  }
+
+  public var code: String {
+    switch self {
+    case .person: return "person"
+    case .fund: return "fund"
+    case .unknown(let raw): return raw
+    }
+  }
+}
+
 public struct Member: Sendable, Hashable, Identifiable {
   public struct ID: Sendable, Hashable {
     public let rawValue: String
@@ -6,6 +28,8 @@ public struct Member: Sendable, Hashable, Identifiable {
 
   public let id: ID
   public var name: String
+  public var kind: MemberKind
+  public var fundHolderMemberId: Member.ID?
   public var active: Bool
   public var defaultWeight: String
   public var position: Int
@@ -13,20 +37,26 @@ public struct Member: Sendable, Hashable, Identifiable {
   public var color: MemberColor
   public var isMe: Bool
   public var claimed: Bool
+  public var paymentMethods: [PaymentMethod]
 
   public init(
     id: ID,
     name: String,
+    kind: MemberKind = .person,
+    fundHolderMemberId: Member.ID? = nil,
     active: Bool = true,
     defaultWeight: String = "1.00",
     position: Int,
     shape: MemberShape,
     color: MemberColor,
     isMe: Bool,
-    claimed: Bool
+    claimed: Bool,
+    paymentMethods: [PaymentMethod] = []
   ) {
     self.id = id
     self.name = name
+    self.kind = kind
+    self.fundHolderMemberId = fundHolderMemberId
     self.active = active
     self.defaultWeight = defaultWeight
     self.position = position
@@ -34,6 +64,7 @@ public struct Member: Sendable, Hashable, Identifiable {
     self.color = color
     self.isMe = isMe
     self.claimed = claimed
+    self.paymentMethods = paymentMethods
   }
 }
 

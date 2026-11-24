@@ -84,8 +84,12 @@ public struct SPTextField: View {
       .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
       .onTapGesture { focus.wrappedValue = true }
       .onChange(of: text) { _, newValue in
-        if let maxLength, newValue.count > maxLength {
-          text = String(newValue.prefix(maxLength))
+        if let maxLength, newValue.utf16.count > maxLength {
+          var clamped = String(newValue.prefix(maxLength))
+          while clamped.utf16.count > maxLength, !clamped.isEmpty {
+            clamped.removeLast()
+          }
+          text = clamped
         }
       }
       .accessibilityLabel(label)

@@ -1,4 +1,5 @@
 public protocol AuthRepository: Sendable {
+  func lastKnownUser() async -> User?
   func currentUser() async throws(AppError) -> User?
   func signIn(email: String, password: String) async throws(AppError) -> User
   func signInWithGoogle() async throws(AppError) -> User
@@ -12,6 +13,11 @@ public protocol AuthRepository: Sendable {
     revokeOtherSessions: Bool
   ) async throws(AppError)
   func deleteAccount(email: String) async throws(AppError)
+  func sessions() async throws(AppError) -> [UserSession]
+  func revokeSession(id: UserSession.ID) async throws(AppError)
   func serverFeatures() async throws(AppError) -> ServerFeatures
+  /// Returns the current monotonic generation counter of the local Keychain token store.
+  /// Increments whenever the stored token is written or cleared.
+  func currentTokenGeneration() async -> UInt64
   func signOut() async throws(AppError)
 }

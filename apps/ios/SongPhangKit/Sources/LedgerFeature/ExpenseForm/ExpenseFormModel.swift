@@ -8,17 +8,25 @@ public final class ExpenseFormModel {
   public struct ScreenData: Sendable, Equatable {
     public var group: ExpenseGroup
     public var members: [Member]
+    public var categories: [GroupCategory]
+    public var balances: GroupBalances
     public var editingTransaction: LedgerTransaction?
   }
 
   public let groupId: ExpenseGroup.ID
   public let editingTransactionId: LedgerTransaction.ID?
   public let initialReading: QuickEntryReading?
+  public let initialTransferFrom: Member.ID?
+  public let initialTransferTo: Member.ID?
+  public let initialAttachmentId: Attachment.ID?
   public let idempotencyKey: IdempotencyKey
 
   private let groupsRepository: any GroupsRepository
   private let membersRepository: any MembersRepository
+  private let balancesRepository: any BalancesRepository
   private let transactionsRepository: any TransactionsRepository
+  public let categoriesRepository: any CategoriesRepository
+  public let attachmentsRepository: any AttachmentsRepository
   private let onSaved: () -> Void
   private let onDeleted: (LedgerTransaction.ID) -> Void
 
@@ -27,16 +35,26 @@ public final class ExpenseFormModel {
   public var amountText: String = ""
   public var descriptionText: String = ""
   public var category: TransactionCategory?
+  public var categoryId: GroupCategory.ID?
   public var payerIds: [Member.ID] = []
   public var payerAmounts: [Member.ID: String] = [:]
   public var transferFrom: Member.ID?
   public var transferTo: Member.ID?
   public var occurredAtDate: Date = Date()
+  public var attachments: [Attachment] = []
+  public private(set) var isUploadingAttachment = false
+  public private(set) var attachmentError: AppError?
+  public private(set) var attachmentImageError: ReceiptImageError?
+  public private(set) var isAttachmentLimitError = false
   public var splitState: SplitEditorState = SplitEditorState(members: [])
   public var isSplitEditorOpen = false
   public var isUnparsedBannerDismissed = false
 
   public private(set) var previewShares: [MemberAmount] = []
+  public private(set) var previewWarnings: [TransactionWarning] = []
+  public private(set) var itemsPreview: ItemsPreview?
+  public private(set) var isItemsPreviewCurrent = false
+  public private(set) var itemsPreviewError: AppError?
   public private(set) var isPreviewPending = false
   public private(set) var previewError: AppError?
 
@@ -47,25 +65,38 @@ public final class ExpenseFormModel {
   public private(set) var deleteError: AppError?
 
   private var previewTask: Task<Void, Never>?
+  private var itemsPreviewTask: Task<Void, Never>?
 
   public init(
     groupId: ExpenseGroup.ID,
     editingTransactionId: LedgerTransaction.ID? = nil,
     initialReading: QuickEntryReading? = nil,
+    initialTransferFrom: Member.ID? = nil,
+    initialTransferTo: Member.ID? = nil,
+    initialAttachmentId: Attachment.ID? = nil,
     initialSplitEditorOpen: Bool = false,
     groupsRepository: any GroupsRepository,
     membersRepository: any MembersRepository,
+    balancesRepository: any BalancesRepository,
     transactionsRepository: any TransactionsRepository,
+    categoriesRepository: any CategoriesRepository,
+    attachmentsRepository: any AttachmentsRepository,
     onSaved: @escaping () -> Void,
     onDeleted: @escaping (LedgerTransaction.ID) -> Void = { _ in }
   ) {
     self.groupId = groupId
     self.editingTransactionId = editingTransactionId
     self.initialReading = initialReading
+    self.initialTransferFrom = initialTransferFrom
+    self.initialTransferTo = initialTransferTo
+    self.initialAttachmentId = initialAttachmentId
     self.idempotencyKey = IdempotencyKey()
     self.groupsRepository = groupsRepository
     self.membersRepository = membersRepository
+    self.balancesRepository = balancesRepository
     self.transactionsRepository = transactionsRepository
+    self.categoriesRepository = categoriesRepository
+    self.attachmentsRepository = attachmentsRepository
     self.onSaved = onSaved
     self.onDeleted = onDeleted
     self.isSplitEditorOpen =
@@ -78,12 +109,35 @@ public final class ExpenseFormModel {
     MoneyFormat.parseInput(amountText) ?? .zero
   }
 
+  public var effectiveAmount: Money {
+    if transactionType == .expense && splitState.method == .items {
+      return isItemsPreviewCurrent ? (itemsPreview?.computedAmount ?? .zero) : .zero
+    }
+    return amount
+  }
+
   public var activeMembers: [Member] {
     guard let data = state.value else { return [] }
     if data.editingTransaction != nil {
       return data.members
     }
     return data.members.filter(\.active)
+  }
+
+  public var sharerMembers: [Member] {
+    activeMembers.filter { $0.kind == .person }
+  }
+
+  public var payerMembers: [Member] {
+    let people = sharerMembers
+    if let fund = activeMembers.first(where: { $0.kind == .fund }) {
+      return people + [fund]
+    }
+    return people
+  }
+
+  public var transferMembers: [Member] {
+    activeMembers
   }
 
   public var headerTitle: String {
@@ -118,7 +172,14 @@ public final class ExpenseFormModel {
     do {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedMembers = membersRepository.members(groupId: groupId)
-      let (group, members) = try await (fetchedGroup, fetchedMembers)
+      async let fetchedCategories = categoriesRepository.list(groupId: groupId)
+      async let fetchedBalances = balancesRepository.balances(groupId: groupId)
+      let (group, members, categories, balances) = try await (
+        fetchedGroup,
+        fetchedMembers,
+        fetchedCategories,
+        fetchedBalances
+      )
       let editingTx: LedgerTransaction?
       if let editingTransactionId {
         editingTx = try await transactionsRepository.transaction(
@@ -131,6 +192,8 @@ public final class ExpenseFormModel {
       let data = ScreenData(
         group: group,
         members: members,
+        categories: categories,
+        balances: balances,
         editingTransaction: editingTx
       )
       state = .loaded(data)
@@ -144,17 +207,18 @@ public final class ExpenseFormModel {
   }
 
   private func configureFields(data: ScreenData) {
-    let active = data.editingTransaction != nil ? data.members : data.members.filter(\.active)
+    let people = sharerMembers
     let defaultMyId =
-      active.contains(where: { $0.id == data.group.myMemberId })
+      people.contains(where: { $0.id == data.group.myMemberId })
       ? data.group.myMemberId
-      : active.first?.id
+      : people.first?.id
 
     if let tx = data.editingTransaction {
       transactionType = tx.type
       amountText = MoneyFormat.amount(tx.amount)
       descriptionText = tx.description
       category = tx.category
+      categoryId = tx.categoryId
       payerIds = tx.payers.map(\.memberId)
       var pMap: [Member.ID: String] = [:]
       for p in tx.payers {
@@ -163,15 +227,25 @@ public final class ExpenseFormModel {
       payerAmounts = pMap
       transferFrom = tx.payers.first?.memberId ?? defaultMyId
       transferTo = tx.shares.first?.memberId
-      splitState = SplitEditorState(members: active, initial: tx.split)
+      attachments = tx.attachments
+      splitState = SplitEditorState(
+        members: people,
+        initial: tx.split,
+        defaultItemTitle: L10n.tr("receipts.title"),
+        initialAmount: tx.amount
+      )
       previewShares = tx.shares
+      if splitState.method == .items {
+        scheduleItemsPreview()
+      }
     } else if let reading = initialReading {
       transactionType = .expense
       if let amt = reading.draft.amount {
         amountText = MoneyFormat.amount(amt)
       }
       descriptionText = reading.draft.description ?? ""
-      category = nil
+      category = reading.draft.category
+      categoryId = reading.draft.categoryId
       if !reading.draft.payers.isEmpty {
         payerIds = reading.draft.payers.map(\.memberId)
       } else if let defaultMyId {
@@ -179,18 +253,59 @@ public final class ExpenseFormModel {
       }
       transferFrom = defaultMyId
       transferTo = nil
-      splitState = SplitEditorState(members: active, initial: reading.draft.split)
+      attachments =
+        initialAttachmentId.map {
+          [Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)]
+        } ?? []
+      splitState = SplitEditorState(
+        members: people,
+        initial: reading.draft.split,
+        defaultItemTitle: L10n.tr("receipts.title"),
+        initialAmount: reading.draft.amount ?? .zero
+      )
       previewShares = reading.shares ?? []
     } else {
-      transactionType = .expense
+      let isFundTransferPrefill = (initialTransferFrom != nil || initialTransferTo != nil)
+      transactionType = isFundTransferPrefill ? .transfer : .expense
       amountText = ""
       descriptionText = ""
       category = nil
+      categoryId = nil
       payerIds = defaultMyId.map { [$0] } ?? []
-      transferFrom = defaultMyId
-      transferTo = nil
-      splitState = SplitEditorState(members: active, initial: nil)
+      transferFrom = initialTransferFrom ?? defaultMyId
+      transferTo = initialTransferTo
+      attachments =
+        initialAttachmentId.map {
+          [Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)]
+        } ?? []
+      splitState = SplitEditorState(
+        members: people,
+        initial: nil,
+        defaultItemTitle: L10n.tr("receipts.title"),
+        initialAmount: .zero
+      )
       previewShares = []
+    }
+  }
+
+  public func selectBuiltinCategory(_ next: TransactionCategory?) {
+    category = next
+    if next != nil {
+      categoryId = nil
+    }
+  }
+
+  public func selectCustomCategory(_ id: GroupCategory.ID?) {
+    categoryId = id
+    if id != nil {
+      category = nil
+    }
+  }
+
+  public func updateCategories(_ next: [GroupCategory]) {
+    if case .loaded(var current) = state {
+      current.categories = next
+      state = .loaded(current)
     }
   }
 
@@ -199,8 +314,91 @@ public final class ExpenseFormModel {
     if next == .income {
       let defaultId = state.value?.group.myMemberId ?? payerIds.first
       payerIds = defaultId.map { [$0] } ?? []
+      if splitState.method == .items {
+        splitState.changeMode(.equal, members: sharerMembers)
+      }
     }
     schedulePreview()
+  }
+
+  public func uploadAttachment(rawImageData: Data) async {
+    guard !isUploadingAttachment else { return }
+    attachmentError = nil
+    attachmentImageError = nil
+    isAttachmentLimitError = false
+    guard attachments.count < 3 else {
+      isAttachmentLimitError = true
+      return
+    }
+    isUploadingAttachment = true
+    defer { isUploadingAttachment = false }
+    do {
+      let prepared = try await ReceiptImageProcessor.prepareJPEG(from: rawImageData)
+      let uploaded = try await attachmentsRepository.upload(
+        groupId: groupId,
+        data: prepared,
+        filename: "hoa-don.jpg",
+        contentType: "image/jpeg"
+      )
+      attachments.append(uploaded)
+    } catch let imgError as ReceiptImageError {
+      attachmentImageError = imgError
+    } catch let appError as AppError {
+      attachmentError = appError
+    } catch {
+      attachmentError = .unexpected
+    }
+  }
+
+  public func removeAttachment(id: Attachment.ID) {
+    attachmentError = nil
+    attachmentImageError = nil
+    isAttachmentLimitError = false
+    attachments.removeAll { $0.id == id }
+  }
+
+  public func scheduleItemsPreview() {
+    itemsPreviewTask?.cancel()
+    guard transactionType == .expense, splitState.method == .items else {
+      itemsPreview = nil
+      isItemsPreviewCurrent = false
+      return
+    }
+    isItemsPreviewCurrent = false
+    guard let payload = splitState.itemsDraft.buildPayload() else {
+      itemsPreview = nil
+      return
+    }
+    itemsPreviewTask = Task {
+      try? await Task.sleep(for: .milliseconds(300))
+      guard !Task.isCancelled else { return }
+      await refreshItemsPreviewNow(items: payload.items, extras: payload.extras)
+    }
+  }
+
+  private func refreshItemsPreviewNow(
+    items: [SplitSpec.ItemEntry],
+    extras: [SplitSpec.ItemsExtra]
+  ) async {
+    itemsPreviewError = nil
+    do throws(AppError) {
+      let result = try await transactionsRepository.previewItems(
+        groupId: groupId,
+        items: items,
+        extras: extras,
+        targetTotal: nil
+      )
+      guard !Task.isCancelled else { return }
+      itemsPreview = result
+      isItemsPreviewCurrent = true
+      if result.computedAmount.isPositive {
+        amountText = MoneyFormat.amount(result.computedAmount)
+      }
+      schedulePreview()
+    } catch {
+      itemsPreviewError = error
+      isItemsPreviewCurrent = false
+    }
   }
 
   public func updateAmountText(_ raw: String) {
@@ -239,7 +437,7 @@ public final class ExpenseFormModel {
   }
 
   public func toggleSharer(_ id: Member.ID) {
-    splitState.toggle(id, members: activeMembers)
+    splitState.toggle(id, members: sharerMembers)
     schedulePreview()
   }
 
@@ -251,10 +449,15 @@ public final class ExpenseFormModel {
   }
 
   public func buildDraft() -> TransactionDraft? {
-    let amt = amount
+    let amt = effectiveAmount
     guard amt.isPositive else { return nil }
     let occurredAtIso =
-      state.value?.editingTransaction?.occurredAt ?? "2026-11-16T14:23:26.466Z"
+      state.value?.editingTransaction?.occurredAt
+      ?? Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(occurredAtDate)
+    let attachmentIdList: [Attachment.ID]? =
+      (state.value?.editingTransaction != nil || !attachments.isEmpty)
+      ? attachments.map(\.id)
+      : nil
 
     if transactionType == .transfer {
       guard let from = transferFrom, let to = transferTo, from != to else {
@@ -267,9 +470,19 @@ public final class ExpenseFormModel {
           occurredAt: occurredAtIso,
           fromMemberId: from,
           toMemberId: to,
-          description: trimmed.isEmpty ? nil : trimmed
+          description: trimmed.isEmpty ? nil : trimmed,
+          attachmentIds: attachmentIdList
         )
       )
+    }
+
+    if transactionType == .expense && splitState.method == .items {
+      guard isItemsPreviewCurrent,
+        let preview = itemsPreview,
+        preview.issues.isEmpty,
+        !preview.shares.isEmpty,
+        preview.computedAmount.isPositive
+      else { return nil }
     }
 
     guard !payerIds.isEmpty else { return nil }
@@ -303,15 +516,19 @@ public final class ExpenseFormModel {
         description: desc,
         amount: amt,
         occurredAt: occurredAtIso,
-        category: category,
+        category: categoryId == nil ? category : nil,
+        categoryId: categoryId,
         payers: resolvedPayers,
-        split: resolvedSplit
+        split: resolvedSplit,
+        attachmentIds: attachmentIdList
       )
     )
   }
 
   public var canSubmit: Bool {
-    guard conflictTransaction == nil, !isSubmitting, let draft = buildDraft() else {
+    guard conflictTransaction == nil, !isSubmitting, !isUploadingAttachment,
+      let draft = buildDraft()
+    else {
       return false
     }
     if transactionType != .transfer
@@ -341,6 +558,7 @@ public final class ExpenseFormModel {
   public func refreshPreviewNow() async {
     guard transactionType != .transfer, let draft = buildDraft() else {
       isPreviewPending = false
+      previewWarnings = []
       return
     }
     isPreviewPending = true
@@ -349,9 +567,26 @@ public final class ExpenseFormModel {
     do throws(AppError) {
       let preview = try await transactionsRepository.preview(groupId: groupId, draft: draft)
       previewShares = preview.shares
+      previewWarnings = preview.warnings
     } catch {
       previewError = error
     }
+  }
+
+  public func fundOverdrawnAmount() -> Money? {
+    guard previewWarnings.contains(.fundOverdrawn),
+      let fund = state.value?.balances.fund,
+      payerIds.contains(fund.memberId)
+    else { return nil }
+    let fundPaid: Money
+    if payerIds.count == 1 {
+      fundPaid = effectiveAmount
+    } else {
+      fundPaid = MoneyFormat.parseInput(payerAmounts[fund.memberId] ?? "") ?? .zero
+    }
+    let positiveCash = fund.cash.isPositive ? fund.cash : .zero
+    let overdraft = fundPaid - positiveCash
+    return overdraft.isPositive ? overdraft : nil
   }
 
   public func submit() async {

@@ -3,6 +3,7 @@ import AuthFeature
 import DesignSystem
 import Domain
 import GroupsFeature
+public import Repositories
 public import SwiftUI
 import UIKit
 
@@ -10,36 +11,76 @@ import UIKit
   import PreviewSupport
 #endif
 
-extension UIDevice {
-  static let deviceDidShakeNotification = Notification.Name("SPDeviceDidShakeNotification")
-}
+#if DEBUG
+  extension UIDevice {
+    static let deviceDidShakeNotification = Notification.Name("SPDeviceDidShakeNotification")
+  }
 
-extension UIWindow {
-  open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
-    super.motionEnded(motion, with: event)
-    if motion == .motionShake {
-      NotificationCenter.default.post(name: UIDevice.deviceDidShakeNotification, object: nil)
+  extension UIWindow {
+    open override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+      super.motionEnded(motion, with: event)
+      if motion == .motionShake {
+        NotificationCenter.default.post(name: UIDevice.deviceDidShakeNotification, object: nil)
+      }
     }
   }
-}
+#endif
 
 public struct RootView: View {
   private let dependencies: AppDependencies
+  @Environment(\.scenePhase) private var scenePhase
   @State private var sessionModel: SessionModel
   @State private var groupListModel: GroupListModel
   @State private var signInModel: SignInModel
+  @State private var pushCoordinator: PushCoordinator
   @State private var path: [Route] = []
+  @State private var pendingInviteState = PendingInviteState()
+  @State private var pendingPushTap: PushTapPayload?
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
-  @State private var isShowingDebugPanel = false
+  #if DEBUG
+    @State private var isShowingDebugPanel = false
+  #endif
+  @State private var hasCompletedInitialAppear = false
 
-  public init(dependencies: AppDependencies? = nil) {
+  private var linkRouter: LinkRouter {
+    LinkRouter(webBaseURL: dependencies.webBaseURL)
+  }
+
+  public init(dependencies: AppDependencies? = nil, configuration: APIConfiguration? = nil) {
     #if DEBUG
+      let args = ProcessInfo.processInfo.arguments
+      let useScripted =
+        args.contains("--scripted")
+        || args.contains("--scenario-empty")
+        || args.contains("--scenario-trip0")
+        || args.contains("--scenario-large")
+        || args.contains("--signed-out")
+        || args.contains("--fail-offline")
+        || args.contains("--fail-rate-limited")
+        || args.contains("--fail-invalid-credentials")
+        || args.contains("--role-editor")
+        || args.contains("--role-viewer")
+        || args.contains("--latency-2s")
+        || args.contains("--latency-300ms")
+        || args.contains("--no-snapshot")
+        || args.contains("--unverified-user")
+        || args.contains("--all-settled")
+        || args.contains("--delete-t4")
+        || args.contains("--empty-activity")
+        || args.contains("--enter-step1")
+        || args.contains("--enter-step2")
+        || args.contains("--enter-step3")
+        || args.contains("--enter-step4")
+        || args.contains("--emit-changed")
+        || args.contains("--emit-removed")
+
       let resolved: AppDependencies
+      let initialSessionState: SessionModel.State
       if let dependencies {
         resolved = dependencies
-      } else {
-        let args = ProcessInfo.processInfo.arguments
+        initialSessionState = dependencies.world == nil ? .loading : .signedIn(PreviewSamples.user)
+      } else if useScripted {
         let signedIn = !args.contains("--signed-out")
         let preset: ScenarioPreset
         if args.contains("--scenario-empty") {
@@ -74,18 +115,25 @@ public struct RootView: View {
 
         let world = FakeWorld(preset: preset, behavior: behavior, signedIn: signedIn)
         resolved = .scripted(world: world)
+        initialSessionState = signedIn ? .signedIn(PreviewSamples.user) : .signedOut
+      } else {
+        let liveConfig = configuration ?? Self.bundleConfiguration()
+        resolved = .live(configuration: liveConfig)
+        initialSessionState = .loading
       }
       self.dependencies = resolved
       let session = SessionModel(
         authRepository: resolved.auth,
-        initialState: ProcessInfo.processInfo.arguments.contains("--signed-out")
-          ? .signedOut : .signedIn(PreviewSamples.user)
+        appVersion: resolved.appVersion,
+        initialState: initialSessionState
       )
       self._sessionModel = State(initialValue: session)
+      self._pushCoordinator = State(
+        initialValue: PushCoordinator(devicesRepository: resolved.devices)
+      )
       self._groupListModel = State(
         initialValue: GroupListModel(repository: resolved.groups)
       )
-      let args = ProcessInfo.processInfo.arguments
       let initialError: AppError?
       if args.contains("--fail-rate-limited") {
         initialError = .rateLimited
@@ -106,21 +154,101 @@ public struct RootView: View {
         )
       )
     #else
-      fatalError("Live repositories arrive in the integration stage")
+      let resolved =
+        dependencies
+        ?? .live(configuration: configuration ?? Self.bundleConfiguration())
+      self.dependencies = resolved
+      let session = SessionModel(
+        authRepository: resolved.auth,
+        appVersion: resolved.appVersion,
+        initialState: .loading
+      )
+      self._sessionModel = State(initialValue: session)
+      self._pushCoordinator = State(
+        initialValue: PushCoordinator(devicesRepository: resolved.devices)
+      )
+      self._groupListModel = State(
+        initialValue: GroupListModel(repository: resolved.groups)
+      )
+      self._signInModel = State(
+        initialValue: SignInModel(
+          repository: resolved.auth,
+          onSignedIn: { user in
+            session.didSignIn(user)
+          }
+        )
+      )
     #endif
+  }
+
+  private static func bundleConfiguration() -> APIConfiguration {
+    let info = Bundle.main.infoDictionary
+    #if DEBUG
+      let defaultAPIString = "http://127.0.0.1:4000/api/v1"
+      let defaultWebString = "http://localhost:3000"
+    #else
+      let defaultAPIString = "https://example.invalid/api/v1"
+      let defaultWebString = "https://example.invalid"
+    #endif
+    let apiURL =
+      Self.parseOptionalHTTPURL(info?["API_BASE_URL"] as? String)
+      ?? URL(string: defaultAPIString)
+      ?? URL(filePath: "/")
+    let webURL =
+      Self.parseOptionalHTTPURL(info?["WEB_BASE_URL"] as? String)
+      ?? URL(string: defaultWebString)
+      ?? URL(filePath: "/")
+    var version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
+    #if DEBUG
+      let args = ProcessInfo.processInfo.arguments
+      if let idx = args.firstIndex(of: "--app-version"), idx + 1 < args.count {
+        version = args[idx + 1]
+      }
+    #endif
+    let rawStoreURL = (info?["APP_STORE_URL"] as? String)?
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    let appStoreURL = Self.parseOptionalHTTPURL(rawStoreURL)
+    let rawDevice = UIDevice.current.name.trimmingCharacters(in: .whitespacesAndNewlines)
+    let deviceName = rawDevice.isEmpty ? "iPhone" : String(rawDevice.prefix(60))
+    return APIConfiguration(
+      apiBaseURL: apiURL,
+      webBaseURL: webURL,
+      appVersion: version,
+      deviceName: deviceName,
+      appStoreURL: appStoreURL
+    )
+  }
+
+  public static func parseOptionalHTTPURL(_ rawValue: String?) -> URL? {
+    guard let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+      !trimmed.isEmpty,
+      !trimmed.contains("$("),
+      let url = URL(string: trimmed),
+      let scheme = url.scheme?.lowercased(),
+      scheme == "https" || scheme == "http",
+      url.host?.isEmpty == false
+    else {
+      return nil
+    }
+    return url
   }
 
   public var body: some View {
     Group {
-      let args = ProcessInfo.processInfo.arguments
-      if args.contains("--gallery-tokens") || args.contains("--gallery-shapes")
-        || args.contains("--gallery-components")
-      {
-        DebugGalleryView()
-      } else {
+      #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--gallery-tokens") || args.contains("--gallery-shapes")
+          || args.contains("--gallery-components")
+        {
+          DebugGalleryView()
+        } else {
+          mainContent
+            .scrollDismissesKeyboard(.interactively)
+        }
+      #else
         mainContent
           .scrollDismissesKeyboard(.interactively)
-      }
+      #endif
     }
     #if DEBUG
       .onReceive(NotificationCenter.default.publisher(for: UIDevice.deviceDidShakeNotification)) {
@@ -195,35 +323,137 @@ public struct RootView: View {
               initialAmount: Money(210_000)
             )
           ]
+        } else if args.contains("--route-notifications") {
+          path = [.notifications]
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
         DebugPanel(
           world: dependencies.world,
+          liveConfiguration: dependencies.liveConfiguration,
           sessionModel: sessionModel,
+          pushCoordinator: pushCoordinator,
           onOpenJoinToken: { token in
-            path.append(.joinGroup(token: token))
+            routeValidated(.joinGroup(token: token))
+          },
+          onOpenLinkURL: { url in
+            handleIncomingURL(url)
+          },
+          onSimulatePushTap: { groupId, target in
+            Task { await handlePushTap(PushTapPayload(groupId: groupId, target: target)) }
           },
           onOpenGallery: {
             path.append(.debugGallery)
           },
           onDismiss: {
             isShowingDebugPanel = false
-            Task { await groupListModel.load() }
+            if case .signedIn = sessionModel.state {
+              Task { await groupListModel.load() }
+            }
           }
         )
       }
     #endif
+    .sheet(
+      isPresented: $pushCoordinator.isPermissionSheetPresented,
+      onDismiss: {
+        if case .signedIn(let user) = sessionModel.state {
+          pushCoordinator.deferPrompt(userId: user.id)
+        }
+      }
+    ) {
+      if case .signedIn(let user) = sessionModel.state {
+        PushPermissionSheet(
+          onEnable: {
+            Task { await pushCoordinator.enableFromPrompt() }
+          },
+          onLater: {
+            pushCoordinator.deferPrompt(userId: user.id)
+          }
+        )
+      }
+    }
+    .onOpenURL { url in
+      _ = handleIncomingURL(url)
+    }
+    .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+      guard let url = activity.webpageURL else { return }
+      _ = handleIncomingURL(url)
+    }
     .task {
+      for await generation in dependencies.makeSessionInvalidations() {
+        if await sessionModel.handleSessionInvalidation(atGeneration: generation) {
+          resetToSignedOut()
+        }
+      }
+    }
+    .onChange(of: scenePhase) { _, newPhase in
+      if newPhase == .active, hasCompletedInitialAppear {
+        Task {
+          await sessionModel.refreshOnForeground()
+          await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+          await syncPushRegistrationIfSignedIn()
+        }
+      }
+    }
+    .onChange(of: sessionModel.state) { oldState, newState in
+      if case .signedOut = newState {
+        pushCoordinator.clearSessionState()
+        pendingPushTap = nil
+        if case .signedIn = oldState {
+          pendingInviteState.clear()
+          path.removeAll()
+          statusNotice = nil
+          groupListModel = GroupListModel(repository: dependencies.groups)
+          signInModel = SignInModel(
+            repository: dependencies.auth,
+            onSignedIn: { user in
+              sessionModel.didSignIn(user)
+            }
+          )
+        }
+      } else if case .signedIn(let newUser) = newState {
+        if case .signedIn(let oldUser) = oldState, oldUser.id == newUser.id {
+          return
+        }
+        if case .signedIn = oldState {
+          pushCoordinator.clearSessionState()
+          path.removeAll()
+          statusNotice = nil
+        }
+        groupListModel = GroupListModel(repository: dependencies.groups)
+        consumePendingRouteIfSignedIn()
+        Task {
+          await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+          await consumePendingPushIfSignedIn()
+          await syncPushRegistrationIfSignedIn()
+        }
+      }
+    }
+    .task {
+      PushEventBridge.shared.onDeviceTokenRegistered = { hexToken in
+        Task { await pushCoordinator.registerDeviceToken(hexToken) }
+      }
+      PushEventBridge.shared.onPushTapReceived = { payload in
+        Task { await handlePushTap(payload) }
+      }
+      if case .loading = sessionModel.state {
+        await sessionModel.loadSession()
+      }
+      await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+      await consumePendingPushIfSignedIn()
+      await syncPushRegistrationIfSignedIn()
+      hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
+        guard let world = dependencies.world else { return }
         if args.contains("--unverified-user") {
-          await dependencies.world.setCurrentUser(PreviewSamples.unverifiedUser)
+          await world.setCurrentUser(PreviewSamples.unverifiedUser)
           sessionModel.didSignIn(PreviewSamples.unverifiedUser)
         }
         if args.contains("--all-settled") {
           for transfer in TripScenario.step4Balances.transfers {
-            _ = try? await dependencies.world.createTransaction(
+            _ = try? await world.createTransaction(
               groupId: TripScenario.groupId,
               draft: .transfer(
                 TransactionDraft.TransferPayload(
@@ -238,13 +468,13 @@ public struct RootView: View {
           }
         }
         if args.contains("--delete-t4") {
-          try? await dependencies.world.deleteTransaction(
+          try? await world.deleteTransaction(
             groupId: TripScenario.groupId,
             id: TripScenario.t4Transaction.id
           )
         }
         if args.contains("--empty-activity") {
-          await dependencies.world.clearActivity(groupId: TripScenario.groupId)
+          await world.clearActivity(groupId: TripScenario.groupId)
         }
         let stepCount: Int = {
           if args.contains("--enter-step1") { return 1 }
@@ -273,7 +503,7 @@ public struct RootView: View {
                 split: tx.split
               )
             )
-            _ = try? await dependencies.world.createTransaction(
+            _ = try? await world.createTransaction(
               groupId: TripScenario.groupId,
               draft: draft,
               key: IdempotencyKey()
@@ -282,20 +512,166 @@ public struct RootView: View {
         }
         if args.contains("--emit-changed") {
           try? await Task.sleep(for: .milliseconds(400))
-          await dependencies.world.emitEvent(
+          await world.emitEvent(
             .changed(["group", "members", "balances", "transactions"])
           )
         }
         if args.contains("--emit-removed") {
           try? await Task.sleep(for: .milliseconds(400))
-          await dependencies.world.emitEvent(.removed)
+          await world.emitEvent(.removed)
         }
       #endif
     }
   }
 
+  private var isSignedIn: Bool {
+    if case .signedIn = sessionModel.state { return true }
+    return false
+  }
+
+  private func handleIncomingURL(_ url: URL) -> Bool {
+    guard let route = linkRouter.route(for: url) else {
+      return false
+    }
+    routeValidated(route)
+    return true
+  }
+
+  private func routeValidated(_ route: Route) {
+    if let immediate = pendingInviteState.receiveValidated(route, isSignedIn: isSignedIn) {
+      path.append(immediate)
+    }
+  }
+
+  private func consumePendingRouteIfSignedIn() {
+    if let route = pendingInviteState.consumeIfSignedIn(isSignedIn) {
+      path.append(route)
+    }
+  }
+
+  private func syncPushRegistrationIfSignedIn() async {
+    guard isSignedIn else {
+      _ = await pushCoordinator.refreshAuthorizationStatus()
+      return
+    }
+    let features: ServerFeatures?
+    if let latest = sessionModel.latestFeatures {
+      features = latest
+    } else {
+      features = try? await dependencies.auth.serverFeatures()
+    }
+    await pushCoordinator.syncRegistrationIfAuthorized(features: features)
+  }
+
+  private func resetToSignedOut() {
+    pushCoordinator.clearSessionState()
+    path.removeAll()
+    pendingInviteState.clear()
+    pendingPushTap = nil
+    statusNotice = nil
+    groupListModel = GroupListModel(repository: dependencies.groups)
+    signInModel = SignInModel(
+      repository: dependencies.auth,
+      onSignedIn: { user in
+        sessionModel.didSignIn(user)
+      }
+    )
+    sessionModel.markSignedOut()
+  }
+
+  private func handlePushTap(_ payload: PushTapPayload) async {
+    switch sessionModel.state {
+    case .loading:
+      pendingPushTap = payload
+    case .signedOut:
+      pendingPushTap = nil
+    case .signedIn:
+      pendingPushTap = nil
+      await applyPushTap(payload)
+    }
+  }
+
+  private func consumePendingPushIfSignedIn() async {
+    guard case .signedIn = sessionModel.state, let payload = pendingPushTap else {
+      return
+    }
+    pendingPushTap = nil
+    await applyPushTap(payload)
+  }
+
+  private func applyPushTap(_ payload: PushTapPayload) async {
+    guard
+      let destination = linkRouter.pushDestination(
+        groupId: payload.groupId,
+        target: payload.target
+      )
+    else {
+      statusNotice = nil
+      path.removeAll()
+      await groupListModel.load()
+      return
+    }
+
+    let groupId: ExpenseGroup.ID
+    switch destination {
+    case .notifications:
+      statusNotice = nil
+      path = [.notifications]
+      return
+    case .groupFeed(let id),
+      .groupBalances(let id),
+      .groupStats(let id),
+      .groupFund(let id),
+      .transactionDetail(let id, _):
+      groupId = id
+    }
+
+    do throws(AppError) {
+      _ = try await dependencies.groups.group(id: groupId)
+      statusNotice = nil
+      switch destination {
+      case .notifications:
+        path = [.notifications]
+      case .groupFeed(let id):
+        path = [.groupFeed(groupId: id)]
+      case .groupBalances(let id):
+        path = [.groupFeed(groupId: id), .groupBalances(groupId: id)]
+      case .groupStats(let id):
+        path = [.groupFeed(groupId: id), .groupStats(groupId: id)]
+      case .groupFund(let id):
+        path = [.groupFeed(groupId: id), .groupFund(groupId: id)]
+      case .transactionDetail(let id, let txId):
+        if (try? await dependencies.transactions.transaction(groupId: id, id: txId)) != nil {
+          path = [.groupFeed(groupId: id), .transactionDetail(groupId: id, transactionId: txId)]
+        } else {
+          path = [.groupFeed(groupId: id)]
+        }
+      }
+    } catch {
+      if error == .unauthorized {
+        await sessionModel.signOut()
+      } else if case .api(_, let status) = error, status == 404 {
+        statusNotice = L10n.tr("common.removed")
+        path.removeAll()
+        await groupListModel.load()
+      } else {
+        path.removeAll()
+        await groupListModel.load()
+      }
+    }
+  }
+
   @ViewBuilder
   private var mainContent: some View {
+    if sessionModel.isUpgradeRequired {
+      UpgradeRequiredView(appStoreURL: dependencies.appStoreURL)
+    } else {
+      sessionContent
+    }
+  }
+
+  @ViewBuilder
+  private var sessionContent: some View {
     switch sessionModel.state {
     case .loading:
       VStack {
@@ -333,6 +709,7 @@ public struct RootView: View {
           model: groupListModel,
           user: user,
           statusNotice: statusNotice,
+          unreadNotificationCount: sessionModel.unreadNotificationCount,
           onOpenGroup: { groupId in
             statusNotice = nil
             path.append(.groupFeed(groupId: groupId))
@@ -344,6 +721,10 @@ public struct RootView: View {
           onOpenAccount: {
             statusNotice = nil
             path.append(.account)
+          },
+          onOpenNotifications: {
+            statusNotice = nil
+            path.append(.notifications)
           },
           onResendVerification: { () async throws(AppError) in
             try await dependencies.auth.resendVerification()
@@ -403,6 +784,21 @@ public struct RootView: View {
         }
         path.removeAll()
         Task { await groupListModel.load() }
+      },
+      onExpenseSaved: {
+        guard case .signedIn(let signedInUser) = sessionModel.state else { return }
+        Task {
+          let features: ServerFeatures?
+          if let latest = sessionModel.latestFeatures {
+            features = latest
+          } else {
+            features = try? await dependencies.auth.serverFeatures()
+          }
+          await pushCoordinator.handleFirstExpenseSaved(
+            userId: signedInUser.id,
+            features: features
+          )
+        }
       },
       deletedTransactionId: $deletedTransactionId
     )

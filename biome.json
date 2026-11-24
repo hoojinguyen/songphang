@@ -12,7 +12,8 @@
 			"!!settle-up-research.md",
 			"!!.agents",
 			"!!.claude",
-			"!!apps/ios"
+			"!!apps/ios",
+			"!!packages/contract/openapi.json"
 		]
 	},
 	"linter": {

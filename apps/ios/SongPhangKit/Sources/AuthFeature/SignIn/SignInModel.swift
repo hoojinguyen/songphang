@@ -58,7 +58,11 @@ public final class SignInModel {
       let user = try await repository.signInWithApple()
       onSignedIn(user)
     } catch {
-      submitError = error
+      if case .api(code: "AUTH_CANCELLED", status: 0) = error {
+        submitError = nil
+      } else {
+        submitError = error
+      }
     }
   }
 
@@ -71,7 +75,11 @@ public final class SignInModel {
       let user = try await repository.signInWithGoogle()
       onSignedIn(user)
     } catch {
-      submitError = error
+      if case .api(code: "AUTH_CANCELLED", status: 0) = error {
+        submitError = nil
+      } else {
+        submitError = error
+      }
     }
   }
 }

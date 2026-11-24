@@ -15,22 +15,61 @@ public struct QuickEntryReading: Sendable, Hashable {
     }
   }
 
+  public enum ReaderKind: Sendable, Hashable {
+    case rules
+    case ai
+    case unknown(String)
+
+    public init(code: String) {
+      switch code {
+      case "rules": self = .rules
+      case "ai": self = .ai
+      default: self = .unknown(code)
+      }
+    }
+  }
+
+  public struct ParsedDraft: Sendable, Hashable {
+    public let status: Status
+    public var draft: Draft
+    public let issues: [Issue]
+    public var shares: [MemberAmount]?
+
+    public init(
+      status: Status,
+      draft: Draft,
+      issues: [Issue],
+      shares: [MemberAmount]? = nil
+    ) {
+      self.status = status
+      self.draft = draft
+      self.issues = issues
+      self.shares = shares
+    }
+  }
+
   public struct Draft: Sendable, Hashable {
     public var description: String?
     public var amount: Money?
     public var payers: [MemberAmount]
     public var split: SplitSpec?
+    public var category: TransactionCategory?
+    public var categoryId: GroupCategory.ID?
 
     public init(
       description: String?,
       amount: Money?,
       payers: [MemberAmount],
-      split: SplitSpec?
+      split: SplitSpec?,
+      category: TransactionCategory? = nil,
+      categoryId: GroupCategory.ID? = nil
     ) {
       self.description = description
       self.amount = amount
       self.payers = payers
       self.split = split
+      self.category = categoryId == nil ? category : nil
+      self.categoryId = categoryId
     }
   }
 
@@ -61,6 +100,7 @@ public struct QuickEntryReading: Sendable, Hashable {
     case descriptionMissing
     case memberAmbiguous
     case memberUnknown
+    case fundCannotShare
     case countMismatch
     case sumMismatch
     case textNotUnderstood
@@ -101,6 +141,8 @@ public struct QuickEntryReading: Sendable, Hashable {
   public var shares: [MemberAmount]?
   public let spans: [Span]
   public let issues: [Issue]
+  public let reader: ReaderKind
+  public let moreDrafts: [ParsedDraft]
 
   public init(
     status: Status,
@@ -108,7 +150,9 @@ public struct QuickEntryReading: Sendable, Hashable {
     draft: Draft,
     shares: [MemberAmount]? = nil,
     spans: [Span],
-    issues: [Issue]
+    issues: [Issue],
+    reader: ReaderKind = .rules,
+    moreDrafts: [ParsedDraft] = []
   ) {
     self.status = status
     self.text = text
@@ -116,5 +160,7 @@ public struct QuickEntryReading: Sendable, Hashable {
     self.shares = shares
     self.spans = spans
     self.issues = issues
+    self.reader = reader
+    self.moreDrafts = moreDrafts
   }
 }

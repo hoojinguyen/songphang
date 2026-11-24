@@ -63,22 +63,17 @@ struct FeedBalanceBlockView: View {
 struct FeedTransactionRowView: View {
   let transaction: LedgerTransaction
   let members: [Member]
+  let categories: [GroupCategory]
   let myMemberId: Member.ID?
   let canEdit: Bool
   let onTap: () -> Void
 
   var body: some View {
-    Group {
-      if canEdit {
-        Button(action: onTap) {
-          rowContent
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L10n.t("feed.editRow", ["description": transaction.description]))
-      } else {
-        rowContent
-      }
+    Button(action: onTap) {
+      rowContent
     }
+    .buttonStyle(.plain)
+    .accessibilityLabel(L10n.t("feed.viewRow", ["description": transaction.description]))
   }
 
   @ViewBuilder
@@ -141,10 +136,79 @@ struct FeedTransactionRowView: View {
           )
         }
 
+        if transaction.approval.status == .pending {
+          Text(L10n.tr("approval.pendingTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        } else if transaction.approval.status == .rejected {
+          Text(L10n.tr("approval.rejectedTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+
+        if transaction.dispute != nil {
+          Text(L10n.tr("transactionView.disputeTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+
         if transaction.version > 1 {
           Text(L10n.tr("feed.edited"))
             .font(Typography.captionBold)
             .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
+        }
+
+        if let catDisplay = CategoryDisplay.label(
+          category: transaction.category,
+          categoryId: transaction.categoryId,
+          categories: categories,
+          includeArchivedTag: true
+        ) {
+          HStack(spacing: 5) {
+            if let dotColor = catDisplay.color {
+              Circle()
+                .fill(dotColor)
+                .frame(width: 8, height: 8)
+            }
+            Text(catDisplay.name)
+              .font(Typography.captionBold)
+              .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
+          }
+        }
+
+        if transaction.attachmentCount > 0 {
+          HStack(spacing: 4) {
+            Image(systemName: "photo")
+              .font(.system(size: 11, weight: .semibold))
+            if transaction.attachmentCount > 1 {
+              Text(String(transaction.attachmentCount))
+                .font(Typography.captionBold)
+            }
+          }
+          .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
+          .accessibilityLabel(L10n.tr("attachments.hasPhotos"))
+        }
+
+        if transaction.commentCount > 0 {
+          HStack(spacing: 4) {
+            Image(systemName: "bubble.left")
+              .font(.system(size: 11, weight: .semibold))
+            Text(String(transaction.commentCount))
+              .font(Typography.captionBold)
+          }
+          .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
+          .accessibilityLabel(
+            L10n.t("transactionView.commentCount", ["count": String(transaction.commentCount)])
+          )
         }
 
         if isMine {
@@ -180,23 +244,35 @@ struct FeedTransactionRowView: View {
           .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
           .padding(.top, 4)
         } else {
-          let shareLine =
+          let methodLabel: String = {
+            switch transaction.split {
+            case .exact: return L10n.tr("feed.splitExact")
+            case .shares: return L10n.tr("feed.splitShares")
+            case .items: return L10n.tr("split.methodItems")
+            case .percent: return L10n.tr("feed.splitPercent")
+            case .equal: return ""
+            }
+          }()
+          let shareLine: String = {
+            let isEqual = if case .equal = transaction.split { true } else { false }
             if let myShare {
-              L10n.t(
-                "feed.equalSplitMine",
+              return L10n.t(
+                isEqual ? "feed.equalSplitMine" : "feed.splitMine",
                 [
+                  "method": methodLabel,
                   "count": String(transaction.shares.count),
                   "amount": MoneyFormat.amount(myShare.amount),
                 ]
               )
-            } else {
-              L10n.t(
-                "feed.equalSplitNotMine",
-                [
-                  "count": String(transaction.shares.count)
-                ]
-              )
             }
+            return L10n.t(
+              isEqual ? "feed.equalSplitNotMine" : "feed.splitNotMine",
+              [
+                "method": methodLabel,
+                "count": String(transaction.shares.count),
+              ]
+            )
+          }()
           Text(shareLine)
             .font(Typography.captionBold)
             .foregroundStyle(Tokens.muted)
@@ -268,6 +344,38 @@ struct FeedTransactionRowView: View {
       Text(text)
         .font(Typography.captionBold)
         .foregroundStyle(Tokens.ink)
+      if transaction.approval.status == .pending {
+        Text(L10n.tr("approval.pendingTag"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.ink)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 2)
+          .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+      } else if transaction.approval.status == .rejected {
+        Text(L10n.tr("approval.rejectedTag"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.ink)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 2)
+          .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+      }
+      if transaction.dispute != nil {
+        Text(L10n.tr("transactionView.disputeTag"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.ink)
+          .padding(.horizontal, 8)
+          .padding(.vertical, 2)
+          .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+      }
+      if transaction.commentCount > 0 {
+        HStack(spacing: 4) {
+          Image(systemName: "bubble.left")
+            .font(.system(size: 11, weight: .semibold))
+          Text(String(transaction.commentCount))
+            .font(Typography.captionBold)
+        }
+        .foregroundStyle(Tokens.muted)
+      }
       if transaction.version > 1 {
         Text(L10n.tr("feed.edited"))
           .font(Typography.captionBold)
@@ -345,9 +453,209 @@ struct FeedEmptyStreamView: View {
   }
 }
 
+struct FeedSearchBarView: View {
+  @Binding var text: String
+  let hasModalFilters: Bool
+  let onSearchChange: (String) -> Void
+  let onOpenFilters: () -> Void
+
+  var body: some View {
+    HStack(spacing: 8) {
+      TextField(L10n.tr("filter.searchPlaceholder"), text: $text)
+        .font(Typography.subheadlineBold)
+        .foregroundStyle(Tokens.ink)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 44)
+        .background(Tokens.surface, in: Capsule())
+        .accessibilityLabel(L10n.tr("filter.searchPlaceholder"))
+        .onChange(of: text) { _, next in
+          onSearchChange(next)
+        }
+
+      Button(action: onOpenFilters) {
+        Text(L10n.tr("filter.button"))
+          .font(Typography.captionBold)
+          .foregroundStyle(hasModalFilters ? Tokens.surface : Tokens.ink)
+          .padding(.horizontal, 16)
+          .frame(minHeight: 44)
+          .background(hasModalFilters ? Tokens.ink : Tokens.surface, in: Capsule())
+      }
+      .buttonStyle(.plain)
+    }
+  }
+}
+
+struct FeedFilterChipsView: View {
+  let filter: TransactionFilter
+  let members: [Member]
+  let categories: [GroupCategory]
+  let onChange: (TransactionFilter) -> Void
+  let onClear: () -> Void
+
+  var body: some View {
+    let chips = buildChips()
+    if !chips.isEmpty {
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+          ForEach(chips, id: \.key) { chip in
+            Button(action: chip.remove) {
+              HStack(spacing: 6) {
+                Text(chip.label)
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.surface)
+                Image(systemName: "xmark")
+                  .font(.system(size: 10, weight: .bold))
+                  .foregroundStyle(Tokens.surface)
+              }
+              .padding(.horizontal, 12)
+              .frame(minHeight: 36)
+              .background(Tokens.ink, in: Capsule())
+            }
+            .buttonStyle(.plain)
+          }
+
+          Button(action: onClear) {
+            Text(L10n.tr("filter.clear"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.ink)
+              .padding(.horizontal, 12)
+              .frame(minHeight: 36)
+              .background(Tokens.surface, in: Capsule())
+          }
+          .buttonStyle(.plain)
+        }
+      }
+    }
+  }
+
+  private struct ChipItem {
+    let key: String
+    let label: String
+    let remove: () -> Void
+  }
+
+  private func buildChips() -> [ChipItem] {
+    var items: [ChipItem] = []
+    if let q = filter.query {
+      items.append(
+        ChipItem(key: "q", label: "“\(q)”") {
+          var next = filter
+          next.query = nil
+          onChange(next)
+        }
+      )
+    }
+    if let memberId = filter.memberId {
+      let name = members.first(where: { $0.id == memberId })?.name ?? memberId.rawValue
+      items.append(
+        ChipItem(key: "member", label: "\(L10n.tr("filter.member")): \(name)") {
+          var next = filter
+          next.memberId = nil
+          onChange(next)
+        }
+      )
+    }
+    if let category = filter.category {
+      items.append(
+        ChipItem(
+          key: "category",
+          label: "\(L10n.tr("filter.category")): \(CategoryDisplay.localizedName(for: category))"
+        ) {
+          var next = filter
+          next.category = nil
+          onChange(next)
+        }
+      )
+    }
+    if let categoryId = filter.categoryId {
+      let name = categories.first(where: { $0.id == categoryId })?.name ?? categoryId.rawValue
+      items.append(
+        ChipItem(key: "categoryId", label: "\(L10n.tr("filter.category")): \(name)") {
+          var next = filter
+          next.categoryId = nil
+          onChange(next)
+        }
+      )
+    }
+    if filter.uncategorized {
+      items.append(
+        ChipItem(
+          key: "uncategorized",
+          label: "\(L10n.tr("filter.category")): \(L10n.tr("stats.uncategorised"))"
+        ) {
+          var next = filter
+          next.uncategorized = false
+          onChange(next)
+        }
+      )
+    }
+    if let type = filter.type {
+      let label: String =
+        switch type {
+        case .expense: L10n.tr("expenseForm.typeExpense")
+        case .transfer: L10n.tr("expenseForm.typeTransfer")
+        case .income: L10n.tr("expenseForm.typeIncome")
+        case .unknown: type.code
+        }
+      items.append(
+        ChipItem(key: "type", label: "\(L10n.tr("filter.type")): \(label)") {
+          var next = filter
+          next.type = nil
+          onChange(next)
+        }
+      )
+    }
+    if filter.spendingOnly {
+      let label =
+        "\(L10n.tr("filter.type")): \(L10n.tr("expenseForm.typeExpense")) / \(L10n.tr("expenseForm.typeIncome"))"
+      items.append(
+        ChipItem(key: "spendingOnly", label: label) {
+          var next = filter
+          next.spendingOnly = false
+          onChange(next)
+        }
+      )
+    }
+    if filter.from != nil || filter.to != nil {
+      let dateText =
+        if let from = filter.from, let to = filter.to {
+          "\(from) → \(to)"
+        } else {
+          filter.from ?? filter.to ?? ""
+        }
+      items.append(
+        ChipItem(key: "date", label: dateText) {
+          var next = filter
+          next.from = nil
+          next.to = nil
+          onChange(next)
+        }
+      )
+    }
+    return items
+  }
+}
+
+struct FeedNoMatchView: View {
+  let onClear: () -> Void
+
+  var body: some View {
+    VStack(spacing: 12) {
+      Spacer(minLength: 24)
+      Text(L10n.tr("filter.noResult"))
+        .font(Typography.subheadlineBold)
+        .foregroundStyle(Tokens.muted)
+      SPButton(L10n.tr("filter.clear"), variant: .surface, action: onClear)
+      Spacer(minLength: 24)
+    }
+    .frame(maxWidth: .infinity)
+  }
+}
+
 struct FeedEntryBarView: View {
   let isOffline: Bool
   let isReadOnly: Bool
+  var onOpenReceiptCapture: (() -> Void)? = nil
   let onOpenManualForm: () -> Void
   let onOpenQuickEntry: () -> Void
 
@@ -381,6 +689,19 @@ struct FeedEntryBarView: View {
           .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         }
         .buttonStyle(.plain)
+
+        if let onOpenReceiptCapture {
+          Button(action: onOpenReceiptCapture) {
+            Image(systemName: "camera.fill")
+              .font(.system(size: 20, weight: .bold))
+              .foregroundStyle(Tokens.ink)
+              .frame(width: 64, height: 64)
+              .background(Tokens.surface)
+              .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(L10n.tr("receipts.cameraLabel"))
+        }
 
         Button(action: onOpenQuickEntry) {
           HStack {

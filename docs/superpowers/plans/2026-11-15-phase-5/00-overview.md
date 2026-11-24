@@ -1,51 +1,60 @@
-# Sòng Phẳng — Phase 5 (iOS) Implementation Plan — Overview
+# Sòng Phẳng Phase 5 (iOS) Implementation Plan
 
-> **For the implementation agent:** read `AGENTS.md` of **both** repositories, the spec, `../2026-11-15-common.md`, then this file. Work through the stage files in order without stopping between tasks.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans for the continuous phase run described in AGENTS.md §12. Use the project's execute-task and security-review skills for each implementation task. Track the checkboxes in the run record.
+>
+> **Status (2026-11-19):** The owner approved the design at `d40c649` and this plan at `eac8aa7`. Antigravity owns implementation. Codex owns advisor review. The owner owns acceptance and merge.
 
-> **Amended 2026-11-16 (ADR-033).** The application lives in `apps/ios/` of this repository, and its phase 1 screens are built first by the interface stage, `../2026-11-16-ios-ui.md`, on scripted fakes. Read "the iOS repository" and `../songphang-ios` as `apps/ios/`; there is one working directory and `Scripts/sync-openapi.sh` is not needed. **Before this plan is run, the advisor rewrites stage 5B as integration:** add `GeneratedAPI` and `Repositories`, replace the fakes at the composition root, and bring the screens up to date from the interface stage's web baseline. Stage 5B as written below describes building the screens from nothing and must not be run as is.
+**Goal:** Deliver the shared iOS/web expense-splitting journey on a local iPhone Simulator after 5B, then bring iOS to feature parity with the web and prepare Release for owner-led TestFlight verification.
 
-**Goal:** A native iPhone application with every feature the web application has when the run starts, signing in with Apple, Google or email, receiving push notifications, and opening invite links directly.
+**Architecture:** Evolve the existing 5U SwiftUI app under `apps/ios/`. The API owns permissions and all official money values. The Swift package isolates OpenAPI-generated types, transport, Keychain and snapshots behind the existing domain protocols. AppShell composes live repositories for the default Debug run and Release.
 
-**Architecture:** The server stays the only place with logic. Stage 5A freezes the API contract into a committed OpenAPI file and adds what native clients need. The application is one Swift package of compiler-enforced modules (domain, generated client, repositories, design system, feature areas, shell): screens know only the domain, repositories alone touch the generated client, the Keychain and the snapshot files. It keeps no database, computes no official amount, and stores its session token in the Keychain.
+**Tech stack:** Swift 6, SwiftUI, iOS 26 minimum, Apple Swift OpenAPI Generator/Runtime/URLSession, system Apple/Google authentication surfaces, existing Hono/Zod/PostgreSQL/worker stack.
 
-**Tech Stack:** this repository unchanged (no new library; Apple tokens and APNs use `node:crypto` and `node:http2`). iOS repository: Swift 6, SwiftUI, iOS 26 minimum, `swift-openapi-generator`, `swift-openapi-runtime`, `swift-openapi-urlsession`.
+**Spec:** [Phase 5 design](../../specs/2026-11-15-phase-5-ios-design.md), [iOS architecture](../../specs/2026-11-16-ios-codebase-architecture-design.md), [5U handoff](../../runs/ios-ui/progress.md) and [common phase rules](../2026-11-15-common.md).
 
-**Spec:** `docs/superpowers/specs/2026-11-15-phase-5-ios-design.md`, and for everything inside the iOS repository `docs/superpowers/specs/2026-11-16-ios-codebase-architecture-design.md` ("the architecture design"). Read both.
+## Global Constraints
 
-**Prompt placeholders:** `<SPEC>` the spec above; `<PLAN>` `docs/superpowers/plans/2026-11-15-phase-5`; `<BRANCH>` `phase-5`; `<LAST TASK>` `5E.2`.
-
-## Stage files
-
-| Order | File | Tasks | Where |
-|---|---|---|---|
-| 0 | `../2026-11-15-common.md` | 0 | This repository |
-| 1 | `5a-api.md` | 5A.1–5A.6 | This repository |
-| 2 | `5b-5e-app.md` | 5B.1–5B.7, 5C.1–5C.2, 5D.1–5D.3, 5E.1–5E.2 | iOS repository (and this one for 5C) |
-
-## Two repositories
-
-- API work is committed here on `phase-5`. Application work is committed in `../songphang-ios` on its `main` branch (a new repository has no other), one commit per task, never pushed.
-- Run files stay here. Each application task's entry in `progress.md` records the iOS repository's commit hash.
-- The application's automated gate replaces `pnpm check`: `xcodebuild -scheme SongPhang -destination 'generic/platform=iOS Simulator' build` with `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`, and `swift format lint --strict --recursive .`. Never silence a warning with an attribute or a force unwrap.
-- If Xcode or a simulator runtime is not installed, the run does stage 5A, records everything from 5B on as "Not built: no Xcode", and stops. Do not install Xcode.
-
-## Constraints for this phase
-
-- **Additive API only** from task 5A.1 on (spec 4.1). `pnpm contract:check` is part of `pnpm check`.
-- The application never calculates a share, a balance, a settlement or a QR payload. The only arithmetic on money in Swift is integer addition and subtraction for display hints that the web also shows ("Còn dư", the overdraft amount).
-- Strings: `Localizable.xcstrings` holds exactly the strings of `apps/web/src/messages/vi.ts`, plus the iOS-only ones of spec 5.3. Task 5B.2 writes a script (in the iOS repository, `Scripts/check-strings.sh`) that lists web strings missing from the catalog; it reports, it does not assert, and its output is recorded at every gate.
-- The token is read from and written to the Keychain in one file. It is never printed, never put in a URL, never stored in `UserDefaults`.
-- No analytics, no crash-reporting SDK, no third-party SDK of any kind.
-- **Dependency rule:** each target in `Package.swift` depends on exactly the modules the architecture design's section 5 lists. Adding a dependency between existing modules to make something compile is never a "decide and record" matter; the code moves to the module where it belongs.
-- **Performance:** the rules of the architecture design's section 8.2 apply to every screen; the measures of its section 8.3 are taken at every stage gate from 5B on and recorded with their real numbers.
-- Screens: when a web screen exists, the iOS screen has the same content, order and strings; platform conventions replace only navigation chrome and controls (navigation stack, sheets, system pickers).
-- Screenshots recorded in `progress.md` are taken with the iOS Simulator tool or `xcrun simctl io booted screenshot`, saved under `docs/superpowers/runs/phase-5/screens/`.
+- One repository and one branch, `phase-5`, created by the advisor after authorization. The workstation baseline at planning is `d40c649`, based on the Phase 4 merge `22a16fb`.
+- No automated tests, test libraries or committed acceptance assertion scripts. Exercises are manual UI, shell and HTTP operations. Document actual observations and scrub credentials, auth codes and personal data from evidence.
+- Use disposable databases and storage directories with local adapters. No real provider calls, account creation outside local fixtures, deployment, archive, upload, or push by the agent. Real AI verification stays deferred until all phases including iOS are done.
+- Keep v1 additive. Preserve existing cookie clients, role rules, request/response shapes and Zod validation. Outsiders receive 404 for group resources. The only new dependencies in this plan are the three Apple OpenAPI packages. Pin the resolved stable versions.
+- Keep money as integer đồng. Split previews, countable approval state, balances, funds and QR payloads come from the server. Preserve idempotency per create form and edit version checks.
+- Keep the module graph of the architecture design. No generated DTOs or credentials in feature targets. SwiftUI views use the existing Vietnamese web copy and one String Catalog. Preserve Dynamic Type, VoiceOver, Reduce Motion and native navigation.
+- `apps/ios/AGENTS.md` governs edits inside iOS. Cross-stack work is bounded by each task's Files section. Advisor owns standing-document amendments. The run agent records needed corrections and evidence for review.
+- The run progresses under AGENTS.md §12. The 5B owner handoff is a pinned, independently reproducible checkpoint. Its owner acceptance can be recorded at that revision or during the final replay. Follow up on all findings before final owner acceptance.
 
 ## Review Focus
 
-1. **The application shows a number the server did not send.** → 5B.5, 5B.6.
-2. **A session token leaks** into logs, a URL, a backup, or another application through the URL scheme. → 5A.2, 5B.3.
-3. **A contract change breaks the installed application.** → 5A.1.
-4. **A push shows private data on a lock screen against the user's wish, or reaches a signed-out device.** → 5A.5, 5C.1.
-5. **A forged Apple token signs in.** → 5A.3.
-6. **A snapshot outlives its owner's session,** or shows one user's groups to the next person who signs in on the same phone. → 5B.3, 5B.4.
+| Risk | Owning exercise |
+|---|---|
+| Late reads or events revive data from a revoked session or removed group | 5B.1–5B.4: revoke or remove while requests and SSE are active, then relaunch and switch accounts. |
+| A generated client fails on a new value or drives a destructive action using an unknown enum | 5A.1 and 5B.2: exercise compatible additions in a scratch snapshot and unknown-value decoding in the live mapping path. |
+| Ledger differs between iOS and web after retry, stale edit, approval or a settlement | 5B.4–5B.5, 5D.1 and 5D.6: compare API snapshots, transaction IDs and role-specific outcomes. |
+| A provider callback, notification or link crosses a session or group boundary | 5C.1–5C.6 and 5D.7: exercise replay, foreign links, device/session loss, and wrong-session Telegram confirmation. |
+| Green builds hide missing journeys or unavailable external checks | Task 0 and 5E.2: reconcile every baseline row against evidence, reporting local and external results independently. |
+
+## Files and stage order
+
+| Order | Plan | Tasks and owned work |
+|---|---|---|
+| 0–5A | [5a-api.md](5a-api.md) | Task 0 inventories live API, web and 5U. 5A.1–5A.3 own the route-registry snapshot, feature version metadata, sessions and API gate. |
+| 5B | [5b-5e-app.md](5b-5e-app.md) | 5B.1–5B.5 own the native client, core live screens and **early Simulator ↔ web acceptance**. |
+| 5C | [5c-integrations.md](5c-integrations.md) | 5C.1–5C.6 own Google and Apple sign-in, push device/worker/app, and native invite delivery with associated domains. |
+| 5D–5E | [5b-5e-app.md](5b-5e-app.md) | 5D.1–5D.7 own Phase 2–4 parity, including receipt capture. 5E.1–5E.2 own Release, the owner runbook and **final parity acceptance**. |
+
+**Handoff inputs:** `<SPEC>` = `docs/superpowers/specs/2026-11-15-phase-5-ios-design.md`; `<PLAN>` = this directory; `<BRANCH>` = `phase-5`; `<LAST TASK>` = `5E.2`. Run artifacts live in `docs/superpowers/runs/phase-5/`. Use the common prompt with this stage table and the Phase 5 Task 0 below.
+
+**Advisor work:** After owner authorization, create the phase branch and initial run records. Own the spec §9 amendments to ADR-014/029/030/032, API spec, database design, SRS and root agent rules. Mark additions as planned until verified and reconcile the standing docs with the reviewed implementation before merge.
+
+## Verification and evidence
+
+- Per task, run `pnpm check`. For Swift changes run the two iOS commands below and compile existing previews in Debug. Exercise the task locally, run security-review where code changes, and record reproduction, observations and exact failures in `progress.md`. Commit the task and its evidence together.
+- At each stage boundary, run `pnpm check`, `pnpm build`, the iOS Debug build and lint, the complete route/role matrix for the current route inventory, the acceptance replay for every earlier merged phase and completed stage, capability-off checks and `pnpm db:check-balances` (expected `All groups balanced`). Keep expected refusals separate from gate failures. Follow AGENTS.md §12 on failed gates. Report the exact omitted cases if prior evidence cannot be replayed.
+- Use the same evidence schema at each stage: stage and SHA, fixture and commands, expected and observed results, route/role and journey coverage counts, screenshots and performance recordings, issues and verification gaps. Record actual iOS results from 5B onward for the architecture §8.3 measures on a 500-transaction fixture. When a trace cannot be captured on Simulator, include the tool output. Do not infer first-content time from an executable-load interval.
+- The 5B handoff belongs in `handoff-5b.md`, with screenshots under `screens/5b/`. The full parity inventory belongs in `parity-matrix.md`. The final handoff in `manual-checks.md` identifies the tested revision, local pass/fail, owner-only checks and an owner result field.
+
+```sh
+xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang \
+  -destination 'generic/platform=iOS Simulator' SWIFT_TREAT_WARNINGS_AS_ERRORS=YES build
+xcrun swift-format lint --strict --recursive apps/ios
+```

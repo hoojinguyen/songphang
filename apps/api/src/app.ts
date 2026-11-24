@@ -1,10 +1,18 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { GroupRole, UserDto } from "@songphang/contract";
-import type { Db } from "@songphang/db";
+import type { Db, DbSessionClient } from "@songphang/db";
 import type { FileStore } from "@songphang/storage";
 import { bodyLimit } from "hono/body-limit";
 import { uuidv7 } from "uuidv7";
 import type { SentenceAi } from "./ai/sentence-ai.js";
+import {
+	type AppleKeySetProvider,
+	createAppleKeySetProvider,
+} from "./auth/apple/key-set.js";
+import {
+	type AppleTokenAdapter,
+	createAppleTokenAdapter,
+} from "./auth/apple/token-adapter.js";
 import type { ChatSender } from "./bot/chat-sender.js";
 import type { Config } from "./config.js";
 import { AppError, handleError, validateRequest } from "./errors.js";
@@ -32,6 +40,7 @@ import { registerHealthRoute } from "./routes/health.js";
 import { registerInviteRoutes } from "./routes/invites.js";
 import { registerMeRoute } from "./routes/me.js";
 import { registerMemberRoutes } from "./routes/members.js";
+import { registerMobileAuthRoutes } from "./routes/mobile-auth.js";
 import { registerNotificationRoutes } from "./routes/notifications.js";
 import { registerReceiptScanRoutes } from "./routes/receipt-scans.js";
 import { registerReminderRoutes } from "./routes/reminders.js";
@@ -46,6 +55,9 @@ export type AppEnv = {
 		requestId: string;
 		user: UserDto;
 		sessionToken: string;
+		sessionId: string;
+		sessionClient: DbSessionClient;
+		sessionTransport: "bearer" | "cookie" | "mixed";
 		authEmail: string;
 		groupAccess: { groupId: string; role: GroupRole; memberId: string | null };
 	};
@@ -61,9 +73,31 @@ export type AppDeps = {
 	fileStore: FileStore;
 	sentenceAi?: SentenceAi | null;
 	chatSender?: ChatSender | null;
+	appleKeySet?: AppleKeySetProvider | null;
+	appleTokenAdapter?: AppleTokenAdapter | null;
 };
 
+export const OPENAPI_DOCUMENT_CONFIG = {
+	openapi: "3.1.0",
+	info: {
+		title: "Song Phang API",
+		version: "1.0.0",
+		description:
+			"Version 1 additive-only HTTP contract for Song Phang web and native clients. Clients must ignore unknown object fields and map unknown enum values to safe fallbacks (for example read-only or other). App versions use three-component major.minor.patch strings.",
+	},
+} as const;
+
 export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
+	const resolvedDeps: AppDeps = deps.config.appleProvider
+		? {
+				...deps,
+				appleKeySet:
+					deps.appleKeySet ?? createAppleKeySetProvider(deps.config, deps.now),
+				appleTokenAdapter:
+					deps.appleTokenAdapter ??
+					createAppleTokenAdapter(deps.config, deps.now),
+			}
+		: deps;
 	const app = new OpenAPIHono<AppEnv>({
 		defaultHook: validateRequest,
 	});
@@ -93,39 +127,40 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	app.notFound(() => {
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	});
-	registerHealthRoute(app, deps.db);
-	registerFeatureRoute(app, deps);
-	registerMeRoute(app, deps);
-	registerNotificationRoutes(app, deps);
-	registerUnsubscribeRoutes(app, deps);
-	registerGroupRoutes(app, deps);
-	registerEventRoutes(app, deps);
-	registerGroupUserRoutes(app, deps);
-	registerInviteRoutes(app, deps);
-	registerMemberRoutes(app, deps);
-	registerFundRoutes(app, deps);
-	registerCategoryRoutes(app, deps);
-	registerSettlementRoutes(app, deps);
-	registerTransactionRoutes(app, deps);
-	registerCommentRoutes(app, deps);
-	registerAttachmentRoutes(app, deps);
-	registerReceiptScanRoutes(app, deps);
-	registerBalanceRoutes(app, deps);
-	registerReminderRoutes(app, deps);
-	registerChatLinkRoutes(app, deps);
-	registerTelegramWebhookRoute(app, deps);
-	registerBudgetRoutes(app, deps);
-	registerStatsRoutes(app, deps);
-	registerExportRoutes(app, deps);
-	registerActivityRoutes(app, deps);
-	registerAuthRoutes(app, deps);
-	registerGoogleRoutes(app, deps);
-	if (deps.config.devLogin && deps.config.appEnv === "development") {
-		registerDevRoutes(app, deps);
+	registerHealthRoute(app, resolvedDeps.db);
+	registerFeatureRoute(app, resolvedDeps);
+	registerMeRoute(app, resolvedDeps);
+	registerNotificationRoutes(app, resolvedDeps);
+	registerUnsubscribeRoutes(app, resolvedDeps);
+	registerGroupRoutes(app, resolvedDeps);
+	registerEventRoutes(app, resolvedDeps);
+	registerGroupUserRoutes(app, resolvedDeps);
+	registerInviteRoutes(app, resolvedDeps);
+	registerMemberRoutes(app, resolvedDeps);
+	registerFundRoutes(app, resolvedDeps);
+	registerCategoryRoutes(app, resolvedDeps);
+	registerSettlementRoutes(app, resolvedDeps);
+	registerTransactionRoutes(app, resolvedDeps);
+	registerCommentRoutes(app, resolvedDeps);
+	registerAttachmentRoutes(app, resolvedDeps);
+	registerReceiptScanRoutes(app, resolvedDeps);
+	registerBalanceRoutes(app, resolvedDeps);
+	registerReminderRoutes(app, resolvedDeps);
+	registerChatLinkRoutes(app, resolvedDeps);
+	registerTelegramWebhookRoute(app, resolvedDeps);
+	registerBudgetRoutes(app, resolvedDeps);
+	registerStatsRoutes(app, resolvedDeps);
+	registerExportRoutes(app, resolvedDeps);
+	registerActivityRoutes(app, resolvedDeps);
+	registerAuthRoutes(app, resolvedDeps);
+	registerMobileAuthRoutes(app, resolvedDeps);
+	registerGoogleRoutes(app, resolvedDeps);
+	if (
+		resolvedDeps.config.devLogin &&
+		resolvedDeps.config.appEnv === "development"
+	) {
+		registerDevRoutes(app, resolvedDeps);
 	}
-	app.doc31("/api/v1/openapi.json", {
-		openapi: "3.1.0",
-		info: { title: "Song Phang API", version: "0.0.0" },
-	});
+	app.doc31("/api/v1/openapi.json", OPENAPI_DOCUMENT_CONFIG);
 	return app;
 }

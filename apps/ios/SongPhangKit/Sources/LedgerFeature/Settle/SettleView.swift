@@ -163,6 +163,7 @@ public struct SettleView: View {
       SettleAmountField(
         value: amountText,
         label: L10n.t("settle.amountLabel", ["name": data.fromMember.name]),
+        isDisabled: model.isSubmitting,
         onChange: { model.updateAmountText($0) }
       )
     }
@@ -176,6 +177,7 @@ public struct SettleView: View {
       dayButton(label: L10n.tr("settle.yesterday"), selection: .yesterday)
       dayButton(label: L10n.tr("settle.otherDay"), selection: .other)
     }
+    .disabled(model.isSubmitting)
     .accessibilityLabel(L10n.tr("expenseForm.occurredAtLabel"))
 
     if model.daySelection == .other {
@@ -185,6 +187,7 @@ public struct SettleView: View {
         displayedComponents: [.date]
       )
       .labelsHidden()
+      .disabled(model.isSubmitting)
       .padding(.horizontal, 16)
       .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
       .background(Tokens.surface, in: Capsule())
@@ -243,13 +246,15 @@ public struct SettleView: View {
 private struct SettleAmountField: View {
   let value: String
   let label: String
+  let isDisabled: Bool
   let onChange: (String) -> Void
   @State private var text: String
   @FocusState private var isFocused: Bool
 
-  init(value: String, label: String, onChange: @escaping (String) -> Void) {
+  init(value: String, label: String, isDisabled: Bool, onChange: @escaping (String) -> Void) {
     self.value = value
     self.label = label
+    self.isDisabled = isDisabled
     self.onChange = onChange
     self._text = State(initialValue: value)
   }
@@ -260,6 +265,7 @@ private struct SettleAmountField: View {
     TextField("0", text: $text)
       .keyboardType(.numberPad)
       .focused($isFocused)
+      .disabled(isDisabled)
       .multilineTextAlignment(.center)
       .font(.system(size: 44, weight: .black))
       .foregroundStyle(Tokens.ink)
@@ -274,7 +280,11 @@ private struct SettleAmountField: View {
           )
       )
       .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-      .onTapGesture { isFocused = true }
+      .onTapGesture {
+        if !isDisabled {
+          isFocused = true
+        }
+      }
       .onChange(of: text) { _, newText in
         if newText != value { onChange(newText) }
       }

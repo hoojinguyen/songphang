@@ -1,10 +1,22 @@
-import type { CreateTransactionRequest, SplitInput } from "@songphang/contract";
+import type {
+	CreateTransactionRequest,
+	SplitInput,
+	UpdateTransactionRequest,
+} from "@songphang/contract";
 import { computeShares } from "@songphang/core";
 import { type DbExecutor, listGroupMembers } from "@songphang/db";
 import { vi } from "../../../web/src/messages/vi.ts";
 import { AppError } from "../errors.js";
-export function normalizeTransaction(request: CreateTransactionRequest) {
-	if (request.type !== "transfer") return request;
+export function normalizeTransaction(
+	request: CreateTransactionRequest | UpdateTransactionRequest,
+) {
+	if (request.type !== "transfer") {
+		return {
+			...request,
+			category: request.category ?? null,
+			categoryId: request.categoryId ?? null,
+		};
+	}
 	const split: SplitInput = {
 		method: "exact",
 		members: [request.toMemberId],
@@ -26,7 +38,7 @@ export function normalizeTransaction(request: CreateTransactionRequest) {
 export async function calculateShares(
 	executor: DbExecutor,
 	groupId: string,
-	input: CreateTransactionRequest,
+	input: CreateTransactionRequest | UpdateTransactionRequest,
 ) {
 	const request = normalizeTransaction(input);
 	if (input.type === "income" && request.split.method === "items") {

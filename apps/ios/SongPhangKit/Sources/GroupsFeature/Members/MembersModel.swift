@@ -15,6 +15,7 @@ public final class MembersModel {
   public let groupId: ExpenseGroup.ID
   public private(set) var state: Loadable<ScreenData> = .loading
   public private(set) var refreshError: AppError?
+  private(set) var hasCurrentPaymentDetails = false
   public private(set) var actionError: AppError?
   public private(set) var isPerformingAction = false
   public var expandedMemberId: Member.ID?
@@ -40,6 +41,7 @@ public final class MembersModel {
   }
 
   public func load() async {
+    hasCurrentPaymentDetails = false
     async let cachedGroup = groupsRepository.lastKnownGroup(id: groupId)
     async let cachedMembers = membersRepository.lastKnownMembers(groupId: groupId)
     async let cachedUsers = membersRepository.lastKnownGroupUsers(groupId: groupId)
@@ -62,16 +64,23 @@ public final class MembersModel {
       async let fetchedGroup = groupsRepository.group(id: groupId)
       async let fetchedMembers = membersRepository.members(groupId: groupId)
       async let fetchedUsers = membersRepository.groupUsers(groupId: groupId)
-      async let fetchedBalances = balancesRepository.balances(groupId: groupId)
+      async let fetchedBalances: Result<GroupBalances, AppError> = {
+        do throws(AppError) {
+          return .success(try await balancesRepository.balances(groupId: groupId))
+        } catch {
+          return .failure(error)
+        }
+      }()
       async let fetchedInvite = invitesRepository.invite(groupId: groupId)
 
       let g = try await fetchedGroup
       let m = try await fetchedMembers
       let u = try await fetchedUsers
-      let b = try await fetchedBalances
+      let b = try await fetchedBalances.get()
       let inv = try? await fetchedInvite
       state = .loaded(ScreenData(group: g, members: m, users: u, balances: b, invite: inv))
       refreshError = nil
+      hasCurrentPaymentDetails = true
     } catch let error as AppError {
       if case .loaded = state {
         refreshError = error
@@ -202,6 +211,22 @@ public final class MembersModel {
     do throws(AppError) {
       try await membersRepository.leaveGroup(groupId: groupId)
       onLeft()
+    } catch {
+      actionError = error
+    }
+  }
+
+  public func setMuted(_ muted: Bool) async {
+    guard !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      _ = try await groupsRepository.setMuted(id: groupId, muted: muted)
+      if case .loaded(var current) = state {
+        current.group.muted = muted
+        state = .loaded(current)
+      }
     } catch {
       actionError = error
     }

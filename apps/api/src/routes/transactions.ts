@@ -209,6 +209,7 @@ export function registerTransactionRoutes(
 						request,
 						now: deps.now(),
 						enqueue: deps.enqueue,
+						pushEnabled: Boolean(deps.config.pushProvider),
 					}),
 				}),
 			);

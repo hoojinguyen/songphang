@@ -1,252 +1,146 @@
-# Phase 5 — Stages 5B to 5E: The iOS Application
+# Phase 5 — iOS Core Integration, Web Parity and Release
 
-> Part of the phase 5 plan. Read `00-overview.md` first, including its amendment of 2026-11-16: tasks here are in `apps/ios/`, and stage 5B is to be rewritten as integration after the interface stage (`../2026-11-16-ios-ui.md`). The "Rules for every task" below already apply to the interface stage.
-
-**Spec:** sections 3, 5, 6, 7 of the phase 5 spec, and the whole of `docs/superpowers/specs/2026-11-16-ios-codebase-architecture-design.md` ("the architecture design", cited below as AD).
-
-## Decisions for these stages
-
-1. Bundle identifier `vn.songphang.app` and display name `Sòng Phẳng` until the owner's Apple account says otherwise; both live in one `.xcconfig` file.
-2. The API base address comes from the build configuration: Debug `http://localhost:4000/api/v1`, Release from `API_BASE_URL` in `Release.xcconfig` (a placeholder `https://example.invalid/api/v1` until the domain exists).
-3. One Swift package inside the repository, `SongPhangKit`, holds all code as the modules of AD section 5. The application target holds only the entry point and its resources.
-4. Read responses are kept by `SnapshotStore` as AD section 8.1 describes. There is no other cache.
-5. A web screen is ported by reading its page and components in this repository and the spec section that designed it; the task names the web files.
-6. A feature module is added to `Package.swift` by the first task that writes a file in it, with exactly the dependencies `Domain`, `DesignSystem`, `PreviewSupport`.
-
-## Structure of the iOS repository
-
-AD section 10. Paths in the tasks below are relative to `SongPhangKit/Sources/` unless they start with `App/`, `Config/` or `Scripts/`.
+> Follow [00-overview.md](00-overview.md). Implement **5B**, then run [5C](5c-integrations.md), then return here for **5D–5E**. Swift module paths in the Files lists are relative to `apps/ios/SongPhangKit/Sources/`. API paths are relative to `/api/v1`.
 
 ## Rules for every task from 5B.3 on
 
-- **A screen** is a folder in its feature module with `<Name>Model.swift` (`@Observable`, receives repository protocols through its initialiser) and `<Name>View.swift`, which ends with one `#Preview` per state the screen can show (loading, loaded, empty, failed), built from `PreviewSupport`.
-- **A resource** is added in four places: its types and protocol in `Domain`; its implementation and mapping in `Repositories`; its fake and sample values in `PreviewSupport`; its field in `AppShell/AppDependencies.swift`.
-- **A read** has two functions: `lastKnown…()` (returns the snapshot or `nil`, never throws, never uses the network) and the fetching function (`async throws(AppError)`, updates the snapshot). A screen calls the first, shows it, then the second; a failed refresh sets `refreshError` and leaves shown content in place.
-- **Navigation** leaves a feature through a closure parameter; only `AppShell` knows `Route` and constructs screens.
-- **Performance:** AD section 8.2. Independent reads start together; every load runs in the view's `.task` so it is cancelled with the screen.
-- **Step 2 "Gate"** always includes, besides the build and lint: every `#Preview` of the task renders in Xcode's canvas or, from the command line, the build of the scheme succeeds with previews compiled (previews are ordinary code and fail the build when broken).
+- Adapt the existing SwiftUI screens and protocols. A screen is a folder in its feature module with a view, an `@Observable` model receiving its protocol dependencies, and Debug previews for its applicable states.
+- For a resource, put domain types and protocols in `Domain`, transport and mapping in `Repositories`, scripted scenarios in `PreviewSupport`, and injection in `AppShell`. New feature targets have exactly the dependencies in architecture §5 and never import each other.
+- For a read covered by architecture §8.1, keep the existing paired `lastKnown…()` and fetch methods. Show the snapshot immediately, keep shown content on transient refresh failure and cancel loads with their view. Feature navigation uses closure intents. Only AppShell constructs destination screens.
+- Use the catalog for all new copy. Update keys from `apps/web/src/messages/vi.ts` for the journeys delivered by each task, including interpolated placeholders. `bash apps/ios/Scripts/check-strings.sh` reports missing and divergent values. At 5B any remaining difference must map to a 5D parity row. By 5E no in-scope web value may be missing or divergent.
 
----
+## Stage 5B — Live core app and early owner checkpoint
 
-### Task 5B.1: Project, package, generated client, design system
+### Task 5B.1: Generated client, transport and live composition
 
-**Files:** `SongPhang.xcodeproj`, `App/SongPhangApp.swift`, `App/Info.plist`, `App/Assets.xcassets`, `Config/*.xcconfig`, `SongPhangKit/Package.swift`, `Scripts/sync-openapi.sh`, `AGENTS.md`; modules `Domain`, `GeneratedAPI`, `Repositories` (`Transport/`, `Session/`), `DesignSystem`, `PreviewSupport`, `AppShell`.
+**Files:** `apps/ios/SongPhangKit/Package.swift`, resolved package lock, `GeneratedAPI/openapi-generator-config.yaml`, generator input adjacent to the config, `Repositories/{Transport,Session}/`, `AppShell/AppDependencies.swift`, `apps/ios/App/{SongPhangApp.swift,Info.plist}`, `apps/ios/Config/*.xcconfig`.
 
-**Interfaces — produces:**
-- `Package.swift`: the tools version of the installed toolchain; `platforms: [.iOS(.v26)]`; one shared settings list applied to every target: Swift 6 language mode, warnings as errors, and the upcoming features `ExistentialAny`, `InternalImportsByDefault`, `MemberImportVisibility`, `NonisolatedNonsendingByDefault`, `InferIsolatedConformances`; `.defaultIsolation(MainActor.self)` added for `DesignSystem`, `PreviewSupport`, `AppShell` and, later, every feature module. Target dependencies exactly as AD section 5. Read the manifest API of the installed toolchain for the exact spelling of each setting.
-- `AGENTS.md`: as the phase 5 spec's section 3 says, plus AD sections 6 and 8.2 as hard rules and AD section 9 as "where things go".
-- `Scripts/sync-openapi.sh` copies `../songphang/packages/contract/openapi.json` into `GeneratedAPI/`; the generator runs as a build plugin on that target with `generate: [types, client]` and `accessModifier: package`.
-- `Domain`: `struct Money: Sendable, Hashable, Comparable, AdditiveArithmetic` over `Int64` (no multiplication, no division); `enum AppError: Error, Sendable` with the cases of AD 7.1; `enum Loadable<Value: Sendable>: Sendable`; `struct IdempotencyKey: Sendable` (a UUID string created by `init()`); `enum MemberShape` and `enum MemberColor` with the server's codes and a fallback.
-- `Repositories/Transport`: `APITransport` builds the generated client with the base address and a middleware adding `Authorization` from `TokenStore` and `X-App-Version`; `func appError(from:) -> AppError` is the single error mapping (no network → `.offline`; 401 → `.unauthorized`; the upgrade code → `.upgradeRequired`; 409 → `.conflict`; 429 → `.rateLimited`; other API errors → `.api(code:status:)`; anything else → `.unexpected`).
-- `Repositories/Session`: `Keychain.set/get/delete(account:)` (generic password items, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, no iCloud synchronisation); `actor TokenStore { func token() -> String?; func set(_:); func clear() }`. Both `internal`: no declaration that returns the token is `public`.
-- `DesignSystem`: `Tokens` with every color of `docs/06-ux-ui/user-flows.md` section 6 and of `apps/web/src/app/globals.css`, by the same names. `MemberShapeView(shape:color:initial:size:)` draws `circle`, `diamond`, `squircle`, `leaf` (and `fund` when phase 2 is merged) with the web's geometry. `MoneyFormat.full(_: Money) -> String` → `150.000 đ` (dot grouping, a non-breaking space before `đ`); `MoneyFormat.compact` for the thousand-based form of the stream row; `MoneyText`. `LoadingSkeleton`, `LoadError` (with `Thử lại`), `EmptyState`, `OfflineBanner`. Be Vietnam Pro registered at launch; text styles relative to Dynamic Type.
-- `AppShell`: `struct AppDependencies` (empty until 5B.3) with `static func live(configuration:)`; `RootView`, which in this task shows the debug gallery.
+**Interfaces:** `GeneratedAPI` consumes the committed 5A document, generates types and client only with package visibility, and stays inside the module graph. Use the same-repository input link when supported. If the build plugin cannot resolve it, copy deterministically using a script in `apps/ios/Scripts/` and check that the copy matches the authoritative snapshot at the build gate. `Repositories` owns the generated client, a Bearer-only URLSession transport with cookie storage disabled, `X-App-Version`, and a single typed error mapper. The `TokenStore` actor stores the token as a generic password item with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. Only `Repositories` handles the raw token.
 
-- [ ] **Step 1: Create the project and package; add the three Apple packages at their latest stable versions; record versions and licenses**
-- [ ] **Step 2: The automated gate (build and lint).** Then prove the dependency rule once: add `import GeneratedAPI` to a `DesignSystem` file → the build fails; remove it. Record the compiler's message. If an upcoming-feature flag cannot be applied to `GeneratedAPI`, drop it for that target only and record it in `decisions.md`.
-- [ ] **Step 3: Exercise** — the debug-only gallery showing every token, every shape in every color at 24, 44 and 96 points, the buttons, the state views, and a list of money values (`0`, `1000`, `150000`, `999999999999`). Screenshot in light appearance, at the default and the largest accessibility text size. Compare each color with the web by eye and by value.
-- [ ] **Step 4: Commit** (iOS repository) — `feat(app): add project, modules, generated API client, and design system`
+- [ ] Add the three Apple Swift OpenAPI packages at pinned stable resolutions and build against the real document. Check that the versioned URL path is composed exactly once with the configured base. Do not edit generated Swift or hand-maintain a second contract. Fix any invalid schema documentation at the source within the 5A boundary and regenerate. [Swift OpenAPI Generator documentation](https://github.com/apple/swift-openapi-generator).
+- [ ] Establish `AppDependencies.live(configuration:)`. Deliver a live reachability check with `GET /features` from the existing shell. Keep unconnected screens explicitly gated during intermediate commits and remove those gates as their tasks land. Scripted data stays selectable only for Debug scenarios and previews. Release loses the 5U compile guard once all live core dependencies exist.
+- [ ] Run the default Debug app against localhost and record an API request and capability result. Confirm preview/scripted mode still works and credentials are absent from logs and exported public declarations. Run the task gate and commit `feat(ios): generate the v1 client and compose live transport`.
 
----
+### Task 5B.2: Account lifecycle and session-scoped snapshots (S1 and S13)
 
-### Task 5B.2: Strings
+**Files:** `Domain/Repositories/AuthRepository.swift`, `Domain/Models/ServerFeatures.swift`, new session DTO/domain types as needed, `Repositories/{Auth,Session,Snapshots}/`, `AuthFeature/{SignIn,Register,ForgotPassword,VerifyEmailBanner}/`, `AccountFeature/Account/`, `AppShell/{SessionModel,RootView,AppDependencies}.swift`, `PreviewSupport`, catalog.
 
-**Files:** `DesignSystem/Resources/Localizable.xcstrings`, `Scripts/check-strings.sh`
+**Interfaces:** Keep the existing async typed-throws auth protocol for current user, sign-in, registration, verification resend, password reset request, password change, sign-out and account deletion. Add session-list and revoke operations for the 5A endpoints. Map `appleSignIn` and `push` from `/features` and Google from `/auth/providers`; provider UI is connected in 5C. Route account verification and reset links through web, then refresh user state when iOS returns to foreground. For a rejected build, compare minimum versions numerically by component, surface the blocking screen and accept equal versions. Enable user-controlled App Store navigation only with the configured store destination.
 
-Every key of `apps/web/src/messages/vi.ts` becomes a catalog key with the same dotted name and the same value; placeholders `{name}` become Swift format arguments while the visible text stays identical. Add the iOS-only strings of spec 5.3 under `ios.*`. Feature modules read strings through `DesignSystem` (generated symbols if the toolchain produces them for package resources, otherwise one accessor using the module's bundle). The script prints web keys missing from the catalog and catalog keys whose value differs from the web's.
+**Snapshot interface:** One internal `SnapshotStore` actor with scoped reads, writes and removal. The authenticated scope includes the user ID and a session generation. Every network write-back must still match the active scope and, for group data, the group-access generation. Protect files until first unlock, exclude them from backup, cap at 20 recent groups, and discard corrupt files. Use the architecture §8.1 cache coverage and the existing paired domain methods. Explicit sign-out, current-session revoke, deletion and authenticated 401 invalidate the scope and clear the corresponding data before exposing signed-out UI. Plain network failure retains the user's current protected content and disables writes.
 
-- [ ] **Step 1: Write them**
-- [ ] **Step 2: Gate; run the script → no missing key, no differing value. Record the output.**
-- [ ] **Step 3: Commit** — `feat(app): add Vietnamese strings identical to the web`
+- [ ] Wire login, account actions, session invalidation and the snapshot store. Exercise account registration, console link, wrong-password and rate-limit copy, kill/relaunch, password change and deletion on disposable accounts. Verify revocation from a second web session removes the iOS session and active content and the next user sees only their own data.
+- [ ] Exercise revoked late responses and corrupt snapshots as the corresponding resource paths become live in 5B.3 and 5B.4. In a disposable response fixture, add an unknown enum value and an extra field. Preserve readable data with a safe unknown fallback, including read-only treatment of an unknown role.
+- [ ] Verify minimum-version cases `1.0.0/1.0.0` allowed, `1.0.0/1.0.1` blocked, and `1.10.0/1.9.0` allowed (build/minimum). Run the task gate and commit `feat(ios): connect native account lifecycle and protected snapshots`.
 
----
+### Task 5B.3: Groups, members, settings and invites (S2, S3, S10–S12)
 
-### Task 5B.3: Session and sign-in (S1 and the account screens)
+**Files:** `Repositories/{Groups,Members,Invites}/`, matching existing `Domain/Repositories/…`, `GroupsFeature/{GroupList,CreateGroup,Members,GroupSettings,Join}/`, `AppShell/{Route,RouteDestination,RootView,AppDependencies}.swift`, new `AppShell/Routing/LinkRouter.swift`, Debug panel, `PreviewSupport`, catalog.
 
-**Web sources:** `apps/web/src/app/login`, `register`, `verify-email`, `forgot-password`, `reset-password`; phase 1 spec section 9.1–9.4.
+**Interfaces:** Implement the existing group, member and invite protocols against `/groups`, its member/user/role/leave/transfer/invite routes and `/invites/{token}`. Persist only allowed snapshot resources. Keep owner/editor/viewer actions as on web, including claim, role changes, leave and ownership transfer. Core Image renders the invite QR from the server's link. System sharing uses that same link. Define `LinkRouter.route(for: URL) -> Route?` to accept only the configured web scheme/host/port and known invite path shape. Release uses HTTPS; local Debug accepts its configured local origin. Feed the same router from a Debug-only URL entry. Hold a validated join route in memory through sign-in and clear it when consumed or cancelled. System association is 5C.6.
 
-**Files:** `Domain/Models/User.swift`, `Domain/Repositories/AuthRepository.swift`, `Repositories/Auth/`, `PreviewSupport/Fakes/FakeAuthRepository.swift`, `AuthFeature/SignIn`, `Register`, `ForgotPassword`, `VerifyEmailBanner`, `AppShell/SessionModel.swift`, `AppShell/AppDependencies.swift`
+- [ ] Connect S2, S3, S10–S12. With iOS and web, create groups on both clients, join from both directions including while signed out on iOS, exercise claim/role/leave/rotation, and try expired, malformed, foreign-host and already-used or deactivated invites as applicable to the current server contract. Check that viewers lack write actions.
+- [ ] On Simulator, interrupt the API, reopen the same user and check group-list snapshot/failed refresh. Corrupt one disposable file and recover from API. Revoke and switch users, then inspect the cache directory and confirm the old data is gone. Verify protection and backup attributes. Run the task gate and commit `feat(ios): connect groups, membership and local invite routing`.
 
-**Interfaces — produces:**
-- `protocol AuthRepository: Sendable` — `currentUser() -> User?` (`GET /me` when a token exists); `signIn(email:password:) -> User` (`POST /auth/token`); `googleSignInURL(codeChallenge:) -> URL`; `exchange(code:codeVerifier:) -> User` (`POST /auth/exchange`); `signInWithApple(_: AppleCredential) -> User` (`POST /auth/apple`); `register`, `requestPasswordReset`, `resendVerification`; `serverFeatures() -> ServerFeatures`; `signOut()`. All `async throws(AppError)`. Functions that sign in store the token inside `Repositories`; none returns it.
-- `signOut()` → `POST /auth/logout`, clear `TokenStore`, delete the user's snapshot folder (5B.4), unregister the device (5C.1).
-- `@Observable final class SessionModel { private(set) var state: State }` with `enum State { case loading, signedOut, signedIn(User) }`; `RootView` switches on it. An `.unauthorized` error from any repository moves it to `.signedOut`.
-- Google, in `AuthFeature`: generate a 64-byte verifier and its S256 challenge with CryptoKit; `ASWebAuthenticationSession` to `googleSignInURL(codeChallenge:)` with callback scheme `songphang` and `prefersEphemeralWebBrowserSession = false`; on return, `exchange(code:codeVerifier:)`.
-- Apple, in `AuthFeature`: `ASAuthorizationAppleIDProvider` with scopes full name and email, a random raw nonce whose SHA-256 goes in the request; pass `identityToken`, `rawNonce`, `authorizationCode` and the name as `AppleCredential`. Shown only when `serverFeatures().apple` is true; Google only when `.google` is true.
-- Verification and reset links are opened by the mail application in the browser, on the web; the application offers `Gửi lại thư` and calls `currentUser()` when it returns to the foreground.
-- Device name sent to the API: the model name (`UIDevice.current.model`), not the user-assigned name.
+### Task 5B.4: Group ledger and realtime (S4–S9)
 
-- [ ] **Step 1: Write it**
-- [ ] **Step 2: Gate**
-- [ ] **Step 3: Exercise in the Simulator against the local API (Review Focus 2)** — register a new email, read the link from the API console, verify in the simulator's browser, sign in; wrong password shows the exact web string; the rate-limit string after repeated failures; kill and relaunch → still signed in; sign out → the Keychain item is gone (`security` cannot read the simulator's keychain; verify by relaunching signed out and by a debug-only log of presence, not of value); Google's button starts the browser session and fails at Google as expected without credentials (record as not verified); the Apple button is hidden with the fake provider absent, and with `APPLE_PROVIDER=fake` the request reaches the API (the system sheet itself needs a real account: not verified). Search the Xcode console output of the whole exercise for the token → absent. Search the package for `public` declarations mentioning the token → none.
-- [ ] **Step 4: Commit** — `feat(app): add session storage and sign-in`
+**Files:** `Repositories/{Transactions,Balances,Activity,QuickEntry}/`, `Repositories/Realtime/EventStream.swift`, existing ledger domain protocols, `LedgerFeature/{GroupFeed,Balances,Activity,QuickEntry,ConfirmCard,ExpenseForm,SplitEditor,Settle}/`, `AppShell`, `PreviewSupport`, catalog.
 
----
+**Interfaces:** Implement the existing `TransactionsRepository`, `BalancesRepository`, `ActivityRepository`, `QuickEntryRepository` and `GroupEventsRepository`. The first page of feed/activity, balances and members use the scoped snapshot. The initial feed/balance/member reads start together and feed/activity use live cursors (50/page). Edit starts from a current network detail with `version`. Debounce `parse` and `preview` 300 ms, cancel superseded requests and guard against stale completions. Create reuses the form's key across duplicate taps or retries; no money or approval-counting calculation in Swift.
 
-### Task 5B.4: Groups, members, invites, snapshots (S2, S3, S10, S11, S12, S13)
+Use `URLSession.bytes` for `GET /groups/{groupId}/events`. Consume `changed(resources)` and `removed`, ignore keep-alives/unknown event names, and emit `.reconnected` after a successful resubscription. Revalidate the open group's resources on reconnect. Back off from 1 s to 30 s on transient disconnects. Cancel on background, navigation, session invalidation or group removal. Clear the group and route to the list on loss of access, including group-access 404 after a missed event. A scoped transaction or child-resource 404 alone is not group removal; confirm group authorization. Terminate on 401 and invalidate the session. Use approval state and official previews exactly as the baseline API sends them; the Phase 4 detail and decisions UI arrives in 5D.6.
 
-**Web sources:** `apps/web/src/app/page.tsx`, `groups/new`, `g/[groupId]/members`, `settings`, `join` (phase 1 stage 1B), `account`; phase 1 spec sections 7, 9.5–9.8.
+- [ ] Connect the ledger reads and writes. Exercise parse `ok`, `needs_input` and `unparsed` using the approved sample corpus. Replay the existing Phase 1 split fixture T1–T4 through iOS and compare with API responses and expected debt math. Check viewer behavior, cursor pagination, edit conflict, delete/undo, duplicate save and direct settlement. Check no lagging preview can overwrite the latest form result.
+- [ ] With open iOS feed, post from web, interrupt/restart the API, then remove the iOS user as owner and repeat with session revocation. Capture SSE-driven refresh, disabled writes, no stale data after removal, and successful return to the list. Inspect after relaunch and verify a late result does not repopulate a cleared snapshot. Remove the remaining 5U live-composition guard and verify both Debug and Release resolve live dependencies. Run the task gate and commit `feat(ios): connect ledger entry, balances and realtime`.
 
-**Files:** `Domain/Models/ExpenseGroup.swift`, `Member.swift`, `Role.swift`, `Invite.swift`; `Domain/Repositories/GroupsRepository.swift`, `MembersRepository.swift`, `InvitesRepository.swift`; `Repositories/Groups/`, `Members/`, `Invites/`, `Snapshots/SnapshotStore.swift`; `PreviewSupport/Fakes/`, `Samples/`; `GroupsFeature/GroupList`, `CreateGroup`, `Members`, `GroupSettings`, `Join`; `AccountFeature/Account`; `AppShell/Route.swift`, `AppShell/RouteDestination.swift`
+### Task 5B.5: Early iOS ↔ web acceptance on Simulator
 
-**Interfaces — produces:**
-- `actor SnapshotStore` (internal to `Repositories`): `func read<T: Decodable & Sendable>(_ key: SnapshotKey, as: T.Type) -> T?`, `func write<T: Encodable & Sendable>(_ value: T, for key: SnapshotKey)`, `func remove(group: String)`, `func removeAll()`. Memory first, then the file; AD section 8.1 for location, protection, backup exclusion, the 20-group limit and deletion. `SnapshotKey` mirrors the web's query keys. Values are the generated response types.
-- `GroupsRepository`: `lastKnownGroups() -> [ExpenseGroup]?`, `groups() -> [ExpenseGroup]`, `lastKnownGroup(id:)`, `group(id:)`, `create(name:…, key: IdempotencyKey)`, `update`, `delete`. `MembersRepository` and `InvitesRepository` on the same pattern.
-- `enum Route: Hashable` with a case per destination; `RouteDestination` maps a `Route` to its screen and is the only place a screen model is constructed.
+**Files:** `docs/superpowers/runs/phase-5/{handoff-5b,progress,parity-matrix}.md`, `screens/5b/`. The handoff pins the verified code SHA. A later docs-only commit may contain its evidence.
 
-Requirements: every screen has the four states. Pull to refresh on lists. Role decides what is rendered exactly as on the web (viewer: no write control). The invite QR is drawn with Core Image's QR generator from the link; `ShareLink` shares the link. Destructive confirmations use the web's dialog strings in a confirmation dialog or, for delete-group, a sheet with the name field. A form's model creates its `IdempotencyKey` in its initialiser and reuses it for every submission of that instance.
+**Fixture:** Use the Task 0 isolated recipe and two separate verified password accounts, shown below as Minh and Lan. Both clients use the same API, with the signed-in sessions isolated. The main journey has exactly two linked members, equal split, no earlier ledger entries, and approval disabled. Compare server integer amounts at each checkpoint.
 
-- [ ] **Step 1: Write it**
-- [ ] **Step 2: Gate**
-- [ ] **Step 3: Exercise in the Simulator with the web open beside it** — create a group in the app, see it on the web; create on the web, pull to refresh; join a group by opening the app's join screen through a debug-only field that takes the invite token (opening the link itself comes in 5C.2); change a role on the web and see the app's controls change after refresh; delete a group; change password and delete account. A screenshot of each screen in each state.
-- [ ] **Step 4: Exercise the snapshots (Review Focus 6)** — kill the app, stop the API, relaunch → the group list is shown at once with the offline banner, no skeleton; start the API → it refreshes. List the snapshot folder (`xcrun simctl get_app_container booted vn.songphang.app data`, then its caches directory) and record the listing; sign out → the folder is gone; sign in as a second user → the first user's groups never appear, even with the API stopped. Corrupt one snapshot file by hand → the screen loads from the network and the file is replaced. Read the file attributes → excluded from backup, protection class as AD 8.1.
-- [ ] **Step 5: Commit** — `feat(app): add groups, members, invites, account screens, and snapshots`
+| Exercise | Expected result |
+|---|---|
+| Minh creates the group and invite on iOS. Lan joins on web and claims Lan; repeat invite direction on another group with signed-out iOS using the Debug link entry. | Membership and role match on both clients. The pending invite resumes after sign-in. |
+| Minh uses iOS quick entry to create `Ăn trưa` for `120.000 đ`, confirms Minh as payer and an equal split, and double-taps save. | The API preview shows `60.000 đ` per person. One transaction ID is created. Lan owes Minh `60.000 đ`. |
+| Lan adds `Cà phê` for `40.000 đ` on web, paid by Lan and split equally. | iOS open feed refreshes via SSE and the API reports Lan owes Minh `40.000 đ`. |
+| Open the first expense for editing on iOS; send a web edit under Minh's own web session to `140.000 đ`. Attempt to save the stale iOS draft. | iOS shows the conflict and reloads the newer state. Lan owes Minh `50.000 đ`. |
+| Delete `Cà phê` from iOS as Minh; undo. | Debt changes to `70.000 đ`, then back to `50.000 đ`; undo restores the same ID. |
+| Record a direct `50.000 đ` settlement from Lan to Minh on iOS. | API and both clients show zero net debt and one settlement. `pnpm db:check-balances` reports `All groups balanced`. |
+| Interrupt/reconnect the API, then revoke Minh's iOS session from Minh's web account and sign in as Lan on iOS. Remove Lan from a separate test group while it is open on iOS. | Offline reads retain current content with writes disabled, then refresh. The old user's snapshots are cleared. Removed-group data does not reappear after relaunch. |
 
----
+- [ ] Run the table on a fresh fixture, compare request IDs/transaction IDs and API before/after data, and replay the full stage gate. Exercise largest accessibility text size across S1–S13 and VoiceOver/Reduce Motion where the Simulator can verify them. Run string report, compare the actual package graph against architecture §5, and record performance evidence on a separate 500-entry group.
+- [ ] Write the startup commands, web/iOS setup, numbered reproduction, expected/observed results, screenshots and empty owner-result field in `handoff-5b.md`. Confirm the isolation recipe disables real providers even when the developer's usual environment contains provider settings. Record remaining external checks and the unshipped 5D scope. If an item remains failed after the phase-run retry rule, label the checkpoint accordingly and retain the finding for final review.
+- [ ] Commit `docs(run): hand off the Phase 5B Simulator checkpoint`. Notify the owner of the pinned revision and continue to 5C per the phase-run rules.
 
-### Task 5B.5: The group screen and realtime (S4, S5, S6)
+## Stage 5D — Complete baseline web parity
 
-**Web sources:** `g/[groupId]/page.tsx`, the feed components, `balances`, `activity`, `lib/use-group-events.ts`; user-flows section 5.
+The Task 0 inventory defines full scope. Each task below closes its assigned rows and attaches separate UI, API and external evidence. New feature module names follow the architecture and the baseline entry points.
 
-**Files:** `Domain/Models/LedgerTransaction.swift`, `Balance.swift`, `ActivityItem.swift`, `GroupEvent.swift`, `Page.swift`; `Domain/Repositories/TransactionsRepository.swift`, `BalancesRepository.swift`, `ActivityRepository.swift`, `GroupEventsRepository.swift`; `Repositories/Transactions/`, `Balances/`, `Activity/`, `Realtime/EventStream.swift`; `PreviewSupport`; `LedgerFeature/GroupFeed`, `Balances`, `Activity`; `Scripts/seed-large-group.sh`
+### Task 5D.1: Payment methods, QR and settlement requests
 
-**Interfaces — produces:**
-- `struct Page<Item: Sendable>: Sendable { let items: [Item]; let nextCursor: String? }`. `TransactionsRepository.lastKnownFirstPage(groupId:)`, `page(groupId:cursor:) -> Page<LedgerTransaction>` (50 per page; only the first page is written to the snapshot). `ActivityRepository` likewise.
-- `GroupEventsRepository.events(groupId:) -> AsyncStream<GroupEvent>` with `.changed([String])`, `.removed`, `.reconnected`, backed by `EventStream` reading `URLSession.bytes(for:)` line by line; reconnects with backoff (1 s doubling to 30 s) and emits `.reconnected`, on which the feature refetches everything for the group; cancelled when the screen disappears and when the application goes to the background. On `.changed`, the model refetches only the named resources.
-- `Scripts/seed-large-group.sh <token> <groupId>`: posts 500 transactions to the local API with `curl`, for the performance measures.
+**Files:** new `PaymentsFeature/{Pay,PaymentDetails}/`, `LedgerFeature/Balances/`, `GroupsFeature/Members/`, payment and settlement domain/resources, AppShell, catalog, `apps/ios/App/Info.plist`.
 
-Requirements: the stream row, the balance block, the pills for transfers and income, the `đã sửa` tag, the "new item" pill while scrolled up, the offline banner with disabled entry bar (from `NWPathMonitor` and failed requests), the read-only bar for viewers. Balances and suggested transfers are displayed exactly as returned. (Review Focus 1.) The feed is a lazy container of row views that each take one value; the next page is requested when the last rows appear. The feed, the balances and the members load together.
+- [ ] Port S14 and payment details from web `pay`, `balances` and the member editor. Use `/members/{memberId}/payment-methods` and `/settlement-requests` relative to the group. Render server-provided `qrPayload` in Core Image at 240 pt minimum with quiet zone. Add `Lưu mã QR` via add-only Photos access and preserve the copy, wallet, no-payment-details and direct recording paths.
+- [ ] Exercise across iOS and web: request and confirm once, decline, cancel, permission refusal and missing payment info. A pending request leaves the ledger unchanged; confirmation creates the expected one settlement. Decode a screenshot with host tools and compare the payload byte for byte. Record device banking-app scan separately. Run the task gate and commit `feat(ios): add payment details, VietQR and settlement requests`.
 
-- [ ] **Step 1: Write it**
-- [ ] **Step 2: Gate**
-- [ ] **Step 3: Exercise** — add an expense on the web → it appears in the app within 2 seconds without interaction; turn the simulator's network off (through the host's network link conditioner or by stopping the API) → the banner, disabled entry, old data visible; back on → refetch; be removed from the group on the web → the app returns to the group list with the web's line, and that group's snapshot files are gone. Every number on S5 equals `GET …/balances` (paste both). Open a group with a snapshot → content is on screen when the push transition ends.
-- [ ] **Step 4: Measure (AD 8.3)** — seed 500 transactions; record with `xcrun xctrace` the launch time to first content, a scroll of the whole feed, and hangs. Paste the numbers. A measure that cannot be taken in the Simulator is recorded as not verified, with the reason.
-- [ ] **Step 5: Commit** — `feat(app): add the group stream, balances, history, and realtime`
+### Task 5D.2: Search, categories, statistics and CSV
 
----
+**Files:** new `StatisticsFeature/`, `LedgerFeature/GroupFeed/`, `GroupsFeature/GroupSettings/`, transaction/statistics/category/export domain/resources, AppShell, catalog.
 
-### Task 5B.6: Entering and editing (S7, S8, S9)
+- [ ] Port feed text/date/category filters, S16 statistics and its drill-downs, category administration and the existing CSV export action. Use the web query dimensions on the transactions and `/stats` routes, `/categories`, and `/export.csv`. Preserve exact scope from chart to filtered feed to export. Use native file sharing for CSV with a temporary protected file cleaned after use.
+- [ ] With the same scoped API data, compare chart values, feed IDs, empty filter result and CSV rows. Verify category role restrictions, accents and recycled sharing state. Run the task gate and commit `feat(ios): add spending search, statistics and CSV sharing`.
 
-**Web sources:** `g/[groupId]/tx/new`, `tx/[txId]`, `settle`, the expense-form components, the typing box and confirmation card; phase 1 stages 1C–1E.
+### Task 5D.3: Funds and budgets
 
-**Files:** `Domain/Models/QuickEntryReading.swift`, `SharePreview.swift`, `TransactionDraft.swift`; `Domain/Repositories/QuickEntryRepository.swift` (and the write functions of `TransactionsRepository`); `Repositories/QuickEntry/`; `PreviewSupport`; `LedgerFeature/QuickEntry`, `ConfirmCard`, `ExpenseForm`, `SplitEditor`, `Settle`
+**Files:** new `PaymentsFeature/Fund/`, `GroupsFeature/GroupSettings/`, `LedgerFeature/{GroupFeed,QuickEntry,ExpenseForm}/`, fund/budget domain/resources, catalog and AppShell.
 
-**Interfaces — produces:** `QuickEntryRepository.parse(groupId:text:) -> QuickEntryReading`; `TransactionsRepository.preview(groupId:draft:) -> SharePreview`, `create(groupId:draft:key:)`, `transaction(groupId:id:)` (always from the network: an edit needs the current `version`), `update(…version:)`, `delete`, `restore`.
+- [ ] Wire `/fund` and `/budget`. Port S17 funding, uses, breakdown and overdraft behavior, fund quick entry and form controls, budget setup and banners. Use returned official totals and warnings, preserving the current web visibility and editor permissions.
+- [ ] Replay Phase 2 fund F0–F3 and budget acceptance rows, including threshold boundaries, different scopes and denied edits. Compare exact iOS, web and API figures and run `pnpm db:check-balances`. Run the task gate and commit `feat(ios): add group funds and budget tracking`.
 
-Requirements: the typing box calls `parse`; highlights use the returned `spans` on the returned normalised `text`; the confirmation card shows the returned `shares`. The form calls `preview` (debounced 300 ms, each request cancelling the one before) for every amount under a person; while a preview is pending the previous numbers are dimmed, never replaced by a local estimate. Money fields use the number pad with the `000` shortcut and live grouping. Edit sends `version`; `.conflict` shows the web's conflict line with `Xem bản mới`. Delete shows the undo toast (`Hoàn tác`). A save control shows its pending state in the frame of the tap. The four motions of user-flows section 6 are implemented with SwiftUI animations and disabled under "Reduce Motion".
+### Task 5D.4: Receipt capture, attachments, item splitting and AI-assisted entry
 
-- [ ] **Step 1: Write it**
-- [ ] **Step 2: Gate**
-- [ ] **Step 3: Exercise (Review Focus 1)** — ten sentences from `docs/08-quick-entry-samples.md` covering `ok`, `needs_input` and `unparsed`: the card or form equals the web's for each (screenshots side by side); phase 1 stage 1C's transactions T1–T4 entered through the app give the plan's balances; double-tap Lưu → one transaction; edit conflict against the web; delete and undo; settle a suggested transfer. Search `LedgerFeature` for `*` and `/` applied to a `Money` → none can compile; record that `Money` offers neither.
-- [ ] **Step 4: Commit** — `feat(app): add quick entry, the expense form, editing, and settling`
+**Files:** `LedgerFeature/{ReceiptCapture,ReceiptReview,QuickEntry,ExpenseForm}/`, attachment/receipt domain/resources, AppShell, catalog, `apps/ios/App/Info.plist`.
 
----
+- [ ] Port Phase 3 entry, S18 and photo actions with capability handling. Use the system camera and PhotosPicker, resize off the main actor to a 2,000 px longest edge and re-encode JPEG at 0.85 without source location metadata. Upload via group `/attachments`, start and poll `/receipt-scans`, read photo content through the authenticated repository, and wire `/transactions/items/preview`. Preserve loading, partial corrections, manual fallback, cancel/remove and retry. Use current parse results for AI-assisted sentences.
+- [ ] Import the four committed receipts through Simulator Photos with `AI_PROVIDER=fake`; replay the Phase 3 valid/invalid/failed outcome rows and preview-to-save parity, attachment deletion and unauthorized content refusal. Inspect re-encoded metadata with a local image metadata reader. Replay the full current sentence corpus including refusals and the fallback with AI disabled. Record physical camera and real AI separately. Run the task gate and commit `feat(ios): add receipt review, item splits and assisted entry`.
 
-### Task 5B.7: Stage gate 5B
+### Task 5D.5: Notification center, settings, mute and reminders
 
-- [ ] **Step 1:** Both repositories' automated gates. `check-strings.sh` output recorded.
-- [ ] **Step 2:** The phase 1 roadmap journey ("tạo nhóm, mời, gõ và nhập tay các khoản chi, sửa, xoá, thanh toán hết nợ") done entirely in the app with a second user on the web; every step's screenshot recorded; `pnpm db:check-balances` afterwards.
-- [ ] **Step 3:** Accessibility pass: VoiceOver through sign-in, the stream, quick entry and the form (use the Accessibility Inspector's audit and record its findings); largest text size on every screen.
-- [ ] **Step 4:** Architecture check: paste the `dependencies` of every target from `Package.swift` beside AD section 5 → identical. List every `public` declaration of `Repositories` → only the live repository types and what `AppShell` needs to build them.
-- [ ] **Step 5:** The measures of AD 8.3 on the 500-transaction group, with their real numbers against the budgets.
-- [ ] **Step 6:** This repository's common gate.
+**Files:** new `NotificationsFeature/`, `AccountFeature/Account/`, `GroupsFeature/GroupSettings/`, `LedgerFeature/Balances/`, associated domain/resources, `AppShell`, catalog.
 
----
+- [ ] Wire `/me/notifications`, unread count, read and notification settings, current group mute route and group `/reminders`. Port S19 inbox/bell, read/scope behavior, reminder controls, mail preferences and automatic reminder settings. Use the catalog by kind with the generic copy for unknown notification kinds; retain shared server-side delivery and web unsubscribe behavior.
+- [ ] From web send an eligible reminder. Observe iOS count, row and read status plus console push, then repeat with mute, rate-limit and group removal. Replay applicable Phase 4 digest and mail preference evidence with the console adapter. Run the task gate and commit `feat(ios): add notification inbox and reminder controls`.
 
-### Task 5C.1: Push in the application (needs task 5A.5)
+### Task 5D.6: Transaction detail, comments, disputes and approval
 
-**Files:** `Domain/Repositories/DevicesRepository.swift`, `Repositories/Devices/`, `AppShell/Push/PushDelegate.swift` (attached from `App/SongPhangApp.swift`), `AppShell/Routing/LinkRouter.swift`, `AccountFeature/PushPermission`, `App/SongPhang.entitlements`
+**Files:** `LedgerFeature/{TransactionDetail,GroupFeed,ExpenseForm}/`, `GroupsFeature/GroupSettings/`, transaction and approval domain/resources, AppShell, catalog.
 
-Requirements: spec 5.3. The permission screen appears once, after the user's first successful save, and never again if dismissed with `Để sau` (stored in `UserDefaults`; this is a preference, not a secret); the account screen has `Bật thông báo` to ask later. On authorisation, register for remote notifications and `POST /me/devices` with `environment` from the build configuration. A received notification's `target` is a path (`/g/{id}/tx/{txId}/view`, `/g/{id}/balances`, `/notifications`) turned into a `Route` by one function, `LinkRouter.route(forPath:) -> Route?`, which accepts only paths matching a fixed set of patterns and returns `nil` for everything else. The account screen gains `Ẩn nội dung trên màn hình khoá` bound to `PUT /me/push-settings`.
+- [ ] Port S20 and make it the baseline feed detail destination. Wire comment list/create/delete, dispute open/resolve, and reject/approve actions on the current transaction routes. Use plain SwiftUI text for comments. Respect the final Phase 4 soft-delete discussion behavior, policy settings, action permissions, reasons, version and API counted ledger state. Keep edit behind the correct role/action.
+- [ ] Replay Phase 4 comment/dispute and approval cases against owner, editor and viewer across clients, including duplicate and concurrent decisions, a wrong role, soft-delete cases, and below/at-threshold amounts. Compare ledger before decision, after approval, after rejection and after edit. Run the task gate and commit `feat(ios): add transaction discussion and approvals`.
 
-- [ ] **Step 1: Write it**
-- [ ] **Step 2: Gate**
-- [ ] **Step 3: Exercise** — `xcrun simctl push booted vn.songphang.app payload.apns` with payloads built to the 5A.5 shape: tapping opens the right screen for each of the three target kinds; a payload whose `target` is `https://evil.example/` or `/../x` opens nothing; with `PUSH_PROVIDER=console` on the API, the device row appears after permission and disappears after sign-out. Record under "Not verified": delivery through real APNs.
-- [ ] **Step 4: Commit** — `feat(app): add push notifications`
+### Task 5D.7: Telegram and Stage 5D gate
 
----
+**Files:** `AccountFeature/Account/`, `GroupsFeature/GroupSettings/`, chat-link and pairing domain/resources, AppShell routing, catalog and run evidence.
 
-### Task 5C.2: Universal links; stage gate 5C
+- [ ] Port account identity and group link management. Use `/me/chat-identities/telegram/pairings` and its status/confirm/cancel routes under the same iOS Bearer session that initiates the pairing. Hand off only the server-provided Telegram start link. Keep browser-initiated `/link/telegram` in its original browser session. Group chat operations use the current group chat-link routes and the owner role.
+- [ ] Replay the corrected two-sided pairing using console Telegram and local webhook fixtures. Verify completion, cancel, expiry, wrong-session denial and legacy-link refusal. Exercise role-aware group link/unlink and shared commands. Record the real Telegram client flow as external.
+- [ ] Replay 5C simulated push with target destinations now available (transaction detail, balances and inbox), including inaccessible or unknown targets. Run the full 5D stage gate and update the parity inventory for every assigned row. Commit `feat(ios): add Telegram management and verify feature parity`.
 
-**Files:** `App/SongPhang.entitlements` (associated domains from the configuration file), `AppShell/Routing/LinkRouter.swift`
+## Stage 5E — Release and final acceptance
 
-Requirements: `onContinueUserActivity` and `onOpenURL` both go through `LinkRouter.route(for: URL) -> Route?`: host must equal the configured web host; path must match `/join/{token}` or `/link/telegram`; signed out → sign in first, then continue to the link (kept in memory only). `songphang://auth` is handled only by the sign-in flow that started it.
+### Task 5E.1: Release build, metadata and bundled assets
 
-- [ ] **Step 1: Write it**
-- [ ] **Step 2: Gate**
-- [ ] **Step 3: Exercise** — `xcrun simctl openurl booted "<web origin>/join/<token>"` cannot prove association without a real domain; exercise the router directly with a debug-only field and by `simctl openurl` on the custom scheme for the routing code path; a link with another host, and a path outside the two patterns, opens nothing. Record under "Not verified": association with the real domain.
-- [ ] **Step 4: Commit** — `feat(app): open invite links in the application`
-- [ ] **Step 5: Stage gate 5C** — both automated gates; the architecture check and the measures of task 5B.7 steps 4 and 5; this repository's common gate.
+**Files:** `apps/ios/Config/Release.xcconfig`, `apps/ios/App/{Info.plist,PrivacyInfo.xcprivacy,Assets.xcassets,SongPhang.entitlements}`, app target resources, DesignSystem typography/resources.
 
----
+- [ ] Keep `vn.songphang.app`, display name `Sòng Phẳng`, version `1.0.0` and build `1` as current defaults. Use `https://example.invalid/api/v1` for unsigned local Release compilation and document the owner-supplied HTTPS API/web hosts and signing overrides. Confirm the placeholder is replaced in the owner's checklist before archival. Retain localhost ATS exception in Debug only. Add the Phase 7A logo if available, otherwise the four-shape fallback. Bundle licensed compatible Be Vietnam Pro files from Task 0 if available. Record and surface unresolved font substitution for owner approval.
+- [ ] Populate the privacy manifest from actual collected data and required-reason API use, with no tracking. Run the overview's build command with `-configuration Release` before the destination and `CODE_SIGNING_ALLOWED=NO` before `build`. Inspect the produced Info.plist and bundled manifest, validate entitlement/configuration separation, and confirm Release cannot access fakes. Exercise the version gate with the live Debug app and local API. [Apple privacy manifest guidance](https://developer.apple.com/documentation/bundleresources/adding-a-privacy-manifest-to-your-app-or-third-party-sdk).
+- [ ] Run the task gate and commit `chore(ios): prepare Release configuration and app metadata`.
 
-### Task 5D.1: Phase 2 features (needs phase 2)
+### Task 5E.2: TestFlight runbook and final evidence
 
-**Web sources and scope:** phase 2 spec section 9 — S14 paying, the S5 changes, payment details in the member editor, S17 fund, S16 statistics, filters, categories and budget in settings, the budget banner.
+**Files:** `docs/runbooks/testflight.md`, `apps/ios/README.md`, `apps/ios/Store/listing.vi.md`, `docs/superpowers/runs/phase-5/{manual-checks,parity-matrix,progress,decisions}.md`.
 
-**Files:** new modules `PaymentsFeature` (paying, the fund) and `StatisticsFeature` (statistics, budget); the S5 and settings changes in `LedgerFeature` and `GroupsFeature`; one resource per new API area, added as the rules above say.
-
-Requirements: the QR code is drawn with Core Image from `qrPayload` exactly as received, at a size of at least 240 points with a white quiet zone; `Lưu mã QR` saves the rendered image with the add-only photo permission (`NSPhotoLibraryAddUsageDescription`: `Sòng Phẳng lưu mã QR vào ảnh của bạn.`). The CSV export opens the share sheet with the downloaded file. Bars in statistics are sized from the returned amounts; no number is derived.
-
-- [ ] **Step 1: Write it** · **Step 2: Gate**
-- [ ] **Step 3: Exercise** — phase 2's acceptance flows 2A (request and confirm between the app and the web), 2C (the fund ledger F0–F3) and 2D (budget rows 2–6) through the app; the QR decoded from a screenshot (any decoder on the host) equals `qrPayload` byte for byte.
-- [ ] **Step 4: Commit** — `feat(app): add paying, fund, statistics, and budget`
-
----
-
-### Task 5D.2: Phase 3 features (needs phase 3)
-
-**Scope:** phase 3 spec section 8 — the camera button, S18 review, photos on transactions, AI readings on the card.
-
-**Files:** `Domain/Repositories/ReceiptsRepository.swift`, `Repositories/Receipts/`, `LedgerFeature/ReceiptCapture`, `ReceiptReview`.
-
-Requirements: spec 5.3 of this phase. Camera through `UIImagePickerController` with `.camera` (the Simulator has none: the library path is exercised, the camera path is "Not verified"); library through `PhotosPicker` (no permission needed). Resize with Core Graphics to a longest side of 2,000 pixels, JPEG 0.85, metadata dropped by re-encoding. Upload as multipart with progress. Photos are loaded through `ReceiptsRepository` with the session header, never through a URL given to an image view; decoding and downsampling to the displayed size happen off the main actor.
-
-- [ ] **Step 1: Write it** · **Step 2: Gate**
-- [ ] **Step 3: Exercise with `AI_PROVIDER=fake`** — the four fixture images added to the simulator's library: each gives the review state phase 3 task 3C.3 describes; the saved shares equal an API preview; an uploaded photo's stored bytes contain no location metadata (inspect with `exiftool` if present, else `strings`).
-- [ ] **Step 4: Commit** — `feat(app): add receipt capture and item review`
-
----
-
-### Task 5D.3: Phase 4 features (needs phase 4); stage gate 5D
-
-**Scope:** phase 4 spec section 7 — S20 transaction view with comments, disputes and approval; S19 notifications and the bell; reminders on S5; the notification, Telegram and approval settings.
-
-**Files:** new module `NotificationsFeature` (S19, the bell, notification settings); `LedgerFeature/TransactionDetail` (S20); one resource per new API area.
-
-Requirements: comment bodies are plain `Text`; the notification list uses `notificationText`'s lines from the string catalog by kind, with the generic line for an unknown kind; the application badge shows the unread count (cleared when the list is opened).
-
-- [ ] **Step 1: Write it** · **Step 2: Gate**
-- [ ] **Step 3: Exercise** — phase 4's acceptance flows 4A and 4D between the app and the web; a reminder sent from the web arrives as a console push line and a bell count.
-- [ ] **Step 4: Commit** — `feat(app): add comments, notifications, reminders, and approval`
-- [ ] **Step 5: Stage gate 5D** — both automated gates; `check-strings.sh`; the architecture check and the measures of task 5B.7 steps 4 and 5; this repository's common gate; one screenshot per new screen.
-
----
-
-### Task 5E.1: Release configuration
-
-**Files:** `Config/Release.xcconfig`, `App/PrivacyInfo.xcprivacy`, `App/Assets.xcassets/AppIcon`, `App/Info.plist`, `AppShell/UpgradeRequired`
-
-Requirements: spec section 6. The App Transport Security exception for `localhost` exists only in the Debug configuration (verify by building Release and reading the built `Info.plist`). The privacy manifest declares the data types of phase 7B section 4.1, linked to the user, not used for tracking, and the required-reason API entries for whatever system APIs the code uses (`UserDefaults`); read Apple's current documentation for the keys. The icon is the phase 7A mark on its background at 1024 pixels, exported from the SVG (or the four shapes drawn in the same arrangement when 7A has not run). Version `1.0.0`, build `1`. The upgrade screen appears when `features.minAppVersion.ios` is greater than the build's version, compared numerically by component.
-
-- [ ] **Step 1: Write it**
-- [ ] **Step 2: Gate, and a Release build for the Simulator**
-- [ ] **Step 3: Exercise** — the Release `Info.plist` has no ATS exception; set `MIN_APP_VERSION_IOS=9.0.0` on the API → the blocking screen; version comparison table: `1.0.0` vs `1.0.0` → allowed; `1.0.0` vs `1.0.1` → blocked; `1.10.0` vs `1.9.0` → allowed.
-- [ ] **Step 4: Commit** — `chore(app): add release configuration, privacy manifest, and icon`
-
----
-
-### Task 5E.2: TestFlight runbook; final gate
-
-**Files (this repository):** `docs/runbooks/testflight.md`, `README.md`. **iOS repository:** `README.md`, `Store/listing.vi.md`.
-
-Runbook: joining the Apple Developer Program; creating the App ID with Sign in with Apple, Push Notifications and Associated Domains; creating the APNs key and the Sign in with Apple key; the server variables each produces; setting the bundle id, team and the web host in the configuration files; archiving; uploading; adding testers; what to check on a real device (the list under "Not verified" turned into steps). Store listing: name, subtitle, description (the landing page's strings), keywords, the support address placeholder, the privacy policy address.
-
-- [ ] **Step 1: Write them**
-- [ ] **Step 2: Final gate** — both automated gates; the architecture check and the measures of task 5B.7 steps 4 and 5; this repository's full common gate; `pnpm contract:check`.
-- [ ] **Step 3: Finish the run files.** `manual-checks.md`: "In the Simulator" by screen; "On a real iPhone, after the Apple account exists" (sign in with Apple and Google, push, universal link from Messages, camera, QR saved and scanned by a banking app, cold-start time with and without a snapshot, scrolling a long group, opening the app in flight mode). `progress.md`: "Not verified" complete.
-- [ ] **Step 4: Commit** (both repositories) — `docs(repo): document phase 5`
-
-**Manual checks for the project owner**
-1. Open the iOS project in Xcode, run it in a Simulator with `pnpm dev` running, sign in with the development account's email and password, and walk one trip from creating a group to settling.
-2. After the Apple account exists: follow `docs/runbooks/testflight.md`.
+- [ ] Write owner-led TestFlight steps for IDs, domain association, signing, Apple/APNs credentials, privacy/support URLs, build settings, archive, upload and tester setup. Use spec §6's Vietnamese name and subtitle and approved landing/product copy. Identify missing owner inputs explicitly. [Apple TestFlight overview](https://developer.apple.com/testflight/).
+- [ ] Replay the full 5B checkpoint on the final code SHA and close all findings from its owner review that have been reported. Compare the latest applicable `main` user-facing journeys with Task 0's baseline, and take deltas to the advisor/owner for reconciliation before claiming parity. Check the actual parity matrix for unmapped or omitted journeys, a local pass/fail for each locally testable row, and explicit pending external actions. Run the full final stage gate, Release bundle inspection, catalog compare, warning-as-error build, architecture review and supported performance checks. Report any local unmet condition as a failed or unverified gate.
+- [ ] Give the owner fresh local reproduction and physical device steps for real Apple/Google login, APNs, HTTPS links, camera, banking-app QR, accessibility, device performance and TestFlight. Include remaining external Phase 2–4 checks and the deferred real AI decision. Final owner acceptance includes confirmation of the early journey at its checkpoint or final replay. Record owner fields unmarked until verified. Commit `docs(run): record Phase 5 parity and owner release handoff`.

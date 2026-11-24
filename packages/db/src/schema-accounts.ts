@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
 	check,
+	index,
 	pgTable,
 	text,
 	timestamp,
@@ -16,8 +17,11 @@ export const userIdentities = pgTable(
 		userId: uuid("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
-		provider: text("provider").$type<"google" | "password">().notNull(),
+		provider: text("provider")
+			.$type<"google" | "apple" | "password">()
+			.notNull(),
 		providerSubject: text("provider_subject"),
+		providerSecret: text("provider_secret"),
 		passwordHash: text("password_hash"),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
@@ -34,11 +38,11 @@ export const userIdentities = pgTable(
 		),
 		check(
 			"user_identities_provider_check",
-			sql`${table.provider} in ('google','password')`,
+			sql`${table.provider} in ('google','apple','password')`,
 		),
 		check(
 			"user_identities_credentials_check",
-			sql`(${table.provider} = 'password' and ${table.passwordHash} is not null and ${table.providerSubject} is null) or (${table.provider} = 'google' and ${table.providerSubject} is not null and ${table.passwordHash} is null)`,
+			sql`(${table.provider} = 'password' and ${table.passwordHash} is not null and ${table.providerSubject} is null and ${table.providerSecret} is null) or (${table.provider} = 'google' and ${table.providerSubject} is not null and ${table.passwordHash} is null and ${table.providerSecret} is null) or (${table.provider} = 'apple' and ${table.providerSubject} is not null and ${table.passwordHash} is null)`,
 		),
 	],
 );
@@ -50,9 +54,11 @@ export const authTokens = pgTable(
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),
 		purpose: text("purpose")
-			.$type<"verify_email" | "reset_password">()
+			.$type<"verify_email" | "reset_password" | "mobile_exchange">()
 			.notNull(),
 		tokenHash: text("token_hash").notNull().unique(),
+		codeChallenge: text("code_challenge"),
+		client: text("client").$type<"ios" | "android">(),
 		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 		usedAt: timestamp("used_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
@@ -62,7 +68,27 @@ export const authTokens = pgTable(
 	(table) => [
 		check(
 			"auth_tokens_purpose_check",
-			sql`${table.purpose} in ('verify_email','reset_password')`,
+			sql`${table.purpose} in ('verify_email','reset_password','mobile_exchange')`,
 		),
+		check(
+			"auth_tokens_mobile_exchange_check",
+			sql`(${table.purpose} = 'mobile_exchange' and ${table.codeChallenge} is not null and ${table.client} is not null and ${table.client} in ('ios','android')) or (${table.purpose} <> 'mobile_exchange' and ${table.codeChallenge} is null and ${table.client} is null)`,
+		),
+	],
+);
+
+export const appleOperations = pgTable(
+	"apple_operations",
+	{
+		key: text("key").primaryKey(),
+		owner: uuid("owner").notNull(),
+		userId: uuid("user_id"),
+		email: text("email"),
+		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [
+		index("apple_operations_user_idx").on(table.userId),
+		index("apple_operations_email_idx").on(table.email),
+		index("apple_operations_expiry_idx").on(table.expiresAt),
 	],
 );

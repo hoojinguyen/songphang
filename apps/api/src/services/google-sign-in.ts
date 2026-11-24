@@ -8,7 +8,10 @@ import {
 import type { AppDeps } from "../app.js";
 import { GoogleClaims } from "../auth/google.js";
 import { createSession } from "../auth/sessions.js";
-export async function googleSignIn(deps: AppDeps, input: GoogleClaims) {
+export async function resolveGoogleUserId(
+	deps: AppDeps,
+	input: GoogleClaims,
+): Promise<{ kind: "google_unverified" } | { kind: "ok"; userId: string }> {
 	const claims = GoogleClaims.parse(input);
 	const userId = await deps.db.transaction(async (transaction) => {
 		const known = await findGoogleIdentity(transaction, claims.sub);
@@ -40,9 +43,20 @@ export async function googleSignIn(deps: AppDeps, input: GoogleClaims) {
 		if (!identity) throw new Error("Google identity association failed");
 		return identity.userId;
 	});
-	if (userId === null) return { kind: "google_unverified" } as const;
+	if (userId === null) return { kind: "google_unverified" };
+	return { kind: "ok", userId };
+}
+
+export async function googleSignIn(deps: AppDeps, input: GoogleClaims) {
+	const resolved = await resolveGoogleUserId(deps, input);
+	if (resolved.kind === "google_unverified") {
+		return { kind: "google_unverified" } as const;
+	}
 	return {
 		kind: "signed_in",
-		session: await createSession(deps.db, { userId, now: deps.now() }),
+		session: await createSession(deps.db, {
+			userId: resolved.userId,
+			now: deps.now(),
+		}),
 	} as const;
 }

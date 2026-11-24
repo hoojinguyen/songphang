@@ -1,5 +1,7 @@
 import path from "node:path";
 import { z } from "@hono/zod-openapi";
+import { AppVersion } from "@songphang/contract";
+import { validateEcP256PrivateKey } from "@songphang/core/ec-key";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 
@@ -77,6 +79,63 @@ const CONFIG_SCHEMA = z
 			EMPTY_TO_UNDEFINED,
 			z.string().min(1).max(128).optional(),
 		),
+		MIN_APP_VERSION_IOS: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			AppVersion.default("0.0.0"),
+		),
+		MIN_APP_VERSION_ANDROID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			AppVersion.default("0.0.0"),
+		),
+		APPLE_PROVIDER: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.enum(["apple", "fake"]).optional(),
+		),
+		APPLE_BUNDLE_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(255).optional(),
+		),
+		APPLE_TEAM_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APPLE_KEY_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APPLE_PRIVATE_KEY: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(8192).optional(),
+		),
+		DATA_ENCRYPTION_KEY: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(128).optional(),
+		),
+		APPLE_FAKE_JWKS_FILE: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(1024).optional(),
+		),
+		PUSH_PROVIDER: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.enum(["apns", "console"]).optional(),
+		),
+		APNS_KEY_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APNS_PRIVATE_KEY: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(8192).optional(),
+		),
 	})
 	.superRefine((env, context) => {
 		if (Boolean(env.GOOGLE_CLIENT_ID) !== Boolean(env.GOOGLE_CLIENT_SECRET)) {
@@ -134,6 +193,129 @@ const CONFIG_SCHEMA = z
 					message: "TELEGRAM_PROVIDER=console is forbidden in production",
 				});
 			}
+			if (env.APPLE_PROVIDER === "fake") {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_PROVIDER"],
+					message: "APPLE_PROVIDER=fake is forbidden in production",
+				});
+			}
+			if (env.APPLE_FAKE_JWKS_FILE) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_FAKE_JWKS_FILE"],
+					message: "APPLE_FAKE_JWKS_FILE is forbidden in production",
+				});
+			}
+			if (env.PUSH_PROVIDER === "console") {
+				context.addIssue({
+					code: "custom",
+					path: ["PUSH_PROVIDER"],
+					message: "PUSH_PROVIDER=console is forbidden in production",
+				});
+			}
+		}
+		if (env.PUSH_PROVIDER === "apns") {
+			if (!env.APPLE_BUNDLE_ID) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_BUNDLE_ID"],
+					message: "APPLE_BUNDLE_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			if (!env.APPLE_TEAM_ID) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_TEAM_ID"],
+					message: "APPLE_TEAM_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			if (!(env.APNS_KEY_ID ?? env.APPLE_KEY_ID)) {
+				context.addIssue({
+					code: "custom",
+					path: ["APNS_KEY_ID"],
+					message:
+						"APNS_KEY_ID or APPLE_KEY_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			const privateKeySource = env.APNS_PRIVATE_KEY
+				? "APNS_PRIVATE_KEY"
+				: "APPLE_PRIVATE_KEY";
+			const privateKeyRaw = (
+				env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY
+			)?.replace(/\\n/g, "\n");
+			if (!privateKeyRaw) {
+				context.addIssue({
+					code: "custom",
+					path: ["APNS_PRIVATE_KEY"],
+					message:
+						"APNS_PRIVATE_KEY or APPLE_PRIVATE_KEY is required when PUSH_PROVIDER=apns",
+				});
+			} else {
+				validateEcP256PrivateKey(privateKeyRaw, privateKeySource, context);
+			}
+		}
+		if (env.APPLE_PROVIDER === "apple") {
+			for (const [key, value] of [
+				["APPLE_BUNDLE_ID", env.APPLE_BUNDLE_ID],
+				["APPLE_TEAM_ID", env.APPLE_TEAM_ID],
+				["APPLE_KEY_ID", env.APPLE_KEY_ID],
+				["APPLE_PRIVATE_KEY", env.APPLE_PRIVATE_KEY],
+			] as const) {
+				if (!value) {
+					context.addIssue({
+						code: "custom",
+						path: [key],
+						message: `${key} is required when APPLE_PROVIDER=apple`,
+					});
+				}
+			}
+			if (env.APPLE_PRIVATE_KEY) {
+				validateEcP256PrivateKey(
+					env.APPLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+					"APPLE_PRIVATE_KEY",
+					context,
+				);
+			}
+			const rawDek = env.DATA_ENCRYPTION_KEY;
+			if (!rawDek || Buffer.from(rawDek, "base64").length !== 32) {
+				context.addIssue({
+					code: "custom",
+					path: ["DATA_ENCRYPTION_KEY"],
+					message:
+						"DATA_ENCRYPTION_KEY must be 32-byte base64 when APPLE_PROVIDER=apple",
+				});
+			}
+			if (env.APPLE_FAKE_JWKS_FILE) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_FAKE_JWKS_FILE"],
+					message:
+						"APPLE_FAKE_JWKS_FILE cannot be set when APPLE_PROVIDER=apple",
+				});
+			}
+		}
+		if (env.APPLE_PROVIDER === "fake") {
+			if (!env.APPLE_BUNDLE_ID) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_BUNDLE_ID"],
+					message: "APPLE_BUNDLE_ID is required when APPLE_PROVIDER=fake",
+				});
+			}
+			// Local generated-JWKS exercise workflow for APPLE_PROVIDER=fake:
+			// 1. Generate an ephemeral RSA key pair: crypto.generateKeyPairSync('rsa', { modulusLength: 2048 })
+			// 2. Export public JWK: key.export({ format: 'jwk' }) with kid: 'test-key-1', use: 'sig', alg: 'RS256'
+			// 3. Write { keys: [jwk] } to a temporary file, pass path via APPLE_FAKE_JWKS_FILE
+			// 4. Sign test JWTs with private key using RS256, aud: APPLE_BUNDLE_ID, iss: https://appleid.apple.com
+			// 5. Clean up temporary files on exit. Never commit reusable private keys.
+			if (!env.APPLE_FAKE_JWKS_FILE) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_FAKE_JWKS_FILE"],
+					message: "APPLE_FAKE_JWKS_FILE is required when APPLE_PROVIDER=fake",
+				});
+			}
 		}
 		if (env.TELEGRAM_PROVIDER !== undefined) {
 			if (
@@ -185,6 +367,25 @@ const CONFIG_SCHEMA = z
 		telegramBotToken: env.TELEGRAM_BOT_TOKEN,
 		telegramWebhookSecret: env.TELEGRAM_WEBHOOK_SECRET,
 		telegramBotUsername: env.TELEGRAM_BOT_USERNAME?.replace(/^@+/, ""),
+		minAppVersionIos: env.MIN_APP_VERSION_IOS,
+		minAppVersionAndroid: env.MIN_APP_VERSION_ANDROID,
+		appleProvider: env.APPLE_PROVIDER,
+		appleBundleId: env.APPLE_BUNDLE_ID,
+		appleTeamId: env.APPLE_TEAM_ID,
+		appleKeyId: env.APPLE_KEY_ID,
+		applePrivateKey: env.APPLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+		dataEncryptionKey: env.DATA_ENCRYPTION_KEY
+			? Buffer.from(env.DATA_ENCRYPTION_KEY, "base64")
+			: undefined,
+		appleFakeJwksFile: env.APPLE_FAKE_JWKS_FILE
+			? path.resolve(REPO_ROOT, env.APPLE_FAKE_JWKS_FILE)
+			: undefined,
+		pushProvider: env.PUSH_PROVIDER,
+		apnsKeyId: env.APNS_KEY_ID ?? env.APPLE_KEY_ID,
+		apnsPrivateKey: (env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY)?.replace(
+			/\\n/g,
+			"\n",
+		),
 	}));
 
 export type Config = z.infer<typeof CONFIG_SCHEMA>;
@@ -192,12 +393,10 @@ export type Config = z.infer<typeof CONFIG_SCHEMA>;
 export function loadConfig(env: Record<string, string | undefined>): Config {
 	const result = CONFIG_SCHEMA.safeParse(env);
 	if (!result.success) {
-		const invalidNames = [
-			...new Set(result.error.issues.map((issue) => issue.path[0])),
-		];
-		throw new Error(
-			`Invalid environment variables: ${invalidNames.join(", ")}`,
-		);
+		const details = result.error.issues
+			.map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
+			.join("\n");
+		throw new Error(`Invalid environment configuration:\n${details}`);
 	}
 	return result.data;
 }

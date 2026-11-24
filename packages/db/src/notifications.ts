@@ -17,7 +17,7 @@ import {
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { comments } from "./schema-comments.js";
-import { groupUsers } from "./schema-groups.js";
+import { groups, groupUsers } from "./schema-groups.js";
 import {
 	jobCheckpoints,
 	notificationSettings,
@@ -363,6 +363,78 @@ export async function findNotificationForImmediateMail(
 		unsubscribeTokenHash: row.unsubscribeTokenHash ?? null,
 		inGroup: row.memberUserId !== null,
 	};
+}
+
+export async function findNotificationForPush(
+	executor: DbExecutor,
+	notificationId: string,
+) {
+	const [row] = await executor
+		.select({
+			id: notifications.id,
+			userId: notifications.userId,
+			groupId: notifications.groupId,
+			groupName: groups.name,
+			kind: notifications.kind,
+			payload: notifications.payload,
+			readAt: notifications.readAt,
+			memberUserId: groupUsers.userId,
+			muted: groupUsers.muted,
+			hidePushContent: users.hidePushContent,
+		})
+		.from(notifications)
+		.innerJoin(users, eq(users.id, notifications.userId))
+		.innerJoin(groups, eq(groups.id, notifications.groupId))
+		.leftJoin(
+			groupUsers,
+			and(
+				eq(groupUsers.groupId, notifications.groupId),
+				eq(groupUsers.userId, notifications.userId),
+			),
+		)
+		.where(eq(notifications.id, notificationId))
+		.limit(1);
+	if (!row) return null;
+	return {
+		id: row.id,
+		userId: row.userId,
+		groupId: row.groupId,
+		groupName: row.groupName,
+		kind: row.kind,
+		payload: row.payload,
+		readAt: row.readAt,
+		inGroup: row.memberUserId !== null,
+		muted: row.muted ?? false,
+		hidePushContent: row.hidePushContent,
+	};
+}
+
+export function lockPushDelivery(executor: DbExecutor, notificationId: string) {
+	return executor.execute(
+		sql`select pg_advisory_xact_lock(hashtextextended(${`push:${notificationId}`}, 0))`,
+	);
+}
+
+export async function recordPushDeviceDelivered(
+	executor: DbExecutor,
+	notificationId: string,
+	deviceId: string,
+) {
+	await executor
+		.update(notifications)
+		.set({
+			payload: sql`jsonb_set(
+				${notifications.payload},
+				'{_deliveredDeviceIds}',
+				coalesce(${notifications.payload}->'_deliveredDeviceIds', '[]'::jsonb) || jsonb_build_array(${deviceId}::text)
+			)`,
+		})
+		.where(
+			and(
+				eq(notifications.id, notificationId),
+				sql`NOT (coalesce(${notifications.payload}->'_deliveredDeviceIds', '[]'::jsonb) @> jsonb_build_array(${deviceId}::text))`,
+			),
+		);
 }
 
 function digestEligibilityWhere(input: {
