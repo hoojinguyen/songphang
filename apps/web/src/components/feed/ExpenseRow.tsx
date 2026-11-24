@@ -96,17 +96,17 @@ export function ExpenseRow({
 				</div>
 				<div className="flex items-center gap-1.5 shrink-0">
 					{approvalStatus === "pending" && (
-						<span className="rounded-[10px] bg-accent px-2 py-0.5 text-[11px] font-bold text-ink">
+						<span className="rounded-[10px] bg-accent px-2 py-0.5 text-[11px] font-bold text-on-accent">
 							{vi.approval.pendingTag}
 						</span>
 					)}
 					{approvalStatus === "rejected" && (
-						<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
+						<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-on-accent">
 							{vi.approval.rejectedTag}
 						</span>
 					)}
 					{transaction.dispute !== null && (
-						<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
+						<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-on-accent">
 							{vi.transactionView.disputeTag}
 						</span>
 					)}
@@ -152,8 +152,13 @@ export function ExpenseRow({
 								<span className="inline-flex items-center gap-1 text-[11px] text-muted">
 									<Icon name="image" size={13} />
 									{transaction.attachmentCount > 1 && (
-										<span>{transaction.attachmentCount}</span>
+										<span aria-hidden="true">
+											{transaction.attachmentCount}
+										</span>
 									)}
+									<span className="sr-only">
+										{`${vi.attachments.label}: ${transaction.attachmentCount}`}
+									</span>
 								</span>
 							)}
 						</div>
@@ -175,9 +180,7 @@ export function ExpenseRow({
 									−{formatMoney(Math.abs(delta))}
 								</span>
 							) : (
-								<span className="font-medium text-muted">
-									{vi.ledger.notParticipating}
-								</span>
+								<span className="font-medium text-muted">{formatMoney(0)}</span>
 							)
 						) : myShare ? (
 							<span className="font-bold text-muted">

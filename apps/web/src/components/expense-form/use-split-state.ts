@@ -373,12 +373,14 @@ export function useSplitState(
 						if (!m) continue;
 						const mHundredths = hundredths(current[m.id] ?? "") ?? 0;
 						const isLast = i === positiveOthers.length - 1;
-						const deduct = isLast
-							? Math.min(mHundredths, remainingToDeduct)
-							: Math.min(
-									mHundredths,
-									Math.round((mHundredths / otherTotalHundredths) * actualStep),
-								);
+						const targetDeduct = isLast
+							? remainingToDeduct
+							: Math.round((mHundredths / otherTotalHundredths) * actualStep);
+						const deduct = Math.min(
+							mHundredths,
+							remainingToDeduct,
+							targetDeduct,
+						);
 						const nextM = Math.max(0, mHundredths - deduct);
 						next[m.id] = percentText(nextM);
 						remainingToDeduct -= deduct;

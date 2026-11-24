@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 import { useUnreadNotificationCount } from "../../lib/notifications";
 import { t, vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
+import { SnackbarProvider } from "../ui/Snackbar";
+import { DesktopInspectorProvider } from "./DesktopInspectorContext";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { GroupInspector } from "./GroupInspector";
 
@@ -95,28 +97,32 @@ export function AppShell({ children }: { children: ReactNode }) {
 	const isGroupRoute = pathname.startsWith("/g/");
 
 	return (
-		<div className="flex min-h-dvh w-full justify-center bg-bg">
-			{/* Sticky Left Rail: DesktopSidebar (>= 1024px) */}
-			<div className="hidden lg:block shrink-0">
-				<DesktopSidebar />
-			</div>
+		<SnackbarProvider>
+			<DesktopInspectorProvider currentGroupId={currentGroupId}>
+				<div className="flex min-h-dvh w-full justify-center bg-bg">
+					{/* Sticky Left Rail: DesktopSidebar (>= 1024px) */}
+					<div className="hidden lg:block shrink-0">
+						<DesktopSidebar />
+					</div>
 
-			{/* Center Workspace (up to 760px on desktop) */}
-			<div
-				className={`min-w-0 flex-1 max-w-[760px] w-full ${!isGroupRoute ? "pb-[88px] lg:pb-0" : ""}`}
-			>
-				{children}
-			</div>
+					{/* Center Workspace (up to 760px on desktop) */}
+					<div
+						className={`min-w-0 flex-1 max-w-[760px] w-full ${!isGroupRoute ? "pb-[88px] lg:pb-0" : ""}`}
+					>
+						{children}
+					</div>
 
-			{/* Sticky Right Rail: GroupInspector (>= 1280px on /g/[groupId]*) */}
-			{currentGroupId && (
-				<div className="hidden xl:block shrink-0">
-					<GroupInspector groupId={currentGroupId} />
+					{/* Sticky Right Rail: GroupInspector (>= 1280px on /g/[groupId]*) */}
+					{currentGroupId && (
+						<div className="hidden xl:block shrink-0">
+							<GroupInspector groupId={currentGroupId} />
+						</div>
+					)}
+
+					{/* Fixed Bottom 4-Tab Bar (< 1024px) on top-level views */}
+					{!isGroupRoute && <MobileTabBar />}
 				</div>
-			)}
-
-			{/* Fixed Bottom 4-Tab Bar (< 1024px) on top-level views */}
-			{!isGroupRoute && <MobileTabBar />}
-		</div>
+			</DesktopInspectorProvider>
+		</SnackbarProvider>
 	);
 }

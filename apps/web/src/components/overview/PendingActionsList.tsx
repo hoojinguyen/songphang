@@ -17,7 +17,7 @@ export function PendingActionsList({
 				<h2 className="text-base font-extrabold text-ink">
 					{vi.overview.pendingActions}
 				</h2>
-				<span className="rounded-full bg-coral px-2 py-0.5 text-xs font-black text-ink">
+				<span className="rounded-full bg-coral px-2 py-0.5 text-xs font-black text-on-accent">
 					{actions.length}
 				</span>
 			</div>

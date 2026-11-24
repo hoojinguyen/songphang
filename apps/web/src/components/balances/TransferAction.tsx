@@ -79,8 +79,8 @@ export function TransferAction({
 				href={settlementHref(groupId, transfer)}
 				className={
 					compact
-						? "flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold"
-						: "flex min-h-[60px] w-full items-center justify-center rounded-[30px] bg-accent font-extrabold"
+						? "flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold text-ink"
+						: "flex min-h-[60px] w-full items-center justify-center rounded-[30px] bg-accent font-extrabold text-on-accent"
 				}
 			>
 				{vi.balances.record}
@@ -131,8 +131,8 @@ export function TransferAction({
 				href={payHref(groupId, transfer)}
 				className={
 					compact
-						? "flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold"
-						: "flex min-h-[60px] flex-1 items-center justify-center rounded-[30px] bg-accent font-extrabold"
+						? "flex min-h-11 items-center rounded-pill bg-sunken px-3 text-xs font-bold text-ink"
+						: "flex min-h-[60px] flex-1 items-center justify-center rounded-[30px] bg-accent font-extrabold text-on-accent"
 				}
 			>
 				{label}

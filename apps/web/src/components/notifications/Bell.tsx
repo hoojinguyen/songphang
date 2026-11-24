@@ -21,7 +21,7 @@ export function Bell() {
 			{count > 0 && (
 				<span
 					aria-hidden="true"
-					className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1 text-[11px] font-extrabold text-ink"
+					className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral px-1 text-[11px] font-extrabold text-on-accent"
 				>
 					{count > 9 ? "9+" : String(count)}
 				</span>

@@ -1,5 +1,7 @@
 "use client";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Bell } from "../components/notifications/Bell";
 import { OverviewSummaryCard } from "../components/overview/OverviewSummaryCard";
 import { PendingActionsList } from "../components/overview/PendingActionsList";
@@ -53,6 +55,18 @@ function OverviewContent({ name }: { name: string }) {
 	const me = useMe();
 	const overview = useOverview();
 	const recentTransactionsQuery = usePersonalTransactions();
+	const client = useQueryClient();
+	const [deleted] = useState(
+		() => client.getQueryData(["notice", "deleted"]) === true,
+	);
+	const [removed] = useState(
+		() => client.getQueryData(["notice", "removed"]) === true,
+	);
+
+	useEffect(() => {
+		client.removeQueries({ queryKey: ["notice", "removed"] });
+		client.removeQueries({ queryKey: ["notice", "deleted"] });
+	}, [client]);
 
 	useSessionGuard(overview.error ?? recentTransactionsQuery.error);
 
@@ -79,6 +93,16 @@ function OverviewContent({ name }: { name: string }) {
 	return (
 		<main className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col gap-6 px-5 pb-24 pt-6">
 			<OverviewHeader name={name} />
+			{removed && (
+				<p role="status" className="text-sm font-bold text-ink">
+					{vi.common.removed}
+				</p>
+			)}
+			{deleted && (
+				<p role="status" className="text-sm font-bold text-ink">
+					{vi.groups.deleted}
+				</p>
+			)}
 
 			{me.data?.emailVerified === false && <VerifyEmailBanner />}
 
@@ -167,7 +191,21 @@ function OverviewContent({ name }: { name: string }) {
 						{vi.overview.viewAllTransactions}
 					</Link>
 				</div>
-				<PersonalLedgerList items={recentTransactions} />
+				{recentTransactionsQuery.isPending ? (
+					<div aria-busy="true" className="grid gap-2">
+						<div className="h-20 rounded-[24px] bg-sunken" />
+						<div className="h-20 rounded-[24px] bg-sunken" />
+					</div>
+				) : recentTransactionsQuery.isError ? (
+					<LoadError
+						onRetry={() => {
+							void recentTransactionsQuery.refetch();
+						}}
+						isRetrying={recentTransactionsQuery.isFetching}
+					/>
+				) : (
+					<PersonalLedgerList items={recentTransactions} />
+				)}
 			</section>
 		</main>
 	);

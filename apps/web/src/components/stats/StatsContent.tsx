@@ -97,12 +97,12 @@ export function StatsContent({
 
 	return (
 		<div className="grid gap-5">
-			<section className="rounded-card bg-accent p-5">
-				<p className="text-[40px] font-black tracking-tight text-ink">
+			<section className="rounded-card bg-accent p-5 text-on-accent">
+				<p className="text-[40px] font-black tracking-tight">
 					{formatMoney(stats.total)}
 				</p>
 				{budget && (
-					<p className="mt-2 text-xs font-bold text-ink">
+					<p className="mt-2 text-xs font-bold">
 						{budget.period === "month"
 							? vi.budget.periodMonth
 							: vi.budget.periodTotal}{" "}

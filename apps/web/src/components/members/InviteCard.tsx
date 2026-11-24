@@ -56,7 +56,7 @@ export function InviteCard({ groupId }: { groupId: string }) {
 			/>
 		);
 	return (
-		<section className="grid gap-3 rounded-[36px] bg-accent p-4">
+		<section className="grid gap-3 rounded-[36px] bg-accent p-4 text-on-accent">
 			<div className="flex items-center gap-4">
 				{invite.data.active && (
 					<div className="rounded-[22px] bg-surface p-2.5">

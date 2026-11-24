@@ -36,9 +36,10 @@ function SettingsForm({ group }: { group: GroupDto }) {
 	const update = useUpdateGroup(group.id);
 	const archiveMutation = useArchiveGroup(group.id);
 	const unarchiveMutation = useUnarchiveGroup(group.id);
-	useSessionGuard(
-		update.error ?? archiveMutation.error ?? unarchiveMutation.error,
-	);
+	const actionError =
+		update.error ?? archiveMutation.error ?? unarchiveMutation.error;
+	const isArchived = group.archivedAt !== null;
+	useSessionGuard(actionError);
 	const changeMode = (checked: boolean) => {
 		const previous = minimizeDebts;
 		setMinimizeDebts(checked);
@@ -49,19 +50,31 @@ function SettingsForm({ group }: { group: GroupDto }) {
 	};
 	return (
 		<>
+			{isArchived && (
+				<div
+					role="status"
+					className="rounded-[22px] bg-sunken px-4 py-3 text-sm font-bold text-ink"
+				>
+					{vi.groups.archivedBanner}
+				</div>
+			)}
 			<label className="grid gap-2 text-[13px] font-semibold text-muted">
 				{vi.settings.nameLabel}
 				<input
 					value={name}
 					maxLength={80}
+					disabled={isArchived || update.isPending}
 					onChange={(event) => setName(event.target.value)}
-					className="h-16 min-w-0 w-full rounded-[26px] bg-surface px-5 text-[22px] font-black text-ink"
+					className="h-16 min-w-0 w-full rounded-[26px] bg-surface px-5 text-[22px] font-black text-ink disabled:opacity-60"
 				/>
 			</label>
 			<Button
 				variant="primary"
 				disabled={
-					update.isPending || !name.trim() || name.trim() === group.name
+					isArchived ||
+					update.isPending ||
+					!name.trim() ||
+					name.trim() === group.name
 				}
 				onClick={() => update.mutate({ name: name.trim() })}
 			>
@@ -78,7 +91,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					checked={minimizeDebts}
 					onChange={changeMode}
 					label={vi.settings.minimizeTitle}
-					disabled={update.isPending}
+					disabled={isArchived || update.isPending}
 				/>
 			</section>
 			<section className="grid gap-3 rounded-[28px] bg-surface p-5">
@@ -91,7 +104,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 						{ value: "editor", label: vi.members.roleEditor },
 						{ value: "viewer", label: vi.members.roleViewer },
 					]}
-					disabled={update.isPending}
+					disabled={isArchived || update.isPending}
 					onChange={(defaultRole) => {
 						if (defaultRole === "editor" || defaultRole === "viewer")
 							update.mutate({ defaultRole });
@@ -113,7 +126,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 						{ value: "7", label: vi.reminders.interval7 },
 						{ value: "14", label: vi.reminders.interval14 },
 					]}
-					disabled={update.isPending}
+					disabled={isArchived || update.isPending}
 					onChange={(value) => {
 						const reminderIntervalDays =
 							value === "3"
@@ -175,6 +188,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 				onConfirm={() => {
 					archiveMutation.mutate(undefined, {
 						onSuccess: () => setArchiveOpen(false),
+						onError: () => setArchiveOpen(false),
 					});
 				}}
 				onCancel={() => setArchiveOpen(false)}
@@ -186,11 +200,13 @@ function SettingsForm({ group }: { group: GroupDto }) {
 				onClose={() => setCloneOpen(false)}
 			/>
 			<DeleteGroupCard group={group} />
-			{update.isError && (
-				<p role="alert">
-					{update.error.status === 403
+			{actionError && (
+				<p role="alert" className="text-sm font-bold text-debt">
+					{actionError.status === 403
 						? vi.common.forbidden
-						: vi.common.saveError}
+						: actionError.status === 409
+							? vi.groups.archivedReadOnlyError
+							: vi.common.saveError}
 				</p>
 			)}
 		</>

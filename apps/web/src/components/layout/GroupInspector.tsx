@@ -1,26 +1,158 @@
 "use client";
+import type { MemberDto } from "@songphang/contract";
+import Link from "next/link";
 import { useBalances } from "../../lib/balances";
 import { useGroup } from "../../lib/groups";
 import { useMembers } from "../../lib/members";
 import { formatMoney, formatSignedAmount } from "../../lib/money";
 import { useMe } from "../../lib/session";
+import { useTransaction } from "../../lib/transaction-changes";
+import { dayLabel } from "../../lib/transactions";
 import { t, vi } from "../../messages/vi";
 import {
 	fundTransferCaption,
 	TransferAction,
 } from "../balances/TransferAction";
+import { Icon } from "../ui/Icon";
+import { LoadError } from "../ui/LoadError";
 import { MemberShape } from "../ui/MemberShape";
+import { useSnackbar } from "../ui/Snackbar";
+import { useDesktopInspector } from "./DesktopInspectorContext";
+
+function InspectorTransactionPreview({
+	groupId,
+	transactionId,
+	members,
+	onClose,
+}: {
+	groupId: string;
+	transactionId: string;
+	members: MemberDto[];
+	onClose: () => void;
+}) {
+	const tx = useTransaction(groupId, transactionId);
+
+	return (
+		<aside
+			aria-label={vi.feed.view}
+			className="sticky top-0 flex h-dvh w-[340px] shrink-0 flex-col gap-4 overflow-y-auto border-l border-sunken bg-bg p-5"
+		>
+			<div className="flex items-center justify-between gap-2">
+				<h3 className="text-xs font-bold uppercase tracking-wider text-muted">
+					{vi.feed.view}
+				</h3>
+				<button
+					type="button"
+					onClick={onClose}
+					aria-label={vi.common.cancel}
+					className="flex size-9 items-center justify-center rounded-full bg-surface text-ink hover:bg-sunken"
+				>
+					<Icon name="close" size={16} />
+				</button>
+			</div>
+
+			{tx.isPending ? (
+				<div aria-busy="true" className="h-56 rounded-[24px] bg-sunken" />
+			) : tx.isError ? (
+				<LoadError
+					onRetry={() => {
+						void tx.refetch();
+					}}
+					isRetrying={tx.isFetching}
+				/>
+			) : (
+				<div className="grid gap-4 rounded-[28px] bg-surface p-5">
+					<div>
+						<p className="text-xs font-semibold text-muted">
+							{dayLabel(tx.data.occurredAt, new Date())}
+						</p>
+						<h4 className="mt-1 break-words text-lg font-black text-ink">
+							{tx.data.description}
+						</h4>
+						<p className="mt-2 tabular-nums text-[28px] font-black text-ink">
+							{formatMoney(tx.data.amount)}
+						</p>
+					</div>
+
+					<div className="grid gap-1.5 border-t border-sunken pt-3">
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted">
+							{vi.expenseForm.payerTitle}
+						</p>
+						{tx.data.payers.map((payer) => {
+							const member = members.find((m) => m.id === payer.memberId);
+							return (
+								<div
+									key={payer.memberId}
+									className="flex items-center justify-between text-xs"
+								>
+									<span className="font-semibold text-ink">
+										{member?.name ?? vi.common.you}
+									</span>
+									<span className="tabular-nums font-bold text-ink">
+										{formatMoney(payer.amount)}
+									</span>
+								</div>
+							);
+						})}
+					</div>
+
+					<div className="grid gap-1.5 border-t border-sunken pt-3">
+						<p className="text-[11px] font-bold uppercase tracking-wider text-muted">
+							{vi.expenseForm.sharersTitle}
+						</p>
+						{tx.data.shares.map((share) => {
+							const member = members.find((m) => m.id === share.memberId);
+							return (
+								<div
+									key={share.memberId}
+									className="flex items-center justify-between text-xs"
+								>
+									<span className="font-semibold text-ink">
+										{member?.name ?? vi.common.you}
+									</span>
+									<span className="tabular-nums font-bold text-ink">
+										{formatMoney(share.amount)}
+									</span>
+								</div>
+							);
+						})}
+					</div>
+
+					<Link
+						href={`/g/${encodeURIComponent(groupId)}/tx/${encodeURIComponent(transactionId)}/view`}
+						className="flex min-h-11 items-center justify-center rounded-pill bg-ink px-4 text-xs font-bold text-on-ink"
+					>
+						{vi.feed.view}
+					</Link>
+				</div>
+			)}
+		</aside>
+	);
+}
 
 export function GroupInspector({ groupId }: { groupId: string }) {
 	const groupQuery = useGroup(groupId);
 	const balancesQuery = useBalances(groupId);
 	const membersQuery = useMembers(groupId);
 	const me = useMe();
+	const showNotice = useSnackbar();
+	const { selectedTx, clearTx } = useDesktopInspector();
 	const verified = me.data?.emailVerified ?? true;
 
 	const group = groupQuery.data;
 	const balances = balancesQuery.data;
 	const members = membersQuery.data ?? [];
+
+	if (selectedTx?.groupId === groupId) {
+		return (
+			<InspectorTransactionPreview
+				groupId={groupId}
+				transactionId={selectedTx.transactionId}
+				members={members}
+				onClose={clearTx}
+			/>
+		);
+	}
 
 	if (!group || !balances) return null;
 
@@ -34,15 +166,19 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 			t.fromMemberId === group.myMemberId || t.toMemberId === group.myMemberId,
 	);
 
-	const tone =
-		myBalance > 0 ? "bg-accent" : myBalance < 0 ? "bg-debt-soft" : "bg-surface";
+	const isPositive = myBalance > 0;
+	const tone = isPositive
+		? "bg-accent text-on-accent"
+		: myBalance < 0
+			? "bg-debt-soft text-ink"
+			: "bg-surface text-ink";
+	const subTone = isPositive ? "text-on-accent/75" : "text-muted";
 
-	const caption =
-		myBalance > 0
-			? vi.groups.chipOwedToYou
-			: myBalance < 0
-				? vi.groups.chipYouOwe
-				: vi.groups.chipSettled;
+	const caption = isPositive
+		? vi.groups.chipOwedToYou
+		: myBalance < 0
+			? vi.groups.chipYouOwe
+			: vi.groups.chipSettled;
 
 	return (
 		<aside
@@ -50,13 +186,13 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 			className="sticky top-0 flex h-dvh w-[340px] shrink-0 flex-col gap-6 overflow-y-auto border-l border-sunken bg-bg p-5"
 		>
 			{/* Live Group Net Balance Hero */}
-			<section className={`rounded-[30px] p-5 text-ink ${tone}`}>
-				<p className="text-xs font-bold uppercase tracking-wider text-muted">
+			<section className={`rounded-[30px] p-5 ${tone}`}>
+				<p className={`text-xs font-bold uppercase tracking-wider ${subTone}`}>
 					{group.name}
 				</p>
 				<p className="mt-1 break-words text-[36px] font-black leading-tight tracking-tight">
 					{formatSignedAmount(myBalance)}{" "}
-					<span className="text-lg font-bold text-muted">
+					<span className={`text-lg font-bold ${subTone}`}>
 						{vi.common.currency}
 					</span>
 				</p>
@@ -76,8 +212,13 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 							if (!from || !to) return null;
 
 							const iPay = transfer.fromMemberId === group.myMemberId;
+							const fundCaption = fundTransferCaption(
+								from,
+								to,
+								transfer.amount,
+							);
 							const caption =
-								fundTransferCaption(from, to, transfer.amount) ??
+								fundCaption ??
 								(iPay
 									? t(vi.balances.youPayMember, { name: to.name })
 									: t(vi.balances.memberPaysYou, { name: from.name }));
@@ -94,9 +235,11 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 												{caption}
 											</span>
 										</div>
-										<span className="shrink-0 tabular-nums text-xs font-black text-ink">
-											{formatMoney(transfer.amount)}
-										</span>
+										{fundCaption === null && (
+											<span className="shrink-0 tabular-nums text-xs font-black text-ink">
+												{formatMoney(transfer.amount)}
+											</span>
+										)}
 									</div>
 
 									<TransferAction
@@ -108,6 +251,7 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 										role={group.role}
 										verified={verified}
 										compact
+										onRemindNotice={(text) => showNotice({ text })}
 									/>
 								</div>
 							);

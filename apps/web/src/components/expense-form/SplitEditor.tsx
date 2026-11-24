@@ -161,9 +161,16 @@ export function SplitEditor({
 									onPointerUp={() => canPump && finish(member.id)}
 									onPointerLeave={stop}
 									onPointerCancel={stop}
+									onKeyDown={(e) => {
+										if (!canPump) return;
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											state.pumpMember(member.id);
+										}
+									}}
 									aria-label={`${member.name}: ${vi.split.holdToGrowHint}`}
 									title={vi.split.holdToGrowHint}
-									className={`grid justify-items-center gap-1.5 rounded-[20px] p-2 transition-transform duration-300 motion-reduce:transition-none select-none focus:outline-none ${isHeld ? "scale-115" : "scale-100"}`}
+									className={`grid justify-items-center gap-1.5 rounded-[20px] p-2 transition-transform duration-300 motion-reduce:transition-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ink ${isHeld ? "scale-115" : "scale-100"}`}
 								>
 									<MemberShape {...member} size={52} />
 									<span className="max-w-[70px] truncate text-[12px] font-bold text-ink">

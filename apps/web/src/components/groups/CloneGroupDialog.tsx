@@ -8,8 +8,8 @@ import { Switch } from "../ui/Switch";
 
 function defaultCloneName(sourceName: string): string {
 	const suffix = " (bản sao)";
-	const maxBase = 80 - suffix.length;
-	const base = sourceName.slice(0, maxBase).trim();
+	const maxBase = 80 - Array.from(suffix).length;
+	const base = Array.from(sourceName).slice(0, maxBase).join("").trim();
 	return `${base}${suffix}`;
 }
 

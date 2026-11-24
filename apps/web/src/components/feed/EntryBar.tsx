@@ -37,7 +37,7 @@ export function EntryBar({
 		<div className="fixed bottom-0 left-1/2 flex w-full max-w-[430px] -translate-x-1/2 gap-3 bg-bg px-5 pb-5 pt-3">
 			<Link
 				href={`/g/${groupId}/tx/new?form`}
-				className="flex h-16 w-[84px] shrink-0 flex-col items-center justify-center rounded-[26px] bg-accent text-xs font-extrabold"
+				className="flex h-16 w-[84px] shrink-0 flex-col items-center justify-center rounded-[26px] bg-accent text-xs font-extrabold text-on-accent"
 			>
 				<Icon name="plus" size={24} />
 				{vi.feed.manualEntry}
