@@ -52,7 +52,7 @@
     ]
 
     internal var groupsById: [ExpenseGroup.ID: ExpenseGroup] = [:]
-    private var groupOrder: [ExpenseGroup.ID] = []
+    internal var groupOrder: [ExpenseGroup.ID] = []
     internal var membersByGroup: [ExpenseGroup.ID: [Member]] = [:]
     private var usersByGroup: [ExpenseGroup.ID: [GroupUser]] = [:]
     private var invitesByGroup: [ExpenseGroup.ID: Invite] = [:]

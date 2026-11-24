@@ -94,6 +94,10 @@
       try await world.fetchGroups()
     }
 
+    public func list(status: GroupListStatus?) async throws(AppError) -> [ExpenseGroup] {
+      try await world.listGroups(status: status)
+    }
+
     public func lastKnownGroup(id: ExpenseGroup.ID) async -> ExpenseGroup? {
       await world.lastKnownGroup(id: id)
     }
@@ -117,12 +121,65 @@
       try await world.updateGroup(id: id, input: input)
     }
 
+    public func archive(groupId: ExpenseGroup.ID) async throws(AppError) -> ExpenseGroup {
+      try await world.archiveGroup(id: groupId)
+    }
+
+    public func unarchive(groupId: ExpenseGroup.ID) async throws(AppError) -> ExpenseGroup {
+      try await world.unarchiveGroup(id: groupId)
+    }
+
+    public func clone(
+      groupId: ExpenseGroup.ID,
+      name: String,
+      copyPaymentMethods: Bool,
+      copyCategories: Bool,
+      idempotencyKey: IdempotencyKey
+    ) async throws(AppError) -> ExpenseGroup {
+      try await world.cloneGroup(
+        id: groupId,
+        name: name,
+        copyPaymentMethods: copyPaymentMethods,
+        copyCategories: copyCategories,
+        key: idempotencyKey
+      )
+    }
+
     public func setMuted(id: ExpenseGroup.ID, muted: Bool) async throws(AppError) -> Bool {
       try await world.setGroupMuted(id: id, muted: muted)
     }
 
     public func delete(id: ExpenseGroup.ID, confirmName: String) async throws(AppError) {
       try await world.deleteGroup(id: id, confirmName: confirmName)
+    }
+  }
+
+  public nonisolated struct FakeOverviewRepository: OverviewRepository {
+    private let world: FakeWorld
+    public init(world: FakeWorld) { self.world = world }
+
+    public func lastKnownOverview() async -> OverviewSummary? {
+      await world.lastKnownOverview()
+    }
+
+    public func overview() async throws(AppError) -> OverviewSummary {
+      try await world.fetchOverview()
+    }
+
+    public func transactions(
+      cursor: String?,
+      limit: Int,
+      type: TransactionType?,
+      groupId: ExpenseGroup.ID?,
+      query: String?
+    ) async throws(AppError) -> PersonalTransactionsPage {
+      try await world.fetchPersonalTransactions(
+        cursor: cursor,
+        limit: limit,
+        type: type,
+        groupId: groupId,
+        query: query
+      )
     }
   }
 

@@ -3,14 +3,45 @@ public import Observation
 
 @Observable
 public final class GroupListModel {
+  public enum Tab: String, CaseIterable, Sendable {
+    case active
+    case archived
+  }
+
   public private(set) var groups: Loadable<[ExpenseGroup]> = .loading
   public private(set) var refreshError: AppError?
   public private(set) var isRefreshing = false
+  public var selectedTab: Tab = .active
 
-  private let repository: any GroupsRepository
+  public let repository: any GroupsRepository
 
   public init(repository: any GroupsRepository) {
     self.repository = repository
+  }
+
+  public var activeGroups: [ExpenseGroup] {
+    groups.value?.filter { !$0.isArchived } ?? []
+  }
+
+  public var archivedGroups: [ExpenseGroup] {
+    groups.value?.filter { $0.isArchived } ?? []
+  }
+
+  public var displayedGroups: [ExpenseGroup] {
+    switch selectedTab {
+    case .active: return activeGroups
+    case .archived: return archivedGroups
+    }
+  }
+
+  public func archive(groupId: ExpenseGroup.ID) async throws(AppError) {
+    _ = try await repository.archive(groupId: groupId)
+    await load()
+  }
+
+  public func unarchive(groupId: ExpenseGroup.ID) async throws(AppError) {
+    _ = try await repository.unarchive(groupId: groupId)
+    await load()
   }
 
   public func load() async {

@@ -8,6 +8,7 @@ public import SwiftUI
 
 public struct GroupFeedView: View {
   @Bindable private var model: GroupFeedModel
+  private let showHeader: Bool
   private let isEmailVerified: Bool
   private let unreadNotificationCount: Int
   private let onBack: () -> Void
@@ -25,6 +26,7 @@ public struct GroupFeedView: View {
 
   public init(
     model: GroupFeedModel,
+    showHeader: Bool = true,
     isEmailVerified: Bool = true,
     unreadNotificationCount: Int = 0,
     onBack: @escaping () -> Void,
@@ -40,6 +42,7 @@ public struct GroupFeedView: View {
     onRemovedFromGroup: @escaping () -> Void
   ) {
     self.model = model
+    self.showHeader = showHeader
     self.isEmailVerified = isEmailVerified
     self.unreadNotificationCount = unreadNotificationCount
     self.onBack = onBack
@@ -166,42 +169,44 @@ public struct GroupFeedView: View {
       ?? .zero
     let canEdit = data.group.role.canWrite && isEmailVerified
 
-    SPScreenHeader(
-      title: data.group.name,
-      onBack: onBack
-    ) {
-      HStack(spacing: 8) {
-        if let onOpenNotifications {
-          NotificationBellButton(
-            unreadCount: unreadNotificationCount,
-            onOpen: onOpenNotifications
-          )
-        }
-        Button {
-          onOpenMembers(model.groupId)
-        } label: {
-          HStack(spacing: 2) {
-            ForEach(Array(data.members.prefix(4))) { member in
-              MemberShapeView(
-                shape: member.shape,
-                color: member.color,
-                name: member.name,
-                size: 24,
-                showInitial: false
-              )
-            }
+    if showHeader {
+      SPScreenHeader(
+        title: data.group.name,
+        onBack: onBack
+      ) {
+        HStack(spacing: 8) {
+          if let onOpenNotifications {
+            NotificationBellButton(
+              unreadCount: unreadNotificationCount,
+              onOpen: onOpenNotifications
+            )
           }
-          .padding(.horizontal, 12)
-          .frame(minHeight: 48)
-          .background(Tokens.surface)
-          .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+          Button {
+            onOpenMembers(model.groupId)
+          } label: {
+            HStack(spacing: 2) {
+              ForEach(Array(data.members.prefix(4))) { member in
+                MemberShapeView(
+                  shape: member.shape,
+                  color: member.color,
+                  name: member.name,
+                  size: 24,
+                  showInitial: false
+                )
+              }
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 48)
+            .background(Tokens.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel(L10n.tr("feed.membersLink"))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L10n.tr("feed.membersLink"))
       }
+      .padding(.horizontal, 20)
+      .padding(.top, 8)
     }
-    .padding(.horizontal, 20)
-    .padding(.top, 8)
 
     FeedBalanceBlockView(balance: myBalance) {
       onOpenBalances(model.groupId)
@@ -261,6 +266,7 @@ public struct GroupFeedView: View {
         FeedSearchBarView(
           text: $model.searchText,
           hasModalFilters: model.filter.hasModalFilters,
+          activeModalFilterCount: model.filter.activeModalFilterCount,
           onSearchChange: { next in model.updateSearchText(next) },
           onOpenFilters: { isFilterSheetOpen = true }
         )
@@ -303,22 +309,34 @@ public struct GroupFeedView: View {
     }
 
     if isEmailVerified {
-      FeedEntryBarView(
-        isOffline: model.isOffline,
-        isReadOnly: !data.group.role.canWrite,
-        onOpenReceiptCapture: onOpenReceiptCapture.map { handler in
-          { handler(model.groupId) }
-        },
-        onOpenManualForm: {
-          onOpenNewTransactionForm(model.groupId)
-        },
-        onOpenQuickEntry: {
-          onOpenQuickEntry(model.groupId, nil)
-        }
-      )
-      .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-      .padding(.horizontal, 20)
-      .padding(.bottom, 12)
+      if data.group.isArchived {
+        Text(L10n.tr("groups.archivedBanner"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.muted)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 14)
+          .background(Tokens.surface)
+          .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+          .padding(.horizontal, 20)
+          .padding(.bottom, 12)
+      } else {
+        FeedEntryBarView(
+          isOffline: model.isOffline,
+          isReadOnly: !data.group.role.canWrite,
+          onOpenReceiptCapture: onOpenReceiptCapture.map { handler in
+            { handler(model.groupId) }
+          },
+          onOpenManualForm: {
+            onOpenNewTransactionForm(model.groupId)
+          },
+          onOpenQuickEntry: {
+            onOpenQuickEntry(model.groupId, nil)
+          }
+        )
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
+      }
     } else {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))
@@ -334,83 +352,175 @@ public struct GroupFeedView: View {
     let chronological = Array(data.transactions.reversed())
     return ScrollViewReader { proxy in
       ZStack(alignment: .bottom) {
-        ScrollView {
-          LazyVStack(spacing: 12) {
-            if data.nextCursor != nil {
-              Color.clear
-                .frame(height: 1)
-                .onAppear {
-                  Task { await model.loadNextPageIfNeeded() }
-                }
-            }
-
-            if model.isLoadingMore {
-              Text(L10n.tr("feed.loadingOlder"))
-                .font(Typography.caption)
-                .foregroundStyle(Tokens.muted)
-                .padding(.vertical, 8)
-            }
-
-            if model.loadMoreError != nil {
-              LoadError(isRetrying: model.isLoadingMore) {
+        List {
+          if data.nextCursor != nil {
+            Color.clear
+              .frame(height: 1)
+              .listRowInsets(EdgeInsets())
+              .listRowSeparator(.hidden)
+              .listRowBackground(Color.clear)
+              .onAppear {
                 Task { await model.loadNextPageIfNeeded() }
               }
+          }
+
+          if model.isLoadingMore {
+            Text(L10n.tr("feed.loadingOlder"))
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.muted)
+              .frame(maxWidth: .infinity, alignment: .center)
+              .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+              .listRowSeparator(.hidden)
+              .listRowBackground(Color.clear)
+          }
+
+          if model.loadMoreError != nil {
+            LoadError(isRetrying: model.isLoadingMore) {
+              Task { await model.loadNextPageIfNeeded() }
+            }
+            .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+          }
+
+          ForEach(Array(chronological.enumerated()), id: \.element.id) { index, tx in
+            let day = LedgerDateLabels.dayLabel(for: tx.occurredAt)
+            let prevDay =
+              index > 0
+              ? LedgerDateLabels.dayLabel(for: chronological[index - 1].occurredAt)
+              : nil
+
+            if day != prevDay {
+              Text(day)
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.muted)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 4, trailing: 20))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             }
 
-            ForEach(Array(chronological.enumerated()), id: \.element.id) { index, tx in
-              let day = LedgerDateLabels.dayLabel(for: tx.occurredAt)
-              let prevDay =
-                index > 0
-                ? LedgerDateLabels.dayLabel(for: chronological[index - 1].occurredAt)
-                : nil
-
-              if day != prevDay {
-                Text(day)
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.muted)
-                  .padding(.vertical, 4)
+            FeedTransactionRowView(
+              transaction: tx,
+              members: data.members,
+              categories: data.categories,
+              myMemberId: data.group.myMemberId,
+              canEdit: canEdit
+            ) {
+              if let onOpenTransactionDetail {
+                onOpenTransactionDetail(model.groupId, tx.id)
+              } else {
+                onOpenEditTransaction(model.groupId, tx.id)
               }
-
-              FeedTransactionRowView(
-                transaction: tx,
-                members: data.members,
-                categories: data.categories,
-                myMemberId: data.group.myMemberId,
-                canEdit: canEdit
-              ) {
+            }
+            .id(tx.id)
+            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .swipeActions(edge: .leading) {
+              if !data.group.isArchived && !model.isOffline && canEdit
+                && tx.approval.status != .rejected
+              {
+                Button {
+                  Haptics.medium()
+                  onOpenEditTransaction(model.groupId, tx.id)
+                } label: {
+                  Label(L10n.tr("common.edit"), systemImage: "pencil")
+                }
+                .tint(Tokens.accent)
+              }
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+              if !data.group.isArchived && !model.isOffline && canEdit {
+                Button(role: .destructive) {
+                  Haptics.medium()
+                  Task {
+                    await model.deleteTransaction(
+                      tx.id,
+                      successMessage: L10n.tr("expenseForm.deleted"),
+                      errorMessage: L10n.tr("common.saveError")
+                    )
+                  }
+                } label: {
+                  Label(L10n.tr("common.delete"), systemImage: "trash")
+                }
+              }
+              Button {
+                Haptics.light()
                 if let onOpenTransactionDetail {
                   onOpenTransactionDetail(model.groupId, tx.id)
                 } else {
                   onOpenEditTransaction(model.groupId, tx.id)
                 }
+              } label: {
+                Label(L10n.tr("common.detail"), systemImage: "info.circle")
               }
-              .id(tx.id)
-              .onAppear {
-                if index < chronological.count - 2 {
-                  model.isScrolledAwayFromBottom = true
-                } else {
-                  model.isScrolledAwayFromBottom = false
+              .tint(Tokens.ink)
+            }
+            .contextMenu {
+              if !data.group.isArchived && !model.isOffline && canEdit
+                && tx.approval.status != .rejected
+              {
+                Button {
+                  Haptics.medium()
+                  onOpenEditTransaction(model.groupId, tx.id)
+                } label: {
+                  Label(L10n.tr("common.edit"), systemImage: "pencil")
                 }
               }
+              if !data.group.isArchived && !model.isOffline && canEdit {
+                Button(role: .destructive) {
+                  Haptics.medium()
+                  Task {
+                    await model.deleteTransaction(
+                      tx.id,
+                      successMessage: L10n.tr("expenseForm.deleted"),
+                      errorMessage: L10n.tr("common.saveError")
+                    )
+                  }
+                } label: {
+                  Label(L10n.tr("common.delete"), systemImage: "trash")
+                }
+              }
+              Button {
+                Haptics.light()
+                if let onOpenTransactionDetail {
+                  onOpenTransactionDetail(model.groupId, tx.id)
+                } else {
+                  onOpenEditTransaction(model.groupId, tx.id)
+                }
+              } label: {
+                Label(L10n.tr("common.detail"), systemImage: "info.circle")
+              }
             }
-
-            Button {
-              onOpenBalances(model.groupId)
-            } label: {
-              Text(L10n.tr("feed.whoOwesWho"))
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.ink)
-                .padding(.horizontal, 20)
-                .frame(minHeight: 44)
-                .background(Tokens.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .onAppear {
+              if index < chronological.count - 2 {
+                model.isScrolledAwayFromBottom = true
+              } else {
+                model.isScrolledAwayFromBottom = false
+              }
             }
-            .buttonStyle(.plain)
-            .padding(.top, 4)
           }
-          .padding(.horizontal, 20)
-          .padding(.vertical, 8)
+
+          Button {
+            onOpenBalances(model.groupId)
+          } label: {
+            Text(L10n.tr("feed.whoOwesWho"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.ink)
+              .padding(.horizontal, 20)
+              .frame(minHeight: 44)
+              .background(Tokens.surface)
+              .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+          }
+          .buttonStyle(.plain)
+          .frame(maxWidth: .infinity, alignment: .center)
+          .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 16, trailing: 20))
+          .listRowSeparator(.hidden)
+          .listRowBackground(Color.clear)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .task {
           if ProcessInfo.processInfo.arguments.contains("--auto-scroll-large") {
             while model.state.value?.nextCursor != nil {

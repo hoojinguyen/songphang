@@ -8,16 +8,19 @@ public import SwiftUI
 
 public struct StatsView: View {
   @Bindable private var model: StatsModel
+  private let showHeader: Bool
   private let onBack: () -> Void
   private let onOpenFilteredFeed: (TransactionFilter) -> Void
   @State private var shareItem: ShareFileItem?
 
   public init(
     model: StatsModel,
+    showHeader: Bool = true,
     onBack: @escaping () -> Void,
     onOpenFilteredFeed: @escaping (TransactionFilter) -> Void
   ) {
     self.model = model
+    self.showHeader = showHeader
     self.onBack = onBack
     self.onOpenFilteredFeed = onOpenFilteredFeed
   }
@@ -31,11 +34,15 @@ public struct StatsView: View {
 
         switch model.state {
         case .loading:
-          SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
+          if showHeader {
+            SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
+          }
           LoadingSkeleton(rowCount: 4, rowHeight: 96)
 
         case .failed(let error):
-          SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
+          if showHeader {
+            SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
+          }
           if case .api(_, 404) = error {
             VStack(spacing: 12) {
               Text(L10n.tr("common.groupNotFound"))
@@ -52,7 +59,9 @@ public struct StatsView: View {
           }
 
         case .loaded(let data):
-          SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
+          if showHeader {
+            SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
+          }
           loadedContent(data)
         }
       }

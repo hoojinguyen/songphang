@@ -77,6 +77,21 @@ public final class GroupFeedModel {
     self.lastDeletedTransactionId = initialDeletedTransactionId
   }
 
+  public func deleteTransaction(
+    _ id: LedgerTransaction.ID,
+    successMessage: String,
+    errorMessage: String
+  ) async {
+    do throws(AppError) {
+      try await transactionsRepository.delete(groupId: groupId, id: id)
+      lastDeletedTransactionId = id
+      toastMessage = successMessage
+      await load()
+    } catch {
+      toastMessage = errorMessage
+    }
+  }
+
   public func undoDelete(restoredMessage: String, errorMessage: String) async {
     guard let id = lastDeletedTransactionId else { return }
     lastDeletedTransactionId = nil

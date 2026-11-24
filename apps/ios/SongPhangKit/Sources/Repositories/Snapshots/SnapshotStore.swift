@@ -3,6 +3,7 @@ import Foundation
 enum SnapshotKey: Hashable, Sendable {
   case me
   case groups
+  case overview
   case group(String)
   case members(String)
   case groupUsers(String)
@@ -14,7 +15,7 @@ enum SnapshotKey: Hashable, Sendable {
 
   var groupId: String? {
     switch self {
-    case .me, .groups:
+    case .me, .groups, .overview:
       return nil
     case .group(let id),
       .members(let id),
@@ -34,6 +35,8 @@ enum SnapshotKey: Hashable, Sendable {
       return "me.json"
     case .groups:
       return "groups.json"
+    case .overview:
+      return "overview.json"
     case .group(let id):
       return "groups/\(Self.sanitize(id))/group.json"
     case .members(let id):
@@ -299,6 +302,10 @@ actor SnapshotStore {
 
     recentGroupIds.removeAll { !activeGroupIds.contains($0) }
     saveRecentGroups(for: scope.userId)
+  }
+
+  func clearAll() {
+    invalidateSession()
   }
 
   func invalidateSession(atLeastTokenGeneration minGeneration: UInt64? = nil) {

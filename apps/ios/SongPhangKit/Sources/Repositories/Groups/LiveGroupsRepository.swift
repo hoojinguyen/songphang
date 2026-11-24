@@ -16,10 +16,23 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
   }
 
   public func groups() async throws(AppError) -> [ExpenseGroup] {
+    try await list(status: nil)
+  }
+
+  public func list(status: GroupListStatus?) async throws(AppError) -> [ExpenseGroup] {
     let scope = await environment.snapshots.currentScope()
+    let queryStatus: Operations.get_sol_api_sol_v1_sol_groups.Input.Query.statusPayload? = {
+      switch status {
+      case .active: return .active
+      case .archived: return .archived
+      case nil: return nil
+      }
+    }()
     do {
       let list: [ExpenseGroup] = try await ResponseBodyCapture.withCapture {
-        let output = try await environment.client.get_sol_api_sol_v1_sol_groups(.init())
+        let output = try await environment.client.get_sol_api_sol_v1_sol_groups(
+          .init(query: .init(status: queryStatus))
+        )
         switch output {
         case .ok(let ok):
           return try ok.body.json.groups.map(GroupMapping.mapSummary)
@@ -30,7 +43,7 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
         try GroupMapping.decodeResilientGroups(from: data)
       }
 
-      if let scope {
+      if let scope, status == nil {
         await environment.snapshots.reconcileGroups(
           keeping: Set(list.map(\.id.rawValue)),
           scope: scope
@@ -281,6 +294,142 @@ public final class LiveGroupsRepository: GroupsRepository, Sendable {
         )
       }
       return try GroupMapping.decodeResilientGroup(from: data)
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func archive(groupId: ExpenseGroup.ID) async throws(AppError) -> ExpenseGroup {
+    let scope = await environment.snapshots.currentScope()
+    let groupGen = await environment.snapshots.groupGeneration(for: groupId.rawValue)
+    do {
+      let detail: ExpenseGroup = try await ResponseBodyCapture.withCapture {
+        let output = try await environment.client
+          .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_archive(
+            .init(path: .init(groupId: groupId.rawValue))
+          )
+        switch output {
+        case .ok(let ok):
+          return GroupMapping.mapDetail(
+            try ok.body.json.group,
+            reminderIntervalDays: GroupMapping.extractReminderIntervalDays(
+              from: ResponseBodyCapture.box?.read()
+            )
+          )
+        case .undocumented(let status, let payload):
+          throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+        }
+      } fallback: { data in
+        try GroupMapping.decodeResilientGroup(from: data)
+      }
+
+      if let scope, let encoded = GroupMapping.encodeGroupSnapshot(detail) {
+        await environment.snapshots.writeData(
+          encoded,
+          for: .group(groupId.rawValue),
+          scope: scope,
+          groupGeneration: groupGen
+        )
+      }
+      return detail
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func unarchive(groupId: ExpenseGroup.ID) async throws(AppError) -> ExpenseGroup {
+    let scope = await environment.snapshots.currentScope()
+    let groupGen = await environment.snapshots.groupGeneration(for: groupId.rawValue)
+    do {
+      let detail: ExpenseGroup = try await ResponseBodyCapture.withCapture {
+        let output = try await environment.client
+          .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_unarchive(
+            .init(path: .init(groupId: groupId.rawValue))
+          )
+        switch output {
+        case .ok(let ok):
+          return GroupMapping.mapDetail(
+            try ok.body.json.group,
+            reminderIntervalDays: GroupMapping.extractReminderIntervalDays(
+              from: ResponseBodyCapture.box?.read()
+            )
+          )
+        case .undocumented(let status, let payload):
+          throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+        }
+      } fallback: { data in
+        try GroupMapping.decodeResilientGroup(from: data)
+      }
+
+      if let scope, let encoded = GroupMapping.encodeGroupSnapshot(detail) {
+        await environment.snapshots.writeData(
+          encoded,
+          for: .group(groupId.rawValue),
+          scope: scope,
+          groupGeneration: groupGen
+        )
+      }
+      return detail
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func clone(
+    groupId: ExpenseGroup.ID,
+    name: String,
+    copyPaymentMethods: Bool,
+    copyCategories: Bool,
+    idempotencyKey: IdempotencyKey
+  ) async throws(AppError) -> ExpenseGroup {
+    let scope = await environment.snapshots.currentScope()
+    do {
+      let body = Components.Schemas.CloneGroupRequest(
+        copyCategories: copyCategories,
+        copyPaymentMethods: copyPaymentMethods,
+        name: name
+      )
+      let detail: ExpenseGroup = try await ResponseBodyCapture.withCapture {
+        let output = try await environment.client
+          .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_clone(
+            .init(
+              path: .init(groupId: groupId.rawValue),
+              headers: .init(idempotency_hyphen_key: idempotencyKey.rawValue),
+              body: .json(body)
+            )
+          )
+        switch output {
+        case .created(let created):
+          return GroupMapping.mapDetail(
+            try created.body.json.group,
+            reminderIntervalDays: GroupMapping.extractReminderIntervalDays(
+              from: ResponseBodyCapture.box?.read()
+            )
+          )
+        case .undocumented(let status, let payload):
+          throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+        }
+      } fallback: { data in
+        try GroupMapping.decodeResilientGroup(from: data)
+      }
+
+      if let scope, let encoded = GroupMapping.encodeGroupSnapshot(detail) {
+        await environment.snapshots.recordActiveGroup(detail.id.rawValue, scope: scope)
+        let groupGen = await environment.snapshots.groupGeneration(for: detail.id.rawValue)
+        await environment.snapshots.writeData(
+          encoded,
+          for: .group(detail.id.rawValue),
+          scope: scope,
+          groupGeneration: groupGen
+        )
+      }
+      return detail
     } catch let error as AppError {
       throw error
     } catch {

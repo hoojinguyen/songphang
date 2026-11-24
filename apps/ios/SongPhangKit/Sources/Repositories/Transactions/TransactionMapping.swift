@@ -274,7 +274,8 @@ enum TransactionMapping {
       attachmentCount: dto.attachmentCount,
       approval: mapApproval(dto.approval),
       dispute: mapDispute(dto.dispute),
-      commentCount: dto.commentCount
+      commentCount: dto.commentCount,
+      myDelta: dto.myDelta.map { Money(Int64($0)) }
     )
   }
 
@@ -313,7 +314,8 @@ enum TransactionMapping {
       attachmentCount: dto.attachments.count,
       approval: mapApproval(dto.approval),
       dispute: mapDispute(dto.dispute),
-      commentCount: dto.commentCount
+      commentCount: dto.commentCount,
+      myDelta: dto.myDelta.map { Money(Int64($0)) }
     )
   }
 
@@ -670,6 +672,7 @@ enum TransactionMapping {
     let approval: RawApproval?
     let dispute: RawDispute?
     let commentCount: Int?
+    let myDelta: Int64?
 
     func toDomain() -> LedgerTransaction {
       let decodedAttachments = (attachments ?? []).map { $0.toDomain() }
@@ -699,7 +702,8 @@ enum TransactionMapping {
         attachmentCount: attachmentCount ?? decodedAttachments.count,
         approval: approval?.toDomain() ?? .init(),
         dispute: dispute?.toDomain(),
-        commentCount: commentCount ?? 0
+        commentCount: commentCount ?? 0,
+        myDelta: myDelta.map(Money.init)
       )
     }
 
@@ -731,6 +735,7 @@ enum TransactionMapping {
       self.approval = RawApproval(approval: tx.approval)
       self.dispute = tx.dispute.map(RawDispute.init)
       self.commentCount = tx.commentCount
+      self.myDelta = tx.myDelta?.amount
     }
   }
 
