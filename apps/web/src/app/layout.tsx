@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { AppShell } from "../components/layout/AppShell";
 import { vi } from "../messages/vi";
 import "./globals.css";
 import "./fonts.css";
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 				<script src="/theme-init.js" />
 			</head>
 			<body className="font-product bg-bg text-ink tabular-nums">
-				<Providers>{children}</Providers>
+				<Providers>
+					<AppShell>{children}</AppShell>
+				</Providers>
 			</body>
 		</html>
 	);
