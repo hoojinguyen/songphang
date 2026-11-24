@@ -180,6 +180,7 @@ enum GoogleAuthCoordinator {
     }
 
     var retainedHolder: SessionHolder?
+    // Keep the holder alive until the continuation resumes; ASWebAuthenticationSession does not self-retain and its context provider is weak.
     defer { _ = retainedHolder }
 
     do {

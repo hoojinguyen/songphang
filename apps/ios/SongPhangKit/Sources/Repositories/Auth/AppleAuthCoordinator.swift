@@ -136,6 +136,7 @@ enum AppleAuthCoordinator {
     request.nonce = hashedNonce
 
     var retainedDelegate: Delegate?
+    // Keep the delegate alive until the continuation resumes; ASAuthorizationController references its delegate and context provider weakly.
     defer { _ = retainedDelegate }
 
     return try await withCheckedThrowingContinuation { continuation in

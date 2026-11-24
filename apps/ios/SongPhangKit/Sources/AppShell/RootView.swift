@@ -190,8 +190,14 @@ public struct RootView: View {
       let defaultAPIString = "https://example.invalid/api/v1"
       let defaultWebString = "https://example.invalid"
     #endif
-    let apiString = (info?["API_BASE_URL"] as? String) ?? defaultAPIString
-    let webString = (info?["WEB_BASE_URL"] as? String) ?? defaultWebString
+    let apiURL =
+      Self.parseOptionalHTTPURL(info?["API_BASE_URL"] as? String)
+      ?? URL(string: defaultAPIString)
+      ?? URL(filePath: "/")
+    let webURL =
+      Self.parseOptionalHTTPURL(info?["WEB_BASE_URL"] as? String)
+      ?? URL(string: defaultWebString)
+      ?? URL(filePath: "/")
     var version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
     #if DEBUG
       let args = ProcessInfo.processInfo.arguments
@@ -199,8 +205,6 @@ public struct RootView: View {
         version = args[idx + 1]
       }
     #endif
-    let apiURL = URL(string: apiString) ?? URL(filePath: "/")
-    let webURL = URL(string: webString) ?? URL(filePath: "/")
     let rawStoreURL = (info?["APP_STORE_URL"] as? String)?
       .trimmingCharacters(in: .whitespacesAndNewlines)
     let appStoreURL = Self.parseOptionalHTTPURL(rawStoreURL)
