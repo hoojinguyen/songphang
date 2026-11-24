@@ -3,6 +3,8 @@ import type { GroupDto } from "@songphang/contract";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { ArchiveGroupDialog } from "../../../../components/groups/ArchiveGroupDialog";
+import { CloneGroupDialog } from "../../../../components/groups/CloneGroupDialog";
 import { ApprovalCard } from "../../../../components/settings/ApprovalCard";
 import { BudgetCard } from "../../../../components/settings/BudgetCard";
 import { CategoryList } from "../../../../components/settings/CategoryList";
@@ -16,7 +18,12 @@ import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { SegmentedControl } from "../../../../components/ui/SegmentedControl";
 import { Switch } from "../../../../components/ui/Switch";
 import { VerifyEmailBanner } from "../../../../components/ui/VerifyEmailBanner";
-import { useGroup, useUpdateGroup } from "../../../../lib/groups";
+import {
+	useArchiveGroup,
+	useGroup,
+	useUnarchiveGroup,
+	useUpdateGroup,
+} from "../../../../lib/groups";
 import { useMe } from "../../../../lib/session";
 import { useSessionGuard } from "../../../../lib/use-session-guard";
 import { vi } from "../../../../messages/vi";
@@ -24,8 +31,14 @@ import { vi } from "../../../../messages/vi";
 function SettingsForm({ group }: { group: GroupDto }) {
 	const [name, setName] = useState(group.name);
 	const [minimizeDebts, setMinimizeDebts] = useState(group.minimizeDebts);
+	const [archiveOpen, setArchiveOpen] = useState(false);
+	const [cloneOpen, setCloneOpen] = useState(false);
 	const update = useUpdateGroup(group.id);
-	useSessionGuard(update.error);
+	const archiveMutation = useArchiveGroup(group.id);
+	const unarchiveMutation = useUnarchiveGroup(group.id);
+	useSessionGuard(
+		update.error ?? archiveMutation.error ?? unarchiveMutation.error,
+	);
 	const changeMode = (checked: boolean) => {
 		const previous = minimizeDebts;
 		setMinimizeDebts(checked);
@@ -120,6 +133,58 @@ function SettingsForm({ group }: { group: GroupDto }) {
 			<InviteLinkCard groupId={group.id} />
 			<TelegramCard groupId={group.id} />
 			<TransferOwnershipCard groupId={group.id} />
+			<section className="flex items-center justify-between gap-4 rounded-[28px] bg-surface p-5">
+				<div>
+					<h2 className="text-[15px] font-extrabold">{vi.clone.title}</h2>
+				</div>
+				<Button variant="surface" onClick={() => setCloneOpen(true)}>
+					{vi.clone.title}
+				</Button>
+			</section>
+			{group.archivedAt ? (
+				<section className="flex items-center justify-between gap-4 rounded-[28px] bg-surface p-5">
+					<div>
+						<h2 className="text-[15px] font-extrabold">
+							{vi.groups.unarchiveAction}
+						</h2>
+					</div>
+					<Button
+						variant="primary"
+						disabled={unarchiveMutation.isPending}
+						onClick={() => unarchiveMutation.mutate()}
+					>
+						{vi.groups.unarchiveAction}
+					</Button>
+				</section>
+			) : (
+				<section className="flex items-center justify-between gap-4 rounded-[28px] bg-surface p-5">
+					<div>
+						<h2 className="text-[15px] font-extrabold">
+							{vi.groups.archiveAction}
+						</h2>
+					</div>
+					<Button variant="surface" onClick={() => setArchiveOpen(true)}>
+						{vi.groups.archiveAction}
+					</Button>
+				</section>
+			)}
+			<ArchiveGroupDialog
+				open={archiveOpen}
+				groupName={group.name}
+				isPending={archiveMutation.isPending}
+				onConfirm={() => {
+					archiveMutation.mutate(undefined, {
+						onSuccess: () => setArchiveOpen(false),
+					});
+				}}
+				onCancel={() => setArchiveOpen(false)}
+			/>
+			<CloneGroupDialog
+				open={cloneOpen}
+				groupId={group.id}
+				groupName={group.name}
+				onClose={() => setCloneOpen(false)}
+			/>
 			<DeleteGroupCard group={group} />
 			{update.isError && (
 				<p role="alert">
