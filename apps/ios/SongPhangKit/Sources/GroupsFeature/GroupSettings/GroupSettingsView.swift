@@ -15,6 +15,8 @@ public struct GroupSettingsView: View {
 
   @State private var transferTarget: GroupUser?
   @State private var isShowingDeleteSheet = false
+  @State private var isShowingArchiveDialog = false
+  @State private var isShowingCloneSheet = false
   @State private var deleteConfirmationText = ""
 
   public init(
@@ -109,6 +111,31 @@ public struct GroupSettingsView: View {
     }
     .sheet(isPresented: $isShowingDeleteSheet) {
       deleteGroupSheet(groupName: model.state.value?.group.name ?? "")
+    }
+    .confirmationDialog(
+      L10n.tr("groups.archiveAction"),
+      isPresented: $isShowingArchiveDialog,
+      titleVisibility: .visible
+    ) {
+      Button(L10n.tr("groups.archiveAction"), role: .destructive) {
+        Task { await model.archive() }
+      }
+      Button(L10n.tr("common.cancel"), role: .cancel) {}
+    } message: {
+      Text(L10n.tr("groups.archiveConfirmBody"))
+    }
+    .sheet(isPresented: $isShowingCloneSheet) {
+      if let group = model.state.value?.group {
+        CloneGroupSheetView(
+          group: group,
+          repository: model.groupsRepository,
+          onDismiss: { isShowingCloneSheet = false },
+          onCloned: { _ in
+            isShowingCloneSheet = false
+            onBackToGroups()
+          }
+        )
+      }
     }
   }
 
@@ -273,6 +300,8 @@ public struct GroupSettingsView: View {
         )
       }
       transferOwnershipCard(users: data.users)
+      cloneCard(group: data.group)
+      archiveCard(group: data.group)
       deleteGroupCard()
 
       if model.actionError != nil {
@@ -340,6 +369,63 @@ public struct GroupSettingsView: View {
           ) {
             transferTarget = user
           }
+        }
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+  }
+
+  private func cloneCard(group: ExpenseGroup) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text(L10n.tr("clone.title"))
+        .font(Typography.bodyBold)
+        .foregroundStyle(Tokens.ink)
+
+      SPButton(
+        L10n.tr("clone.title"),
+        variant: .surface,
+        isFullWidth: true,
+        isDisabled: model.isPerformingAction
+      ) {
+        isShowingCloneSheet = true
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+  }
+
+  private func archiveCard(group: ExpenseGroup) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      if group.isArchived {
+        Text(L10n.tr("groups.archivedBanner"))
+          .font(Typography.bodyBold)
+          .foregroundStyle(Tokens.ink)
+
+        SPButton(
+          L10n.tr("groups.unarchiveAction"),
+          variant: .primary,
+          isFullWidth: true,
+          isDisabled: model.isPerformingAction
+        ) {
+          Task { await model.unarchive() }
+        }
+      } else {
+        Text(L10n.tr("groups.archiveConfirmBody"))
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.muted)
+
+        SPButton(
+          L10n.tr("groups.archiveAction"),
+          variant: .surface,
+          isFullWidth: true,
+          isDisabled: model.isPerformingAction
+        ) {
+          isShowingArchiveDialog = true
         }
       }
     }

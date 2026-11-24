@@ -5,6 +5,7 @@ public import Domain
 import GroupsFeature
 import LedgerFeature
 import NotificationsFeature
+import OverviewFeature
 import PaymentsFeature
 import StatisticsFeature
 public import SwiftUI
@@ -54,6 +55,7 @@ public struct RouteDestination: View {
   @State private var settleModel: SettleModel?
   @State private var notificationsModel: NotificationsModel?
   @State private var transactionDetailModel: TransactionDetailModel?
+  @State private var personalLedgerModel: PersonalLedgerModel?
 
   public init(
     route: Route,
@@ -374,6 +376,10 @@ public struct RouteDestination: View {
             Task { await sessionModel.signOut() }
           }
         )
+      )
+    case .personalLedger:
+      self._personalLedgerModel = State(
+        initialValue: PersonalLedgerModel(repository: dependencies.overview)
       )
     #if DEBUG
       case .debugGallery:
@@ -738,6 +744,16 @@ public struct RouteDestination: View {
               await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
             }
             onNavigate(Self.notificationDestination(for: target))
+          }
+        )
+      }
+    case .personalLedger:
+      if let personalLedgerModel {
+        PersonalLedgerView(
+          model: personalLedgerModel,
+          onBack: onPop,
+          onOpenTransaction: { groupId, txId in
+            onNavigate(.transactionDetail(groupId: groupId, transactionId: txId))
           }
         )
       }
