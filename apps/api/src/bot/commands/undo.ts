@@ -29,6 +29,10 @@ export async function handleUndoCommand(
 		await sender.send(input.chatId, BOT_MESSAGES.viewerCannotAdd);
 		return;
 	}
+	if (actor.chatLink.groupArchivedAt !== null) {
+		await sender.send(input.chatId, BOT_MESSAGES.groupArchived);
+		return;
+	}
 
 	const since = new Date(deps.now().getTime() - LINK_CODE_TTL_MS);
 	const recent = await findRecentSavedBotDraft(deps.db, {
@@ -57,6 +61,10 @@ export async function handleUndoCommand(
 			),
 		);
 	} catch (error) {
+		if (error instanceof AppError && error.code === "GROUP_ARCHIVED") {
+			await sender.send(input.chatId, BOT_MESSAGES.groupArchived);
+			return;
+		}
 		if (error instanceof AppError && error.code === "NOT_FOUND") {
 			await clearBotDraftSaved(deps.db, recent.id);
 			await sender.send(input.chatId, BOT_MESSAGES.huyNothing);

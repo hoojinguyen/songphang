@@ -312,3 +312,29 @@ export function listGroupLiveShares(executor: DbExecutor, groupId: string) {
 			),
 		);
 }
+
+export function listPendingApprovalsForGroups(
+	executor: DbExecutor,
+	groupIds: string[],
+) {
+	if (groupIds.length === 0) return Promise.resolve([]);
+	return executor
+		.select({
+			id: transactions.id,
+			groupId: transactions.groupId,
+			amount: transactions.amount,
+			description: transactions.description,
+			createdAt: transactions.createdAt,
+			creatorName: users.name,
+		})
+		.from(transactions)
+		.leftJoin(users, eq(users.id, transactions.createdBy))
+		.where(
+			and(
+				inArray(transactions.groupId, groupIds),
+				isNull(transactions.deletedAt),
+				eq(transactions.approvalStatus, "pending"),
+			),
+		)
+		.orderBy(desc(transactions.createdAt), desc(transactions.id));
+}

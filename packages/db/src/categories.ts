@@ -87,6 +87,15 @@ export async function insertCategory(
 	return row;
 }
 
+export async function insertCategories(
+	executor: DbExecutor,
+	rows: (typeof groupCategories.$inferInsert)[],
+) {
+	if (rows.length > 0) {
+		await executor.insert(groupCategories).values(rows);
+	}
+}
+
 export async function updateCategoryRow(
 	executor: DbExecutor,
 	input: {

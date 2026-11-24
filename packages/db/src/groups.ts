@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { groups, groupUsers } from "./schema-groups.js";
@@ -32,6 +32,7 @@ export async function findGroup(executor: DbExecutor, groupId: string) {
 			defaultRole: groups.defaultRole,
 			reminderIntervalDays: groups.reminderIntervalDays,
 			approvalThreshold: groups.approvalThreshold,
+			archivedAt: groups.archivedAt,
 			createdAt: groups.createdAt,
 		})
 		.from(groups)
@@ -48,17 +49,32 @@ export async function findGroupOwner(executor: DbExecutor, groupId: string) {
 		.limit(1);
 	return owner ?? null;
 }
-export function listUserGroups(executor: DbExecutor, userId: string) {
+export function listUserGroups(
+	executor: DbExecutor,
+	userId: string,
+	status: "active" | "archived" | "all" = "all",
+) {
 	return executor
 		.select({
 			id: groups.id,
 			name: groups.name,
 			currency: groups.currency,
+			archivedAt: groups.archivedAt,
+			role: groupUsers.role,
 			memberId: groupUsers.memberId,
 		})
 		.from(groups)
 		.innerJoin(groupUsers, eq(groups.id, groupUsers.groupId))
-		.where(eq(groupUsers.userId, userId))
+		.where(
+			and(
+				eq(groupUsers.userId, userId),
+				status === "active"
+					? isNull(groups.archivedAt)
+					: status === "archived"
+						? isNotNull(groups.archivedAt)
+						: undefined,
+			),
+		)
 		.orderBy(desc(groups.createdAt), desc(groups.id));
 }
 export async function insertGroup(
@@ -88,6 +104,7 @@ export function updateGroup(
 			defaultRole?: "editor" | "viewer";
 			reminderIntervalDays?: 3 | 7 | 14 | null;
 			approvalThreshold?: number | null;
+			archivedAt?: Date | null;
 		};
 		now: Date;
 	},
@@ -97,12 +114,14 @@ export function updateGroup(
 		.set({ ...input.changes, updatedAt: input.now })
 		.where(eq(groups.id, input.groupId));
 }
-export function lockGroup(executor: DbExecutor, groupId: string) {
-	return executor
-		.select({ id: groups.id })
+export async function lockGroup(executor: DbExecutor, groupId: string) {
+	const [group] = await executor
+		.select({ id: groups.id, archivedAt: groups.archivedAt })
 		.from(groups)
 		.where(eq(groups.id, groupId))
-		.for("update");
+		.for("update")
+		.limit(1);
+	return group ?? null;
 }
 
 export async function deleteGroupRow(executor: DbExecutor, groupId: string) {

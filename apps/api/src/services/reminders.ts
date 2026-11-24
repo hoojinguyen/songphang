@@ -18,6 +18,7 @@ import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import type { EnqueueFn } from "../queue.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify } from "./notify.js";
 
 const MANUAL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -89,12 +90,13 @@ export async function sendReminders(
 ): Promise<SendReminderResponse> {
 	const now = deps.now();
 	const response = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		const access = await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.userId,
 			minimumRole: "viewer",
 		});
+		assertGroupRowNotArchived(lockedGroup);
 		const group = await findGroup(executor, input.groupId);
 		if (group === null)
 			throw new AppError(404, "NOT_FOUND", "Resource not found");

@@ -4,6 +4,12 @@ import { MoneyAmount } from "./transaction.ts";
 export const GroupName = z.string().trim().min(1).max(80);
 export const GroupRole = z.enum(["owner", "editor", "viewer"]);
 export type GroupRole = z.infer<typeof GroupRole>;
+export const GroupStatusFilter = z.enum(["active", "archived", "all"]);
+export type GroupStatusFilter = z.infer<typeof GroupStatusFilter>;
+export const GroupsQuery = z.object({
+	status: GroupStatusFilter.default("all"),
+});
+export type GroupsQuery = z.infer<typeof GroupsQuery>;
 export const ReminderIntervalDays = z.union([
 	z.literal(3),
 	z.literal(7),
@@ -23,6 +29,7 @@ export const GroupDto = z
 		role: GroupRole,
 		myMemberId: z.uuid().nullable(),
 		muted: z.boolean(),
+		archivedAt: z.iso.datetime().nullable().optional(),
 		createdAt: z.iso.datetime(),
 	})
 	.openapi("GroupDto");
@@ -44,6 +51,9 @@ export const GroupSummaryDto = z
 			)
 			.max(4),
 		myBalance: z.int(),
+		archivedAt: z.iso.datetime().nullable().optional(),
+		role: GroupRole.optional(),
+		pendingActionCount: z.int().nonnegative().optional(),
 	})
 	.openapi("GroupSummaryDto");
 export type GroupSummaryDto = z.infer<typeof GroupSummaryDto>;
@@ -79,3 +89,12 @@ export const IdempotencyKeyHeader = z
 
 export const DeleteGroupRequest = z.object({ name: z.string().min(1).max(80) });
 export type DeleteGroupRequest = z.infer<typeof DeleteGroupRequest>;
+
+export const CloneGroupRequest = z
+	.object({
+		name: GroupName,
+		copyPaymentMethods: z.boolean().default(true),
+		copyCategories: z.boolean().default(false),
+	})
+	.openapi("CloneGroupRequest");
+export type CloneGroupRequest = z.infer<typeof CloneGroupRequest>;

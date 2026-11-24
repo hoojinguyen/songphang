@@ -40,6 +40,10 @@ export async function handleExpenseCommand(
 		await sender.send(input.chatId, BOT_MESSAGES.viewerCannotAdd);
 		return;
 	}
+	if (actor.chatLink.groupArchivedAt !== null) {
+		await sender.send(input.chatId, BOT_MESSAGES.groupArchived);
+		return;
+	}
 	const sentence = input.arg.trim();
 	if (sentence.length === 0) {
 		await sender.send(input.chatId, BOT_MESSAGES.chiEmpty);

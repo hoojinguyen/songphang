@@ -20,6 +20,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 
 const MAX_LIVE_CATEGORIES = 30;
 
@@ -67,8 +68,9 @@ export async function createCategory(
 		now: Date;
 	},
 ) {
-	await lockGroup(executor, input.groupId);
+	const lockedGroup = await lockGroup(executor, input.groupId);
 	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+	assertGroupRowNotArchived(lockedGroup);
 	const liveCount = await countLiveCategories(executor, input.groupId);
 	if (liveCount >= MAX_LIVE_CATEGORIES)
 		throw new AppError(422, "LIMIT_REACHED", "Category limit reached");
@@ -100,8 +102,9 @@ export async function updateCategory(
 	},
 ) {
 	const result = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+		assertGroupRowNotArchived(lockedGroup);
 		if (!z.uuid().safeParse(input.id).success)
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
 		const current = await findCategoryById(executor, input.groupId, input.id);
@@ -149,8 +152,9 @@ export async function archiveCategory(
 	input: { groupId: string; userId: string; id: string },
 ) {
 	await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+		assertGroupRowNotArchived(lockedGroup);
 		if (!z.uuid().safeParse(input.id).success)
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
 		const current = await findCategoryById(executor, input.groupId, input.id);

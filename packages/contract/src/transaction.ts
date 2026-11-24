@@ -228,6 +228,7 @@ const BaseTransactionFields = {
 	createdAt: z.iso.datetime(),
 	updatedAt: z.iso.datetime(),
 	deletedAt: z.iso.datetime().nullable(),
+	myDelta: z.int().nullable().optional(),
 };
 export const TransactionDto = z
 	.object({

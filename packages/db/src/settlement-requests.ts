@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { settlementRequests } from "./schema-settlements.js";
@@ -140,4 +140,28 @@ export function listPendingSettlements(executor: DbExecutor, groupId: string) {
 				eq(settlementRequests.status, "pending"),
 			),
 		);
+}
+
+export function listPendingSettlementsForGroups(
+	executor: DbExecutor,
+	groupIds: string[],
+) {
+	if (groupIds.length === 0) return Promise.resolve([]);
+	return executor
+		.select({
+			id: settlementRequests.id,
+			groupId: settlementRequests.groupId,
+			fromMemberId: settlementRequests.fromMemberId,
+			toMemberId: settlementRequests.toMemberId,
+			amount: settlementRequests.amount,
+			createdAt: settlementRequests.createdAt,
+		})
+		.from(settlementRequests)
+		.where(
+			and(
+				inArray(settlementRequests.groupId, groupIds),
+				eq(settlementRequests.status, "pending"),
+			),
+		)
+		.orderBy(desc(settlementRequests.createdAt), desc(settlementRequests.id));
 }

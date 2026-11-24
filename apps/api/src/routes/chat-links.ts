@@ -111,6 +111,7 @@ export function registerChatLinkRoutes(
 		async (context) => {
 			await unlinkGroupChat(deps, {
 				groupId: context.var.groupAccess.groupId,
+				userId: context.var.user.id,
 				chatLinkId: context.req.valid("param").chatLinkId,
 			});
 			return context.body(null, 204);

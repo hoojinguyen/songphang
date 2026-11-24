@@ -27,6 +27,7 @@ export * from "./invites.js";
 export * from "./members.js";
 export { runMigrations } from "./migrate.js";
 export * from "./notifications.js";
+export * from "./overview.js";
 export * from "./payment-methods.js";
 export * from "./push-devices.js";
 export * from "./receipt-scans.js";

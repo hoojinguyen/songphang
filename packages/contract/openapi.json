@@ -659,6 +659,27 @@
 				],
 				"type": "object"
 			},
+			"CloneGroupRequest": {
+				"properties": {
+					"copyCategories": {
+						"default": false,
+						"type": "boolean"
+					},
+					"copyPaymentMethods": {
+						"default": true,
+						"type": "boolean"
+					},
+					"name": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object"
+			},
 			"CommentDto": {
 				"properties": {
 					"authorName": {
@@ -928,7 +949,8 @@
 					"MEMBER_NOT_LINKED",
 					"CHAT_IDENTITY_TAKEN",
 					"APPROVAL_NOT_PENDING",
-					"APPLE_REVOCATION_FAILED"
+					"APPLE_REVOCATION_FAILED",
+					"GROUP_ARCHIVED"
 				],
 				"type": "string"
 			},
@@ -1079,6 +1101,13 @@
 							"null"
 						]
 					},
+					"archivedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"createdAt": {
 						"format": "date-time",
 						"type": "string"
@@ -1195,6 +1224,13 @@
 			},
 			"GroupSummaryDto": {
 				"properties": {
+					"archivedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"currency": {
 						"enum": [
 							"VND"
@@ -1216,6 +1252,10 @@
 						"maxLength": 80,
 						"minLength": 1,
 						"type": "string"
+					},
+					"pendingActionCount": {
+						"minimum": 0,
+						"type": "integer"
 					},
 					"previewMembers": {
 						"items": {
@@ -1258,6 +1298,14 @@
 						},
 						"maxItems": 4,
 						"type": "array"
+					},
+					"role": {
+						"enum": [
+							"owner",
+							"editor",
+							"viewer"
+						],
+						"type": "string"
 					}
 				},
 				"required": [
@@ -2306,6 +2354,264 @@
 				],
 				"type": "object"
 			},
+			"OverviewApprovalAction": {
+				"properties": {
+					"actorName": {
+						"type": "string"
+					},
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": "integer"
+					},
+					"createdAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"groupId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"groupName": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"kind": {
+						"enum": [
+							"expense_approval"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"kind",
+					"id",
+					"groupId",
+					"groupName",
+					"amount",
+					"actorName",
+					"description",
+					"createdAt"
+				],
+				"type": "object"
+			},
+			"OverviewGroupBalance": {
+				"properties": {
+					"archivedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"groupId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"groupName": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					},
+					"memberCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"myBalance": {
+						"type": "integer"
+					},
+					"previewMembers": {
+						"items": {
+							"properties": {
+								"color": {
+									"enum": [
+										"mint",
+										"sky",
+										"coral",
+										"lilac"
+									],
+									"type": "string"
+								},
+								"id": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"name": {
+									"maxLength": 50,
+									"minLength": 1,
+									"type": "string"
+								},
+								"shape": {
+									"enum": [
+										"circle",
+										"diamond",
+										"squircle",
+										"leaf"
+									],
+									"type": "string"
+								}
+							},
+							"required": [
+								"id",
+								"name",
+								"shape",
+								"color"
+							],
+							"type": "object"
+						},
+						"maxItems": 4,
+						"type": "array"
+					},
+					"role": {
+						"enum": [
+							"owner",
+							"editor",
+							"viewer"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"groupId",
+					"groupName",
+					"archivedAt",
+					"role",
+					"myBalance",
+					"memberCount",
+					"previewMembers"
+				],
+				"type": "object"
+			},
+			"OverviewPendingAction": {
+				"discriminator": {
+					"mapping": {
+						"expense_approval": "#/components/schemas/OverviewApprovalAction",
+						"settlement_confirmation": "#/components/schemas/OverviewSettlementAction"
+					},
+					"propertyName": "kind"
+				},
+				"oneOf": [
+					{
+						"$ref": "#/components/schemas/OverviewSettlementAction"
+					},
+					{
+						"$ref": "#/components/schemas/OverviewApprovalAction"
+					}
+				]
+			},
+			"OverviewResponse": {
+				"properties": {
+					"activeGroupCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"archivedGroupCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"groupBalances": {
+						"items": {
+							"$ref": "#/components/schemas/OverviewGroupBalance"
+						},
+						"type": "array"
+					},
+					"netBalance": {
+						"type": "integer"
+					},
+					"pendingActions": {
+						"items": {
+							"$ref": "#/components/schemas/OverviewPendingAction"
+						},
+						"maxItems": 20,
+						"type": "array"
+					},
+					"pendingApprovalCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"pendingSettlementCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"totalIOwe": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"totalOwedToMe": {
+						"minimum": 0,
+						"type": "integer"
+					}
+				},
+				"required": [
+					"totalOwedToMe",
+					"totalIOwe",
+					"netBalance",
+					"activeGroupCount",
+					"archivedGroupCount",
+					"pendingSettlementCount",
+					"pendingApprovalCount",
+					"pendingActions",
+					"groupBalances"
+				],
+				"type": "object"
+			},
+			"OverviewSettlementAction": {
+				"properties": {
+					"actorName": {
+						"type": "string"
+					},
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": "integer"
+					},
+					"createdAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"groupId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"groupName": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"kind": {
+						"enum": [
+							"settlement_confirmation"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"kind",
+					"id",
+					"groupId",
+					"groupName",
+					"amount",
+					"actorName",
+					"description",
+					"createdAt"
+				],
+				"type": "object"
+			},
 			"ParseResponse": {
 				"properties": {
 					"draft": {
@@ -2695,6 +3001,133 @@
 					"draft",
 					"spans",
 					"issues"
+				],
+				"type": "object"
+			},
+			"PersonalTransactionDto": {
+				"properties": {
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": "integer"
+					},
+					"approvalStatus": {
+						"enum": [
+							"none",
+							"pending",
+							"approved",
+							"rejected"
+						],
+						"type": "string"
+					},
+					"category": {
+						"enum": [
+							"food",
+							"transport",
+							"lodging",
+							"shopping",
+							"entertainment",
+							"bills",
+							"other",
+							null
+						],
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"categoryName": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"description": {
+						"type": "string"
+					},
+					"groupArchivedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"groupId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"groupName": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					},
+					"hasOpenDispute": {
+						"type": "boolean"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"myDelta": {
+						"type": "integer"
+					},
+					"occurredAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"participantCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"payerSummary": {
+						"type": "string"
+					},
+					"type": {
+						"enum": [
+							"expense",
+							"income",
+							"transfer"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"groupId",
+					"groupName",
+					"groupArchivedAt",
+					"type",
+					"description",
+					"amount",
+					"myDelta",
+					"occurredAt",
+					"category",
+					"categoryName",
+					"payerSummary",
+					"participantCount",
+					"approvalStatus",
+					"hasOpenDispute"
+				],
+				"type": "object"
+			},
+			"PersonalTransactionsResponse": {
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/PersonalTransactionDto"
+						},
+						"type": "array"
+					},
+					"nextCursor": {
+						"type": [
+							"string",
+							"null"
+						]
+					}
+				},
+				"required": [
+					"items",
+					"nextCursor"
 				],
 				"type": "object"
 			},
@@ -4200,6 +4633,12 @@
 						"format": "uuid",
 						"type": "string"
 					},
+					"myDelta": {
+						"type": [
+							"integer",
+							"null"
+						]
+					},
 					"occurredAt": {
 						"format": "date-time",
 						"type": "string"
@@ -4399,6 +4838,12 @@
 					"id": {
 						"format": "uuid",
 						"type": "string"
+					},
+					"myDelta": {
+						"type": [
+							"integer",
+							"null"
+						]
 					},
 					"occurredAt": {
 						"format": "date-time",
@@ -5432,6 +5877,22 @@
 		},
 		"/api/v1/groups": {
 			"get": {
+				"parameters": [
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"default": "all",
+							"enum": [
+								"active",
+								"archived",
+								"all"
+							],
+							"type": "string"
+						}
+					}
+				],
 				"responses": {
 					"200": {
 						"content": {
@@ -5726,6 +6187,33 @@
 							}
 						},
 						"description": "Activity"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/archive": {
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GroupResponse"
+								}
+							}
+						},
+						"description": "Group archived"
 					}
 				}
 			}
@@ -6187,6 +6675,54 @@
 				"responses": {
 					"204": {
 						"description": "Chat unlinked"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/clone": {
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "idempotency-key",
+						"required": true,
+						"schema": {
+							"maxLength": 128,
+							"minLength": 8,
+							"pattern": "^[A-Za-z0-9_-]+$",
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CloneGroupRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GroupResponse"
+								}
+							}
+						},
+						"description": "Group cloned"
 					}
 				}
 			}
@@ -8097,6 +8633,33 @@
 				}
 			}
 		},
+		"/api/v1/groups/{groupId}/unarchive": {
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GroupResponse"
+								}
+							}
+						},
+						"description": "Group unarchived"
+					}
+				}
+			}
+		},
 		"/api/v1/groups/{groupId}/users": {
 			"get": {
 				"parameters": [
@@ -8711,6 +9274,32 @@
 				}
 			}
 		},
+		"/api/v1/me/overview": {
+			"get": {
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/OverviewResponse"
+								}
+							}
+						},
+						"description": "Cross-group overview for current user"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Authentication required"
+					}
+				}
+			}
+		},
 		"/api/v1/me/push-settings": {
 			"put": {
 				"requestBody": {
@@ -8819,6 +9408,106 @@
 							}
 						},
 						"description": "Session not found"
+					}
+				}
+			}
+		},
+		"/api/v1/me/transactions": {
+			"get": {
+				"parameters": [
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"maxLength": 512,
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"default": 20,
+							"maximum": 50,
+							"minimum": 1,
+							"type": "integer"
+						}
+					},
+					{
+						"in": "query",
+						"name": "type",
+						"required": false,
+						"schema": {
+							"enum": [
+								"expense",
+								"transfer",
+								"income"
+							],
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "groupId",
+						"required": false,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "q",
+						"required": false,
+						"schema": {
+							"maxLength": 100,
+							"minLength": 1,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PersonalTransactionsResponse"
+								}
+							}
+						},
+						"description": "Personal cross-group transactions for current user"
+					},
+					"400": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Invalid query"
+					},
+					"401": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Authentication required"
+					},
+					"404": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						},
+						"description": "Group not found"
 					}
 				}
 			}
