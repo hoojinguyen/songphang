@@ -21,7 +21,10 @@ enum GroupMapping {
           color: MemberColor(code: preview.color.rawValue)
         )
       },
-      myBalance: Money(Int64(dto.myBalance))
+      myBalance: Money(Int64(dto.myBalance)),
+      role: dto.role.map { Role(code: $0.rawValue) } ?? .editor,
+      archivedAt: dto.archivedAt,
+      pendingActionCount: dto.pendingActionCount ?? 0
     )
   }
 
@@ -60,7 +63,9 @@ enum GroupMapping {
       reminderIntervalDays: reminderIntervalDays,
       approvalThreshold: dto.approvalThreshold.map { Money(Int64($0)) },
       ownerName: dto.ownerName,
-      createdAt: formatISO(dto.createdAt)
+      createdAt: formatISO(dto.createdAt),
+      archivedAt: dto.archivedAt,
+      pendingActionCount: 0
     )
   }
 
@@ -80,6 +85,9 @@ enum GroupMapping {
     let memberCount: Int
     let previewMembers: [RawPreviewMember]
     let myBalance: Int64
+    let role: String?
+    let archivedAt: String?
+    let pendingActionCount: Int?
 
     func toDomain() -> ExpenseGroup {
       ExpenseGroup(
@@ -95,7 +103,10 @@ enum GroupMapping {
             color: MemberColor(code: p.color)
           )
         },
-        myBalance: Money(myBalance)
+        myBalance: Money(myBalance),
+        role: role.map { Role(code: $0) } ?? .editor,
+        archivedAt: archivedAt.flatMap { ISO8601DateFormatter().date(from: $0) },
+        pendingActionCount: pendingActionCount ?? 0
       )
     }
   }
@@ -117,6 +128,7 @@ enum GroupMapping {
     let approvalThreshold: Int64?
     let ownerName: String?
     let createdAt: String
+    let archivedAt: String?
 
     func toDomain() -> ExpenseGroup {
       ExpenseGroup(
@@ -134,7 +146,9 @@ enum GroupMapping {
         reminderIntervalDays: reminderIntervalDays,
         approvalThreshold: approvalThreshold.map(Money.init),
         ownerName: ownerName ?? "",
-        createdAt: createdAt
+        createdAt: createdAt,
+        archivedAt: archivedAt.flatMap { ISO8601DateFormatter().date(from: $0) },
+        pendingActionCount: 0
       )
     }
   }
@@ -163,7 +177,10 @@ enum GroupMapping {
               color: p.color.code
             )
           },
-          myBalance: g.myBalance.amount
+          myBalance: g.myBalance.amount,
+          role: g.role.code,
+          archivedAt: g.archivedAt.map { formatISO($0) },
+          pendingActionCount: g.pendingActionCount
         )
       }
     )
@@ -188,7 +205,8 @@ enum GroupMapping {
         reminderIntervalDays: group.reminderIntervalDays,
         approvalThreshold: group.approvalThreshold?.amount,
         ownerName: group.ownerName,
-        createdAt: group.createdAt
+        createdAt: group.createdAt,
+        archivedAt: group.archivedAt.map { formatISO($0) }
       )
     )
     return try? JSONEncoder().encode(payload)

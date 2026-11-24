@@ -89,6 +89,9 @@ struct ErrorMapper: Sendable {
       return .unauthorized
     }
     if statusCode == 409 {
+      if code == "GROUP_ARCHIVED" {
+        return .groupArchived
+      }
       if code == nil || code == "VERSION_CONFLICT" || code == "CONFLICT" {
         return .conflict
       }

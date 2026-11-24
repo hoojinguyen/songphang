@@ -250,6 +250,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var approval: TransactionApproval
   public var dispute: TransactionDispute?
   public var commentCount: Int
+  public var myDelta: Money?
 
   public init(
     id: ID,
@@ -274,7 +275,8 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     attachmentCount: Int? = nil,
     approval: TransactionApproval = .init(),
     dispute: TransactionDispute? = nil,
-    commentCount: Int = 0
+    commentCount: Int = 0,
+    myDelta: Money? = nil
   ) {
     self.id = id
     self.type = type
@@ -299,5 +301,6 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.approval = approval
     self.dispute = dispute
     self.commentCount = commentCount
+    self.myDelta = myDelta
   }
 }
