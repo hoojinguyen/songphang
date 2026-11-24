@@ -16,6 +16,7 @@ export * from "./invite.ts";
 export * from "./jobs.ts";
 export * from "./member.ts";
 export * from "./notification.ts";
+export * from "./overview.ts";
 export * from "./payment.ts";
 export * from "./push.ts";
 export * from "./quick-entry.ts";

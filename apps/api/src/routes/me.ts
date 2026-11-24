@@ -3,6 +3,9 @@ import {
 	DeleteAccountRequest,
 	ErrorResponse,
 	MeResponse,
+	OverviewResponse,
+	PersonalTransactionsQuery,
+	PersonalTransactionsResponse,
 	PushSettingsResponse,
 	RegisterDeviceRequest,
 	RegisterDeviceResponse,
@@ -20,6 +23,7 @@ import {
 	removePushDevice,
 	updatePushSettings,
 } from "../services/devices.js";
+import { getMeOverview, listMeTransactions } from "../services/overview.js";
 import { deleteAccount } from "../services/password-recovery.js";
 
 export function registerMeRoute(app: OpenAPIHono<AppEnv>, deps: AppDeps): void {
@@ -75,6 +79,63 @@ export function registerMeRoute(app: OpenAPIHono<AppEnv>, deps: AppDeps): void {
 		}),
 		(context) =>
 			context.json(MeResponse.parse({ user: context.get("user") }), 200),
+	);
+
+	app.openapi(
+		createRoute({
+			method: "get",
+			path: "/api/v1/me/overview",
+			middleware: [requireUser(deps)],
+			responses: {
+				200: {
+					description: "Cross-group overview for current user",
+					content: { "application/json": { schema: OverviewResponse } },
+				},
+				401: {
+					description: "Authentication required",
+					content: { "application/json": { schema: ErrorResponse } },
+				},
+			},
+		}),
+		async (context) =>
+			context.json(await getMeOverview(deps, context.get("user").id), 200),
+	);
+
+	app.openapi(
+		createRoute({
+			method: "get",
+			path: "/api/v1/me/transactions",
+			middleware: [requireUser(deps)],
+			request: { query: PersonalTransactionsQuery },
+			responses: {
+				200: {
+					description: "Personal cross-group transactions for current user",
+					content: {
+						"application/json": { schema: PersonalTransactionsResponse },
+					},
+				},
+				400: {
+					description: "Invalid query",
+					content: { "application/json": { schema: ErrorResponse } },
+				},
+				401: {
+					description: "Authentication required",
+					content: { "application/json": { schema: ErrorResponse } },
+				},
+				404: {
+					description: "Group not found",
+					content: { "application/json": { schema: ErrorResponse } },
+				},
+			},
+		}),
+		async (context) =>
+			context.json(
+				await listMeTransactions(deps, {
+					userId: context.get("user").id,
+					query: context.req.valid("query"),
+				}),
+				200,
+			),
 	);
 	app.openapi(
 		createRoute({

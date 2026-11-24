@@ -27,6 +27,7 @@ import {
 	countCommentsForTransactions,
 	type DbExecutor,
 	findGroup,
+	findGroupAccess,
 	findGroupOwner,
 	findTransactionRow,
 	findUserById,
@@ -59,7 +60,9 @@ import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { type ReplacedTransaction, transactionWarnings } from "./warnings.js";
 
 const CURSOR_SCHEMA = z.object({ occurredAt: z.iso.datetime(), id: z.uuid() });
-function decodeCursor(cursor: string | undefined): TransactionCursor | null {
+export function decodeTransactionCursor(
+	cursor: string | undefined,
+): TransactionCursor | null {
 	if (cursor === undefined) return null;
 	try {
 		if (!/^[A-Za-z0-9_-]+$/.test(cursor))
@@ -70,6 +73,46 @@ function decodeCursor(cursor: string | undefined): TransactionCursor | null {
 	} catch {
 		throw new AppError(400, "VALIDATION_FAILED", "Invalid cursor");
 	}
+}
+
+export function encodeTransactionCursor(row: {
+	occurredAt: Date;
+	id: string;
+}): string {
+	return Buffer.from(
+		JSON.stringify({
+			occurredAt: row.occurredAt.toISOString(),
+			id: row.id,
+		}),
+	).toString("base64url");
+}
+
+export function buildSearchPattern(q: string | undefined): string | undefined {
+	if (q === undefined) return undefined;
+	return `%${foldVietnamese(q).replace(/[\\%_]/g, "\\$&")}%`;
+}
+
+export function computeMyDelta(input: {
+	type: string;
+	deletedAt: Date | null;
+	approvalStatus: string;
+	viewerMemberId: string | null;
+	payers: ReadonlyArray<{ memberId: string; amount: number }>;
+	shares: ReadonlyArray<{ memberId: string; amount: number }>;
+}): number | null {
+	if (input.viewerMemberId === null || input.deletedAt !== null) return null;
+	if (input.approvalStatus !== "none" && input.approvalStatus !== "approved")
+		return null;
+	let myPaid = 0;
+	for (const payer of input.payers) {
+		if (payer.memberId === input.viewerMemberId) myPaid += payer.amount;
+	}
+	let myShare = 0;
+	for (const share of input.shares) {
+		if (share.memberId === input.viewerMemberId) myShare += share.amount;
+	}
+	if (myPaid === 0 && myShare === 0) return null;
+	return input.type === "income" ? myShare - myPaid : myPaid - myShare;
 }
 export async function previewTransaction(
 	deps: AppDeps,
@@ -166,88 +209,127 @@ function toApprovalDto(row: {
 	};
 }
 
+type TransactionRow = Awaited<ReturnType<typeof listTransactionRows>>[number];
+type OpenDispute =
+	Awaited<ReturnType<typeof listOpenDisputesForTransactions>> extends Map<
+		string,
+		infer D
+	>
+		? D
+		: never;
+
+function toCommonTransactionFields(input: {
+	row: TransactionRow;
+	commentCount: number;
+	dispute: OpenDispute | undefined;
+	viewerUserId: string | null;
+	viewerMemberId: string | null;
+	payers: Awaited<ReturnType<typeof listTransactionPayers>>;
+	shares: Awaited<ReturnType<typeof listTransactionShares>>;
+}) {
+	const { row, dispute } = input;
+	return {
+		...row,
+		occurredAt: row.occurredAt.toISOString(),
+		createdAt: row.createdAt.toISOString(),
+		updatedAt: row.updatedAt.toISOString(),
+		deletedAt: row.deletedAt?.toISOString() ?? null,
+		commentCount: input.commentCount,
+		dispute: dispute
+			? {
+					id: dispute.id,
+					reason: dispute.reason,
+					openedByName: dispute.openedByName,
+					openedAt: dispute.openedAt.toISOString(),
+					mine:
+						input.viewerUserId !== null &&
+						dispute.openedBy === input.viewerUserId,
+				}
+			: null,
+		approval: toApprovalDto(row),
+		myDelta: computeMyDelta({
+			type: row.type,
+			deletedAt: row.deletedAt,
+			approvalStatus: row.approvalStatus,
+			viewerMemberId: input.viewerMemberId,
+			payers: input.payers,
+			shares: input.shares,
+		}),
+		payers: input.payers,
+		shares: input.shares,
+	};
+}
+
 export async function mapTransactions(
 	executor: DbExecutor,
 	groupId: string,
-	rows: Awaited<ReturnType<typeof listTransactionRows>>,
+	rows: TransactionRow[],
 	viewerUserId: string | null = null,
 ) {
 	const ids = rows.map((row) => row.id);
-	const [payers, shares, attachmentRows, commentCounts, disputes] =
+	const [payers, shares, attachmentRows, commentCounts, disputes, access] =
 		await Promise.all([
 			listTransactionPayers(executor, groupId, ids),
 			listTransactionShares(executor, groupId, ids),
 			listAttachmentsForTransactions(executor, groupId, ids),
 			countCommentsForTransactions(executor, groupId, ids),
 			listOpenDisputesForTransactions(executor, groupId, ids),
+			viewerUserId === null || rows.length === 0
+				? Promise.resolve(null)
+				: findGroupAccess(executor, groupId, viewerUserId),
 		]);
-	return rows.map((row) => {
-		const dispute = disputes.get(row.id);
-		return TransactionDto.parse({
-			...row,
-			occurredAt: row.occurredAt.toISOString(),
-			createdAt: row.createdAt.toISOString(),
-			updatedAt: row.updatedAt.toISOString(),
-			deletedAt: row.deletedAt?.toISOString() ?? null,
-			commentCount: commentCounts.get(row.id) ?? 0,
-			dispute: dispute
-				? {
-						id: dispute.id,
-						reason: dispute.reason,
-						openedByName: dispute.openedByName,
-						openedAt: dispute.openedAt.toISOString(),
-						mine: viewerUserId !== null && dispute.openedBy === viewerUserId,
-					}
-				: null,
-			approval: toApprovalDto(row),
-			payers: payers.filter((payer) => payer.transactionId === row.id),
-			shares: shares.filter((share) => share.transactionId === row.id),
+	const viewerMemberId = access?.memberId ?? null;
+	return rows.map((row) =>
+		TransactionDto.parse({
+			...toCommonTransactionFields({
+				row,
+				commentCount: commentCounts.get(row.id) ?? 0,
+				dispute: disputes.get(row.id),
+				viewerUserId,
+				viewerMemberId,
+				payers: payers.filter((payer) => payer.transactionId === row.id),
+				shares: shares.filter((share) => share.transactionId === row.id),
+			}),
 			attachments: attachmentRows
 				.filter((attachment) => attachment.transactionId === row.id)
 				.map(toAttachmentDto),
-		});
-	});
+		}),
+	);
 }
 
 async function mapTransactionListItems(
 	executor: DbExecutor,
 	groupId: string,
-	rows: Awaited<ReturnType<typeof listTransactionRows>>,
+	rows: TransactionRow[],
 	viewerUserId: string | null = null,
 ) {
 	const ids = rows.map((row) => row.id);
-	const [payers, shares, attachmentCounts, commentCounts, disputes] =
+	const [payers, shares, attachmentCounts, commentCounts, disputes, access] =
 		await Promise.all([
 			listTransactionPayers(executor, groupId, ids),
 			listTransactionShares(executor, groupId, ids),
 			countAttachmentsForTransactions(executor, groupId, ids),
 			countCommentsForTransactions(executor, groupId, ids),
 			listOpenDisputesForTransactions(executor, groupId, ids),
+			viewerUserId === null || rows.length === 0
+				? Promise.resolve(null)
+				: findGroupAccess(executor, groupId, viewerUserId),
 		]);
-	return rows.map((row) => {
-		const dispute = disputes.get(row.id);
-		return TransactionListItemDto.parse({
-			...row,
-			occurredAt: row.occurredAt.toISOString(),
-			createdAt: row.createdAt.toISOString(),
-			updatedAt: row.updatedAt.toISOString(),
-			deletedAt: row.deletedAt?.toISOString() ?? null,
-			commentCount: commentCounts.get(row.id) ?? 0,
-			dispute: dispute
-				? {
-						id: dispute.id,
-						reason: dispute.reason,
-						openedByName: dispute.openedByName,
-						openedAt: dispute.openedAt.toISOString(),
-						mine: viewerUserId !== null && dispute.openedBy === viewerUserId,
-					}
-				: null,
-			approval: toApprovalDto(row),
-			payers: payers.filter((payer) => payer.transactionId === row.id),
-			shares: shares.filter((share) => share.transactionId === row.id),
+	const viewerMemberId = access?.memberId ?? null;
+	return rows.map((row) =>
+		TransactionListItemDto.parse({
+			...toCommonTransactionFields({
+				row,
+				commentCount: commentCounts.get(row.id) ?? 0,
+				dispute: disputes.get(row.id),
+				viewerUserId,
+				viewerMemberId,
+				payers: payers.filter((payer) => payer.transactionId === row.id),
+				shares: shares.filter((share) => share.transactionId === row.id),
+			}),
 			attachmentCount: attachmentCounts.get(row.id) ?? 0,
-		});
-	});
+		}),
+	);
 }
 export async function createTransaction(
 	executor: DbExecutor,
@@ -449,10 +531,7 @@ export async function createTransactionIn(
 }
 function buildFilters(query: TransactionsQuery): TransactionFilters {
 	const range = localDateRangeToUtc(query.from, query.to);
-	const searchPattern =
-		query.q === undefined
-			? undefined
-			: `%${foldVietnamese(query.q).replace(/[\\%_]/g, "\\$&")}%`;
+	const searchPattern = buildSearchPattern(query.q);
 	return {
 		...(searchPattern === undefined ? {} : { searchPattern }),
 		...(query.memberId === undefined ? {} : { memberId: query.memberId }),
@@ -478,7 +557,7 @@ export async function listTransactions(
 		async (executor) => {
 			const rows = await listTransactionRows(executor, {
 				groupId,
-				cursor: decodeCursor(query.cursor),
+				cursor: decodeTransactionCursor(query.cursor),
 				limit: query.limit + 1,
 				filters,
 			});
@@ -486,12 +565,7 @@ export async function listTransactions(
 			const last = page.at(-1);
 			const nextCursor =
 				rows.length > query.limit && last !== undefined
-					? Buffer.from(
-							JSON.stringify({
-								occurredAt: last.occurredAt.toISOString(),
-								id: last.id,
-							}),
-						).toString("base64url")
+					? encodeTransactionCursor(last)
 					: null;
 			return TransactionsResponse.parse({
 				transactions: await mapTransactionListItems(
