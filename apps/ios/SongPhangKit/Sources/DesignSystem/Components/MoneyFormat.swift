@@ -22,6 +22,14 @@ public enum MoneyFormat {
     return "\(sign)\(formatUnsigned(money.magnitude.amount))"
   }
 
+  public static func signedFull(_ money: Money) -> String {
+    if money.isZero {
+      return full(money)
+    }
+    let sign = money.isPositive ? "+" : "−"
+    return "\(sign)\(formatUnsigned(money.magnitude.amount))\u{00A0}đ"
+  }
+
   public static func compact(_ money: Money) -> String {
     let raw = String(money.magnitude.amount)
     if raw.count > 3 && raw.hasSuffix("000") {

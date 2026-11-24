@@ -7623,6 +7623,479 @@
           }
         }
       }
+    },
+    "split.holdToGrowHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhấn giữ để tăng phần chia"
+          }
+        }
+      }
+    },
+    "feed.allParticipants": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả {count} người"
+          }
+        }
+      }
+    },
+    "groups.tabActive": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang mở"
+          }
+        }
+      }
+    },
+    "groups.tabArchived": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu trữ"
+          }
+        }
+      }
+    },
+    "groups.archivedEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có nhóm nào đã lưu trữ"
+          }
+        }
+      }
+    },
+    "groups.archiveAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu trữ nhóm"
+          }
+        }
+      }
+    },
+    "groups.archiveConfirmBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu trữ nhóm này? Nhóm sẽ chuyển sang chế độ chỉ xem, số dư và lịch sử vẫn được giữ nguyên."
+          }
+        }
+      }
+    },
+    "groups.unarchiveAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khôi phục nhóm"
+          }
+        }
+      }
+    },
+    "groups.archivedBanner": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhóm đã lưu trữ — chỉ xem"
+          }
+        }
+      }
+    },
+    "groups.archivedReadOnlyError": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thao tác này không khả dụng khi nhóm đã lưu trữ."
+          }
+        }
+      }
+    },
+    "groups.needsAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần thao tác"
+          }
+        }
+      }
+    },
+    "tabs.overview": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng quan"
+          }
+        }
+      }
+    },
+    "tabs.groups": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhóm"
+          }
+        }
+      }
+    },
+    "tabs.notifications": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông báo"
+          }
+        }
+      }
+    },
+    "tabs.account": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản"
+          }
+        }
+      }
+    },
+    "groupSegments.expenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi tiêu"
+          }
+        }
+      }
+    },
+    "groupSegments.payments": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanh toán"
+          }
+        }
+      }
+    },
+    "groupSegments.fundAndStats": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quỹ & Thống kê"
+          }
+        }
+      }
+    },
+    "overview.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng quan tài chính"
+          }
+        }
+      }
+    },
+    "overview.totalOwedToMe": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng được nhận"
+          }
+        }
+      }
+    },
+    "overview.totalIOwe": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng cần trả"
+          }
+        }
+      }
+    },
+    "overview.netBalance": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chênh lệch ròng"
+          }
+        }
+      }
+    },
+    "overview.allSettled": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã sòng phẳng ở tất cả nhóm"
+          }
+        }
+      }
+    },
+    "overview.pendingActions": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần bạn xử lý"
+          }
+        }
+      }
+    },
+    "overview.groupBalances": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư theo nhóm"
+          }
+        }
+      }
+    },
+    "overview.recentTransactions": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch gần đây của bạn"
+          }
+        }
+      }
+    },
+    "overview.viewAllTransactions": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem tất cả giao dịch"
+          }
+        }
+      }
+    },
+    "overview.confirmSettlement": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận nhận tiền"
+          }
+        }
+      }
+    },
+    "overview.approveExpense": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duyệt khoản chi"
+          }
+        }
+      }
+    },
+    "overview.emptyTransactions": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có giao dịch nào"
+          }
+        }
+      }
+    },
+    "ledger.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch của bạn"
+          }
+        }
+      }
+    },
+    "ledger.allGroups": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả nhóm"
+          }
+        }
+      }
+    },
+    "ledger.searchPlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tìm theo mô tả"
+          }
+        }
+      }
+    },
+    "ledger.notParticipating": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tham gia"
+          }
+        }
+      }
+    },
+    "ledger.myShare": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phần của bạn"
+          }
+        }
+      }
+    },
+    "clone.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhân bản nhóm"
+          }
+        }
+      }
+    },
+    "clone.nameLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên nhóm mới"
+          }
+        }
+      }
+    },
+    "clone.copyPaymentMethods": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép thông tin nhận tiền"
+          }
+        }
+      }
+    },
+    "clone.copyCategories": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép danh mục tuỳ chỉnh"
+          }
+        }
+      }
+    },
+    "clone.submit": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo nhóm từ bản sao"
+          }
+        }
+      }
+    },
+    "desktop.navigation": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điều hướng"
+          }
+        }
+      }
+    },
+    "desktop.activeGroups": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhóm đang mở"
+          }
+        }
+      }
+    },
+    "desktop.balanceSummary": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tóm tắt số dư"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -461,16 +461,21 @@ struct FeedSearchBarView: View {
 
   var body: some View {
     HStack(spacing: 8) {
-      TextField(L10n.tr("filter.searchPlaceholder"), text: $text)
-        .font(Typography.subheadlineBold)
-        .foregroundStyle(Tokens.ink)
-        .padding(.horizontal, 16)
-        .frame(minHeight: 44)
-        .background(Tokens.surface, in: Capsule())
-        .accessibilityLabel(L10n.tr("filter.searchPlaceholder"))
-        .onChange(of: text) { _, next in
-          onSearchChange(next)
-        }
+      let searchPrompt = L10n.tr("filter.searchPlaceholder")
+      TextField(
+        searchPrompt,
+        text: $text,
+        prompt: Text(searchPrompt).foregroundStyle(Tokens.placeholder)
+      )
+      .font(Typography.subheadlineBold)
+      .foregroundStyle(Tokens.ink)
+      .padding(.horizontal, 16)
+      .frame(minHeight: 44)
+      .background(Tokens.surface, in: Capsule())
+      .accessibilityLabel(L10n.tr("filter.searchPlaceholder"))
+      .onChange(of: text) { _, next in
+        onSearchChange(next)
+      }
 
       Button(action: onOpenFilters) {
         Text(L10n.tr("filter.button"))
@@ -707,7 +712,7 @@ struct FeedEntryBarView: View {
           HStack {
             Text(L10n.tr("feed.entryPlaceholder"))
               .font(Typography.body)
-              .foregroundStyle(Tokens.muted)
+              .foregroundStyle(Tokens.placeholder)
             Spacer()
           }
           .padding(.horizontal, 16)

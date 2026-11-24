@@ -51,21 +51,23 @@ public struct SPTextField: View {
         .font(Typography.captionBold)
         .foregroundStyle(Tokens.muted)
 
+      let promptText = Text(placeholder).foregroundStyle(Tokens.placeholder)
+
       Group {
         switch kind {
         case .password:
-          SecureField(placeholder, text: $text)
+          SecureField(placeholder, text: $text, prompt: promptText)
             .textContentType(.password)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
         case .email:
-          TextField(placeholder, text: $text)
+          TextField(placeholder, text: $text, prompt: promptText)
             .keyboardType(.emailAddress)
             .textContentType(.emailAddress)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
         case .text:
-          TextField(placeholder, text: $text)
+          TextField(placeholder, text: $text, prompt: promptText)
         }
       }
       .focused(focus)

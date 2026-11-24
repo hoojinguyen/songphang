@@ -20,6 +20,7 @@ public struct SPSegmentedControl: View {
   private let value: String
   private let isDisabled: Bool
   private let onChange: (String) -> Void
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   public init(
     label: String,
@@ -36,7 +37,11 @@ public struct SPSegmentedControl: View {
   }
 
   public var body: some View {
-    HStack(spacing: 4) {
+    let layout =
+      dynamicTypeSize.isAccessibilitySize
+      ? AnyLayout(VStackLayout(spacing: 4))
+      : AnyLayout(HStackLayout(spacing: 4))
+    layout {
       ForEach(options) { option in
         let isSelected = option.value == value
         Button {
@@ -44,7 +49,10 @@ public struct SPSegmentedControl: View {
         } label: {
           Text(option.label)
             .font(Typography.subheadlineBold)
-            .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
+            .foregroundStyle(isSelected ? Tokens.onInk : Tokens.ink)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 6)
             .frame(maxWidth: .infinity, minHeight: 44)
             .background(isSelected ? Tokens.ink : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -204,7 +212,7 @@ public struct NewMemberInputRow: View {
         size: 44
       )
 
-      TextField(label, text: $name)
+      TextField(label, text: $name, prompt: Text(label).foregroundStyle(Tokens.placeholder))
         .focused($isFocused)
         .submitLabel(.done)
         .font(Typography.screenHeaderTitle)

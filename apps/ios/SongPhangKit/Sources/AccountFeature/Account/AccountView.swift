@@ -10,6 +10,8 @@ import UIKit
 public struct AccountView: View {
   @Bindable private var model: AccountModel
   private let onBack: () -> Void
+  @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system
+    .rawValue
 
   public init(model: AccountModel, onBack: @escaping () -> Void) {
     self.model = model
@@ -75,6 +77,8 @@ public struct AccountView: View {
     .background(Tokens.surface)
     .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
 
+    appearanceCard
+
     if user.hasPassword {
       changePasswordCard
     }
@@ -119,6 +123,30 @@ public struct AccountView: View {
     }
 
     deleteAccountCard(email: user.email)
+  }
+
+  private var appearanceCard: some View {
+    let selectedMode = AppearanceMode(rawValue: appearanceModeRaw) ?? .system
+    return VStack(alignment: .leading, spacing: 16) {
+      Text(L10n.tr("appearance.title"))
+        .font(Typography.sectionTitle)
+        .foregroundStyle(Tokens.ink)
+
+      SPSegmentedControl(
+        label: L10n.tr("appearance.title"),
+        options: AppearanceMode.allCases.map {
+          SPSegmentedControl.Option(value: $0.rawValue, label: L10n.tr($0.labelKey))
+        },
+        value: selectedMode.rawValue
+      ) { nextValue in
+        Haptics.light()
+        appearanceModeRaw = nextValue
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
   }
 
   private var changePasswordCard: some View {

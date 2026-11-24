@@ -26,7 +26,7 @@ public struct BudgetBannerView: View {
       Button(action: onTap) {
         Text(message)
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(isOver ? Tokens.onAccent : Tokens.ink)
           .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
           .padding(.horizontal, 16)
           .padding(.vertical, 10)

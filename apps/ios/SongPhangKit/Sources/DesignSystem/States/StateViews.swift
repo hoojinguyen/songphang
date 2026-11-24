@@ -136,13 +136,13 @@ public struct OfflineBanner: View {
     HStack(spacing: 12) {
       Image(systemName: "wifi.slash")
         .font(.system(size: 18, weight: .bold))
-        .foregroundStyle(Tokens.surface)
+        .foregroundStyle(Tokens.onInk)
         .accessibilityHidden(true)
 
       VStack(alignment: .leading, spacing: 2) {
         Text(L10n.tr("offline.banner"))
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.surface)
+          .foregroundStyle(Tokens.onInk)
         if let sinceTimeText {
           Text(L10n.t("offline.since", ["time": sinceTimeText]))
             .font(Typography.caption)

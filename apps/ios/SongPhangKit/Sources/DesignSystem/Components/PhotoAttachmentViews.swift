@@ -190,7 +190,7 @@ public struct PhotoRowView<AddControl: View>: View {
                 } label: {
                   Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Tokens.surface)
+                    .foregroundStyle(Tokens.onInk)
                     .frame(width: 24, height: 24)
                     .background(Tokens.ink, in: Circle())
                     .frame(width: 44, height: 44, alignment: .topTrailing)

@@ -42,12 +42,15 @@ public struct RootView: View {
     @State private var isShowingDebugPanel = false
   #endif
   @State private var hasCompletedInitialAppear = false
+  @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system
+    .rawValue
 
   private var linkRouter: LinkRouter {
     LinkRouter(webBaseURL: dependencies.webBaseURL)
   }
 
   public init(dependencies: AppDependencies? = nil, configuration: APIConfiguration? = nil) {
+    Typography.registerFontsIfAvailable()
     #if DEBUG
       let args = ProcessInfo.processInfo.arguments
       let useScripted =
@@ -522,6 +525,7 @@ public struct RootView: View {
         }
       #endif
     }
+    .preferredColorScheme((AppearanceMode(rawValue: appearanceModeRaw) ?? .system).colorScheme)
   }
 
   private var isSignedIn: Bool {
