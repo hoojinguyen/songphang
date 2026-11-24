@@ -12,6 +12,17 @@ public enum OverviewPendingActionKind: String, Sendable, Hashable, Codable {
     default: self = .unknown
     }
   }
+
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.singleValueContainer()
+    let raw = try container.decode(String.self)
+    self.init(raw: raw)
+  }
+
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.singleValueContainer()
+    try container.encode(rawValue)
+  }
 }
 
 public struct OverviewPendingAction: Sendable, Hashable, Identifiable {
@@ -104,7 +115,7 @@ public struct OverviewSummary: Sendable, Hashable {
   }
 
   public var isAllSettled: Bool {
-    netBalance == .zero && pendingActions.isEmpty
+    totalOwedToMe == .zero && totalIOwe == .zero && pendingActions.isEmpty
   }
 }
 

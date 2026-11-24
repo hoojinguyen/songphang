@@ -96,11 +96,13 @@ public struct CloneGroupSheetView: View {
       .background(Tokens.bg.ignoresSafeArea())
       .navigationTitle(L10n.tr("clone.title"))
       .navigationBarTitleDisplayMode(.inline)
+      .interactiveDismissDisabled(isSubmitting)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
           Button(L10n.tr("common.cancel")) {
             onDismiss()
           }
+          .disabled(isSubmitting)
         }
       }
     }

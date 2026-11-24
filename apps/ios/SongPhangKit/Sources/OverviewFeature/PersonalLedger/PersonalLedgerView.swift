@@ -174,9 +174,16 @@ public struct PersonalLedgerView: View {
       } label: {
         HStack(spacing: 12) {
           VStack(alignment: .leading, spacing: 4) {
-            Text(tx.groupName)
-              .font(Typography.captionBold)
-              .foregroundStyle(Tokens.muted)
+            HStack(spacing: 6) {
+              Text(tx.groupName)
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.muted)
+                .lineLimit(1)
+              Text("• \(DayLabelFormat.dayLabel(for: tx.occurredAt))")
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+                .lineLimit(1)
+            }
 
             Text(tx.description)
               .font(Typography.bodyBold)
@@ -186,19 +193,26 @@ public struct PersonalLedgerView: View {
 
           Spacer(minLength: 8)
 
-          if tx.myDelta.isZero {
-            Text(L10n.tr("ledger.notParticipating"))
-              .font(Typography.captionBold)
-              .foregroundStyle(Tokens.muted)
-          } else {
+          VStack(alignment: .trailing, spacing: 2) {
             MoneyText(
               tx.myDelta,
-              style: .signed,
+              style: tx.myDelta.isZero ? .amountOnly : .signed,
               font: Typography.subheadlineBold,
               color: tx.myDelta.isPositive
                 ? Tokens.credit
-                : (tx.myDelta.isNegative ? Tokens.debt : Tokens.ink)
+                : (tx.myDelta.isNegative ? Tokens.debt : Tokens.muted)
             )
+            .monospacedDigit()
+            .lineLimit(1)
+
+            MoneyText(
+              tx.amount,
+              style: .amountOnly,
+              font: Typography.caption,
+              color: Tokens.muted
+            )
+            .monospacedDigit()
+            .lineLimit(1)
           }
         }
         .padding(.horizontal, 16)

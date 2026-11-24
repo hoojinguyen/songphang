@@ -53,12 +53,10 @@
       guard let source = groupsById[id] else {
         throw .api(code: "NOT_FOUND", status: 404)
       }
-      guard source.role != .viewer else {
+      guard source.role.canWrite else {
         throw .api(code: "FORBIDDEN", status: 403)
       }
-      if seenIdempotencyKeys.contains(key), let firstId = groupOrder.first,
-        let existing = groupsById[firstId]
-      {
+      if let existing = clonedGroupsByKey[key] {
         return existing
       }
       seenIdempotencyKeys.insert(key)
@@ -98,6 +96,7 @@
       }
       balancesByGroup[newId] = GroupBalances(balances: [], transfers: [])
       transactionsByGroup[newId] = []
+      clonedGroupsByKey[key] = cloned
       return cloned
     }
 
@@ -163,8 +162,17 @@
           }
         }
         if let requests = settlementRequestsByGroup[group.id] {
+          let groupMembers = membersByGroup[group.id] ?? []
           for req in requests where req.status == .pending {
-            if req.toMemberId == group.myMemberId || group.role == .owner {
+            let receiver = groupMembers.first(where: { $0.id == req.toMemberId })
+            let canResolve =
+              group.role == .owner
+              || req.toMemberId == group.myMemberId
+              || (group.role == .editor && receiver?.claimed == false)
+            if canResolve {
+              let fromName =
+                groupMembers.first(where: { $0.id == req.fromMemberId })?.name ?? "Thành viên"
+              let toName = receiver?.name ?? "Thành viên"
               pendingActions.append(
                 OverviewPendingAction(
                   id: OverviewPendingAction.ID("settlement-\(req.id)"),
@@ -172,10 +180,10 @@
                   groupId: group.id,
                   groupName: group.name,
                   transactionId: req.transactionId,
-                  description: "Xác nhận thanh toán",
+                  description: "\(fromName) → \(toName)",
                   amount: req.amount,
                   occurredAt: req.createdAt,
-                  actorName: req.createdByName ?? "Thành viên"
+                  actorName: req.createdByName ?? fromName
                 )
               )
             }
@@ -190,6 +198,27 @@
         pendingActions: pendingActions,
         groupBalances: groupBalances
       )
+    }
+
+    private static func computePersonalDelta(
+      tx: LedgerTransaction,
+      myMemberId: Member.ID
+    ) -> Money {
+      if let myDelta = tx.myDelta {
+        return myDelta
+      }
+      guard tx.deletedAt == nil,
+        tx.approval.status == .none || tx.approval.status == .approved
+      else {
+        return .zero
+      }
+      let myPaid = tx.payers
+        .filter { $0.memberId == myMemberId }
+        .reduce(Int64(0)) { $0 + $1.amount.amount }
+      let myShare = tx.shares
+        .filter { $0.memberId == myMemberId }
+        .reduce(Int64(0)) { $0 + $1.amount.amount }
+      return Money(tx.type == .income ? myShare - myPaid : myPaid - myShare)
     }
 
     public func fetchPersonalTransactions(
@@ -208,14 +237,20 @@
         : groupOrder.compactMap { groupsById[$0] }
 
       for group in targetGroups {
+        guard let myMemberId = group.myMemberId else { continue }
         if let txs = transactionsByGroup[group.id] {
-          for tx in txs {
+          for tx in txs where tx.deletedAt == nil {
+            let participates =
+              tx.payers.contains(where: { $0.memberId == myMemberId })
+              || tx.shares.contains(where: { $0.memberId == myMemberId })
+            guard participates else { continue }
             if let type, tx.type != type { continue }
             if let query, !query.isEmpty {
               if !tx.description.localizedCaseInsensitiveContains(query) {
                 continue
               }
             }
+            let myDelta = Self.computePersonalDelta(tx: tx, myMemberId: myMemberId)
             results.append(
               PersonalTransaction(
                 transactionId: tx.id,
@@ -224,7 +259,7 @@
                 type: tx.type,
                 description: tx.description,
                 amount: tx.amount,
-                myDelta: tx.myDelta ?? tx.amount,
+                myDelta: myDelta,
                 occurredAt: tx.occurredAt,
                 category: tx.category,
                 payerSummary: tx.payers.first.map { _ in "Người trả" } ?? ""
@@ -234,7 +269,12 @@
         }
       }
 
-      results.sort { $0.occurredAt > $1.occurredAt }
+      results.sort {
+        if $0.occurredAt != $1.occurredAt {
+          return $0.occurredAt > $1.occurredAt
+        }
+        return $0.transactionId.rawValue > $1.transactionId.rawValue
+      }
 
       var startIndex = 0
       if let cursor, let idx = results.firstIndex(where: { $0.transactionId.rawValue == cursor }) {

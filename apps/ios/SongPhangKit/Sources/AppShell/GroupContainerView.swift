@@ -253,7 +253,7 @@ public struct GroupContainerView: View {
     }
     .onChange(of: deletedTransactionId) { _, id in
       guard let id else { return }
-      feedModel.lastDeletedTransactionId = id
+      feedModel.markDeleted(id)
       deletedTransactionId = nil
     }
     .sheet(item: $paymentSheet) { selection in

@@ -324,10 +324,22 @@ public struct SplitEditorState: Sendable, Equatable {
     case .shares:
       let member = members.first(where: { $0.id == id })
       let currentStr = values[id] ?? member?.defaultWeight ?? "1"
-      let currentVal = Double(currentStr) ?? 1.0
-      let nextVal = max(1.0, currentVal + 1.0)
-      values[id] =
-        nextVal.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(nextVal)) : String(nextVal)
+      let parsed = Double(currentStr)
+      let currentVal = (parsed?.isFinite == true) ? (parsed ?? 1.0) : 1.0
+      let clampedCurrent = min(9999.99, max(0.0, currentVal))
+      let nextVal = min(9999.99, max(1.0, clampedCurrent + 1.0))
+      let rounded = (nextVal * 100.0).rounded() / 100.0
+      if rounded.isFinite, rounded >= 0, rounded <= Double(Int.max),
+        rounded.truncatingRemainder(dividingBy: 1) == 0
+      {
+        values[id] = String(Int(rounded))
+      } else {
+        var formatted = String(format: "%.2f", rounded)
+        while formatted.contains(".") && (formatted.hasSuffix("0") || formatted.hasSuffix(".")) {
+          formatted.removeLast()
+        }
+        values[id] = formatted
+      }
 
     case .exact:
       let currentStr = values[id] ?? ""
@@ -356,10 +368,13 @@ public struct SplitEditorState: Sendable, Equatable {
       for (i, m) in positiveOthers.enumerated() {
         let mHundredths = Self.parseHundredths(values[m.id] ?? "") ?? 0
         let isLast = (i == positiveOthers.count - 1)
-        let deduct =
-          isLast
-          ? min(mHundredths, remainingToDeduct)
-          : min(mHundredths, (mHundredths * actualStep) / otherTotalHundredths)
+        let roundedTarget =
+          (mHundredths * actualStep + otherTotalHundredths / 2) / otherTotalHundredths
+        let deduct = min(
+          mHundredths,
+          remainingToDeduct,
+          isLast ? remainingToDeduct : roundedTarget
+        )
         let nextM = max(0, mHundredths - deduct)
         values[m.id] = Self.formatHundredths(nextM)
         remainingToDeduct -= deduct

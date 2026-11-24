@@ -155,7 +155,17 @@ public struct GroupSettingsView: View {
       }
     } else {
       let isOffline = model.refreshError == .offline
+      let isArchived = data.group.isArchived
+      let isReadOnly = isOffline || isArchived || model.isPerformingAction
       let trimmed = model.nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+
+      if isArchived {
+        SPCard(tone: .sunken, padding: 16) {
+          Text(L10n.tr("groups.archivedBanner"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+        }
+      }
 
       VStack(alignment: .leading, spacing: 8) {
         Text(L10n.tr("settings.nameLabel"))
@@ -165,6 +175,7 @@ public struct GroupSettingsView: View {
         TextField("", text: $model.nameDraft)
           .font(Typography.sectionTitle)
           .foregroundStyle(Tokens.ink)
+          .disabled(isReadOnly)
           .padding(.horizontal, 20)
           .frame(minHeight: 64)
           .background(Tokens.surface)
@@ -181,7 +192,7 @@ public struct GroupSettingsView: View {
         L10n.tr("settings.saveName"),
         variant: .primary,
         isFullWidth: true,
-        isDisabled: isOffline || model.isPerformingAction || trimmed.isEmpty
+        isDisabled: isReadOnly || trimmed.isEmpty
           || trimmed == data.group.name
       ) {
         Task { await model.saveName() }
@@ -200,7 +211,7 @@ public struct GroupSettingsView: View {
         SPSwitch(
           checked: data.group.minimizeDebts,
           label: L10n.tr("settings.minimizeTitle"),
-          isDisabled: isOffline || model.isPerformingAction
+          isDisabled: isReadOnly
         ) { newValue in
           Task { await model.setMinimizeDebts(newValue) }
         }
@@ -224,7 +235,7 @@ public struct GroupSettingsView: View {
             SPSegmentedControl.Option(value: "viewer", label: L10n.tr("members.roleViewer")),
           ],
           value: data.group.defaultRole.code,
-          isDisabled: isOffline || model.isPerformingAction
+          isDisabled: isReadOnly
         ) { selected in
           let role: Role = selected == "viewer" ? .viewer : .editor
           Task { await model.setDefaultRole(role) }
@@ -248,7 +259,7 @@ public struct GroupSettingsView: View {
             SPSegmentedControl.Option(value: "14", label: L10n.tr("reminders.interval14")),
           ],
           value: data.group.reminderIntervalDays.map(String.init) ?? "off",
-          isDisabled: isOffline || model.isPerformingAction
+          isDisabled: isReadOnly
         ) { selected in
           let interval: Int? = {
             switch selected {
@@ -265,17 +276,17 @@ public struct GroupSettingsView: View {
       .background(Tokens.surface)
       .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
 
-      inviteLinkCard(invite: data.invite)
+      inviteLinkCard(invite: data.invite, isDisabled: isReadOnly)
       CategoryManagementSection(
         groupId: model.groupId,
         categories: data.categories,
         categoriesRepository: model.categoriesRepository,
-        isDisabled: isOffline || model.isPerformingAction,
+        isDisabled: isReadOnly,
         onChanged: { model.updateCategories($0) }
       )
       BudgetSettingsCard(
         budget: data.budget,
-        isDisabled: isOffline || model.isPerformingAction,
+        isDisabled: isReadOnly,
         isPending: model.isSavingBudget,
         errorMessage: budgetErrorText,
         onSave: { period, amount in
@@ -287,7 +298,7 @@ public struct GroupSettingsView: View {
       )
       ApprovalCardView(
         group: data.group,
-        isDisabled: isOffline || model.isPerformingAction,
+        isDisabled: isReadOnly,
         isPending: model.isPerformingAction,
         onSave: { threshold in
           Task { await model.setApprovalThreshold(threshold) }
@@ -296,13 +307,13 @@ public struct GroupSettingsView: View {
       if model.telegramFeatureEnabled {
         TelegramGroupCardView(
           model: model,
-          isDisabled: isOffline || model.isPerformingAction
+          isDisabled: isReadOnly
         )
       }
-      transferOwnershipCard(users: data.users)
-      cloneCard(group: data.group)
-      archiveCard(group: data.group)
-      deleteGroupCard()
+      transferOwnershipCard(users: data.users, isDisabled: isReadOnly)
+      cloneCard(group: data.group, isOffline: isOffline)
+      archiveCard(group: data.group, isOffline: isOffline)
+      deleteGroupCard(isOffline: isOffline)
 
       if model.actionError != nil {
         Text(L10n.tr("common.saveError"))
@@ -312,7 +323,7 @@ public struct GroupSettingsView: View {
     }
   }
 
-  private func inviteLinkCard(invite: Invite) -> some View {
+  private func inviteLinkCard(invite: Invite, isDisabled: Bool) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       Text(L10n.tr("settings.linkTitle"))
         .font(Typography.bodyBold)
@@ -325,7 +336,7 @@ public struct GroupSettingsView: View {
         invite.active ? L10n.tr("settings.disableLink") : L10n.tr("settings.enableLink"),
         variant: .surface,
         isFullWidth: true,
-        isDisabled: model.isPerformingAction
+        isDisabled: isDisabled
       ) {
         Task { await model.setInviteActive(!invite.active) }
       }
@@ -334,7 +345,7 @@ public struct GroupSettingsView: View {
         L10n.tr("settings.rotateLink"),
         variant: .surface,
         isFullWidth: true,
-        isDisabled: model.isPerformingAction
+        isDisabled: isDisabled
       ) {
         Task { await model.rotateInvite() }
       }
@@ -345,7 +356,7 @@ public struct GroupSettingsView: View {
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
   }
 
-  private func transferOwnershipCard(users: [GroupUser]) -> some View {
+  private func transferOwnershipCard(users: [GroupUser], isDisabled: Bool) -> some View {
     let others = users.filter { !$0.isMe }
     return VStack(alignment: .leading, spacing: 12) {
       Text(L10n.tr("settings.transferTitle"))
@@ -365,7 +376,7 @@ public struct GroupSettingsView: View {
             user.name,
             variant: .surface,
             isFullWidth: true,
-            isDisabled: model.isPerformingAction
+            isDisabled: isDisabled
           ) {
             transferTarget = user
           }
@@ -378,7 +389,7 @@ public struct GroupSettingsView: View {
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
   }
 
-  private func cloneCard(group: ExpenseGroup) -> some View {
+  private func cloneCard(group: ExpenseGroup, isOffline: Bool) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       Text(L10n.tr("clone.title"))
         .font(Typography.bodyBold)
@@ -388,7 +399,7 @@ public struct GroupSettingsView: View {
         L10n.tr("clone.title"),
         variant: .surface,
         isFullWidth: true,
-        isDisabled: model.isPerformingAction
+        isDisabled: isOffline || model.isPerformingAction
       ) {
         isShowingCloneSheet = true
       }
@@ -399,7 +410,7 @@ public struct GroupSettingsView: View {
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
   }
 
-  private func archiveCard(group: ExpenseGroup) -> some View {
+  private func archiveCard(group: ExpenseGroup, isOffline: Bool) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       if group.isArchived {
         Text(L10n.tr("groups.archivedBanner"))
@@ -410,7 +421,7 @@ public struct GroupSettingsView: View {
           L10n.tr("groups.unarchiveAction"),
           variant: .primary,
           isFullWidth: true,
-          isDisabled: model.isPerformingAction
+          isDisabled: isOffline || model.isPerformingAction
         ) {
           Task { await model.unarchive() }
         }
@@ -423,7 +434,7 @@ public struct GroupSettingsView: View {
           L10n.tr("groups.archiveAction"),
           variant: .surface,
           isFullWidth: true,
-          isDisabled: model.isPerformingAction
+          isDisabled: isOffline || model.isPerformingAction
         ) {
           isShowingArchiveDialog = true
         }
@@ -435,7 +446,7 @@ public struct GroupSettingsView: View {
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
   }
 
-  private func deleteGroupCard() -> some View {
+  private func deleteGroupCard(isOffline: Bool) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       Text(L10n.tr("settings.deleteHint"))
         .font(Typography.captionBold)
@@ -444,7 +455,8 @@ public struct GroupSettingsView: View {
       SPButton(
         L10n.tr("settings.deleteButton"),
         variant: .primary,
-        isFullWidth: true
+        isFullWidth: true,
+        isDisabled: isOffline || model.isPerformingAction
       ) {
         deleteConfirmationText = ""
         isShowingDeleteSheet = true

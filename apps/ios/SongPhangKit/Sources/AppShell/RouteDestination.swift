@@ -379,7 +379,10 @@ public struct RouteDestination: View {
       )
     case .personalLedger:
       self._personalLedgerModel = State(
-        initialValue: PersonalLedgerModel(repository: dependencies.overview)
+        initialValue: PersonalLedgerModel(
+          repository: dependencies.overview,
+          groupsRepository: dependencies.groups
+        )
       )
     #if DEBUG
       case .debugGallery:
@@ -392,7 +395,7 @@ public struct RouteDestination: View {
     content
       .onChange(of: deletedTransactionId) { _, id in
         guard let id, let feedModel else { return }
-        feedModel.lastDeletedTransactionId = id
+        feedModel.markDeleted(id)
         deletedTransactionId = nil
       }
   }

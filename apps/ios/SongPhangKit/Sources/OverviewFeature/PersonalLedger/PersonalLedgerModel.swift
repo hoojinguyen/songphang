@@ -15,10 +15,15 @@ public final class PersonalLedgerModel {
   public var selectedType: TransactionType?
 
   private let repository: any OverviewRepository
+  private let groupsRepository: (any GroupsRepository)?
   private var generation: UInt64 = 0
 
-  public init(repository: any OverviewRepository) {
+  public init(
+    repository: any OverviewRepository,
+    groupsRepository: (any GroupsRepository)? = nil
+  ) {
     self.repository = repository
+    self.groupsRepository = groupsRepository
   }
 
   public var hasMore: Bool {
@@ -28,7 +33,11 @@ public final class PersonalLedgerModel {
   public func loadInitial() async {
     generation &+= 1
     let currentGen = generation
+    let targetGroupId = selectedGroupId
+    let targetType = selectedType
+    let targetQuery = query.isEmpty ? nil : query
     isLoading = true
+    isLoadingMore = false
     error = nil
     nextCursor = nil
     defer {
@@ -38,18 +47,33 @@ public final class PersonalLedgerModel {
     }
     do throws(AppError) {
       if availableGroups.isEmpty {
-        if let cached = await repository.lastKnownOverview() {
+        if let groupsRepository {
+          if let fetchedGroups = try? await groupsRepository.list(status: nil),
+            !fetchedGroups.isEmpty
+          {
+            availableGroups = fetchedGroups.map { ($0.id, $0.name) }
+          } else if let cachedGroups = await groupsRepository.lastKnownGroups(),
+            !cachedGroups.isEmpty
+          {
+            availableGroups = cachedGroups.map { ($0.id, $0.name) }
+          }
+        }
+        if availableGroups.isEmpty, let cached = await repository.lastKnownOverview() {
           availableGroups = cached.groupBalances.map { ($0.groupId, $0.groupName) }
         }
       }
       let page = try await repository.transactions(
         cursor: nil,
         limit: 20,
-        type: selectedType,
-        groupId: selectedGroupId,
-        query: query.isEmpty ? nil : query
+        type: targetType,
+        groupId: targetGroupId,
+        query: targetQuery
       )
-      guard currentGen == generation else { return }
+      guard currentGen == generation,
+        selectedGroupId == targetGroupId,
+        selectedType == targetType,
+        (query.isEmpty ? nil : query) == targetQuery
+      else { return }
       items = page.items
       nextCursor = page.nextCursor
     } catch {
@@ -59,8 +83,11 @@ public final class PersonalLedgerModel {
   }
 
   public func loadMore() async {
-    guard !isLoadingMore, let cursor = nextCursor else { return }
+    guard !isLoading, !isLoadingMore, let cursor = nextCursor else { return }
     let currentGen = generation
+    let targetGroupId = selectedGroupId
+    let targetType = selectedType
+    let targetQuery = query.isEmpty ? nil : query
     isLoadingMore = true
     defer {
       if currentGen == generation {
@@ -71,11 +98,15 @@ public final class PersonalLedgerModel {
       let page = try await repository.transactions(
         cursor: cursor,
         limit: 20,
-        type: selectedType,
-        groupId: selectedGroupId,
-        query: query.isEmpty ? nil : query
+        type: targetType,
+        groupId: targetGroupId,
+        query: targetQuery
       )
-      guard currentGen == generation else { return }
+      guard currentGen == generation,
+        selectedGroupId == targetGroupId,
+        selectedType == targetType,
+        (query.isEmpty ? nil : query) == targetQuery
+      else { return }
       items.append(contentsOf: page.items)
       nextCursor = page.nextCursor
     } catch {

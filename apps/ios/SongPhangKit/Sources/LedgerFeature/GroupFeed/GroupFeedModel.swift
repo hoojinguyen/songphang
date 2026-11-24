@@ -37,6 +37,7 @@ public final class GroupFeedModel {
   private var searchTask: Task<Void, Never>?
   private var loadMoreTask: Task<Void, Never>?
   private var listGeneration: UInt64 = 0
+  private var locallyDeletedIds: Set<LedgerTransaction.ID> = []
 
   @discardableResult
   private func invalidatePagination() -> UInt64 {
@@ -77,6 +78,15 @@ public final class GroupFeedModel {
     self.lastDeletedTransactionId = initialDeletedTransactionId
   }
 
+  public func markDeleted(_ id: LedgerTransaction.ID) {
+    locallyDeletedIds.insert(id)
+    lastDeletedTransactionId = id
+    if case .loaded(var current) = state {
+      current.transactions.removeAll { $0.id == id }
+      state = .loaded(current)
+    }
+  }
+
   public func deleteTransaction(
     _ id: LedgerTransaction.ID,
     successMessage: String,
@@ -84,7 +94,7 @@ public final class GroupFeedModel {
   ) async {
     do throws(AppError) {
       try await transactionsRepository.delete(groupId: groupId, id: id)
-      lastDeletedTransactionId = id
+      markDeleted(id)
       toastMessage = successMessage
       await load()
     } catch {
@@ -97,6 +107,7 @@ public final class GroupFeedModel {
     lastDeletedTransactionId = nil
     do throws(AppError) {
       _ = try await transactionsRepository.restore(groupId: groupId, id: id)
+      locallyDeletedIds.remove(id)
       toastMessage = restoredMessage
       await load()
     } catch {
@@ -139,7 +150,7 @@ public final class GroupFeedModel {
           balances: b,
           categories: c,
           budget: bud,
-          transactions: p.items,
+          transactions: p.items.filter { !locallyDeletedIds.contains($0.id) },
           nextCursor: p.nextCursor
         )
       )
@@ -178,7 +189,7 @@ public final class GroupFeedModel {
           balances: b,
           categories: c,
           budget: bud,
-          transactions: p.items,
+          transactions: p.items.filter { !locallyDeletedIds.contains($0.id) },
           nextCursor: p.nextCursor
         )
       )

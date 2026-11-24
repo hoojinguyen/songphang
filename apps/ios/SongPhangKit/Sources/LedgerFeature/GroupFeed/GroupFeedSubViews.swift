@@ -74,6 +74,27 @@ struct FeedTransactionRowView: View {
     }
     .buttonStyle(.plain)
     .accessibilityLabel(L10n.t("feed.viewRow", ["description": transaction.description]))
+    .accessibilityValue(accessibilityStatusSummary)
+  }
+
+  private var accessibilityStatusSummary: String {
+    var parts: [String] = []
+    if transaction.approval.status == .pending {
+      parts.append(L10n.tr("approval.pendingTag"))
+    } else if transaction.approval.status == .rejected {
+      parts.append(L10n.tr("approval.rejectedTag"))
+    }
+    if transaction.dispute != nil {
+      parts.append(L10n.tr("transactionView.disputeTag"))
+    }
+    if transaction.commentCount > 0 {
+      parts.append(
+        L10n.t("transactionView.commentCount", ["count": String(transaction.commentCount)]))
+    }
+    if transaction.version > 1 {
+      parts.append(L10n.tr("feed.edited"))
+    }
+    return parts.joined(separator: ", ")
   }
 
   @ViewBuilder
@@ -247,10 +268,14 @@ struct FeedTransactionRowView: View {
 
           if let delta = transaction.myDelta {
             if delta.isZero {
-              Text(L10n.tr("ledger.notParticipating"))
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.muted)
-                .lineLimit(1)
+              MoneyText(
+                delta,
+                style: .amountOnly,
+                font: Typography.captionBold,
+                color: Tokens.muted
+              )
+              .monospacedDigit()
+              .lineLimit(1)
             } else {
               MoneyText(
                 delta,

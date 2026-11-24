@@ -54,7 +54,7 @@ public struct GroupListView: View {
   public var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        if model.refreshError != nil {
+        if model.refreshError != nil || model.actionError == .offline {
           OfflineBanner()
         }
 
@@ -64,6 +64,12 @@ public struct GroupListView: View {
           Text(statusNotice)
             .font(Typography.subheadlineBold)
             .foregroundStyle(Tokens.ink)
+        }
+
+        if let actionError = model.actionError, actionError != .offline {
+          Text(L10n.tr("common.saveError"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.debt)
         }
 
         contentSection
@@ -95,7 +101,7 @@ public struct GroupListView: View {
       if let target = archivingGroup {
         Button(L10n.tr("groups.archiveAction"), role: .destructive) {
           Task {
-            try? await model.archive(groupId: target.id)
+            _ = await model.archive(groupId: target.id)
             archivingGroup = nil
           }
         }
@@ -212,7 +218,7 @@ public struct GroupListView: View {
       if group.role.isOwner {
         if group.isArchived {
           Button {
-            Task { try? await model.unarchive(groupId: group.id) }
+            Task { _ = await model.unarchive(groupId: group.id) }
           } label: {
             Label(L10n.tr("groups.unarchiveAction"), systemImage: "arrow.uturn.backward")
           }
