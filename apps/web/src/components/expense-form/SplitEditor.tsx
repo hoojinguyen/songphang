@@ -1,5 +1,5 @@
 import type { MemberDto } from "@songphang/contract";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { ItemsAssignmentPanel } from "../receipt/ItemsAssignmentPanel";
@@ -13,6 +13,11 @@ import { SplitStatus } from "./SplitStatus";
 import type { useSplitState } from "./use-split-state";
 
 function useHoldToGrow(onPump: (id: string) => void) {
+	const onPumpRef = useRef(onPump);
+	useEffect(() => {
+		onPumpRef.current = onPump;
+	});
+
 	const timerRef = useRef<NodeJS.Timeout | null>(null);
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 	const [heldId, setHeldId] = useState<string | null>(null);
@@ -26,22 +31,29 @@ function useHoldToGrow(onPump: (id: string) => void) {
 		setHeldId(null);
 	};
 
+	useEffect(() => {
+		return () => {
+			if (timerRef.current) clearTimeout(timerRef.current);
+			if (intervalRef.current) clearInterval(intervalRef.current);
+		};
+	}, []);
+
 	const start = (id: string) => {
 		stop();
 		setHeldId(id);
 		didPumpLongRef.current = false;
 		timerRef.current = setTimeout(() => {
 			didPumpLongRef.current = true;
-			onPump(id);
+			onPumpRef.current(id);
 			intervalRef.current = setInterval(() => {
-				onPump(id);
+				onPumpRef.current(id);
 			}, 180);
 		}, 250);
 	};
 
 	const finish = (id: string) => {
 		if (!didPumpLongRef.current && heldId === id) {
-			onPump(id);
+			onPumpRef.current(id);
 		}
 		stop();
 	};

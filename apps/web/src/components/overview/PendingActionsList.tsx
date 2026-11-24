@@ -26,7 +26,7 @@ export function PendingActionsList({
 					const href =
 						action.kind === "settlement_confirmation"
 							? `/g/${action.groupId}/balances`
-							: `/g/${action.groupId}/tx/${action.id}`;
+							: `/g/${action.groupId}/tx/${action.id}/view`;
 					const label =
 						action.kind === "settlement_confirmation"
 							? vi.overview.confirmSettlement

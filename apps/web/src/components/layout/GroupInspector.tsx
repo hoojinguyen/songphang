@@ -1,16 +1,22 @@
 "use client";
-import Link from "next/link";
-import { payHref, settlementHref, useBalances } from "../../lib/balances";
+import { useBalances } from "../../lib/balances";
 import { useGroup } from "../../lib/groups";
 import { useMembers } from "../../lib/members";
 import { formatMoney, formatSignedAmount } from "../../lib/money";
+import { useMe } from "../../lib/session";
 import { t, vi } from "../../messages/vi";
+import {
+	fundTransferCaption,
+	TransferAction,
+} from "../balances/TransferAction";
 import { MemberShape } from "../ui/MemberShape";
 
 export function GroupInspector({ groupId }: { groupId: string }) {
 	const groupQuery = useGroup(groupId);
 	const balancesQuery = useBalances(groupId);
 	const membersQuery = useMembers(groupId);
+	const me = useMe();
+	const verified = me.data?.emailVerified ?? true;
 
 	const group = groupQuery.data;
 	const balances = balancesQuery.data;
@@ -70,6 +76,11 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 							if (!from || !to) return null;
 
 							const iPay = transfer.fromMemberId === group.myMemberId;
+							const caption =
+								fundTransferCaption(from, to, transfer.amount) ??
+								(iPay
+									? t(vi.balances.youPayMember, { name: to.name })
+									: t(vi.balances.memberPaysYou, { name: from.name }));
 
 							return (
 								<div
@@ -77,44 +88,27 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 									className="flex flex-col gap-2 rounded-[22px] bg-surface p-3.5"
 								>
 									<div className="flex items-center justify-between gap-2">
-										<div className="flex items-center gap-2">
+										<div className="flex items-center gap-2 min-w-0">
 											<MemberShape {...(iPay ? to : from)} size={24} />
-											<span className="text-xs font-bold text-ink">
-												{iPay
-													? t(vi.balances.youPayMember, { name: to.name })
-													: t(vi.balances.memberPaysYou, { name: from.name })}
+											<span className="truncate text-xs font-bold text-ink">
+												{caption}
 											</span>
 										</div>
-										<span className="tabular-nums text-xs font-black text-ink">
+										<span className="shrink-0 tabular-nums text-xs font-black text-ink">
 											{formatMoney(transfer.amount)}
 										</span>
 									</div>
 
-									<div className="flex gap-2">
-										{iPay ? (
-											<>
-												<Link
-													href={payHref(groupId, transfer)}
-													className="flex h-9 flex-1 items-center justify-center rounded-pill bg-ink text-xs font-bold text-on-ink transition-opacity hover:opacity-90"
-												>
-													{vi.feed.pay}
-												</Link>
-												<Link
-													href={settlementHref(groupId, transfer)}
-													className="flex h-9 items-center justify-center rounded-pill bg-sunken px-3 text-xs font-bold text-ink transition-colors hover:bg-surface-raised"
-												>
-													{vi.pay.reportedButton}
-												</Link>
-											</>
-										) : (
-											<Link
-												href={settlementHref(groupId, transfer)}
-												className="flex h-9 flex-1 items-center justify-center rounded-pill bg-ink text-xs font-bold text-on-ink transition-opacity hover:opacity-90"
-											>
-												{vi.balances.received}
-											</Link>
-										)}
-									</div>
+									<TransferAction
+										groupId={groupId}
+										transfer={transfer}
+										from={from}
+										to={to}
+										myMemberId={group.myMemberId}
+										role={group.role}
+										verified={verified}
+										compact
+									/>
 								</div>
 							);
 						})}

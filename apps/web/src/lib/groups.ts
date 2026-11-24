@@ -2,13 +2,14 @@
 import {
 	type CloneGroupRequest,
 	type CreateGroupRequest,
+	type GroupDto,
 	GroupResponse,
 	type GroupStatusFilter,
 	GroupsResponse,
 	type UpdateGroupRequest,
 } from "@songphang/contract";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type ApiError, apiFetch, apiSend } from "./api";
+import { type ApiError, apiFetch } from "./api";
 import { jsonRequest } from "./request";
 export function useGroups(status?: GroupStatusFilter) {
 	return useQuery<Awaited<ReturnType<typeof fetchGroups>>, ApiError>({
@@ -59,12 +60,15 @@ export function useCreateGroup() {
 }
 export function useArchiveGroup(groupId: string) {
 	const client = useQueryClient();
-	return useMutation<void, ApiError, void>({
-		mutationFn: () =>
-			apiSend(
-				`/groups/${encodeURIComponent(groupId)}/archive`,
-				jsonRequest("POST", {}),
-			),
+	return useMutation<GroupDto, ApiError, void>({
+		mutationFn: async () =>
+			(
+				await apiFetch(
+					`/groups/${encodeURIComponent(groupId)}/archive`,
+					GroupResponse,
+					jsonRequest("POST", {}),
+				)
+			).group,
 		onSuccess: async () => {
 			await Promise.all([
 				client.invalidateQueries({ queryKey: ["groups"] }),
@@ -76,12 +80,15 @@ export function useArchiveGroup(groupId: string) {
 }
 export function useUnarchiveGroup(groupId: string) {
 	const client = useQueryClient();
-	return useMutation<void, ApiError, void>({
-		mutationFn: () =>
-			apiSend(
-				`/groups/${encodeURIComponent(groupId)}/unarchive`,
-				jsonRequest("POST", {}),
-			),
+	return useMutation<GroupDto, ApiError, void>({
+		mutationFn: async () =>
+			(
+				await apiFetch(
+					`/groups/${encodeURIComponent(groupId)}/unarchive`,
+					GroupResponse,
+					jsonRequest("POST", {}),
+				)
+			).group,
 		onSuccess: async () => {
 			await Promise.all([
 				client.invalidateQueries({ queryKey: ["groups"] }),

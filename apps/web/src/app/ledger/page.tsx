@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { PersonalLedgerList } from "../../components/overview/PersonalLedgerList";
 import { Icon } from "../../components/ui/Icon";
+import { LoadError } from "../../components/ui/LoadError";
 import { ScreenHeader } from "../../components/ui/ScreenHeader";
 import { useGroups } from "../../lib/groups";
 import { usePersonalTransactions } from "../../lib/overview";
@@ -11,18 +12,18 @@ import { vi } from "../../messages/vi";
 
 export default function PersonalLedgerPage() {
 	const me = useMe();
-	useSessionGuard(me.error);
-
+	const groupsQuery = useGroups();
 	const [q, setQ] = useState("");
 	const [groupId, setGroupId] = useState<string>("");
 	const [type, setType] = useState<"expense" | "transfer" | "income" | "">("");
 
-	const groupsQuery = useGroups();
 	const transactionsQuery = usePersonalTransactions({
 		q: q.trim() || undefined,
 		groupId: groupId || undefined,
 		type: type || undefined,
 	});
+
+	useSessionGuard(me.error ?? transactionsQuery.error ?? groupsQuery.error);
 
 	const allItems =
 		transactionsQuery.data?.pages.flatMap((page) => page.items) ?? [];
@@ -88,6 +89,11 @@ export default function PersonalLedgerPage() {
 						<div className="h-20 rounded-[24px] bg-sunken" />
 						<div className="h-20 rounded-[24px] bg-sunken" />
 					</div>
+				) : transactionsQuery.isError ? (
+					<LoadError
+						onRetry={() => void transactionsQuery.refetch()}
+						isRetrying={transactionsQuery.isFetching}
+					/>
 				) : (
 					<PersonalLedgerList
 						items={allItems}

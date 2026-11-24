@@ -17,9 +17,7 @@ function formatDelta(delta: number) {
 			</span>
 		);
 	}
-	return (
-		<span className="font-medium text-muted">{vi.ledger.notParticipating}</span>
-	);
+	return <span className="font-medium text-muted">0 {vi.common.currency}</span>;
 }
 
 export function PersonalLedgerList({
@@ -56,7 +54,7 @@ export function PersonalLedgerList({
 				return (
 					<Link
 						key={item.id}
-						href={`/g/${item.groupId}/tx/${item.id}`}
+						href={`/g/${item.groupId}/tx/${item.id}/view`}
 						className="flex items-center justify-between gap-3 rounded-[24px] bg-surface p-4 transition-colors hover:bg-surface-raised"
 					>
 						<div className="min-w-0 flex-1">

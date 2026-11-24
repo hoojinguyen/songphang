@@ -353,32 +353,51 @@ export function useSplitState(
 				if (currentHundredths >= 10000) return;
 				const step = Math.min(500, 10000 - currentHundredths);
 				const otherMembers = selected.filter((m) => m.id !== id);
-				const otherTotalHundredths = otherMembers.reduce(
-					(sum, m) => sum + (hundredths(values[m.id] ?? "") ?? 0),
-					0,
-				);
 				setValues((current) => {
+					const positiveOthers = otherMembers.filter(
+						(m) => (hundredths(current[m.id] ?? "") ?? 0) > 0,
+					);
+					const otherTotalHundredths = positiveOthers.reduce(
+						(sum, m) => sum + (hundredths(current[m.id] ?? "") ?? 0),
+						0,
+					);
+					if (otherTotalHundredths <= 0 || positiveOthers.length === 0) {
+						return current;
+					}
+					const actualStep = Math.min(step, otherTotalHundredths);
 					const next = { ...current };
-					next[id] = percentText(currentHundredths + step);
-					if (otherTotalHundredths > 0 && otherMembers.length > 0) {
-						let remainingToDeduct = step;
-						for (let i = 0; i < otherMembers.length; i++) {
-							const m = otherMembers[i];
-							if (!m) continue;
-							const mHundredths = hundredths(current[m.id] ?? "") ?? 0;
-							if (mHundredths <= 0) continue;
-							const deduct =
-								i === otherMembers.length - 1
-									? Math.min(mHundredths, remainingToDeduct)
-									: Math.min(
-											mHundredths,
-											Math.round((mHundredths / otherTotalHundredths) * step),
-										);
-							const nextM = Math.max(0, mHundredths - deduct);
-							next[m.id] = percentText(nextM);
-							remainingToDeduct -= deduct;
+					let remainingToDeduct = actualStep;
+
+					for (let i = 0; i < positiveOthers.length; i++) {
+						const m = positiveOthers[i];
+						if (!m) continue;
+						const mHundredths = hundredths(current[m.id] ?? "") ?? 0;
+						const isLast = i === positiveOthers.length - 1;
+						const deduct = isLast
+							? Math.min(mHundredths, remainingToDeduct)
+							: Math.min(
+									mHundredths,
+									Math.round((mHundredths / otherTotalHundredths) * actualStep),
+								);
+						const nextM = Math.max(0, mHundredths - deduct);
+						next[m.id] = percentText(nextM);
+						remainingToDeduct -= deduct;
+					}
+
+					if (remainingToDeduct > 0) {
+						for (const m of positiveOthers) {
+							const curM = hundredths(next[m.id] ?? "") ?? 0;
+							if (curM <= 0) continue;
+							const extra = Math.min(curM, remainingToDeduct);
+							next[m.id] = percentText(curM - extra);
+							remainingToDeduct -= extra;
+							if (remainingToDeduct <= 0) break;
 						}
 					}
+
+					const finalAdded = actualStep - remainingToDeduct;
+					if (finalAdded <= 0) return current;
+					next[id] = percentText(currentHundredths + finalAdded);
 					return next;
 				});
 			}

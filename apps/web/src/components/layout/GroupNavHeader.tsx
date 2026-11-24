@@ -121,20 +121,24 @@ export function GroupNavHeader({ groupId }: { groupId: string }) {
 									>
 										{vi.activity.title}
 									</Link>
-									<Link
-										href={`/g/${groupId}/settings`}
-										onClick={() => setMenuOpen(false)}
-										className="flex w-full items-center rounded-[14px] px-3 py-2 text-xs font-bold text-ink hover:bg-surface"
-									>
-										{vi.categories.title}
-									</Link>
-									<Link
-										href={`/g/${groupId}/settings`}
-										onClick={() => setMenuOpen(false)}
-										className="flex w-full items-center rounded-[14px] px-3 py-2 text-xs font-bold text-ink hover:bg-surface"
-									>
-										{vi.telegram.settingsTitle}
-									</Link>
+									{group.role === "owner" && (
+										<>
+											<Link
+												href={`/g/${groupId}/settings`}
+												onClick={() => setMenuOpen(false)}
+												className="flex w-full items-center rounded-[14px] px-3 py-2 text-xs font-bold text-ink hover:bg-surface"
+											>
+												{vi.categories.title}
+											</Link>
+											<Link
+												href={`/g/${groupId}/settings`}
+												onClick={() => setMenuOpen(false)}
+												className="flex w-full items-center rounded-[14px] px-3 py-2 text-xs font-bold text-ink hover:bg-surface"
+											>
+												{vi.telegram.settingsTitle}
+											</Link>
+										</>
+									)}
 									{group.role !== "viewer" && (
 										<button
 											type="button"

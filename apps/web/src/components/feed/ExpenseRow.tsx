@@ -135,17 +135,19 @@ export function ExpenseRow({
 					<p className="line-clamp-2 text-[15px] font-extrabold text-ink">
 						{transaction.description}
 					</p>
-					{categoryLabel && (
+					{(categoryLabel || transaction.attachmentCount > 0) && (
 						<div className="mt-1 flex items-center gap-1.5">
-							<span className="inline-flex items-center gap-1 rounded-md bg-sunken px-2 py-0.5 text-[11px] font-semibold text-ink">
-								{customCategory && (
-									<span
-										aria-hidden="true"
-										className={`size-2 shrink-0 rounded-full ${CATEGORY_COLORS[customCategory.color].bg}`}
-									/>
-								)}
-								<span>{categoryLabel}</span>
-							</span>
+							{categoryLabel && (
+								<span className="inline-flex items-center gap-1 rounded-md bg-sunken px-2 py-0.5 text-[11px] font-semibold text-ink">
+									{customCategory && (
+										<span
+											aria-hidden="true"
+											className={`size-2 shrink-0 rounded-full ${CATEGORY_COLORS[customCategory.color].bg}`}
+										/>
+									)}
+									<span>{categoryLabel}</span>
+								</span>
+							)}
 							{transaction.attachmentCount > 0 && (
 								<span className="inline-flex items-center gap-1 text-[11px] text-muted">
 									<Icon name="image" size={13} />

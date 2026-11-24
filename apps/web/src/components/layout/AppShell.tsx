@@ -92,6 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 	const groupMatch = pathname.match(/^\/g\/([^/]+)/);
 	const rawGroupId = groupMatch?.[1];
 	const currentGroupId = rawGroupId ? decodeURIComponent(rawGroupId) : null;
+	const isGroupRoute = pathname.startsWith("/g/");
 
 	return (
 		<div className="flex min-h-dvh w-full justify-center bg-bg">
@@ -101,7 +102,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 			</div>
 
 			{/* Center Workspace (up to 760px on desktop) */}
-			<div className="min-w-0 flex-1 max-w-[760px] w-full">{children}</div>
+			<div
+				className={`min-w-0 flex-1 max-w-[760px] w-full ${!isGroupRoute ? "pb-[88px] lg:pb-0" : ""}`}
+			>
+				{children}
+			</div>
 
 			{/* Sticky Right Rail: GroupInspector (>= 1280px on /g/[groupId]*) */}
 			{currentGroupId && (
@@ -110,8 +115,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 				</div>
 			)}
 
-			{/* Fixed Bottom 4-Tab Bar (< 1024px) */}
-			<MobileTabBar />
+			{/* Fixed Bottom 4-Tab Bar (< 1024px) on top-level views */}
+			{!isGroupRoute && <MobileTabBar />}
 		</div>
 	);
 }
