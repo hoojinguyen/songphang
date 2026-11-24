@@ -22,24 +22,32 @@ public final class OverviewModel {
     }
     isRefreshing = true
     defer { isRefreshing = false }
-    do throws(AppError) {
-      let fetched = try await repository.overview()
-      overview = .loaded(fetched)
-      refreshError = nil
-
-      let txPage = try await repository.transactions(
+    do {
+      async let fetchedTask = repository.overview()
+      async let txPageTask = repository.transactions(
         cursor: nil,
         limit: 5,
         type: nil,
         groupId: nil,
         query: nil
       )
+      let fetched = try await fetchedTask
+      let txPage = try await txPageTask
+      overview = .loaded(fetched)
+      refreshError = nil
       recentTransactions = txPage.items
-    } catch {
+    } catch let appError as AppError {
       if case .loaded = overview {
-        refreshError = error
+        refreshError = appError
       } else {
-        overview = .failed(error)
+        overview = .failed(appError)
+      }
+    } catch {
+      let appError = AppError.unexpected
+      if case .loaded = overview {
+        refreshError = appError
+      } else {
+        overview = .failed(appError)
       }
     }
   }

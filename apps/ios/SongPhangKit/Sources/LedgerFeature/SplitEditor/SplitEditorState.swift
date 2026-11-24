@@ -324,9 +324,10 @@ public struct SplitEditorState: Sendable, Equatable {
     case .shares:
       let member = members.first(where: { $0.id == id })
       let currentStr = values[id] ?? member?.defaultWeight ?? "1"
-      let currentVal = Int(currentStr) ?? 1
-      let nextVal = max(1, currentVal + 1)
-      values[id] = String(nextVal)
+      let currentVal = Double(currentStr) ?? 1.0
+      let nextVal = max(1.0, currentVal + 1.0)
+      values[id] =
+        nextVal.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(nextVal)) : String(nextVal)
 
     case .exact:
       let currentStr = values[id] ?? ""
@@ -341,24 +342,43 @@ public struct SplitEditorState: Sendable, Equatable {
       if currentHundredths >= 10_000 { return }
       let step = min(500, 10_000 - currentHundredths)
       let otherMembers = selected.filter { $0.id != id }
-      let otherTotalHundredths = otherMembers.reduce(0) { sum, m in
+      let positiveOthers = otherMembers.filter {
+        (Self.parseHundredths(values[$0.id] ?? "") ?? 0) > 0
+      }
+      let otherTotalHundredths = positiveOthers.reduce(0) { sum, m in
         sum + (Self.parseHundredths(values[m.id] ?? "") ?? 0)
       }
 
-      values[id] = Self.formatHundredths(currentHundredths + step)
-      if otherTotalHundredths > 0 && !otherMembers.isEmpty {
-        var remainingToDeduct = step
-        for (i, m) in otherMembers.enumerated() {
-          let mHundredths = Self.parseHundredths(values[m.id] ?? "") ?? 0
-          if mHundredths <= 0 { continue }
-          let deduct =
-            (i == otherMembers.count - 1)
-            ? min(mHundredths, remainingToDeduct)
-            : min(mHundredths, (mHundredths * step) / otherTotalHundredths)
-          let nextM = max(0, mHundredths - deduct)
-          values[m.id] = Self.formatHundredths(nextM)
-          remainingToDeduct -= deduct
+      guard otherTotalHundredths > 0, !positiveOthers.isEmpty else { return }
+      let actualStep = min(step, otherTotalHundredths)
+      var remainingToDeduct = actualStep
+
+      for (i, m) in positiveOthers.enumerated() {
+        let mHundredths = Self.parseHundredths(values[m.id] ?? "") ?? 0
+        let isLast = (i == positiveOthers.count - 1)
+        let deduct =
+          isLast
+          ? min(mHundredths, remainingToDeduct)
+          : min(mHundredths, (mHundredths * actualStep) / otherTotalHundredths)
+        let nextM = max(0, mHundredths - deduct)
+        values[m.id] = Self.formatHundredths(nextM)
+        remainingToDeduct -= deduct
+      }
+
+      if remainingToDeduct > 0 {
+        for m in positiveOthers {
+          let curM = Self.parseHundredths(values[m.id] ?? "") ?? 0
+          guard curM > 0 else { continue }
+          let extra = min(curM, remainingToDeduct)
+          values[m.id] = Self.formatHundredths(curM - extra)
+          remainingToDeduct -= extra
+          if remainingToDeduct <= 0 { break }
         }
+      }
+
+      let finalAdded = actualStep - remainingToDeduct
+      if finalAdded > 0 {
+        values[id] = Self.formatHundredths(currentHundredths + finalAdded)
       }
 
     case .equal, .items:

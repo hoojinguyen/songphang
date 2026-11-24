@@ -1,9 +1,9 @@
 public import Foundation
 
-public enum OverviewPendingActionKind: String, Sendable, Hashable {
-  case settlementConfirmation
-  case expenseApproval
-  case unknown
+public enum OverviewPendingActionKind: String, Sendable, Hashable, Codable {
+  case settlementConfirmation = "settlement_confirmation"
+  case expenseApproval = "expense_approval"
+  case unknown = "unknown"
 
   public init(raw: String) {
     switch raw {

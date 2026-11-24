@@ -22,16 +22,23 @@ public enum GroupSegment: String, Sendable, Hashable, CaseIterable {
 }
 
 public struct GroupContainerView: View {
-  private enum FundSubTab: String, CaseIterable {
+  public enum FundSubTab: String, CaseIterable, Sendable {
     case stats
     case fund
 
-    var title: String {
+    public var title: String {
       switch self {
       case .stats: return L10n.tr("stats.title")
       case .fund: return L10n.tr("fund.defaultName")
       }
     }
+  }
+
+  private struct PaymentSheet: Identifiable {
+    var id: SuggestedTransfer.ID { transfer.id }
+    let transfer: SuggestedTransfer
+    let fromMember: Member
+    let toMember: Member
   }
 
   private let groupId: ExpenseGroup.ID
@@ -51,6 +58,7 @@ public struct GroupContainerView: View {
   @State private var isArchiveConfirmPresented = false
   @State private var isReceiptCaptureOpen = false
   @State private var isArchiving = false
+  @State private var paymentSheet: PaymentSheet?
 
   @State private var feedModel: GroupFeedModel
   @State private var balancesModel: BalancesModel
@@ -61,6 +69,7 @@ public struct GroupContainerView: View {
     groupId: ExpenseGroup.ID,
     initialSegment: GroupSegment = .expenses,
     initialFilter: TransactionFilter? = nil,
+    initialFundSubTab: FundSubTab? = nil,
     dependencies: AppDependencies,
     sessionModel: SessionModel,
     currentUser: User?,
@@ -82,6 +91,9 @@ public struct GroupContainerView: View {
     self.onPopToRoot = onPopToRoot
     self.onExpenseSaved = onExpenseSaved
     self._selectedSegment = State(initialValue: initialSegment)
+    if let initialFundSubTab {
+      self._fundSubTab = State(initialValue: initialFundSubTab)
+    }
 
     let feed = GroupFeedModel(
       groupId: groupId,
@@ -238,6 +250,61 @@ public struct GroupContainerView: View {
         },
         onDismiss: { isReceiptCaptureOpen = false }
       )
+    }
+    .onChange(of: deletedTransactionId) { _, id in
+      guard let id else { return }
+      feedModel.lastDeletedTransactionId = id
+      deletedTransactionId = nil
+    }
+    .sheet(item: $paymentSheet) { selection in
+      let role = balancesModel.state.value?.group.role ?? .editor
+      let myMemberId = balancesModel.state.value?.group.myMemberId
+      let isVerified = currentUser?.emailVerified ?? true
+      let canEdit = role.canWrite
+      let payModel = PayModel(
+        transfer: selection.transfer,
+        fromMember: selection.fromMember,
+        toMember: selection.toMember,
+        groupId: groupId,
+        myMemberId: myMemberId,
+        role: role,
+        isEmailVerified: isVerified,
+        repository: dependencies.settlementRequests,
+        onReload: { await balancesModel.load() },
+        onUnauthorized: {
+          paymentSheet = nil
+          onPopToRoot(nil)
+          Task { await sessionModel.signOut() }
+        }
+      )
+      NavigationStack {
+        PayView(
+          model: payModel,
+          isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
+          onBack: { paymentSheet = nil },
+          onAddDetails: payModel.canAddDetails
+            ? {
+              paymentSheet = nil
+              onNavigate(.groupMembers(groupId: groupId))
+            } : nil,
+          onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
+            ? {
+              paymentSheet = nil
+              onNavigate(
+                .settle(
+                  groupId: groupId,
+                  fromMemberId: selection.transfer.fromMemberId,
+                  toMemberId: selection.transfer.toMemberId,
+                  initialAmount: selection.transfer.amount
+                )
+              )
+            } : nil,
+          onFinished: { _ in
+            paymentSheet = nil
+            onExpenseSaved()
+          }
+        )
+      }
     }
   }
 
@@ -439,26 +506,38 @@ public struct GroupContainerView: View {
         isEmailVerified: currentUser?.emailVerified ?? true,
         onBack: onBack,
         onBackToGroups: { onPopToRoot(nil) },
-        onOpenPay: nil,
-        onOpenSettle: { transfer in
-          onNavigate(
-            .settle(
-              groupId: groupId,
-              fromMemberId: transfer.fromMemberId,
-              toMemberId: transfer.toMemberId,
-              initialAmount: transfer.amount
+        onOpenPay: isArchived
+          ? nil
+          : { transfer, fromMember, toMember in
+            paymentSheet = PaymentSheet(
+              transfer: transfer,
+              fromMember: fromMember,
+              toMember: toMember
             )
-          )
-        },
+          },
+        onOpenSettle: isArchived
+          ? { _ in }
+          : { transfer in
+            onNavigate(
+              .settle(
+                groupId: groupId,
+                fromMemberId: transfer.fromMemberId,
+                toMemberId: transfer.toMemberId,
+                initialAmount: transfer.amount
+              )
+            )
+          },
         onOpenFund: { _ in
           withAnimation(.easeInOut(duration: 0.18)) {
             selectedSegment = .fundAndStats
             fundSubTab = .fund
           }
         },
-        onCreateFund: {
-          onNavigate(.groupMembers(groupId: groupId))
-        }
+        onCreateFund: isArchived
+          ? nil
+          : {
+            onNavigate(.groupMembers(groupId: groupId))
+          }
       )
 
     case .fundAndStats:
@@ -504,26 +583,30 @@ public struct GroupContainerView: View {
             showHeader: false,
             isEmailVerified: currentUser?.emailVerified ?? true,
             onBack: onBack,
-            onContribute: { fundMemberId in
-              onNavigate(
-                .newTransactionForm(
-                  groupId: groupId,
-                  initialReading: nil,
-                  initialTransferFrom: nil,
-                  initialTransferTo: fundMemberId
+            onContribute: isArchived
+              ? { _ in }
+              : { fundMemberId in
+                onNavigate(
+                  .newTransactionForm(
+                    groupId: groupId,
+                    initialReading: nil,
+                    initialTransferFrom: nil,
+                    initialTransferTo: fundMemberId
+                  )
                 )
-              )
-            },
-            onWithdraw: { fundMemberId in
-              onNavigate(
-                .newTransactionForm(
-                  groupId: groupId,
-                  initialReading: nil,
-                  initialTransferFrom: fundMemberId,
-                  initialTransferTo: nil
+              },
+            onWithdraw: isArchived
+              ? { _ in }
+              : { fundMemberId in
+                onNavigate(
+                  .newTransactionForm(
+                    groupId: groupId,
+                    initialReading: nil,
+                    initialTransferFrom: fundMemberId,
+                    initialTransferTo: nil
+                  )
                 )
-              )
-            },
+              },
             onDeleted: {
               fundSubTab = .stats
             }

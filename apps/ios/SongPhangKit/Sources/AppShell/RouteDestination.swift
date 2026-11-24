@@ -483,6 +483,7 @@ public struct RouteDestination: View {
         groupId: groupId,
         initialSegment: .fundAndStats,
         initialFilter: nil,
+        initialFundSubTab: .fund,
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,

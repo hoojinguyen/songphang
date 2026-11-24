@@ -888,6 +888,10 @@ public struct RootView: View {
               selectedTab = .groups
               groupsPath = [.groupFeed(groupId: groupId)]
             },
+            onOpenBalances: { groupId in
+              selectedTab = .groups
+              groupsPath = [.groupBalances(groupId: groupId)]
+            },
             onOpenTransaction: { groupId, txId in
               selectedTab = .groups
               groupsPath = [

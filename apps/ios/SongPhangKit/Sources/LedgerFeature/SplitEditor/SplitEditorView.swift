@@ -371,6 +371,10 @@ public struct SplitEditorView: View {
       .padding(20)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .onDisappear {
+      holdTask?.cancel()
+      holdTask = nil
+    }
   }
 }
 

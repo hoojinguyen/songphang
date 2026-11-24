@@ -40,6 +40,11 @@ public struct PersonalLedgerView: View {
           if model.isLoading && model.items.isEmpty {
             LoadingSkeleton(rowCount: 5, rowHeight: 76)
               .padding(.top, 12)
+          } else if model.error != nil && model.items.isEmpty {
+            LoadError(onRetry: {
+              Task { await model.loadInitial() }
+            })
+            .padding(.top, 32)
           } else if model.items.isEmpty {
             emptyView
           } else {
@@ -92,12 +97,45 @@ public struct PersonalLedgerView: View {
 
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 8) {
+          if !model.availableGroups.isEmpty {
+            groupFilterMenu
+          }
           typeFilterChip(title: L10n.tr("common.all"), type: nil)
           typeFilterChip(title: L10n.tr("common.expense"), type: .expense)
           typeFilterChip(title: L10n.tr("common.income"), type: .income)
           typeFilterChip(title: L10n.tr("common.transfer"), type: .transfer)
         }
       }
+    }
+  }
+
+  private var groupFilterMenu: some View {
+    let currentGroupName = model.availableGroups.first(where: { $0.id == model.selectedGroupId })?
+      .name
+    let title = currentGroupName ?? L10n.tr("ledger.allGroups")
+    let isSelected = model.selectedGroupId != nil
+    return Menu {
+      Button(L10n.tr("ledger.allGroups")) {
+        Task { await model.updateFilters(groupId: .some(nil)) }
+      }
+      ForEach(model.availableGroups, id: \.id) { group in
+        Button(group.name) {
+          Task { await model.updateFilters(groupId: .some(group.id)) }
+        }
+      }
+    } label: {
+      HStack(spacing: 4) {
+        Text(title)
+          .font(Typography.captionBold)
+          .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.ink)
+        Image(systemName: "chevron.down")
+          .font(.system(size: 10, weight: .bold))
+          .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.muted)
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 8)
+      .background(isSelected ? Tokens.accent : Tokens.surface)
+      .clipShape(Capsule())
     }
   }
 

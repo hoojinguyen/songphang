@@ -78,7 +78,7 @@ struct FeedTransactionRowView: View {
 
   @ViewBuilder
   private var rowContent: some View {
-    if transaction.type == .transfer {
+    if transaction.type == .transfer || transaction.type == .income {
       compactTransferCard
     } else {
       fullWidthExpenseCard
@@ -382,16 +382,48 @@ struct FeedTransactionRowView: View {
         .foregroundStyle(Tokens.ink)
         .lineLimit(1)
 
-      Spacer()
+      Spacer(minLength: 8)
 
-      MoneyText(
-        transaction.amount,
-        style: .full,
-        font: Typography.bodyBold,
-        color: Tokens.ink
-      )
-      .monospacedDigit()
-      .lineLimit(1)
+      HStack(spacing: 6) {
+        if transaction.approval.status == .pending {
+          Text(L10n.tr("approval.pendingTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        if transaction.approval.status == .rejected {
+          Text(L10n.tr("approval.rejectedTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        if transaction.dispute != nil {
+          Text(L10n.tr("transactionView.disputeTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        if transaction.commentCount > 0 {
+          HStack(spacing: 3) {
+            Image(systemName: "bubble.left")
+              .font(.system(size: 11, weight: .semibold))
+            Text(String(transaction.commentCount))
+              .font(Typography.captionBold)
+          }
+          .foregroundStyle(Tokens.muted)
+        }
+        if transaction.version > 1 {
+          Text(L10n.tr("feed.edited"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.muted)
+        }
+      }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 12)

@@ -11,6 +11,7 @@ public struct OverviewView: View {
   private let user: User
   private let unreadNotificationCount: Int
   private let onOpenGroup: (ExpenseGroup.ID) -> Void
+  private let onOpenBalances: ((ExpenseGroup.ID) -> Void)?
   private let onOpenTransaction: (ExpenseGroup.ID, LedgerTransaction.ID) -> Void
   private let onOpenPersonalLedger: () -> Void
   private let onOpenNotifications: (() -> Void)?
@@ -21,6 +22,7 @@ public struct OverviewView: View {
     user: User,
     unreadNotificationCount: Int = 0,
     onOpenGroup: @escaping (ExpenseGroup.ID) -> Void,
+    onOpenBalances: ((ExpenseGroup.ID) -> Void)? = nil,
     onOpenTransaction: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void,
     onOpenPersonalLedger: @escaping () -> Void,
     onOpenNotifications: (() -> Void)? = nil,
@@ -30,6 +32,7 @@ public struct OverviewView: View {
     self.user = user
     self.unreadNotificationCount = unreadNotificationCount
     self.onOpenGroup = onOpenGroup
+    self.onOpenBalances = onOpenBalances
     self.onOpenTransaction = onOpenTransaction
     self.onOpenPersonalLedger = onOpenPersonalLedger
     self.onOpenNotifications = onOpenNotifications
@@ -199,7 +202,22 @@ public struct OverviewView: View {
           }()
 
           SPButton(buttonTitle, variant: .primary) {
-            onOpenGroup(action.groupId)
+            switch action.kind {
+            case .settlementConfirmation:
+              if let onOpenBalances {
+                onOpenBalances(action.groupId)
+              } else {
+                onOpenGroup(action.groupId)
+              }
+            case .expenseApproval:
+              if let txId = action.transactionId {
+                onOpenTransaction(action.groupId, txId)
+              } else {
+                onOpenGroup(action.groupId)
+              }
+            case .unknown:
+              onOpenGroup(action.groupId)
+            }
           }
         }
         .padding(16)
