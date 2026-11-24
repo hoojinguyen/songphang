@@ -35,6 +35,11 @@ public struct SplitEditorView: View {
   private let payerLine: String
   private let shares: [MemberAmount]
   private let isPreviewPending: Bool
+  private let allowItems: Bool
+  private let itemsPreview: ItemsPreview?
+  private let isItemsPreviewCurrent: Bool
+  private let itemsPreviewError: AppError?
+  private let onItemsChange: () -> Void
   private let onDone: () -> Void
 
   public init(
@@ -45,6 +50,11 @@ public struct SplitEditorView: View {
     payerLine: String,
     shares: [MemberAmount],
     isPreviewPending: Bool,
+    allowItems: Bool = true,
+    itemsPreview: ItemsPreview? = nil,
+    isItemsPreviewCurrent: Bool = false,
+    itemsPreviewError: AppError? = nil,
+    onItemsChange: @escaping () -> Void = {},
     onDone: @escaping () -> Void
   ) {
     self._splitState = splitState
@@ -54,6 +64,11 @@ public struct SplitEditorView: View {
     self.payerLine = payerLine
     self.shares = shares
     self.isPreviewPending = isPreviewPending
+    self.allowItems = allowItems
+    self.itemsPreview = itemsPreview
+    self.isItemsPreviewCurrent = isItemsPreviewCurrent
+    self.itemsPreviewError = itemsPreviewError
+    self.onItemsChange = onItemsChange
     self.onDone = onDone
   }
 
@@ -62,7 +77,16 @@ public struct SplitEditorView: View {
     let unselected = members.filter { !splitState.ids.contains($0.id) }
     let blanks = splitState.blankCount(from: members)
     let rest = splitState.restAmount(from: members, totalAmount: amount)
-    let status = splitState.status(from: members, totalAmount: amount)
+    let displayedAmount =
+      (splitState.method == .items && isItemsPreviewCurrent)
+      ? (itemsPreview?.computedAmount ?? amount)
+      : amount
+    let status = splitState.status(
+      from: members,
+      totalAmount: amount,
+      itemsPreview: itemsPreview,
+      isItemsPreviewCurrent: isItemsPreviewCurrent
+    )
 
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
@@ -88,101 +112,123 @@ public struct SplitEditorView: View {
           .frame(maxWidth: .infinity, alignment: .leading)
 
           MoneyText(
-            amount,
+            displayedAmount,
             style: .full,
             font: Typography.sectionTitle,
             color: Tokens.ink
           )
         }
 
-        HStack(spacing: 8) {
-          ForEach(SplitMethod.allCases, id: \.self) { method in
-            let isSelected = splitState.method == method
-            Button {
-              splitState.changeMode(method, members: members)
-            } label: {
-              Text(method.modeLabel)
-                .font(Typography.subheadlineBold)
-                .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
-                .padding(.horizontal, 12)
-                .frame(maxWidth: isSelected ? .infinity : nil, minHeight: 52)
-                .background(
-                  isSelected ? Tokens.ink : Tokens.surface,
-                  in: RoundedRectangle(cornerRadius: isSelected ? 20 : 26, style: .continuous)
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 8) {
+            ForEach(SplitMethod.available(allowItems: allowItems), id: \.self) { method in
+              let isSelected = splitState.method == method
+              Button {
+                splitState.changeMode(
+                  method,
+                  members: members,
+                  amount: amount,
+                  defaultItemTitle: L10n.tr("receipts.title")
                 )
+                onItemsChange()
+              } label: {
+                Text(method.modeLabel)
+                  .font(Typography.subheadlineBold)
+                  .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
+                  .padding(.horizontal, 12)
+                  .frame(minHeight: 52)
+                  .background(
+                    isSelected ? Tokens.ink : Tokens.surface,
+                    in: RoundedRectangle(cornerRadius: isSelected ? 20 : 26, style: .continuous)
+                  )
+              }
+              .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
           }
         }
         .accessibilityLabel(L10n.tr("split.changeLabel"))
 
-        if !selected.isEmpty {
-          let shapeItems = selected.map { member in
-            let shareAmount =
-              shares.first(where: { $0.memberId == member.id })?.amount ?? .zero
-            return ShareShapeItem(member: member, amount: shareAmount)
-          }
-          ShareShapesView(shares: shapeItems, isDimmed: isPreviewPending)
-        }
-
-        ForEach(selected) { member in
-          SplitMemberRowView(
-            member: member,
-            method: splitState.method,
-            value: splitState.values[member.id]
-              ?? (splitState.method == .shares ? member.defaultWeight : ""),
-            onChange: { newValue in
-              splitState.setValue(newValue, for: member.id)
-            },
-            onRemove: {
-              splitState.toggle(member.id, members: members)
+        if splitState.method == .items {
+          ReceiptItemsAssignmentView(
+            draft: $splitState.itemsDraft,
+            activePeople: members,
+            preview: itemsPreview,
+            isPreviewCurrent: isItemsPreviewCurrent,
+            previewError: itemsPreviewError,
+            onChange: {
+              splitState.hasCustomizedItems = true
+              onItemsChange()
             }
           )
-        }
+        } else {
+          if !selected.isEmpty {
+            let shapeItems = selected.map { member in
+              let shareAmount =
+                shares.first(where: { $0.memberId == member.id })?.amount ?? .zero
+              return ShareShapeItem(member: member, amount: shareAmount)
+            }
+            ShareShapesView(shares: shapeItems, isDimmed: isPreviewPending)
+          }
 
-        ForEach(unselected) { member in
-          Button {
-            splitState.toggle(member.id, members: members)
-          } label: {
-            Text(L10n.t("split.addMember", ["name": member.name]))
+          ForEach(selected) { member in
+            SplitMemberRowView(
+              member: member,
+              method: splitState.method,
+              value: splitState.values[member.id]
+                ?? (splitState.method == .shares ? member.defaultWeight : ""),
+              onChange: { newValue in
+                splitState.setValue(newValue, for: member.id)
+              },
+              onRemove: {
+                splitState.toggle(member.id, members: members)
+              }
+            )
+          }
+
+          ForEach(unselected) { member in
+            Button {
+              splitState.toggle(member.id, members: members)
+            } label: {
+              Text(L10n.t("split.addMember", ["name": member.name]))
+                .font(Typography.subheadlineBold)
+                .foregroundStyle(Tokens.ink)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(
+                  RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .strokeBorder(
+                      Tokens.dashed,
+                      style: StrokeStyle(lineWidth: 2, dash: [6, 6])
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+          }
+
+          if splitState.method == .exact && blanks == 0 && rest.isPositive {
+            Button {
+              splitState.spread.toggle()
+            } label: {
+              Text(
+                splitState.spread
+                  ? L10n.tr("split.undoSpread")
+                  : L10n.t(
+                    "split.spreadRest",
+                    [
+                      "amount": MoneyFormat.full(rest),
+                      "count": String(selected.count),
+                    ]
+                  )
+              )
               .font(Typography.subheadlineBold)
               .foregroundStyle(Tokens.ink)
               .frame(maxWidth: .infinity, minHeight: 56)
               .background(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                  .strokeBorder(
-                    Tokens.dashed,
-                    style: StrokeStyle(lineWidth: 2, dash: [6, 6])
-                  )
+                Tokens.phraseRest,
+                in: RoundedRectangle(cornerRadius: 28, style: .continuous)
               )
+            }
+            .buttonStyle(.plain)
           }
-          .buttonStyle(.plain)
-        }
-
-        if splitState.method == .exact && blanks == 0 && rest.isPositive {
-          Button {
-            splitState.spread.toggle()
-          } label: {
-            Text(
-              splitState.spread
-                ? L10n.tr("split.undoSpread")
-                : L10n.t(
-                  "split.spreadRest",
-                  [
-                    "amount": MoneyFormat.full(rest),
-                    "count": String(selected.count),
-                  ]
-                )
-            )
-            .font(Typography.subheadlineBold)
-            .foregroundStyle(Tokens.ink)
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .background(
-              Tokens.phraseRest,
-              in: RoundedRectangle(cornerRadius: 28, style: .continuous)
-            )
-          }
-          .buttonStyle(.plain)
         }
 
         SplitStatusBannerView(status: status)
@@ -277,7 +323,7 @@ private struct SplitMemberRowView: View {
 
   private var unitLabel: String {
     switch method {
-    case .equal, .exact: return L10n.tr("split.unitMoney")
+    case .equal, .exact, .items: return L10n.tr("split.unitMoney")
     case .shares: return L10n.tr("split.unitShares")
     case .percent: return L10n.tr("split.unitPercent")
     }

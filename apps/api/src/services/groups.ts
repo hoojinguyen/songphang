@@ -15,14 +15,17 @@ import {
 	findGroup,
 	findGroupAccess,
 	findGroupOwner,
+	findUserAppleIdentity,
 	insertActivity,
 	insertGroup,
 	insertGroupUser,
 	insertMember,
+	isAppleDeletionPending,
 	listBalancesForGroups,
 	listGroupAttachmentKeys,
 	listMembersForGroups,
 	listUserGroups,
+	lockAccount,
 	lockGroup,
 	updateGroup,
 } from "@songphang/db";
@@ -55,6 +58,14 @@ export async function createGroup(
 	executor: DbExecutor,
 	input: { request: CreateGroupRequest; user: UserDto; now: Date },
 ) {
+	const [account] = await lockAccount(executor, input.user.id);
+	if (!account) {
+		throw new AppError(401, "UNAUTHENTICATED", "Authentication required");
+	}
+	const appleIdentity = await findUserAppleIdentity(executor, input.user.id);
+	if (isAppleDeletionPending(appleIdentity?.providerSecret)) {
+		throw new AppError(403, "FORBIDDEN", "Account is undergoing deletion");
+	}
 	const group = await insertGroup(executor, {
 		name: input.request.name,
 		createdBy: input.user.id,

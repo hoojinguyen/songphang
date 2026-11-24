@@ -13,7 +13,9 @@ import {
 } from "./jobs/read-receipt.js";
 import { registerSendDigestJob } from "./jobs/send-digest.js";
 import { registerSendNotificationMailJob } from "./jobs/send-notification-mail.js";
+import { registerSendPushJob } from "./jobs/send-push.js";
 import { createConsoleMailer } from "./mailer.js";
+import { createPushSender } from "./push/index.js";
 import {
 	createWorkerEnqueue,
 	createWorkerQueue,
@@ -47,12 +49,14 @@ try {
 	});
 	await boss.start();
 	stopBoss = () => boss.stop({ graceful: false });
+	const pushSender = createPushSender(config, () => new Date());
 	const deps: WorkerDeps = {
 		config,
 		db,
 		fileStore: diskFileStore(config.storageDir),
 		now: () => new Date(),
 		mailer: createConsoleMailer(),
+		pushSender,
 		enqueue: createWorkerEnqueue(boss),
 	};
 	await registerHeartbeatJob(boss, deps);
@@ -60,6 +64,7 @@ try {
 	await registerDeleteFilesJob(boss, deps);
 	await registerReadReceiptJob(boss, deps);
 	await registerSendNotificationMailJob(boss, deps);
+	await registerSendPushJob(boss, deps);
 	await registerSendDigestJob(boss, deps);
 	await registerPruneNotificationsJob(boss, deps);
 	await registerAutoRemindersJob(boss, deps);
@@ -74,6 +79,9 @@ try {
 
 	const shutdown = async () => {
 		clearInterval(recoveryTimer);
+		await pushSender?.close?.().catch(() => {
+			console.error("Failed to close push sender");
+		});
 		await boss.stop({ graceful: true }).catch(() => {
 			console.error("Failed to stop worker queue");
 			process.exitCode = 1;

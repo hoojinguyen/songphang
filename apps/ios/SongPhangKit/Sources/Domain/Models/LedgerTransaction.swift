@@ -117,10 +117,35 @@ public enum SplitSpec: Sendable, Hashable {
     }
   }
 
+  public struct ItemEntry: Sendable, Hashable {
+    public let name: String
+    public let amount: Money
+    public let memberIds: [Member.ID]
+
+    public init(name: String, amount: Money, memberIds: [Member.ID]) {
+      self.name = name
+      self.amount = amount
+      self.memberIds = memberIds
+    }
+  }
+
+  public struct ItemsExtra: Sendable, Hashable {
+    public let kind: ReceiptExtraKind
+    public let label: String
+    public let amount: Money
+
+    public init(kind: ReceiptExtraKind, label: String, amount: Money) {
+      self.kind = kind
+      self.label = label
+      self.amount = amount
+    }
+  }
+
   case equal(members: [Member.ID])
   case exact(members: [Member.ID], entries: [ExactEntry], remainder: ExactRemainderMode)
   case shares(entries: [ShareWeightEntry])
   case percent(entries: [PercentEntry])
+  case items(items: [ItemEntry], extras: [ItemsExtra])
 }
 
 public struct MemberAmount: Sendable, Hashable, Identifiable {
@@ -149,6 +174,59 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     }
   }
 
+  public struct TransactionApproval: Sendable, Hashable {
+    public enum Status: String, Sendable, Hashable {
+      case none
+      case pending
+      case approved
+      case rejected
+    }
+
+    public var status: Status
+    public var note: String?
+    public var decidedByName: String?
+    public var decidedAt: String?
+
+    public init(
+      status: Status = .none,
+      note: String? = nil,
+      decidedByName: String? = nil,
+      decidedAt: String? = nil
+    ) {
+      self.status = status
+      self.note = note
+      self.decidedByName = decidedByName
+      self.decidedAt = decidedAt
+    }
+  }
+
+  public struct TransactionDispute: Sendable, Hashable {
+    public struct ID: Sendable, Hashable {
+      public let rawValue: String
+      public init(_ rawValue: String) { self.rawValue = rawValue }
+    }
+
+    public var id: ID
+    public var reason: String
+    public var openedByName: String
+    public var openedAt: String
+    public var mine: Bool
+
+    public init(
+      id: ID,
+      reason: String,
+      openedByName: String,
+      openedAt: String,
+      mine: Bool
+    ) {
+      self.id = id
+      self.reason = reason
+      self.openedByName = openedByName
+      self.openedAt = openedAt
+      self.mine = mine
+    }
+  }
+
   public let id: ID
   public var type: TransactionType
   public var description: String
@@ -156,6 +234,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var currency: String
   public var occurredAt: String
   public var category: TransactionCategory?
+  public var categoryId: GroupCategory.ID?
   public var payers: [MemberAmount]
   public var split: SplitSpec
   public var shares: [MemberAmount]
@@ -165,6 +244,12 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var createdAt: String
   public var updatedAt: String
   public var deletedAt: String?
+  public var warnings: [TransactionWarning]
+  public var attachments: [Attachment]
+  public var attachmentCount: Int
+  public var approval: TransactionApproval
+  public var dispute: TransactionDispute?
+  public var commentCount: Int
 
   public init(
     id: ID,
@@ -174,6 +259,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     currency: String = "VND",
     occurredAt: String,
     category: TransactionCategory?,
+    categoryId: GroupCategory.ID? = nil,
     payers: [MemberAmount],
     split: SplitSpec,
     shares: [MemberAmount],
@@ -182,7 +268,13 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     createdBy: ActorRef? = nil,
     createdAt: String = "2026-11-16T14:23:26.466Z",
     updatedAt: String = "2026-11-16T14:23:26.466Z",
-    deletedAt: String? = nil
+    deletedAt: String? = nil,
+    warnings: [TransactionWarning] = [],
+    attachments: [Attachment] = [],
+    attachmentCount: Int? = nil,
+    approval: TransactionApproval = .init(),
+    dispute: TransactionDispute? = nil,
+    commentCount: Int = 0
   ) {
     self.id = id
     self.type = type
@@ -191,6 +283,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.currency = currency
     self.occurredAt = occurredAt
     self.category = category
+    self.categoryId = categoryId
     self.payers = payers
     self.split = split
     self.shares = shares
@@ -200,5 +293,11 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.deletedAt = deletedAt
+    self.warnings = warnings
+    self.attachments = attachments
+    self.attachmentCount = attachmentCount ?? attachments.count
+    self.approval = approval
+    self.dispute = dispute
+    self.commentCount = commentCount
   }
 }

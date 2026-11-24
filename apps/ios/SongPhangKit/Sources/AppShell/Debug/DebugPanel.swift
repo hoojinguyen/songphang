@@ -2,12 +2,17 @@
   import DesignSystem
   import Domain
   import PreviewSupport
+  import Repositories
   import SwiftUI
 
   struct DebugPanel: View {
-    private let world: FakeWorld
+    private let world: FakeWorld?
+    private let liveConfiguration: APIConfiguration?
     private let sessionModel: SessionModel
+    private let pushCoordinator: PushCoordinator
     private let onOpenJoinToken: (String) -> Void
+    private let onOpenLinkURL: (URL) -> Bool
+    private let onSimulatePushTap: (String?, String?) -> Void
     private let onOpenGallery: () -> Void
     private let onDismiss: () -> Void
 
@@ -18,6 +23,12 @@
     @State private var selectedRole: RoleChoice = .owner
     @State private var unverifiedEmail: Bool = false
     @State private var joinTokenText: String = TripScenario.invite.token
+    @State private var linkURLText: String = "http://localhost:3000/join/"
+    @State private var linkStatusMessage: String?
+    @State private var debugPushToken: String = "sim_debug_device_token_5c5_0123456789abcdef"
+    @State private var pushGroupIdText: String = TripScenario.groupId.rawValue
+    @State private var pushTargetText: String = "/g/\(TripScenario.groupId.rawValue)/balances"
+    @State private var pushStatusMessage: String?
 
     enum FailureKind: String, CaseIterable, Identifiable {
       case none = "None"
@@ -62,15 +73,23 @@
     }
 
     init(
-      world: FakeWorld,
+      world: FakeWorld?,
+      liveConfiguration: APIConfiguration?,
       sessionModel: SessionModel,
+      pushCoordinator: PushCoordinator,
       onOpenJoinToken: @escaping (String) -> Void,
+      onOpenLinkURL: @escaping (URL) -> Bool,
+      onSimulatePushTap: @escaping (String?, String?) -> Void,
       onOpenGallery: @escaping () -> Void,
       onDismiss: @escaping () -> Void
     ) {
       self.world = world
+      self.liveConfiguration = liveConfiguration
       self.sessionModel = sessionModel
+      self.pushCoordinator = pushCoordinator
       self.onOpenJoinToken = onOpenJoinToken
+      self.onOpenLinkURL = onOpenLinkURL
+      self.onSimulatePushTap = onSimulatePushTap
       self.onOpenGallery = onOpenGallery
       self.onDismiss = onDismiss
     }
@@ -78,110 +97,195 @@
     var body: some View {
       NavigationStack {
         Form {
-          Section("Scenario") {
-            Picker("Scenario", selection: $selectedPreset) {
-              ForEach(ScenarioPreset.allCases, id: \.self) { preset in
-                Text(preset.rawValue).tag(preset)
-              }
-            }
-            .onChange(of: selectedPreset) { _, newValue in
-              Task {
-                await world.applyScenario(newValue, signedIn: true)
-                if let user = await world.currentUser {
-                  sessionModel.didSignIn(user)
-                }
-              }
-            }
-          }
-
-          Section("Network & Snapshot") {
-            Picker("Latency", selection: $selectedLatencyIndex) {
-              Text("0 ms").tag(0)
-              Text("300 ms").tag(1)
-              Text("2 s").tag(2)
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: selectedLatencyIndex) { _, _ in
-              Task { await syncBehavior() }
-            }
-
-            Toggle("Has Snapshot", isOn: $hasSnapshot)
-              .onChange(of: hasSnapshot) { _, _ in
-                Task { await syncBehavior() }
-              }
-
-            Picker("Failure", selection: $selectedFailureKind) {
-              ForEach(FailureKind.allCases) { kind in
-                Text(kind.rawValue).tag(kind)
-              }
-            }
-            .onChange(of: selectedFailureKind) { _, newKind in
-              Task {
-                await syncBehavior()
-                if newKind == .unauthorized {
-                  sessionModel.handleError(.unauthorized)
-                }
-              }
-            }
-          }
-
-          Section("Role & Account") {
-            Picker("Role", selection: $selectedRole) {
-              ForEach(RoleChoice.allCases) { role in
-                Text(role.rawValue).tag(role)
-              }
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: selectedRole) { _, _ in
-              Task { await syncBehavior() }
-            }
-
-            Toggle("Unverified Email", isOn: $unverifiedEmail)
-              .onChange(of: unverifiedEmail) { _, isUnverified in
+          if let liveConfiguration {
+            Section("Live API") {
+              LabeledContent("API Base", value: liveConfiguration.apiBaseURL.absoluteString)
+              LabeledContent("Origin", value: liveConfiguration.serverOriginURL.absoluteString)
+              LabeledContent("Web Base", value: liveConfiguration.webBaseURL.absoluteString)
+              LabeledContent("Version", value: liveConfiguration.appVersion)
+              Button("Sign Out", role: .destructive) {
                 Task {
-                  let user = isUnverified ? PreviewSamples.unverifiedUser : PreviewSamples.user
-                  await world.setCurrentUser(user)
-                  sessionModel.didSignIn(user)
+                  await sessionModel.signOut()
+                  onDismiss()
                 }
               }
+            }
 
-            Button("Sign Out", role: .destructive) {
-              Task {
-                await sessionModel.signOut()
+            Section("Push Registration & Routing") {
+              TextField("Debug Push Token", text: $debugPushToken)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              Button("Register Debug Token (Console)") {
+                Task {
+                  do throws(AppError) {
+                    let deviceId = try await pushCoordinator.registerDebugDeviceToken(
+                      debugPushToken.trimmingCharacters(in: .whitespacesAndNewlines)
+                    )
+                    pushStatusMessage = "Registered device ID: \(deviceId)"
+                  } catch {
+                    pushStatusMessage = "Registration error: \(error)"
+                  }
+                }
+              }
+              if let deviceId = pushCoordinator.currentDeviceId {
+                Button("Remove Current Device (\(deviceId.prefix(8)))", role: .destructive) {
+                  Task {
+                    do throws(AppError) {
+                      try await pushCoordinator.removeCurrentDevice()
+                      pushStatusMessage = "Device removed"
+                    } catch {
+                      pushStatusMessage = "Removal error: \(error)"
+                    }
+                  }
+                }
+              }
+              TextField("Push groupId", text: $pushGroupIdText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              TextField("Push target", text: $pushTargetText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              Button("Simulate Push Tap") {
                 onDismiss()
+                onSimulatePushTap(
+                  pushGroupIdText.trimmingCharacters(in: .whitespacesAndNewlines),
+                  pushTargetText.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+              }
+              if let pushStatusMessage {
+                Text(pushStatusMessage)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
               }
             }
           }
 
-          Section("Realtime Group Events") {
-            Button("Send .changed([\"transactions\", \"balances\"])") {
-              Task {
-                await world.emitEvent(.changed(["transactions", "balances"]))
-                onDismiss()
+          if let world {
+            Section("Scenario") {
+              Picker("Scenario", selection: $selectedPreset) {
+                ForEach(ScenarioPreset.allCases, id: \.self) { preset in
+                  Text(preset.rawValue).tag(preset)
+                }
+              }
+              .onChange(of: selectedPreset) { _, newValue in
+                Task {
+                  await world.applyScenario(newValue, signedIn: true)
+                  if let user = await world.currentUser {
+                    sessionModel.didSignIn(user)
+                  }
+                }
               }
             }
-            Button("Send .reconnected") {
-              Task {
-                await world.emitEvent(.reconnected)
-                onDismiss()
+
+            Section("Network & Snapshot") {
+              Picker("Latency", selection: $selectedLatencyIndex) {
+                Text("0 ms").tag(0)
+                Text("300 ms").tag(1)
+                Text("2 s").tag(2)
+              }
+              .pickerStyle(.segmented)
+              .onChange(of: selectedLatencyIndex) { _, _ in
+                Task { await syncBehavior(world: world) }
+              }
+
+              Toggle("Has Snapshot", isOn: $hasSnapshot)
+                .onChange(of: hasSnapshot) { _, _ in
+                  Task { await syncBehavior(world: world) }
+                }
+
+              Picker("Failure", selection: $selectedFailureKind) {
+                ForEach(FailureKind.allCases) { kind in
+                  Text(kind.rawValue).tag(kind)
+                }
+              }
+              .onChange(of: selectedFailureKind) { _, newKind in
+                Task {
+                  await syncBehavior(world: world)
+                  if newKind == .unauthorized {
+                    sessionModel.handleError(.unauthorized)
+                  }
+                }
               }
             }
-            Button("Send .removed", role: .destructive) {
-              Task {
-                await world.emitEvent(.removed)
-                onDismiss()
+
+            Section("Role & Account") {
+              Picker("Role", selection: $selectedRole) {
+                ForEach(RoleChoice.allCases) { role in
+                  Text(role.rawValue).tag(role)
+                }
+              }
+              .pickerStyle(.segmented)
+              .onChange(of: selectedRole) { _, _ in
+                Task { await syncBehavior(world: world) }
+              }
+
+              Toggle("Unverified Email", isOn: $unverifiedEmail)
+                .onChange(of: unverifiedEmail) { _, isUnverified in
+                  Task {
+                    let user = isUnverified ? PreviewSamples.unverifiedUser : PreviewSamples.user
+                    await world.setCurrentUser(user)
+                    sessionModel.didSignIn(user)
+                  }
+                }
+
+              Button("Sign Out", role: .destructive) {
+                Task {
+                  await sessionModel.signOut()
+                  onDismiss()
+                }
+              }
+            }
+
+            Section("Realtime Group Events") {
+              Button("Send .changed([\"transactions\", \"balances\"])") {
+                Task {
+                  await world.emitEvent(.changed(["transactions", "balances"]))
+                  onDismiss()
+                }
+              }
+              Button("Send .reconnected") {
+                Task {
+                  await world.emitEvent(.reconnected)
+                  onDismiss()
+                }
+              }
+              Button("Send .removed", role: .destructive) {
+                Task {
+                  await world.emitEvent(.removed)
+                  onDismiss()
+                }
               }
             }
           }
 
           Section("Invite Link & Gallery") {
-            TextField("Invite Token", text: $joinTokenText)
+            TextField("Invite URL (LinkRouter)", text: $linkURLText)
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
-            Button("Open Join Screen (S12)") {
-              let token = joinTokenText
-              onDismiss()
-              onOpenJoinToken(token)
+              .keyboardType(.URL)
+            Button("Open URL via LinkRouter") {
+              let trimmed = linkURLText.trimmingCharacters(in: .whitespacesAndNewlines)
+              if let url = URL(string: trimmed), onOpenLinkURL(url) {
+                linkStatusMessage = nil
+                onDismiss()
+              } else {
+                linkStatusMessage = "Rejected by LinkRouter (invalid host, scheme, port or path)"
+              }
+            }
+            if let linkStatusMessage {
+              Text(linkStatusMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            if world != nil {
+              TextField("Scripted Invite Token", text: $joinTokenText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              Button("Open Scripted Join Screen (S12)") {
+                let token = joinTokenText
+                onDismiss()
+                onOpenJoinToken(token)
+              }
             }
             Button("Open Design System Gallery") {
               onDismiss()
@@ -196,6 +300,7 @@
           }
         }
         .task {
+          guard let world else { return }
           selectedPreset = await world.preset
           let behavior = await world.behavior
           hasSnapshot = behavior.hasSnapshot
@@ -218,7 +323,7 @@
       }
     }
 
-    private func syncBehavior() async {
+    private func syncBehavior(world: FakeWorld) async {
       let latency: Duration
       switch selectedLatencyIndex {
       case 1: latency = .milliseconds(300)

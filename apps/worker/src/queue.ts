@@ -5,6 +5,7 @@ import type { ZodType } from "zod";
 import type { ReceiptReader } from "./ai/receipt-reader.js";
 import type { WorkerConfig } from "./config.js";
 import type { Mailer } from "./mailer.js";
+import type { PushSender } from "./push/index.js";
 
 export type WorkerEnqueueFn = <T extends object>(
 	executor: DbExecutor,
@@ -20,6 +21,7 @@ export type WorkerDeps = {
 	now: () => Date;
 	receiptReader?: ReceiptReader | null;
 	mailer?: Mailer;
+	pushSender?: PushSender | null;
 	enqueue?: WorkerEnqueueFn;
 };
 

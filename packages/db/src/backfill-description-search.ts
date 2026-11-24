@@ -26,11 +26,13 @@ export async function backfillDescriptionSearch(db: Db): Promise<number> {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	const { db, close } = createDb(process.env.DATABASE_URL ?? "");
-	try {
-		const count = await backfillDescriptionSearch(db);
-		console.log(`Backfilled description_search on ${count} rows`);
-	} finally {
-		await close();
-	}
+	void (async () => {
+		const { db, close } = createDb(process.env.DATABASE_URL ?? "");
+		try {
+			const count = await backfillDescriptionSearch(db);
+			console.log(`Backfilled description_search on ${count} rows`);
+		} finally {
+			await close();
+		}
+	})();
 }

@@ -22,16 +22,18 @@ export async function seedDevUsers(db: Db): Promise<void> {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	try {
-		const { db, close } = createDb(process.env.DATABASE_URL ?? "");
+	void (async () => {
 		try {
-			await seedDevUsers(db);
-			console.log("Development users seeded");
-		} finally {
-			await close();
+			const { db, close } = createDb(process.env.DATABASE_URL ?? "");
+			try {
+				await seedDevUsers(db);
+				console.log("Development users seeded");
+			} finally {
+				await close();
+			}
+		} catch {
+			console.error("Seed failed: check DATABASE_URL and database migrations");
+			process.exitCode = 1;
 		}
-	} catch {
-		console.error("Seed failed: check DATABASE_URL and database migrations");
-		process.exitCode = 1;
-	}
+	})();
 }

@@ -10,7 +10,8 @@ struct UnparsedBannerView: View {
   private var relevantIssues: [QuickEntryReading.Issue] {
     reading.issues.filter { issue in
       switch issue.code {
-      case .amountMissing, .sumMismatch, .memberUnknown, .countMismatch, .textNotUnderstood:
+      case .amountMissing, .sumMismatch, .memberUnknown, .fundCannotShare, .countMismatch,
+        .textNotUnderstood:
         return true
       case .descriptionMissing, .memberAmbiguous, .unknown:
         return false
@@ -80,6 +81,8 @@ struct UnparsedBannerView: View {
       )
     case .memberUnknown:
       return L10n.t("unparsed.memberUnknown", ["word": word])
+    case .fundCannotShare:
+      return L10n.tr("unparsed.fundCannotShare")
     case .countMismatch:
       return L10n.t("unparsed.countTooLarge", ["total": String(activeCount)])
     case .textNotUnderstood:
@@ -222,18 +225,23 @@ struct AmountFieldView: View {
 }
 
 struct CategoryPickerView: View {
+  let categories: [GroupCategory]
   let selected: TransactionCategory?
+  let selectedCustomId: GroupCategory.ID?
   let onSelect: (TransactionCategory?) -> Void
+  let onSelectCustom: (GroupCategory.ID?) -> Void
+  let onManageCategories: () -> Void
 
   var body: some View {
+    let visibleCustom = categories.filter { !$0.archived || $0.id == selectedCustomId }
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 8) {
         ForEach(TransactionCategory.allCases, id: \.self) { cat in
-          let isSelected = (selected == cat)
+          let isSelected = (selected == cat && selectedCustomId == nil)
           Button {
             onSelect(isSelected ? nil : cat)
           } label: {
-            Text(label(for: cat))
+            Text(CategoryDisplay.localizedName(for: cat))
               .font(Typography.captionBold)
               .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
               .padding(.horizontal, 16)
@@ -245,21 +253,47 @@ struct CategoryPickerView: View {
           }
           .buttonStyle(.plain)
         }
+
+        ForEach(visibleCustom) { custom in
+          let isSelected = (selectedCustomId == custom.id)
+          Button {
+            onSelectCustom(isSelected ? nil : custom.id)
+          } label: {
+            HStack(spacing: 8) {
+              Circle()
+                .fill(Tokens.color(for: custom.color))
+                .frame(width: 12, height: 12)
+              Text(CategoryDisplay.displayName(for: custom))
+                .font(Typography.captionBold)
+                .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .background(
+              isSelected ? Tokens.ink : Tokens.surface,
+              in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
+          }
+          .buttonStyle(.plain)
+        }
+
+        Button {
+          onManageCategories()
+        } label: {
+          Text("+ \(L10n.tr("categories.add"))")
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .background(
+              Tokens.sunken,
+              in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
       }
     }
     .accessibilityLabel(L10n.tr("expenseForm.categoryLabel"))
-  }
-
-  private func label(for category: TransactionCategory) -> String {
-    switch category {
-    case .food: return L10n.tr("expenseForm.categories.food")
-    case .transport: return L10n.tr("expenseForm.categories.transport")
-    case .lodging: return L10n.tr("expenseForm.categories.lodging")
-    case .shopping: return L10n.tr("expenseForm.categories.shopping")
-    case .entertainment: return L10n.tr("expenseForm.categories.entertainment")
-    case .bills: return L10n.tr("expenseForm.categories.bills")
-    case .other, .unknown: return L10n.tr("expenseForm.categories.other")
-    }
   }
 }
 

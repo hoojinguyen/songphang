@@ -3,9 +3,13 @@
 	"private": true,
 	"type": "module",
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./ec-key": "./src/ec-key.ts"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@types/node": "26.6.6"
 	}
 }

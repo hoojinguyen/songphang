@@ -1,6 +1,7 @@
 import DesignSystem
 import Domain
 public import SwiftUI
+import UIKit
 
 #if DEBUG
   import PreviewSupport
@@ -78,6 +79,29 @@ public struct AccountView: View {
       changePasswordCard
     }
 
+    if model.pushFeatureEnabled {
+      pushSettingsCard(user)
+    }
+
+    if model.telegramFeatureEnabled {
+      TelegramAccountCardView(
+        model: model,
+        email: user.email,
+        emailVerified: user.emailVerified
+      )
+    }
+
+    notificationSettingsCard
+
+    SessionsSectionView(
+      sessions: model.sessions,
+      revokingSessionId: model.revokingSessionId,
+      revokeError: model.revokeSessionError,
+      isOffline: model.isOffline,
+      onRetry: { Task { await model.reloadSessions() } },
+      onRevoke: { session in Task { await model.revokeSession(session) } }
+    )
+
     SPButton(
       L10n.tr("common.logout"),
       variant: .surface,
@@ -140,9 +164,132 @@ public struct AccountView: View {
         L10n.tr("account.savePassword"),
         variant: .primary,
         isFullWidth: true,
+        isDisabled: model.isOffline,
         isPending: model.isSavingPassword
       ) {
         Task { await model.savePassword() }
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+  }
+
+  private func pushSettingsCard(_ user: User) -> some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(L10n.tr("ios.push.sectionTitle"))
+        .font(Typography.sectionTitle)
+        .foregroundStyle(Tokens.ink)
+
+      switch model.pushStatus {
+      case .notDetermined:
+        Text(L10n.tr("ios.push.promptBody"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.muted)
+        SPButton(
+          L10n.tr("ios.push.enable"),
+          variant: .primary,
+          isFullWidth: true,
+          isDisabled: model.isOffline
+        ) {
+          Task { await model.enablePushNotifications() }
+        }
+      case .authorized:
+        Text(L10n.tr("ios.push.enabledStatus"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.muted)
+      case .denied:
+        Text(L10n.tr("ios.push.deniedStatus"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.muted)
+        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+          SPButton(
+            L10n.tr("ios.push.openSettings"),
+            variant: .surface,
+            isFullWidth: true
+          ) {
+            UIApplication.shared.open(settingsURL)
+          }
+        }
+      }
+
+      Toggle(
+        isOn: Binding(
+          get: { user.hidePushContent },
+          set: { newValue in
+            Task { await model.setHidePushContent(newValue) }
+          }
+        )
+      ) {
+        Text(L10n.tr("ios.push.hideContent"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.ink)
+      }
+      .tint(Tokens.ink)
+      .disabled(model.isOffline || model.isSavingPushSettings)
+
+      if let pushSettingsError = model.pushSettingsError {
+        Text(pushSettingsError)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
+      }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+  }
+
+  private var notificationSettingsCard: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(L10n.tr("notifications.emailSettingsTitle"))
+        .font(Typography.sectionTitle)
+        .foregroundStyle(Tokens.ink)
+
+      switch model.notificationSettings {
+      case .loading:
+        LoadingSkeleton(rowCount: 2, rowHeight: 40)
+      case .failed:
+        LoadError {
+          Task { await model.load() }
+        }
+      case .loaded(let settings):
+        Toggle(
+          isOn: Binding(
+            get: { settings.emailImmediate },
+            set: { newValue in
+              Task { await model.updateNotificationSettings(emailImmediate: newValue) }
+            }
+          )
+        ) {
+          Text(L10n.tr("notifications.emailImmediate"))
+            .font(Typography.subheadline)
+            .foregroundStyle(Tokens.ink)
+        }
+        .tint(Tokens.ink)
+        .disabled(model.isOffline || model.isUpdatingNotificationSettings)
+
+        Toggle(
+          isOn: Binding(
+            get: { settings.emailDigest },
+            set: { newValue in
+              Task { await model.updateNotificationSettings(emailDigest: newValue) }
+            }
+          )
+        ) {
+          Text(L10n.tr("notifications.emailDigest"))
+            .font(Typography.subheadline)
+            .foregroundStyle(Tokens.ink)
+        }
+        .tint(Tokens.ink)
+        .disabled(model.isOffline || model.isUpdatingNotificationSettings)
+      }
+
+      if let error = model.notificationSettingsError {
+        Text(error)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
       }
     }
     .padding(20)
@@ -178,7 +325,8 @@ public struct AccountView: View {
         L10n.tr("account.delete"),
         variant: .primary,
         isFullWidth: true,
-        isDisabled: model.deleteConfirmationEmail != email || model.isDeletingAccount,
+        isDisabled: model.isOffline || model.deleteConfirmationEmail != email
+          || model.isDeletingAccount,
         isPending: model.isDeletingAccount
       ) {
         Task { await model.deleteAccount() }

@@ -2,6 +2,7 @@
 import { ChangePasswordCard } from "../../components/account/ChangePasswordCard";
 import { DeleteAccountCard } from "../../components/account/DeleteAccountCard";
 import { NotificationSettingsCard } from "../../components/account/NotificationSettingsCard";
+import { SessionsCard } from "../../components/account/SessionsCard";
 import { TelegramIdentityCard } from "../../components/account/TelegramIdentityCard";
 import { Button } from "../../components/ui/Button";
 import { LoadError } from "../../components/ui/LoadError";
@@ -49,6 +50,7 @@ export default function AccountPage() {
 						</div>
 					</div>
 					{me.data.hasPassword && <ChangePasswordCard />}
+					<SessionsCard />
 					<NotificationSettingsCard />
 					<TelegramIdentityCard />
 					<Button

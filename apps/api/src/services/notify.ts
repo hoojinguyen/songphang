@@ -22,6 +22,12 @@ const IMMEDIATE_KINDS = new Set<NotificationPayload["kind"]>([
 	"approval_decided",
 ]);
 
+const PUSH_KINDS = new Set<NotificationPayload["kind"]>([
+	...IMMEDIATE_KINDS,
+	"expense_added",
+	"comment_added",
+]);
+
 export type NotifyInput<
 	K extends NotificationPayload["kind"] = NotificationPayload["kind"],
 > = {
@@ -33,6 +39,7 @@ export type NotifyInput<
 	toMemberIds?: string[];
 	now?: Date;
 	enqueue?: EnqueueFn;
+	pushEnabled?: boolean;
 };
 
 /**
@@ -66,6 +73,16 @@ export async function notify<K extends NotificationPayload["kind"]>(
 			await input.enqueue(
 				executor,
 				JOB_NAMES.sendNotificationMail,
+				{ notificationId: row.id },
+				{ singletonKey: row.id },
+			);
+		}
+	}
+	if (input.pushEnabled && PUSH_KINDS.has(input.kind) && input.enqueue) {
+		for (const row of inserted) {
+			await input.enqueue(
+				executor,
+				JOB_NAMES.sendPush,
 				{ notificationId: row.id },
 				{ singletonKey: row.id },
 			);

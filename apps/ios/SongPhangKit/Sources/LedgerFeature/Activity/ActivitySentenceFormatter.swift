@@ -219,18 +219,34 @@ public enum ActivitySentenceFormatter {
       case .percent(let entries):
         return entries.map { "\(memberName($0.memberId)) \($0.percent)" }
           .joined(separator: " · ")
+      case .items(let items, let extras):
+        var parts = items.map { item in
+          let membersStr = item.memberIds.map(memberName).joined(separator: ", ")
+          let amountStr = MoneyFormat.amount(item.amount)
+          if membersStr.isEmpty {
+            return "\(item.name) \(amountStr)"
+          } else {
+            return "\(item.name) \(amountStr) (\(membersStr))"
+          }
+        }
+        for extra in extras {
+          let label: String = {
+            if !extra.label.isEmpty { return extra.label }
+            switch extra.kind {
+            case .tax: return L10n.tr("receipts.extrasKinds.tax")
+            case .service: return L10n.tr("receipts.extrasKinds.service")
+            case .discount: return L10n.tr("receipts.extrasKinds.discount")
+            case .other, .unknown: return L10n.tr("receipts.extrasKinds.other")
+            }
+          }()
+          parts.append("\(label) \(MoneyFormat.amount(extra.amount))")
+        }
+        return parts.joined(separator: " · ")
       }
     }
 
     func formatCategory(_ category: TransactionCategory) -> String {
-      switch category {
-      case .food: return L10n.tr("expenseForm.categories.food")
-      case .transport: return L10n.tr("expenseForm.categories.transport")
-      case .lodging: return L10n.tr("expenseForm.categories.lodging")
-      case .shopping: return L10n.tr("expenseForm.categories.shopping")
-      case .entertainment, .bills, .other, .unknown:
-        return L10n.tr("expenseForm.categories.other")
-      }
+      CategoryDisplay.localizedName(for: category)
     }
 
     var chips: [ActivityChangeChip] = []

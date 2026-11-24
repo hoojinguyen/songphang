@@ -85,6 +85,7 @@ export async function createSettlementRequest(
 		request: CreateSettlementRequest;
 		now: Date;
 		enqueue?: EnqueueFn;
+		pushEnabled?: boolean;
 	},
 ) {
 	await lockGroup(executor, input.groupId);
@@ -135,6 +136,9 @@ export async function createSettlementRequest(
 		toMemberIds: [input.request.toMemberId],
 		now: input.now,
 		...(input.enqueue ? { enqueue: input.enqueue } : {}),
+		...(input.pushEnabled === undefined
+			? {}
+			: { pushEnabled: input.pushEnabled }),
 	});
 	return { request: dto };
 }
@@ -170,6 +174,8 @@ export async function resolveSettlement(
 				? await createTransactionIn(executor, {
 						...input,
 						now,
+						enqueue: deps.enqueue,
+						pushEnabled: Boolean(deps.config.pushProvider),
 						request: {
 							type: "transfer",
 							fromMemberId: row.fromMemberId,
@@ -212,6 +218,7 @@ export async function resolveSettlement(
 				toMemberIds: [row.fromMemberId],
 				now,
 				enqueue: deps.enqueue,
+				pushEnabled: Boolean(deps.config.pushProvider),
 			});
 		}
 		return {

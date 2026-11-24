@@ -8,6 +8,7 @@ export const UserDto = z
 		avatarUrl: z.string().nullable(),
 		emailVerified: z.boolean(),
 		hasPassword: z.boolean(),
+		hidePushContent: z.boolean().default(false),
 	})
 	.openapi("UserDto");
 export type UserDto = z.infer<typeof UserDto>;
@@ -71,3 +72,79 @@ export const DeleteAccountRequest = z
 	.object({ email: EmailAddress })
 	.openapi("DeleteAccountRequest");
 export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequest>;
+
+export const SessionClient = z
+	.enum(["web", "ios", "android"])
+	.openapi("SessionClient");
+export type SessionClient = z.infer<typeof SessionClient>;
+
+export const NativeClient = z.enum(["ios", "android"]).openapi("NativeClient");
+export type NativeClient = z.infer<typeof NativeClient>;
+
+export const DeviceName = z.string().trim().min(1).max(60);
+
+export const TokenLoginRequest = z
+	.object({
+		email: EmailAddress,
+		password: z.string().min(1).max(1024),
+		client: NativeClient,
+		deviceName: DeviceName,
+	})
+	.openapi("TokenLoginRequest");
+export type TokenLoginRequest = z.infer<typeof TokenLoginRequest>;
+
+export const TokenLoginResponse = z
+	.object({
+		token: z.string(),
+		user: UserDto,
+	})
+	.openapi("TokenLoginResponse");
+export type TokenLoginResponse = z.infer<typeof TokenLoginResponse>;
+
+export const SessionDto = z
+	.object({
+		id: z.uuid(),
+		client: SessionClient,
+		deviceName: z.string().nullable(),
+		createdAt: z.iso.datetime(),
+		lastSeenAt: z.iso.datetime(),
+		current: z.boolean(),
+	})
+	.openapi("SessionDto");
+export type SessionDto = z.infer<typeof SessionDto>;
+
+export const SessionsResponse = z
+	.object({
+		sessions: z.array(SessionDto),
+	})
+	.openapi("SessionsResponse");
+export type SessionsResponse = z.infer<typeof SessionsResponse>;
+
+export const PkceCodeChallenge = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+export const PkceCodeVerifier = z
+	.string()
+	.min(43)
+	.max(128)
+	.regex(/^[A-Za-z0-9._~-]+$/);
+
+export const MobileExchangeRequest = z
+	.object({
+		code: z.string().min(1).max(256),
+		codeVerifier: PkceCodeVerifier,
+		client: NativeClient,
+		deviceName: DeviceName,
+	})
+	.openapi("MobileExchangeRequest");
+export type MobileExchangeRequest = z.infer<typeof MobileExchangeRequest>;
+
+export const AppleSignInRequest = z
+	.object({
+		identityToken: z.string().min(1).max(16384),
+		rawNonce: z.string().min(16).max(256),
+		authorizationCode: z.string().min(1).max(4096),
+		name: z.string().trim().min(1).max(50).optional(),
+		client: NativeClient,
+		deviceName: DeviceName,
+	})
+	.openapi("AppleSignInRequest");
+export type AppleSignInRequest = z.infer<typeof AppleSignInRequest>;

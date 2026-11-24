@@ -18,6 +18,7 @@ import type { PgBoss } from "pg-boss";
 import { notifyGroup } from "../notify.js";
 import { registerJob, type WorkerDeps } from "../queue.js";
 import { runSendNotificationMail } from "./send-notification-mail.js";
+import { runSendPush } from "./send-push.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -101,6 +102,14 @@ export async function runAutoReminders(deps: WorkerDeps): Promise<number> {
 							{ notificationId: row.id },
 							{ singletonKey: row.id },
 						);
+						if (deps.config.pushProvider) {
+							await deps.enqueue(
+								executor,
+								JOB_NAMES.sendPush,
+								{ notificationId: row.id },
+								{ singletonKey: row.id },
+							);
+						}
 					}
 				}
 			}
@@ -115,6 +124,9 @@ export async function runAutoReminders(deps: WorkerDeps): Promise<number> {
 	if (!deps.enqueue) {
 		for (const id of notificationIds) {
 			await runSendNotificationMail(deps, id);
+			if (deps.config.pushProvider) {
+				await runSendPush(deps, id);
+			}
 		}
 	}
 	return remindedCount;

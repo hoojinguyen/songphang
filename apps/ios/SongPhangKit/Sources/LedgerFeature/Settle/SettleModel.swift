@@ -22,21 +22,47 @@ public final class SettleModel {
   public let fromMemberId: Member.ID
   public let toMemberId: Member.ID
   public let initialAmount: Money
-  public let idempotencyKey: IdempotencyKey
+  public private(set) var idempotencyKey: IdempotencyKey
 
   private let groupsRepository: any GroupsRepository
   private let membersRepository: any MembersRepository
   private let balancesRepository: any BalancesRepository
   private let transactionsRepository: any TransactionsRepository
   private let onSaved: () -> Void
+  private var capturedOccurredAt: String?
 
   public private(set) var state: Loadable<ScreenData> = .loading
-  public var amountText: String
-  public var daySelection: DaySelection = .today
-  public var customDate: Date = Date()
+  public var amountText: String {
+    didSet {
+      if amountText != oldValue {
+        resetIntent()
+      }
+    }
+  }
+  public var daySelection: DaySelection = .today {
+    didSet {
+      if daySelection != oldValue {
+        resetIntent()
+      }
+    }
+  }
+  public var customDate: Date = Date() {
+    didSet {
+      if customDate != oldValue {
+        resetIntent()
+      }
+    }
+  }
   public private(set) var isSubmitting = false
   public private(set) var submitError: AppError?
   public var isRecorded = false
+
+  private func resetIntent() {
+    guard !isSubmitting else { return }
+    capturedOccurredAt = nil
+    idempotencyKey = IdempotencyKey()
+    submitError = nil
+  }
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -101,6 +127,7 @@ public final class SettleModel {
   }
 
   public func updateAmountText(_ raw: String) {
+    guard !isSubmitting else { return }
     let digits = raw.filter { $0.isWholeNumber && $0.isASCII }
     if digits.isEmpty {
       amountText = ""
@@ -114,21 +141,41 @@ public final class SettleModel {
     isSubmitting = true
     submitError = nil
 
+    let occurredAt: String
+    if let capturedOccurredAt {
+      occurredAt = capturedOccurredAt
+    } else {
+      let targetDate: Date
+      switch daySelection {
+      case .today:
+        targetDate = Date.now
+      case .yesterday:
+        targetDate = Calendar.current.date(byAdding: .day, value: -1, to: Date.now) ?? Date.now
+      case .other:
+        targetDate = customDate
+      }
+      let formatted = Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(targetDate)
+      capturedOccurredAt = formatted
+      occurredAt = formatted
+    }
+
     let draft = TransactionDraft.transfer(
       TransactionDraft.TransferPayload(
         amount: amt,
-        occurredAt: "2026-11-16T15:05:00.000Z",
+        occurredAt: occurredAt,
         fromMemberId: fromMemberId,
         toMemberId: toMemberId
       )
     )
 
+    let submitKey = idempotencyKey
     do throws(AppError) {
       _ = try await transactionsRepository.create(
         groupId: groupId,
         draft: draft,
-        key: idempotencyKey
+        key: submitKey
       )
+      capturedOccurredAt = nil
       isRecorded = true
       if !reduceMotion {
         try? await Task.sleep(for: .milliseconds(200))

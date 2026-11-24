@@ -59,17 +59,19 @@ export async function checkBalances(db: Db): Promise<boolean> {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-	try {
-		const { db, close } = createDb(process.env.DATABASE_URL ?? "");
+	void (async () => {
 		try {
-			if (!(await checkBalances(db))) process.exitCode = 1;
-		} finally {
-			await close();
+			const { db, close } = createDb(process.env.DATABASE_URL ?? "");
+			try {
+				if (!(await checkBalances(db))) process.exitCode = 1;
+			} finally {
+				await close();
+			}
+		} catch {
+			console.error(
+				"Balance check failed: check DATABASE_URL and database migrations",
+			);
+			process.exitCode = 1;
 		}
-	} catch {
-		console.error(
-			"Balance check failed: check DATABASE_URL and database migrations",
-		);
-		process.exitCode = 1;
-	}
+	})();
 }

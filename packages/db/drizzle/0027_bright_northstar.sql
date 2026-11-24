@@ -1,0 +1,3 @@
+DELETE FROM "auth_tokens" WHERE "purpose" = 'mobile_exchange' AND ("client" IS NULL OR "client" NOT IN ('ios', 'android'));--> statement-breakpoint
+ALTER TABLE "auth_tokens" DROP CONSTRAINT "auth_tokens_mobile_exchange_check";--> statement-breakpoint
+ALTER TABLE "auth_tokens" ADD CONSTRAINT "auth_tokens_mobile_exchange_check" CHECK (("auth_tokens"."purpose" = 'mobile_exchange' and "auth_tokens"."code_challenge" is not null and "auth_tokens"."client" is not null and "auth_tokens"."client" in ('ios','android')) or ("auth_tokens"."purpose" <> 'mobile_exchange' and "auth_tokens"."code_challenge" is null and "auth_tokens"."client" is null));

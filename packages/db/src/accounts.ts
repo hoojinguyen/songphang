@@ -50,6 +50,31 @@ export async function consumeAuthToken(
 		.returning({ userId: authTokens.userId });
 	return token?.userId ?? null;
 }
+export async function consumeMobileExchangeToken(
+	executor: DbExecutor,
+	input: {
+		tokenHash: string;
+		codeChallenge: string;
+		client: "ios" | "android";
+		now: Date;
+	},
+) {
+	const [token] = await executor
+		.update(authTokens)
+		.set({ usedAt: input.now })
+		.where(
+			and(
+				eq(authTokens.tokenHash, input.tokenHash),
+				eq(authTokens.purpose, "mobile_exchange"),
+				eq(authTokens.codeChallenge, input.codeChallenge),
+				eq(authTokens.client, input.client),
+				isNull(authTokens.usedAt),
+				gt(authTokens.expiresAt, input.now),
+			),
+		)
+		.returning({ userId: authTokens.userId });
+	return token?.userId ?? null;
+}
 export async function findAccountByEmail(executor: DbExecutor, email: string) {
 	const [account] = await executor
 		.select({

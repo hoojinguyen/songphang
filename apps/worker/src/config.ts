@@ -1,4 +1,5 @@
 import path from "node:path";
+import { validateEcP256PrivateKey } from "@songphang/core/ec-key";
 import { z } from "zod";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
@@ -55,6 +56,43 @@ const WORKER_CONFIG_SCHEMA = z
 			EMPTY_TO_UNDEFINED,
 			z.enum(FAKE_RECEIPT_FIXTURES).optional(),
 		),
+		PUSH_PROVIDER: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.enum(["apns", "console"]).optional(),
+		),
+		APPLE_BUNDLE_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(255).optional(),
+		),
+		APPLE_TEAM_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APPLE_KEY_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APPLE_PRIVATE_KEY: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(8192).optional(),
+		),
+		APNS_KEY_ID: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z
+				.string()
+				.regex(/^[A-Z0-9]{10}$/)
+				.optional(),
+		),
+		APNS_PRIVATE_KEY: z.preprocess(
+			EMPTY_TO_UNDEFINED,
+			z.string().min(1).max(8192).optional(),
+		),
 	})
 	.superRefine((env, context) => {
 		if (env.AI_PROVIDER === "anthropic") {
@@ -103,6 +141,53 @@ const WORKER_CONFIG_SCHEMA = z
 					message: "WEB_ORIGIN is required in production",
 				});
 			}
+			if (env.PUSH_PROVIDER === "console") {
+				context.addIssue({
+					code: "custom",
+					path: ["PUSH_PROVIDER"],
+					message: "PUSH_PROVIDER=console is forbidden in production",
+				});
+			}
+		}
+		if (env.PUSH_PROVIDER === "apns") {
+			if (!env.APPLE_BUNDLE_ID) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_BUNDLE_ID"],
+					message: "APPLE_BUNDLE_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			if (!env.APPLE_TEAM_ID) {
+				context.addIssue({
+					code: "custom",
+					path: ["APPLE_TEAM_ID"],
+					message: "APPLE_TEAM_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			if (!(env.APNS_KEY_ID ?? env.APPLE_KEY_ID)) {
+				context.addIssue({
+					code: "custom",
+					path: ["APNS_KEY_ID"],
+					message:
+						"APNS_KEY_ID or APPLE_KEY_ID is required when PUSH_PROVIDER=apns",
+				});
+			}
+			const privateKeySource = env.APNS_PRIVATE_KEY
+				? "APNS_PRIVATE_KEY"
+				: "APPLE_PRIVATE_KEY";
+			const privateKeyRaw = (
+				env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY
+			)?.replace(/\\n/g, "\n");
+			if (!privateKeyRaw) {
+				context.addIssue({
+					code: "custom",
+					path: ["APNS_PRIVATE_KEY"],
+					message:
+						"APNS_PRIVATE_KEY or APPLE_PRIVATE_KEY is required when PUSH_PROVIDER=apns",
+				});
+			} else {
+				validateEcP256PrivateKey(privateKeyRaw, privateKeySource, context);
+			}
 		}
 	})
 	.transform((env) => ({
@@ -117,6 +202,14 @@ const WORKER_CONFIG_SCHEMA = z
 		aiSentencesPerUserPerDay: env.AI_SENTENCES_PER_USER_PER_DAY,
 		aiCallsPerMonth: env.AI_CALLS_PER_MONTH,
 		aiFakeReceiptFixture: env.AI_FAKE_RECEIPT_FIXTURE,
+		pushProvider: env.PUSH_PROVIDER,
+		appleBundleId: env.APPLE_BUNDLE_ID,
+		appleTeamId: env.APPLE_TEAM_ID,
+		apnsKeyId: env.APNS_KEY_ID ?? env.APPLE_KEY_ID,
+		apnsPrivateKey: (env.APNS_PRIVATE_KEY ?? env.APPLE_PRIVATE_KEY)?.replace(
+			/\\n/g,
+			"\n",
+		),
 	}));
 
 export type WorkerConfig = z.infer<typeof WORKER_CONFIG_SCHEMA>;
@@ -126,12 +219,10 @@ export function loadWorkerConfig(
 ): WorkerConfig {
 	const result = WORKER_CONFIG_SCHEMA.safeParse(env);
 	if (!result.success) {
-		const invalidNames = [
-			...new Set(result.error.issues.map((issue) => issue.path[0])),
-		];
-		throw new Error(
-			`Invalid environment variables: ${invalidNames.join(", ")}`,
-		);
+		const details = result.error.issues
+			.map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
+			.join("\n");
+		throw new Error(`Invalid environment configuration:\n${details}`);
 	}
 	return result.data;
 }

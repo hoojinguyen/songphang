@@ -6,14 +6,20 @@ public struct QuestionCardView: View {
   private let groupId: ExpenseGroup.ID
   private let initialReading: QuickEntryReading
   private let members: [Member]
+  private let categories: [GroupCategory]
   private let transactionsRepository: any TransactionsRepository
   private let isDisabled: Bool
+  private let indexLabel: String?
+  private let saveLabel: String?
+  private let skipLabel: String?
   private let onEdit: (QuickEntryReading) -> Void
   private let onSave: (QuickEntryReading) -> Void
+  private let onSkip: (() -> Void)?
 
   @State private var selectedIds: [Member.ID] = []
   @State private var descriptionText: String
   @State private var previewShares: [MemberAmount]?
+  @State private var previewWarnings: [TransactionWarning] = []
   @State private var isPreviewing = false
   @State private var previewError = false
 
@@ -21,18 +27,28 @@ public struct QuestionCardView: View {
     groupId: ExpenseGroup.ID,
     reading: QuickEntryReading,
     members: [Member],
+    categories: [GroupCategory] = [],
     transactionsRepository: any TransactionsRepository,
     isDisabled: Bool = false,
+    indexLabel: String? = nil,
+    saveLabel: String? = nil,
+    skipLabel: String? = nil,
     onEdit: @escaping (QuickEntryReading) -> Void,
-    onSave: @escaping (QuickEntryReading) -> Void
+    onSave: @escaping (QuickEntryReading) -> Void,
+    onSkip: (() -> Void)? = nil
   ) {
     self.groupId = groupId
     self.initialReading = reading
     self.members = members
+    self.categories = categories
     self.transactionsRepository = transactionsRepository
     self.isDisabled = isDisabled
+    self.indexLabel = indexLabel
+    self.saveLabel = saveLabel
+    self.skipLabel = skipLabel
     self.onEdit = onEdit
     self.onSave = onSave
+    self.onSkip = onSkip
     self._descriptionText = State(initialValue: reading.draft.description ?? "")
     self._previewShares = State(initialValue: reading.shares)
   }
@@ -88,11 +104,15 @@ public struct QuestionCardView: View {
         description: resolvedDescription,
         amount: initialReading.draft.amount,
         payers: initialReading.draft.payers,
-        split: resolvedSplit
+        split: resolvedSplit,
+        category: initialReading.draft.category,
+        categoryId: initialReading.draft.categoryId
       ),
       shares: isComplete ? previewShares : initialReading.shares,
       spans: initialReading.spans,
-      issues: ready ? [] : initialReading.issues
+      issues: ready ? [] : initialReading.issues,
+      reader: initialReading.reader,
+      moreDrafts: initialReading.moreDrafts
     )
   }
 
@@ -108,10 +128,16 @@ public struct QuestionCardView: View {
     ConfirmationCardView(
       reading: effective,
       members: members,
-      isDisabled: isDisabled || !ready,
-      saveLabel: saveButtonLabel,
+      categories: categories,
+      isDisabled: isDisabled,
+      isSaveDisabled: isDisabled || !ready,
+      isBudgetOver: ready && previewWarnings.contains(.budgetOver),
+      indexLabel: indexLabel,
+      saveLabel: saveButtonLabel ?? saveLabel,
+      skipLabel: skipLabel,
       onEdit: { onEdit(effective) },
-      onSave: { onSave(effective) }
+      onSave: { onSave(effective) },
+      onSkip: onSkip
     ) {
       VStack(alignment: .leading, spacing: 12) {
         if let ambiguousIssue {
@@ -136,8 +162,10 @@ public struct QuestionCardView: View {
             }
           )
         } else if let countIssue {
-          let candidates = members.filter { countIssue.candidates.contains($0.id) }
-          let activeTotal = members.filter(\.active).count
+          let candidates = members.filter {
+            $0.kind == .person && countIssue.candidates.contains($0.id)
+          }
+          let activeTotal = members.filter { $0.active && $0.kind == .person }.count
           let target = countIssue.count ?? 0
           ChoicePanelView(
             members: candidates,
@@ -189,8 +217,9 @@ public struct QuestionCardView: View {
         isIncome: false,
         description: description,
         amount: amount,
-        occurredAt: "2026-11-16T15:00:00.000Z",
-        category: nil,
+        occurredAt: Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(Date.now),
+        category: current.draft.category,
+        categoryId: current.draft.categoryId,
         payers: current.draft.payers,
         split: split
       )
@@ -201,6 +230,7 @@ public struct QuestionCardView: View {
     do throws(AppError) {
       let preview = try await transactionsRepository.preview(groupId: groupId, draft: draft)
       previewShares = preview.shares
+      previewWarnings = preview.warnings
     } catch {
       previewError = true
     }

@@ -110,6 +110,8 @@ export function registerCommentRoutes(
 						user: context.var.user,
 						request,
 						now: deps.now(),
+						enqueue: deps.enqueue,
+						pushEnabled: Boolean(deps.config.pushProvider),
 					}),
 				}),
 			);

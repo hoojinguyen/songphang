@@ -6,7 +6,9 @@ import {
 	type DbExecutor,
 	deleteGroupUser,
 	findGroupAccess,
+	findUserAppleIdentity,
 	insertActivity,
+	isAppleDeletionPending,
 	listGroupUsers,
 	lockAccount,
 	lockGroup,
@@ -157,6 +159,14 @@ export async function transferOwnership(deps: AppDeps, input: UserOperation) {
 		const target = await ownerAndTarget(tx, input);
 		if (input.targetId === input.userId)
 			throw new AppError(422, "OWNER_REQUIRED", "Choose another group user");
+		const targetApple = await findUserAppleIdentity(tx, input.targetId);
+		if (isAppleDeletionPending(targetApple?.providerSecret)) {
+			throw new AppError(
+				422,
+				"OWNER_REQUIRED",
+				"Target user is undergoing account deletion",
+			);
+		}
 		await updateGroupUserRole(tx, {
 			groupId: input.groupId,
 			userId: input.userId,

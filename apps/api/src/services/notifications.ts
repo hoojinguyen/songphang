@@ -41,11 +41,13 @@ function decodeCursor(cursor: string | undefined): NotificationCursor | null {
 }
 
 function toNotificationDto(row: NotificationRow): NotificationDto {
+	const payload = z.record(z.string(), z.unknown()).safeParse(row.payload);
+	if (payload.success) delete payload.data._deliveredDeviceIds;
 	return NotificationDto.parse({
 		id: row.id,
 		kind: row.kind,
 		groupId: row.groupId,
-		payload: row.payload,
+		payload: payload.success ? payload.data : row.payload,
 		read: row.readAt !== null,
 		createdAt: row.createdAt.toISOString(),
 	});

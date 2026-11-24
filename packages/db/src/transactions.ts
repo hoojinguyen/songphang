@@ -130,10 +130,16 @@ export function listTransactionRows(
 					: undefined,
 				filters?.start === undefined
 					? undefined
-					: gte(transactions.occurredAt, filters.start),
+					: gte(
+							transactions.occurredAt,
+							sql`to_timestamp(${filters.start.getTime() / 1000})`,
+						),
 				filters?.endExclusive === undefined
 					? undefined
-					: lt(transactions.occurredAt, filters.endExclusive),
+					: lt(
+							transactions.occurredAt,
+							sql`to_timestamp(${filters.endExclusive.getTime() / 1000})`,
+						),
 				cursor === null
 					? undefined
 					: or(
