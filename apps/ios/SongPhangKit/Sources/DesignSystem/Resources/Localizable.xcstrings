@@ -7690,39 +7690,6 @@
         }
       }
     },
-    "groups.archiveDialogTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lưu trữ nhóm"
-          }
-        }
-      }
-    },
-    "groups.archiveConfirm": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lưu trữ nhóm"
-          }
-        }
-      }
-    },
-    "groups.archiveDialogMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lưu trữ nhóm này? Nhóm sẽ chuyển sang chế độ chỉ xem, số dư và lịch sử vẫn được giữ nguyên."
-          }
-        }
-      }
-    },
     "groups.archiveConfirmBody": {
       "extractionState": "manual",
       "localizations": {

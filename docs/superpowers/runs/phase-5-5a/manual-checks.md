@@ -1,7 +1,7 @@
 # Wave 5.5A — Owner Manual Verification Checklist
 
 - Branch: `phase-5-5a`
-- Tested revision: `phase-5-5a` (HEAD `a1f0a28` / all Stage 5.5A.1–5.5A.5 commits merged)
+- Tested revision: `phase-5-5a` (HEAD `9d2732b` + remediation commits / all Stage 5.5A.1–5.5A.5 commits merged)
 - Local checks summary:
   - `pnpm check`: Exit 0 (all 8 packages clean, Biome clean, contract snapshot up to date)
   - `pnpm build`: Exit 0 (Next.js 16.4.6 static/dynamic production build clean)

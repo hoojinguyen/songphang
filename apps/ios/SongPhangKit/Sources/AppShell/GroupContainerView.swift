@@ -203,16 +203,16 @@ public struct GroupContainerView: View {
     .background(Tokens.bg.ignoresSafeArea())
     .navigationBarBackButtonHidden(true)
     .confirmationDialog(
-      L10n.tr("groups.archiveDialogTitle"),
+      L10n.tr("groups.archiveAction"),
       isPresented: $isArchiveConfirmPresented,
       titleVisibility: .visible
     ) {
-      Button(L10n.tr("groups.archiveConfirm"), role: .destructive) {
+      Button(L10n.tr("groups.archiveAction"), role: .destructive) {
         Task { await archiveCurrentGroup() }
       }
       Button(L10n.tr("common.cancel"), role: .cancel) {}
     } message: {
-      Text(L10n.tr("groups.archiveDialogMessage"))
+      Text(L10n.tr("groups.archiveConfirmBody"))
     }
     .sheet(isPresented: $isCloneSheetPresented) {
       if let group = currentGroup {
