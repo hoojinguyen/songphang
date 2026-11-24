@@ -226,3 +226,24 @@ Approved by the project owner. Where this section differs from the text above, t
 - FR-1.63 (pairwise debts when "Gộp nợ" is off) moves from 1C to 1A.
 - Google sign-in is written in 1B without real credentials and stays unverified until the owner creates the OAuth app. The sign-in library decision point of section 5 is closed by ADR-017.
 - Moved to the waiting list: "bơm hình" (hold a shape to grow a share); activity lines inside the expense stream. The 6 × 8 member palette and the desktop layout remain design work.
+
+## 8. Amendment 2026-11-24 — UI/UX v2 & Core Product Depth before launch (Phase 5.5)
+
+Approved by the project owner on 2026-11-24. Where this section differs from the sequence in earlier sections or `docs/superpowers/specs/2026-11-15-roadmap-remaining-phases-overview.md` §2, this section applies.
+
+1. **Baseline status:** Phases 0–5 (including native iOS parity in `apps/ios/`) are merged on `main` (`378df4d`, PR #2). Physical iPhone acceptance surfaced layout and UX technical debt (`TD-001`–`TD-007` in `docs/tech-debt.md`) and missing bundled `Be Vietnam Pro` `.ttf`/`.otf` font files for iOS.
+2. **Revised post-Phase-5 execution sequence:**
+   - **Wave 5.5A (`phase-5-5a`):** UI/UX v2, Design System v2 (Light + Dark Mode, bundled `Be Vietnam Pro` `.ttf` fonts), technical debt resolution (`TD-001`, `TD-003`–`TD-007`), iOS 4-tab navigation and 3-segment group detail, dedicated Web Desktop multi-column layout, full-width transaction cards, native iOS interaction polish (Haptics, Swipe Actions, hold-to-grow "Bơm hình"), Cross-group Overview and Personal Ledger, and Group Archive & Clone.
+   - **Wave 5.5B (`phase-5-5b`):** Settlement Vault (transfer proof/receipt attachment + payment channel/note, dedicated settlement history and reconciliation view), Settlement Cycles / Closeout (locking historical expenses into read-only cycles while carrying unpaid balances forward seamlessly so group balances always sum to `0`), opt-in revocable Guest Read-only Link with VietQR, and shareable Summary and "Nhắc nợ khéo" cards for Zalo/Messenger.
+   - **Wave 5.5C (`phase-5-5c`):** Manual-form VAT/service fee/shipping/voucher discounts, Recurring Expenses (fixed auto-post and variable-amount reminders), Household / Couple debt grouping on settlement calculation, iOS Share Extension (import receipt or transfer proof from Zalo/Photos), and iOS Home Screen Widget & Quick Actions.
+   - **Server Step (`server-step`):** Production Compose deployment on Ubuntu VM plus real external provider verification (SMTP, Google/Apple OAuth, APNs, Telegram webhook, 30-receipt AI evaluation, and TestFlight).
+   - **Phase 7 — Public Release (`phase-7`):** Public v1 launch targeting **iOS + Web**.
+   - **Phase 6 — Android (`phase-6`):** Built after v1 launch so Android is implemented once against the mature UI/UX v2 design system and Wave 5.5A–C feature set.
+3. **Scope boundaries & product rules:**
+   - **iOS-first design with 100% Web parity** for core features in each wave (plus a dedicated Web Desktop responsive layout); OS-exclusive capabilities (Haptics, Share Extension, Home Screen Widget) stay iOS-only.
+   - **VND-only:** multi-currency remains on the waiting list.
+   - **Server-authoritative with read-only snapshots:** offline write queue remains on the waiting list.
+   - **Additive API v1:** all API and OpenAPI schema changes remain strictly additive per Phase 5A compatibility rules.
+4. **References:**
+   - Master overview: `docs/superpowers/specs/2026-11-24-ui-ux-v2-and-5-5-overview-design.md`
+   - Wave 5.5A spec: `docs/superpowers/specs/2026-11-24-phase-5-5a-ui-ux-v2-design.md`

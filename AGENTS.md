@@ -13,7 +13,7 @@ This file applies to every agent working in this repository (Claude, Codex, Anti
 
 Sòng Phẳng is a group expense-splitting application for Vietnamese users: web first, native iOS and Android later, with a shared API. It is initially for internal use and will be released publicly later, so accounts, security, and UI quality are built to public-product standards from the beginning.
 
-Current phase: **4 — Collaboration is merged on main** (`22a16fb`). **Phase 5 — iOS** design and implementation plan were approved on 2026-11-19. Antigravity implements the continuous run on `phase-5`; Codex is the advisor and reviewer. The 5B Simulator handoff is an early owner checkpoint, and full web parity remains the final acceptance goal. The owner verifies the product and decides merge. The owner has deferred checks with a real AI provider until all phases, including iOS, are done. This run uses the development machine and local adapters.
+Current phase: **Phase 5 — iOS is merged on `main`** (`378df4d`, PR #2). On 2026-11-24 the project owner approved re-ordering the post-Phase-5 roadmap to prioritize **Phase 5.5 — UI/UX v2 & Core Product Depth** (three sequential waves: **5.5A → 5.5B → 5.5C**) for iOS and Web before the **Server Step**, **Phase 7 — Public Release (iOS + Web v1)**, and **Phase 6 — Android** last. Phase 5.5 overview design, Wave 5.5A design spec, and Wave 5.5A implementation plan (`docs/superpowers/plans/2026-11-24-phase-5-5a/`) were approved on 2026-11-24; Wave 5.5A runs on branch `phase-5-5a` once scheduled. Local development continues to use local adapters; real external providers (SMTP, Google/Apple OAuth, APNs, Telegram webhook, and real AI evaluation) are verified at the Server Step before launch.
 
 ## 2. Who decides what
 
