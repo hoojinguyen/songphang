@@ -59,3 +59,28 @@
 - **Options:** (1) Include pending/rejected transactions in balance calculations; (2) Define `computeMyDelta` to return `null` on `TransactionDto` (and `0` on `PersonalTransactionDto`) when `approval_status !== "none" && approval_status !== "approved"` or when soft-deleted.
 - **Choice:** Option 2.
 - **Reason:** Guarantees `sum(myDelta ?? 0) === myBalance` across all states without altering established double-entry balance accounting or requiring database schema changes.
+
+### D6 — AppearanceMode enum in DesignSystem (5.5A.2.2)
+- **Problem:** DesignSystem/Tokens needed a unified representation of theme preference mirroring web ThemeMode and satisfying ADR-019/TD-001.
+- **Options:** (1) Use boolean `isDarkMode`; (2) Add `AppearanceMode` enum (`system`, `light`, `dark`) with `colorScheme` projection and `@AppStorage` persistence.
+- **Choice:** Option 2 (`AppearanceMode.swift`).
+- **Reason:** Mirrors web three-way toggle exactly, avoids boolean ambiguity, and supports system follow by default.
+
+### D7 — 44pt touch target on SPSegmentedControl (5.5A.2.2)
+- **Problem:** Web segmented control uses compact padding, but iOS human interface guidelines require minimum 44pt tap target for accessibility.
+- **Options:** (1) Reduce iOS height to match web pixel-for-pixel; (2) Maintain 44pt minimum frame height on iOS with inner pill padding matching web visual metrics.
+- **Choice:** Option 2.
+- **Reason:** Complies with iOS touch accessibility while maintaining 100% visual styling parity.
+
+### D8 — Dark mode elevated surface contrast ratios (5.5A.2.1, 5.5A.2.2)
+- **Problem:** Pure black backgrounds with low-contrast muted text fail WCAG AA 4.5:1 on elevated surfaces.
+- **Options:** (1) Use pure white text everywhere; (2) Selected semantic dark mode tokens with WCAG AA > 4.5:1 against elevated card surfaces (text-primary `#FFFFFF`, text-secondary `#A1A1AA`, text-muted `#71717A`, card surface `#18181B`).
+- **Choice:** Option 2.
+- **Reason:** Delivers comfortable contrast hierarchy that passes WCAG AA verification.
+
+### D9 — Web theme toggle persistence and cross-tab sync (5.5A.2.1)
+- **Problem:** Dynamic theme changes must persist without layout shift on reload and synchronize across tabs.
+- **Options:** (1) Cookies with server-side rendering; (2) Static inline script `/theme-init.js` with `localStorage` persistence and `storage` event listener on `window`.
+- **Choice:** Option 2.
+- **Reason:** Zero flash of unstyled content (FOUC), zero `dangerouslySetInnerHTML`, and instant cross-tab sync.
+

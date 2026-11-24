@@ -12,9 +12,9 @@
 - [x] 5.5A.1.2 — Archive, Unarchive, Clone Group & additive `GET /groups` metadata
 - [x] 5.5A.1.3 — Cross-Group Overview (`GET /me/overview`), Personal Ledger (`GET /me/transactions`), `myDelta` & OpenAPI
 - [x] 5.5A.1.4 — Stage 5.5A.1 API Gate
-- [ ] 5.5A.2.1 — Web Design System v2, Dark Mode, Tabular Numerals & `TD-001` / `TD-004`
-- [ ] 5.5A.2.2 — iOS Design System v2 (`Be Vietnam Pro` `.ttf`, Dynamic `Tokens`, `Haptics`, `TD-004` & String Parity)
-- [ ] 5.5A.2.3 — Stage 5.5A.2 Design System Gate
+- [x] 5.5A.2.1 — Web Design System v2, Dark Mode, Tabular Numerals & `TD-001` / `TD-004`
+- [x] 5.5A.2.2 — iOS Design System v2 (`Be Vietnam Pro` `.ttf`, Dynamic `Tokens`, `Haptics`, `TD-004` & String Parity)
+- [x] 5.5A.2.3 — Stage 5.5A.2 Design System Gate
 - [ ] 5.5A.3.1 — iOS `Domain`, `Repositories`, `SnapshotStore` & `PreviewSupport` for Overview, Personal Ledger, Archive & Clone
 - [ ] 5.5A.3.2 — iOS 4-Tab Shell, `OverviewFeature`, Segmented Group List & Archive/Clone UI
 - [ ] 5.5A.3.3 — Web 4-Tab Mobile Shell, Overview (`/`), Groups (`/groups`), Personal Ledger (`/ledger`), Archive & Clone
@@ -115,13 +115,42 @@
   - Removed users immediately lose group access and data from personal overview and ledger.
   - Session revocation takes immediate effect across bearer-authenticated calls.
 
+### Task 5.5A.2.1 — Web Design System v2, Dark Mode, Tabular Numerals & `TD-001` / `TD-004`
+
+**Approach**
+- Files created/modified: `apps/web/src/app/globals.css`, `apps/web/src/app/layout.tsx`, `apps/web/public/theme-init.js`, `apps/web/src/lib/theme.ts`, `apps/web/src/components/account/AppearanceCard.tsx`, `apps/web/src/app/account/page.tsx`, `apps/web/src/components/ui/{Button,Card,MemberShape,OfflineBanner,SegmentedControl,Snackbar,TextField,VerifyEmailBanner}.tsx`, `apps/web/next.config.ts`, `apps/web/src/messages/vi.ts`.
+- Approach: Added semantic light/dark CSS custom properties; created static inline `/theme-init.js` to eliminate FOUC without `dangerouslySetInnerHTML`; wired theme switcher card into `/account`; enabled tabular numerals (`font-feature-settings: 'tnum' 1`); fixed `TD-001` (Next.js server-action dev origin error); fixed `TD-004` (placeholder text contrast tokens).
+- Exercises: Verified theme switching, zero FOUC, tabular number rendering, and Next.js build.
+- Commit: `edac870` (`feat(web): add Design System v2 dark mode, theme toggle, and dev origin fix`).
+
+### Task 5.5A.2.2 — iOS Design System v2 (`Be Vietnam Pro` `.ttf`, Dynamic `Tokens`, `Haptics`, `TD-004` & String Parity)
+
+**Approach**
+- Files created/modified: `apps/ios/SongPhangKit/Sources/DesignSystem/Resources/Fonts/*.ttf`, `LICENSE.txt`, `Tokens.swift`, `Typography.swift`, `AppearanceMode.swift`, `Haptics.swift`, `RootView.swift`, `AccountView.swift`, `GroupFeedSubViews.swift`, UI components, and `Localizable.xcstrings`.
+- Approach: Bundled static `Be Vietnam Pro` `.ttf` font files with runtime dynamic registration; updated `SPColor` and `Tokens.swift` to dynamic `UIColor(dynamicProvider:)` resolving Light/Dark automatically; added `Haptics.swift` supporting light, medium, heavy, success, warning, error, and selection feedback; updated `RootView` to honor `@AppStorage("sp_appearance_mode")`; synchronized 47 missing strings into `Localizable.xcstrings` (717 total).
+- Exercises: Verified font registration via `CTFontManagerRegisterGraphicsFont`, dark mode simulation, haptic triggers, `check-strings.sh` (717 verified), `swift-format lint --strict`, and Simulator Debug build.
+- Commits: `e1c606b` (`feat(ios): add Design System v2 dark mode, bundled Be Vietnam Pro fonts, and haptics`), `6b56c0e` (`refactor(design-system): address Wave 5.5A.2 verifier findings`).
+
+### Task 5.5A.2.3 — Stage 5.5A.2 Design System Gate
+
+**Approach**
+- Verified by worker `verifier` in Swarm Message #8:
+  - Font registration verified with zero console errors.
+  - Tabular numerals verified on currency displays across both Web and iOS.
+  - Dark mode verified across all core views with WCAG AA compliance.
+  - Haptic feedback verified on button presses and segmented control selections.
+  - `check-strings.sh` verified 717 string catalog keys with 0 missing and 0 differing.
+  - `pnpm check` and `pnpm build` pass with zero errors.
+  - `swift-format lint --strict` passes with exit code 0.
+  - Simulator build succeeded with warnings-as-errors.
+
 ## Gate Not Passed
 
 None.
 
 ## Not Verified
 
-- Static `Be Vietnam Pro` `.ttf` placement and font registration verification (deferred to `@design-system` in Task `5.5A.2.2`).
+None. All Stage 5.5A.1 and Stage 5.5A.2 gates verified and passed.
 
 ## Out of Scope
 
