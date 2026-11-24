@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { groups, groupUsers } from "./schema-groups.js";
@@ -49,7 +49,11 @@ export async function findGroupOwner(executor: DbExecutor, groupId: string) {
 		.limit(1);
 	return owner ?? null;
 }
-export function listUserGroups(executor: DbExecutor, userId: string) {
+export function listUserGroups(
+	executor: DbExecutor,
+	userId: string,
+	status: "active" | "archived" | "all" = "all",
+) {
 	return executor
 		.select({
 			id: groups.id,
@@ -61,7 +65,16 @@ export function listUserGroups(executor: DbExecutor, userId: string) {
 		})
 		.from(groups)
 		.innerJoin(groupUsers, eq(groups.id, groupUsers.groupId))
-		.where(eq(groupUsers.userId, userId))
+		.where(
+			and(
+				eq(groupUsers.userId, userId),
+				status === "active"
+					? isNull(groups.archivedAt)
+					: status === "archived"
+						? isNotNull(groups.archivedAt)
+						: undefined,
+			),
+		)
 		.orderBy(desc(groups.createdAt), desc(groups.id));
 }
 export async function insertGroup(
@@ -91,6 +104,7 @@ export function updateGroup(
 			defaultRole?: "editor" | "viewer";
 			reminderIntervalDays?: 3 | 7 | 14 | null;
 			approvalThreshold?: number | null;
+			archivedAt?: Date | null;
 		};
 		now: Date;
 	},

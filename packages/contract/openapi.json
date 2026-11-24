@@ -659,6 +659,27 @@
 				],
 				"type": "object"
 			},
+			"CloneGroupRequest": {
+				"properties": {
+					"copyCategories": {
+						"default": false,
+						"type": "boolean"
+					},
+					"copyPaymentMethods": {
+						"default": true,
+						"type": "boolean"
+					},
+					"name": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					}
+				},
+				"required": [
+					"name"
+				],
+				"type": "object"
+			},
 			"CommentDto": {
 				"properties": {
 					"authorName": {
@@ -1080,6 +1101,13 @@
 							"null"
 						]
 					},
+					"archivedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"createdAt": {
 						"format": "date-time",
 						"type": "string"
@@ -1196,6 +1224,13 @@
 			},
 			"GroupSummaryDto": {
 				"properties": {
+					"archivedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"currency": {
 						"enum": [
 							"VND"
@@ -1217,6 +1252,10 @@
 						"maxLength": 80,
 						"minLength": 1,
 						"type": "string"
+					},
+					"pendingActionCount": {
+						"minimum": 0,
+						"type": "integer"
 					},
 					"previewMembers": {
 						"items": {
@@ -1259,6 +1298,14 @@
 						},
 						"maxItems": 4,
 						"type": "array"
+					},
+					"role": {
+						"enum": [
+							"owner",
+							"editor",
+							"viewer"
+						],
+						"type": "string"
 					}
 				},
 				"required": [
@@ -5433,6 +5480,22 @@
 		},
 		"/api/v1/groups": {
 			"get": {
+				"parameters": [
+					{
+						"in": "query",
+						"name": "status",
+						"required": false,
+						"schema": {
+							"default": "all",
+							"enum": [
+								"active",
+								"archived",
+								"all"
+							],
+							"type": "string"
+						}
+					}
+				],
 				"responses": {
 					"200": {
 						"content": {
@@ -5727,6 +5790,33 @@
 							}
 						},
 						"description": "Activity"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/archive": {
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GroupResponse"
+								}
+							}
+						},
+						"description": "Group archived"
 					}
 				}
 			}
@@ -6188,6 +6278,54 @@
 				"responses": {
 					"204": {
 						"description": "Chat unlinked"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/clone": {
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "idempotency-key",
+						"required": true,
+						"schema": {
+							"maxLength": 128,
+							"minLength": 8,
+							"pattern": "^[A-Za-z0-9_-]+$",
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CloneGroupRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GroupResponse"
+								}
+							}
+						},
+						"description": "Group cloned"
 					}
 				}
 			}
@@ -8094,6 +8232,33 @@
 							}
 						},
 						"description": "Ownership transferred"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/unarchive": {
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GroupResponse"
+								}
+							}
+						},
+						"description": "Group unarchived"
 					}
 				}
 			}

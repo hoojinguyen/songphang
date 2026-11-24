@@ -50,3 +50,12 @@ export async function replacePaymentMethods(
 	if (input.rows.length > 0)
 		await executor.insert(memberPaymentMethods).values(input.rows);
 }
+
+export async function insertPaymentMethods(
+	executor: DbExecutor,
+	rows: (typeof memberPaymentMethods.$inferInsert)[],
+) {
+	if (rows.length > 0) {
+		await executor.insert(memberPaymentMethods).values(rows);
+	}
+}
