@@ -6,6 +6,13 @@ import { vi } from "../../messages/vi";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Switch } from "../ui/Switch";
 
+function defaultCloneName(sourceName: string): string {
+	const suffix = " (bản sao)";
+	const maxBase = 80 - suffix.length;
+	const base = sourceName.slice(0, maxBase).trim();
+	return `${base}${suffix}`;
+}
+
 export function CloneGroupDialog({
 	open,
 	groupId,
@@ -18,7 +25,7 @@ export function CloneGroupDialog({
 	onClose: () => void;
 }) {
 	const router = useRouter();
-	const [name, setName] = useState(() => `${groupName} (bản sao)`);
+	const [name, setName] = useState(() => defaultCloneName(groupName));
 	const [copyPaymentMethods, setCopyPaymentMethods] = useState(true);
 	const [copyCategories, setCopyCategories] = useState(false);
 	const [idempotencyKey] = useState(() => crypto.randomUUID());
@@ -26,9 +33,11 @@ export function CloneGroupDialog({
 
 	if (!open) return null;
 
+	const trimmed = name.trim();
+	const isInvalid = !trimmed || trimmed.length > 80;
+
 	const handleConfirm = () => {
-		const trimmed = name.trim();
-		if (!trimmed) return;
+		if (isInvalid) return;
 		cloneMutation.mutate(
 			{
 				request: {
@@ -53,7 +62,7 @@ export function CloneGroupDialog({
 			body=""
 			confirmLabel={vi.clone.submit}
 			cancelLabel={vi.common.cancel}
-			confirmDisabled={cloneMutation.isPending || !name.trim()}
+			confirmDisabled={cloneMutation.isPending || isInvalid}
 			onConfirm={handleConfirm}
 			onCancel={onClose}
 		>

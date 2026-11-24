@@ -21,6 +21,9 @@
       guard var group = groupsById[id] else {
         throw .api(code: "NOT_FOUND", status: 404)
       }
+      guard group.role == .owner else {
+        throw .api(code: "FORBIDDEN", status: 403)
+      }
       group.archivedAt = Date()
       groupsById[id] = group
       return group
@@ -30,6 +33,9 @@
       try await simulateNetwork()
       guard var group = groupsById[id] else {
         throw .api(code: "NOT_FOUND", status: 404)
+      }
+      guard group.role == .owner else {
+        throw .api(code: "FORBIDDEN", status: 403)
       }
       group.archivedAt = nil
       groupsById[id] = group
@@ -46,6 +52,14 @@
       try await simulateNetwork()
       guard let source = groupsById[id] else {
         throw .api(code: "NOT_FOUND", status: 404)
+      }
+      guard source.role != .viewer else {
+        throw .api(code: "FORBIDDEN", status: 403)
+      }
+      if seenIdempotencyKeys.contains(key), let firstId = groupOrder.first,
+        let existing = groupsById[firstId]
+      {
+        return existing
       }
       seenIdempotencyKeys.insert(key)
       let newId = ExpenseGroup.ID("cloned-\(UUID().uuidString.prefix(8))")
@@ -71,7 +85,16 @@
       groupsById[newId] = cloned
       groupOrder.insert(newId, at: 0)
       if let members = membersByGroup[id] {
-        membersByGroup[newId] = members
+        membersByGroup[newId] = members.map {
+          var m = $0
+          if !copyPaymentMethods { m.paymentMethods = [] }
+          return m
+        }
+      }
+      if copyCategories, let categories = categoriesByGroup[id] {
+        categoriesByGroup[newId] = categories
+      } else {
+        categoriesByGroup[newId] = []
       }
       balancesByGroup[newId] = GroupBalances(balances: [], transfers: [])
       transactionsByGroup[newId] = []
@@ -139,6 +162,25 @@
             }
           }
         }
+        if let requests = settlementRequestsByGroup[group.id] {
+          for req in requests where req.status == .pending {
+            if req.toMemberId == group.myMemberId || group.role == .owner {
+              pendingActions.append(
+                OverviewPendingAction(
+                  id: OverviewPendingAction.ID("settlement-\(req.id)"),
+                  kind: .settlementConfirmation,
+                  groupId: group.id,
+                  groupName: group.name,
+                  transactionId: req.transactionId,
+                  description: "Xác nhận thanh toán",
+                  amount: req.amount,
+                  occurredAt: req.createdAt,
+                  actorName: req.createdByName ?? "Thành viên"
+                )
+              )
+            }
+          }
+        }
       }
 
       return OverviewSummary(
@@ -192,8 +234,15 @@
         }
       }
 
-      let paged = Array(results.prefix(limit))
-      let nextCursor = results.count > limit ? "next-cursor" : nil
+      results.sort { $0.occurredAt > $1.occurredAt }
+
+      var startIndex = 0
+      if let cursor, let idx = results.firstIndex(where: { $0.transactionId.rawValue == cursor }) {
+        startIndex = idx + 1
+      }
+      let paged = Array(results.dropFirst(startIndex).prefix(limit))
+      let hasMore = (startIndex + limit) < results.count
+      let nextCursor = hasMore ? paged.last?.transactionId.rawValue : nil
       return PersonalTransactionsPage(items: paged, nextCursor: nextCursor)
     }
   }

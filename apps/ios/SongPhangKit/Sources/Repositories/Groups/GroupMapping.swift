@@ -105,7 +105,7 @@ enum GroupMapping {
         },
         myBalance: Money(myBalance),
         role: role.map { Role(code: $0) } ?? .editor,
-        archivedAt: archivedAt.flatMap { ISO8601DateFormatter().date(from: $0) },
+        archivedAt: archivedAt.flatMap(ISO8601Support.parse),
         pendingActionCount: pendingActionCount ?? 0
       )
     }
@@ -147,7 +147,7 @@ enum GroupMapping {
         approvalThreshold: approvalThreshold.map(Money.init),
         ownerName: ownerName ?? "",
         createdAt: createdAt,
-        archivedAt: archivedAt.flatMap { ISO8601DateFormatter().date(from: $0) },
+        archivedAt: archivedAt.flatMap(ISO8601Support.parse),
         pendingActionCount: 0
       )
     }

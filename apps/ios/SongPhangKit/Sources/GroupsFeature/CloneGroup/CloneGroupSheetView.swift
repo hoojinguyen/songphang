@@ -29,7 +29,10 @@ public struct CloneGroupSheetView: View {
     self.repository = repository
     self.onDismiss = onDismiss
     self.onCloned = onCloned
-    self._nameDraft = State(initialValue: "\(group.name) (bản sao)")
+    let suffix = " (bản sao)"
+    let maxBase = 80 - suffix.count
+    let base = String(group.name.prefix(maxBase)).trimmingCharacters(in: .whitespaces)
+    self._nameDraft = State(initialValue: "\(base)\(suffix)")
   }
 
   public var body: some View {
@@ -77,13 +80,13 @@ public struct CloneGroupSheetView: View {
 
         Spacer()
 
+        let trimmedDraft = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         SPButton(
           L10n.tr("clone.submit"),
           variant: .primary,
           size: .lg,
           isFullWidth: true,
-          isDisabled: isSubmitting
-            || nameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+          isDisabled: isSubmitting || trimmedDraft.isEmpty || trimmedDraft.count > 80,
           isPending: isSubmitting
         ) {
           submitClone()
@@ -105,7 +108,7 @@ public struct CloneGroupSheetView: View {
 
   private func submitClone() {
     let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else { return }
+    guard !trimmed.isEmpty, trimmed.count <= 80 else { return }
     isSubmitting = true
     errorMessage = nil
     Task {

@@ -132,7 +132,7 @@ enum OverviewMapping {
         groupName: groupName,
         myBalance: Money(myBalance),
         role: Role(code: role),
-        archivedAt: archivedAt.flatMap { ISO8601DateFormatter().date(from: $0) },
+        archivedAt: archivedAt.flatMap(ISO8601Support.parse),
         memberCount: memberCount,
         previewMembers: previewMembers.map { p in
           ExpenseGroup.PreviewMember(
