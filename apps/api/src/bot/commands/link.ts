@@ -20,6 +20,8 @@ export async function handleLinkCommand(
 		input.chatId,
 		linked.ok
 			? BOT_MESSAGES.chatLinked(linked.groupName)
-			: BOT_MESSAGES.badOrExpiredCode,
+			: linked.archived
+				? BOT_MESSAGES.groupArchived
+				: BOT_MESSAGES.badOrExpiredCode,
 	);
 }

@@ -21,6 +21,7 @@ import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import type { EnqueueFn } from "../queue.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify } from "./notify.js";
 import { createTransactionIn } from "./transactions.js";
 
@@ -88,13 +89,14 @@ export async function createSettlementRequest(
 		pushEnabled?: boolean;
 	},
 ) {
-	await lockGroup(executor, input.groupId);
+	const lockedGroup = await lockGroup(executor, input.groupId);
 	const access = await getGroupAccess(executor, {
 		...input,
 		minimumRole: "viewer",
 	});
 	if (!mayCreate(access, input.request.fromMemberId))
 		throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+	assertGroupRowNotArchived(lockedGroup);
 	for (const id of [input.request.fromMemberId, input.request.toMemberId]) {
 		const member = await findMember(executor, input.groupId, id);
 		if (member?.kind !== "person")
@@ -147,11 +149,12 @@ export async function resolveSettlement(
 	input: Actor & { id: string; action: "confirm" | "reject" | "cancel" },
 ) {
 	const result = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		const access = await getGroupAccess(executor, {
 			...input,
 			minimumRole: "viewer",
 		});
+		assertGroupRowNotArchived(lockedGroup);
 		const row = await findSettlementRequest(executor, input.groupId, input.id);
 		if (!row) throw new AppError(404, "NOT_FOUND", "Resource not found");
 		const receiver = await findMember(executor, input.groupId, row.toMemberId);

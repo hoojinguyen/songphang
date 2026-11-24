@@ -31,6 +31,7 @@ import {
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 export async function getGroup(
 	executor: DbExecutor,
 	groupId: string,
@@ -147,10 +148,11 @@ export async function editGroup(
 	input: { groupId: string; userId: string; changes: UpdateGroupRequest },
 ) {
 	const result = await deps.db.transaction(async (transaction) => {
-		await lockGroup(transaction, input.groupId);
+		const locked = await lockGroup(transaction, input.groupId);
 		const before = await getGroup(transaction, input.groupId, input.userId);
 		if (before.group.role !== "owner")
 			throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+		assertGroupRowNotArchived(locked);
 		await updateGroup(transaction, {
 			groupId: input.groupId,
 			changes: {

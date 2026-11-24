@@ -21,6 +21,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 
 const DEFAULT_FUND_NAME = "Quỹ chung";
 
@@ -55,8 +56,9 @@ export async function createFund(
 		now: Date;
 	},
 ) {
-	await lockGroup(executor, input.groupId);
+	const lockedGroup = await lockGroup(executor, input.groupId);
 	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+	assertGroupRowNotArchived(lockedGroup);
 	if ((await findFund(executor, input.groupId)) !== null)
 		throw new AppError(409, "FUND_EXISTS", "Group already has a fund");
 	const members = await listGroupMembers(executor, input.groupId);
@@ -106,8 +108,9 @@ export async function updateFund(
 	},
 ) {
 	const result = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+		assertGroupRowNotArchived(lockedGroup);
 		const before = await findFund(executor, input.groupId);
 		if (before === null)
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
@@ -180,8 +183,9 @@ export async function deleteFund(
 	input: { groupId: string; userId: string },
 ) {
 	await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+		assertGroupRowNotArchived(lockedGroup);
 		const fund = await findFund(executor, input.groupId);
 		if (fund === null)
 			throw new AppError(404, "NOT_FOUND", "Resource not found");

@@ -53,6 +53,7 @@ import {
 	validateTransactionAttachmentIds,
 } from "./attachments.js";
 import { assertLiveCategory } from "./categories.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify, notifyBudgetWarnings } from "./notify.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { type ReplacedTransaction, transactionWarnings } from "./warnings.js";
@@ -259,8 +260,9 @@ export async function createTransaction(
 		pushEnabled?: boolean;
 	},
 ) {
-	await lockGroup(executor, input.groupId);
+	const group = await lockGroup(executor, input.groupId);
 	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+	assertGroupRowNotArchived(group);
 	return createTransactionIn(executor, input);
 }
 async function notifyExpenseAdded(

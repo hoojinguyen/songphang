@@ -14,6 +14,7 @@ import {
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { BOT_MESSAGES } from "../bot-messages.js";
+import { AppError } from "../errors.js";
 import { hashRequest, runIdempotent } from "../idempotency.js";
 import { createTransaction } from "../services/transactions.js";
 import type { ChatSender } from "./chat-sender.js";
@@ -30,7 +31,8 @@ type BotSaveAbortReason =
 	| "chat_not_linked"
 	| "sender_not_linked"
 	| "not_in_group"
-	| "viewer";
+	| "viewer"
+	| "group_archived";
 
 class BotSaveAbortError extends Error {
 	constructor(
@@ -73,6 +75,9 @@ async function replySaveAbort(
 			return;
 		case "viewer":
 			await sender.send(input.chatId, BOT_MESSAGES.viewerCannotAdd);
+			return;
+		case "group_archived":
+			await sender.send(input.chatId, BOT_MESSAGES.groupArchived);
 			return;
 		case "dropped":
 		case "already_saved":
@@ -206,6 +211,9 @@ export async function handleBotCallback(
 				if (actor.role === "viewer") {
 					throw new BotSaveAbortError("viewer");
 				}
+				if (actor.chatLink.groupArchivedAt !== null) {
+					throw new BotSaveAbortError("group_archived");
+				}
 				if (
 					actor.user.id !== locked.userId ||
 					actor.chatLink.id !== locked.chatLinkId
@@ -214,14 +222,22 @@ export async function handleBotCallback(
 				}
 
 				committedGroupId = actor.groupId;
-				const createdTx = await createTransaction(tx, {
-					groupId: actor.groupId,
-					userId: actor.user.id,
-					request,
-					now,
-					enqueue: deps.enqueue,
-					pushEnabled: Boolean(deps.config.pushProvider),
-				});
+				let createdTx: Awaited<ReturnType<typeof createTransaction>>;
+				try {
+					createdTx = await createTransaction(tx, {
+						groupId: actor.groupId,
+						userId: actor.user.id,
+						request,
+						now,
+						enqueue: deps.enqueue,
+						pushEnabled: Boolean(deps.config.pushProvider),
+					});
+				} catch (error) {
+					if (error instanceof AppError && error.code === "GROUP_ARCHIVED") {
+						throw new BotSaveAbortError("group_archived");
+					}
+					throw error;
+				}
 				const savedNow = await markBotDraftSaved(tx, {
 					draftId: locked.id,
 					transactionId: createdTx.transaction.id,

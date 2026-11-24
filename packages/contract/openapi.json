@@ -928,7 +928,8 @@
 					"MEMBER_NOT_LINKED",
 					"CHAT_IDENTITY_TAKEN",
 					"APPROVAL_NOT_PENDING",
-					"APPLE_REVOCATION_FAILED"
+					"APPLE_REVOCATION_FAILED",
+					"GROUP_ARCHIVED"
 				],
 				"type": "string"
 			},

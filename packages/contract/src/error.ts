@@ -38,6 +38,7 @@ export const ErrorCode = z
 		"CHAT_IDENTITY_TAKEN",
 		"APPROVAL_NOT_PENDING",
 		"APPLE_REVOCATION_FAILED",
+		"GROUP_ARCHIVED",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

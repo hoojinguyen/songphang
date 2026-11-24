@@ -32,6 +32,7 @@ export async function findGroup(executor: DbExecutor, groupId: string) {
 			defaultRole: groups.defaultRole,
 			reminderIntervalDays: groups.reminderIntervalDays,
 			approvalThreshold: groups.approvalThreshold,
+			archivedAt: groups.archivedAt,
 			createdAt: groups.createdAt,
 		})
 		.from(groups)
@@ -54,6 +55,8 @@ export function listUserGroups(executor: DbExecutor, userId: string) {
 			id: groups.id,
 			name: groups.name,
 			currency: groups.currency,
+			archivedAt: groups.archivedAt,
+			role: groupUsers.role,
 			memberId: groupUsers.memberId,
 		})
 		.from(groups)
@@ -97,12 +100,14 @@ export function updateGroup(
 		.set({ ...input.changes, updatedAt: input.now })
 		.where(eq(groups.id, input.groupId));
 }
-export function lockGroup(executor: DbExecutor, groupId: string) {
-	return executor
-		.select({ id: groups.id })
+export async function lockGroup(executor: DbExecutor, groupId: string) {
+	const [group] = await executor
+		.select({ id: groups.id, archivedAt: groups.archivedAt })
 		.from(groups)
 		.where(eq(groups.id, groupId))
-		.for("update");
+		.for("update")
+		.limit(1);
+	return group ?? null;
 }
 
 export async function deleteGroupRow(executor: DbExecutor, groupId: string) {

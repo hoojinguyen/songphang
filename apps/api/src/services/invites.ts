@@ -23,6 +23,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { getGroup } from "./groups.js";
 import { addGroupMember } from "./members.js";
 
@@ -85,8 +86,9 @@ export async function joinInvite(
 ) {
 	await lockAccount(executor, input.userId);
 	const initial = await validInvite(executor, input.token);
-	await lockGroup(executor, initial.id);
+	const locked = await lockGroup(executor, initial.id);
 	const group = await validInvite(executor, input.token);
+	assertGroupRowNotArchived(locked);
 	if (await findGroupAccess(executor, group.id, input.userId))
 		return { groupId: group.id };
 	const member =
@@ -140,8 +142,9 @@ export async function changeInvite(
 	},
 ) {
 	await deps.db.transaction(async (tx) => {
-		await lockGroup(tx, input.groupId);
+		const locked = await lockGroup(tx, input.groupId);
 		await getGroupAccess(tx, { ...input, minimumRole: "owner" });
+		assertGroupRowNotArchived(locked);
 		await updateGroupInvite(tx, {
 			groupId: input.groupId,
 			...(input.active === undefined ? {} : { active: input.active }),
@@ -170,9 +173,10 @@ export async function chooseMember(
 ) {
 	const result = await deps.db.transaction(async (tx) => {
 		await lockAccount(tx, input.userId);
-		await lockGroup(tx, input.groupId);
+		const locked = await lockGroup(tx, input.groupId);
 		const access = await findGroupAccess(tx, input.groupId, input.userId);
 		if (!access) throw new AppError(404, "NOT_FOUND", "Resource not found");
+		assertGroupRowNotArchived(locked);
 		const member = await findMember(tx, input.groupId, input.memberId);
 		if (access.memberId !== input.memberId) await claimableMember(tx, input);
 		else if (!member?.active || member.kind !== "person")

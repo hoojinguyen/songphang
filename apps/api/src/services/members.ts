@@ -24,7 +24,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
-
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { paymentMethodDto } from "./payment-methods.js";
 
 type MemberOperation = {
@@ -59,8 +59,9 @@ export async function createMember(
 	executor: DbExecutor,
 	input: MemberOperation & { request: CreateMemberRequest; now: Date },
 ) {
-	await lockGroup(executor, input.groupId);
+	const group = await lockGroup(executor, input.groupId);
 	await getGroupAccess(executor, { ...input, minimumRole: "editor" });
+	assertGroupRowNotArchived(group);
 	return addGroupMember(executor, input);
 }
 export async function addGroupMember(
@@ -109,8 +110,9 @@ export async function editMember(
 	input: MemberOperation & { memberId: string; request: UpdateMemberRequest },
 ) {
 	const result = await deps.db.transaction(async (transaction) => {
-		await lockGroup(transaction, input.groupId);
+		const group = await lockGroup(transaction, input.groupId);
 		await getGroupAccess(transaction, { ...input, minimumRole: "editor" });
+		assertGroupRowNotArchived(group);
 		const before = await getMember(transaction, input.groupId, input.memberId);
 		const { name, active, defaultWeight } = input.request;
 		await updateMember(transaction, {
@@ -163,8 +165,9 @@ export async function removeMember(
 	input: MemberOperation & { memberId: string },
 ) {
 	await deps.db.transaction(async (transaction) => {
-		await lockGroup(transaction, input.groupId);
+		const group = await lockGroup(transaction, input.groupId);
 		await getGroupAccess(transaction, { ...input, minimumRole: "editor" });
+		assertGroupRowNotArchived(group);
 		const member = await getMember(transaction, input.groupId, input.memberId);
 		if (
 			(await hasMemberTransactions(transaction, input.groupId, member.id)) ||

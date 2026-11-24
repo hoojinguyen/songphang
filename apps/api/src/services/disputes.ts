@@ -20,6 +20,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify } from "./notify.js";
 
 function toDisputeDto(
@@ -48,12 +49,13 @@ export async function openDispute(
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	const now = deps.now();
 	const result = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.user.id,
 			minimumRole: "viewer",
 		});
+		assertGroupRowNotArchived(lockedGroup);
 		const transaction = await findTransactionRow(
 			executor,
 			input.groupId,
@@ -135,12 +137,13 @@ export async function resolveDispute(
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	const now = deps.now();
 	const result = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		const access = await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.userId,
 			minimumRole: "viewer",
 		});
+		assertGroupRowNotArchived(lockedGroup);
 		const transaction = await findTransactionRow(
 			executor,
 			input.groupId,

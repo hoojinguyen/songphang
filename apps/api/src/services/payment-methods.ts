@@ -14,6 +14,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 
 export function paymentMethodDto(row: {
 	kind: string;
@@ -43,7 +44,7 @@ export async function setPaymentMethods(
 	},
 ) {
 	const response = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const group = await lockGroup(executor, input.groupId);
 		const access = await getGroupAccess(executor, {
 			...input,
 			minimumRole: "viewer",
@@ -53,6 +54,7 @@ export async function setPaymentMethods(
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
 		if (access.role === "viewer" && access.memberId !== member.id)
 			throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+		assertGroupRowNotArchived(group);
 		const now = deps.now();
 		await replacePaymentMethods(executor, {
 			...input,

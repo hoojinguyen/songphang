@@ -15,6 +15,7 @@ import {
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify, notifyBudgetWarnings } from "./notify.js";
 import { mapTransactions } from "./transactions.js";
 import { transactionWarnings } from "./warnings.js";
@@ -35,12 +36,13 @@ export async function decideTransactionApproval(
 	}
 	const trimmedNote = input.note?.trim() ? input.note.trim() : null;
 	const result = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.userId,
 			minimumRole: "owner",
 		});
+		assertGroupRowNotArchived(lockedGroup);
 		const locked = await lockTransaction(executor, input.groupId, input.id);
 		const row = locked
 			? await findTransactionRow(executor, input.groupId, input.id)

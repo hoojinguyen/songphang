@@ -22,6 +22,7 @@ import { uuidv7 } from "uuidv7";
 import type { AppDeps } from "../app.js";
 import { AppError } from "../errors.js";
 import { runIdempotent } from "../idempotency.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 
 function toReceiptScanDto(row: ReceiptScanRow): ReceiptScanDto {
 	return ReceiptScanDto.parse({
@@ -63,7 +64,7 @@ export async function createReceiptScan(
 			},
 		},
 		async (transaction) => {
-			await lockGroup(transaction, input.groupId);
+			const lockedGroup = await lockGroup(transaction, input.groupId);
 			const access = await findGroupAccess(
 				transaction,
 				input.groupId,
@@ -75,6 +76,7 @@ export async function createReceiptScan(
 			if (access.role !== "owner" && access.role !== "editor") {
 				throw new AppError(403, "FORBIDDEN", "Editor role required");
 			}
+			assertGroupRowNotArchived(lockedGroup);
 
 			const attachment = await findAttachment(
 				transaction,
