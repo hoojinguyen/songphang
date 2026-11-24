@@ -8,6 +8,7 @@ public import SwiftUI
 
 public struct FundView: View {
   @Bindable private var model: FundModel
+  private let showHeader: Bool
   private let isEmailVerified: Bool
   private let onBack: () -> Void
   private let onContribute: (Member.ID) -> Void
@@ -16,6 +17,7 @@ public struct FundView: View {
 
   public init(
     model: FundModel,
+    showHeader: Bool = true,
     isEmailVerified: Bool = true,
     onBack: @escaping () -> Void,
     onContribute: @escaping (Member.ID) -> Void,
@@ -23,6 +25,7 @@ public struct FundView: View {
     onDeleted: @escaping () -> Void
   ) {
     self.model = model
+    self.showHeader = showHeader
     self.isEmailVerified = isEmailVerified
     self.onBack = onBack
     self.onContribute = onContribute
@@ -39,11 +42,15 @@ public struct FundView: View {
 
         switch model.state {
         case .loading:
-          SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
+          if showHeader {
+            SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
+          }
           LoadingSkeleton(rowCount: 3, rowHeight: 112)
 
         case .failed(let error):
-          SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
+          if showHeader {
+            SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
+          }
           if case .api(_, 404) = error {
             VStack(spacing: 12) {
               Text(L10n.tr("common.groupNotFound"))
@@ -60,10 +67,14 @@ public struct FundView: View {
 
         case .loaded(let data):
           if let fund = data.balances.fund {
-            SPScreenHeader(title: fund.name, onBack: onBack)
+            if showHeader {
+              SPScreenHeader(title: fund.name, onBack: onBack)
+            }
             loadedContent(data: data, fund: fund)
           } else {
-            SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
+            if showHeader {
+              SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
+            }
             EmptyState(title: L10n.tr("fund.noContributions"))
             SPButton(L10n.tr("common.back"), variant: .surface, isFullWidth: true, action: onBack)
           }

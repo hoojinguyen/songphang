@@ -119,4 +119,13 @@ public struct TransactionFilter: Sendable, Hashable {
       || from != nil
       || to != nil
   }
+
+  public var activeModalFilterCount: Int {
+    var count = 0
+    if memberId != nil { count += 1 }
+    if category != nil || categoryId != nil || uncategorized { count += 1 }
+    if spendingOnly || type != nil { count += 1 }
+    if from != nil || to != nil { count += 1 }
+    return count
+  }
 }

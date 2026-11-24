@@ -479,34 +479,20 @@ public struct RouteDestination: View {
         )
       }
     case .groupFund(let groupId):
-      if let fundModel {
-        FundView(
-          model: fundModel,
-          isEmailVerified: currentUser?.emailVerified ?? true,
-          onBack: onPop,
-          onContribute: { fundMemberId in
-            onNavigate(
-              .newTransactionForm(
-                groupId: groupId,
-                initialReading: nil,
-                initialTransferFrom: nil,
-                initialTransferTo: fundMemberId
-              )
-            )
-          },
-          onWithdraw: { fundMemberId in
-            onNavigate(
-              .newTransactionForm(
-                groupId: groupId,
-                initialReading: nil,
-                initialTransferFrom: fundMemberId,
-                initialTransferTo: nil
-              )
-            )
-          },
-          onDeleted: onPop
-        )
-      }
+      GroupContainerView(
+        groupId: groupId,
+        initialSegment: .fundAndStats,
+        initialFilter: nil,
+        dependencies: dependencies,
+        sessionModel: sessionModel,
+        currentUser: currentUser,
+        deletedTransactionId: $deletedTransactionId,
+        onBack: onPop,
+        onNavigate: onNavigate,
+        onReplaceTop: onReplaceTop,
+        onPopToRoot: onPopToRoot,
+        onExpenseSaved: onExpenseSaved
+      )
     case .groupSettings:
       if let settingsModel {
         GroupSettingsView(
@@ -517,162 +503,51 @@ public struct RouteDestination: View {
           onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) }
         )
       }
-    case .groupFeed(let groupId, _):
-      if let feedModel {
-        GroupFeedView(
-          model: feedModel,
-          isEmailVerified: currentUser?.emailVerified ?? true,
-          unreadNotificationCount: sessionModel.unreadNotificationCount,
-          onBack: onPop,
-          onOpenMembers: { id in onNavigate(.groupMembers(groupId: id)) },
-          onOpenBalances: { id in onNavigate(.groupBalances(groupId: id)) },
-          onOpenStats: { id in onNavigate(.groupStats(groupId: id)) },
-          onOpenQuickEntry: { id, sentence in
-            onNavigate(.quickEntry(groupId: id, initialSentence: sentence))
-          },
-          onOpenNewTransactionForm: { id in
-            onNavigate(.newTransactionForm(groupId: id, initialReading: nil))
-          },
-          onOpenEditTransaction: { id, txId in
-            onNavigate(.editTransaction(groupId: id, transactionId: txId))
-          },
-          onOpenTransactionDetail: { id, txId in
-            onNavigate(.transactionDetail(groupId: id, transactionId: txId))
-          },
-          onOpenReceiptCapture: sessionModel.latestFeatures?.receiptReading == true
-            ? { _ in isReceiptCaptureOpen = true }
-            : nil,
-          onOpenNotifications: { onNavigate(.notifications) },
-          onRemovedFromGroup: {
-            onPopToRoot(L10n.tr("common.removed"))
-          }
-        )
-        .sheet(isPresented: $isReceiptCaptureOpen) {
-          ReceiptCaptureSheet(
-            groupId: groupId,
-            attachmentsRepository: dependencies.attachments,
-            receiptScansRepository: dependencies.receiptScans,
-            onScanStarted: { scan in
-              isReceiptCaptureOpen = false
-              onNavigate(.receiptReview(groupId: groupId, scanId: scan.id))
-            },
-            onManualFallback: { attachmentId in
-              isReceiptCaptureOpen = false
-              onNavigate(
-                .newTransactionForm(
-                  groupId: groupId,
-                  initialAttachmentId: attachmentId
-                )
-              )
-            },
-            onDismiss: { isReceiptCaptureOpen = false }
-          )
-        }
-      }
+    case .groupFeed(let groupId, let initialFilter):
+      GroupContainerView(
+        groupId: groupId,
+        initialSegment: .expenses,
+        initialFilter: initialFilter,
+        dependencies: dependencies,
+        sessionModel: sessionModel,
+        currentUser: currentUser,
+        deletedTransactionId: $deletedTransactionId,
+        onBack: onPop,
+        onNavigate: onNavigate,
+        onReplaceTop: onReplaceTop,
+        onPopToRoot: onPopToRoot,
+        onExpenseSaved: onExpenseSaved
+      )
     case .groupStats(let groupId):
-      if let statsModel {
-        StatsView(
-          model: statsModel,
-          onBack: onPop,
-          onOpenFilteredFeed: { filter in
-            onNavigate(.groupFeed(groupId: groupId, initialFilter: filter))
-          }
-        )
-      }
+      GroupContainerView(
+        groupId: groupId,
+        initialSegment: .fundAndStats,
+        initialFilter: nil,
+        dependencies: dependencies,
+        sessionModel: sessionModel,
+        currentUser: currentUser,
+        deletedTransactionId: $deletedTransactionId,
+        onBack: onPop,
+        onNavigate: onNavigate,
+        onReplaceTop: onReplaceTop,
+        onPopToRoot: onPopToRoot,
+        onExpenseSaved: onExpenseSaved
+      )
     case .groupBalances(let groupId):
-      if let balancesModel {
-        let people = (balancesModel.state.value?.members ?? []).filter {
-          $0.kind == .person && $0.active
-        }
-        BalancesView(
-          model: balancesModel,
-          currentUserId: currentUser?.id,
-          isEmailVerified: currentUser?.emailVerified ?? true,
-          onBack: onPop,
-          onBackToGroups: { onPopToRoot(nil) },
-          onOpenPay: { transfer, fromMember, toMember in
-            paymentSheet = PaymentSheet(
-              transfer: transfer,
-              fromMember: fromMember,
-              toMember: toMember
-            )
-          },
-          onOpenSettle: { transfer in
-            onNavigate(
-              .settle(
-                groupId: groupId,
-                fromMemberId: transfer.fromMemberId,
-                toMemberId: transfer.toMemberId,
-                initialAmount: transfer.amount
-              )
-            )
-          },
-          onOpenFund: { id in onNavigate(.groupFund(groupId: id)) },
-          onCreateFund: { isCreatingFund = true }
-        )
-        .sheet(isPresented: $isCreatingFund) {
-          createFundSheet(
-            groupId: groupId,
-            people: people,
-            isOffline: balancesModel.refreshError == .offline,
-            reload: { await balancesModel.load() }
-          )
-        }
-        .sheet(
-          item: $paymentSheet,
-          onDismiss: {
-            Task { await balancesModel.load() }
-          },
-          content: { selection in
-            let group = balancesModel.state.value?.group
-            let isVerified = currentUser?.emailVerified == true
-            let isOffline = balancesModel.refreshError == .offline
-            let role = group?.role ?? .viewer
-            let myMemberId = group?.myMemberId
-            let canEdit = isVerified && role.canWrite
-            let payModel = PayModel(
-              transfer: selection.transfer,
-              fromMember: selection.fromMember,
-              toMember: selection.toMember,
-              groupId: groupId,
-              myMemberId: myMemberId,
-              role: role,
-              isEmailVerified: isVerified,
-              repository: dependencies.settlementRequests,
-              onReload: { await balancesModel.load() },
-              onUnauthorized: {
-                paymentSheet = nil
-                onPopToRoot(nil)
-                Task { await sessionModel.signOut() }
-              }
-            )
-            PayView(
-              model: payModel,
-              isOffline: isOffline,
-              onBack: { paymentSheet = nil },
-              onAddDetails: payModel.canAddDetails
-                ? {
-                  paymentSheet = nil
-                  onNavigate(.groupMembers(groupId: groupId))
-                } : nil,
-              onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
-                ? {
-                  paymentSheet = nil
-                  onNavigate(
-                    .settle(
-                      groupId: groupId,
-                      fromMemberId: selection.transfer.fromMemberId,
-                      toMemberId: selection.transfer.toMemberId,
-                      initialAmount: selection.transfer.amount
-                    ))
-                } : nil,
-              onFinished: { _ in
-                paymentSheet = nil
-              }
-            )
-          }
-        )
-      }
+      GroupContainerView(
+        groupId: groupId,
+        initialSegment: .payments,
+        initialFilter: nil,
+        dependencies: dependencies,
+        sessionModel: sessionModel,
+        currentUser: currentUser,
+        deletedTransactionId: $deletedTransactionId,
+        onBack: onPop,
+        onNavigate: onNavigate,
+        onReplaceTop: onReplaceTop,
+        onPopToRoot: onPopToRoot,
+        onExpenseSaved: onExpenseSaved
+      )
     case .groupActivity:
       if let activityModel {
         ActivityView(
