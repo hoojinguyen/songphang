@@ -75,6 +75,14 @@
       if let to = filter.to, dateStr > to {
         return false
       }
+      if let cycleFilter = filter.cycleId {
+        switch cycleFilter {
+        case .current:
+          if tx.cycleId != nil { return false }
+        case .cycle(let id):
+          if tx.cycleId != id { return false }
+        }
+      }
       return true
     }
 
@@ -178,9 +186,13 @@
           createdBy: current.createdBy ?? TripScenario.actorMinh,
           createdAt: current.createdAt,
           updatedAt: "2026-11-16T15:10:00.000Z",
-          deletedAt: nil
+          deletedAt: nil,
+          cycleId: current.cycleId
         )
       case .transfer(let payload):
+        let linked = (payload.attachmentIds ?? []).compactMap {
+          attachmentsByGroup[groupId]?[$0]
+        }
         updated = LedgerTransaction(
           id: current.id,
           type: .transfer,
@@ -197,7 +209,11 @@
           createdBy: current.createdBy ?? TripScenario.actorMinh,
           createdAt: current.createdAt,
           updatedAt: "2026-11-16T15:10:00.000Z",
-          deletedAt: nil
+          deletedAt: nil,
+          attachments: linked.isEmpty ? current.attachments : linked,
+          paymentChannel: payload.paymentChannel,
+          paymentNote: payload.paymentNote,
+          cycleId: current.cycleId
         )
       }
 
@@ -585,6 +601,9 @@
           balances: updatedBalances,
           transfers: remainingTransfers
         )
+        let linked = (payload.attachmentIds ?? []).compactMap {
+          attachmentsByGroup[groupId]?[$0]
+        }
         let tx = LedgerTransaction(
           id: LedgerTransaction.ID("settle-\(UUID().uuidString)"),
           type: .transfer,
@@ -598,7 +617,10 @@
           shares: [MemberAmount(memberId: payload.toMemberId, amount: payload.amount)],
           version: 1,
           updatedBy: TripScenario.actorMinh,
-          createdBy: TripScenario.actorMinh
+          createdBy: TripScenario.actorMinh,
+          attachments: linked,
+          paymentChannel: payload.paymentChannel,
+          paymentNote: payload.paymentNote
         )
         let act = ActivityItem(
           id: ActivityItem.ID("act-settle-\(UUID().uuidString)"),

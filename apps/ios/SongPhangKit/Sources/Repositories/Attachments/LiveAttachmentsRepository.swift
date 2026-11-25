@@ -24,12 +24,18 @@ public final class LiveAttachmentsRepository: AttachmentsRepository, Sendable {
     groupId: ExpenseGroup.ID,
     data: Data,
     filename: String,
-    contentType: String
+    contentType: String,
+    purpose: AttachmentUploadPurpose
   ) async throws(AppError) -> Attachment {
-    let url = environment.configuration.apiBaseURL
+    let baseURL = environment.configuration.apiBaseURL
       .appendingPathComponent("groups")
       .appendingPathComponent(groupId.rawValue)
       .appendingPathComponent("attachments")
+    var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+    if purpose == .transferProof {
+      components?.queryItems = [URLQueryItem(name: "purpose", value: purpose.rawValue)]
+    }
+    let url = components?.url ?? baseURL
 
     let boundary = "songphang-\(UUID().uuidString)"
     let safeName =

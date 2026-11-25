@@ -47,7 +47,9 @@ struct AuthMiddleware: ClientMiddleware {
     }
 
     let requestPath = modified.path?.split(separator: "?").first.map(String.init) ?? ""
-    let isUnauthenticatedPath = Self.unauthenticatedAuthPaths.contains(requestPath)
+    let isUnauthenticatedPath =
+      Self.unauthenticatedAuthPaths.contains(requestPath)
+      || requestPath.hasPrefix("/api/v1/guest-links/")
     let snapshot = await tokenStore.readSnapshot()
     if !isUnauthenticatedPath, let token = snapshot.token, !token.isEmpty {
       modified.headerFields[.authorization] = "Bearer \(token)"

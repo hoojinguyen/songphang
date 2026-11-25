@@ -13,6 +13,7 @@ public struct AppDependencies: Sendable {
   public let invites: any InvitesRepository
   public let transactions: any TransactionsRepository
   public let settlementRequests: any SettlementRequestsRepository
+  public let settlementCycles: any SettlementCyclesRepository
   public let balances: any BalancesRepository
   public let fund: any FundRepository
   public let budget: any BudgetRepository
@@ -27,6 +28,7 @@ public struct AppDependencies: Sendable {
   public let notifications: any NotificationsRepository
   public let reminders: any RemindersRepository
   public let chatLinks: any ChatLinksRepository
+  public let guestLinks: any GuestLinksRepository
   public let overview: any OverviewRepository
   public let liveConfiguration: APIConfiguration?
   public let webBaseURL: URL
@@ -48,6 +50,7 @@ public struct AppDependencies: Sendable {
         invites: LiveInvitesRepository(environment: environment),
         transactions: LiveTransactionsRepository(environment: environment),
         settlementRequests: LiveSettlementRequestsRepository(environment: environment),
+        settlementCycles: LiveSettlementCyclesRepository(environment: environment),
         balances: LiveBalancesRepository(environment: environment),
         fund: LiveFundRepository(environment: environment),
         budget: LiveBudgetRepository(environment: environment),
@@ -62,6 +65,7 @@ public struct AppDependencies: Sendable {
         notifications: LiveNotificationsRepository(environment: environment),
         reminders: LiveRemindersRepository(environment: environment),
         chatLinks: LiveChatLinksRepository(environment: environment),
+        guestLinks: LiveGuestLinksRepository(environment: environment),
         overview: LiveOverviewRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
@@ -78,6 +82,7 @@ public struct AppDependencies: Sendable {
         invites: LiveInvitesRepository(environment: environment),
         transactions: LiveTransactionsRepository(environment: environment),
         settlementRequests: LiveSettlementRequestsRepository(environment: environment),
+        settlementCycles: LiveSettlementCyclesRepository(environment: environment),
         balances: LiveBalancesRepository(environment: environment),
         fund: LiveFundRepository(environment: environment),
         budget: LiveBudgetRepository(environment: environment),
@@ -92,6 +97,7 @@ public struct AppDependencies: Sendable {
         notifications: LiveNotificationsRepository(environment: environment),
         reminders: LiveRemindersRepository(environment: environment),
         chatLinks: LiveChatLinksRepository(environment: environment),
+        guestLinks: LiveGuestLinksRepository(environment: environment),
         overview: LiveOverviewRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
@@ -115,6 +121,7 @@ public struct AppDependencies: Sendable {
         invites: FakeInvitesRepository(world: world),
         transactions: FakeTransactionsRepository(world: world),
         settlementRequests: FakeSettlementRequestsRepository(world: world),
+        settlementCycles: FakeSettlementCyclesRepository(world: world),
         balances: FakeBalancesRepository(world: world),
         fund: FakeFundRepository(world: world),
         budget: FakeBudgetRepository(world: world),
@@ -129,6 +136,7 @@ public struct AppDependencies: Sendable {
         notifications: FakeNotificationsRepository(world: world),
         reminders: FakeRemindersRepository(world: world),
         chatLinks: FakeChatLinksRepository(world: world),
+        guestLinks: FakeGuestLinksRepository(world: world),
         overview: FakeOverviewRepository(world: world),
         liveConfiguration: nil,
         webBaseURL: webBaseURL,

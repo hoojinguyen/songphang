@@ -40,6 +40,8 @@ public enum TransactionDraft: Sendable, Hashable {
     public var toMemberId: Member.ID
     public var description: String?
     public var attachmentIds: [Attachment.ID]?
+    public var paymentChannel: PaymentChannel?
+    public var paymentNote: String?
 
     public init(
       amount: Money,
@@ -47,7 +49,9 @@ public enum TransactionDraft: Sendable, Hashable {
       fromMemberId: Member.ID,
       toMemberId: Member.ID,
       description: String? = nil,
-      attachmentIds: [Attachment.ID]? = nil
+      attachmentIds: [Attachment.ID]? = nil,
+      paymentChannel: PaymentChannel? = nil,
+      paymentNote: String? = nil
     ) {
       self.amount = amount
       self.occurredAt = occurredAt
@@ -55,6 +59,8 @@ public enum TransactionDraft: Sendable, Hashable {
       self.toMemberId = toMemberId
       self.description = description
       self.attachmentIds = attachmentIds
+      self.paymentChannel = paymentChannel
+      self.paymentNote = paymentNote
     }
   }
 

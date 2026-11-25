@@ -10,6 +10,7 @@ public struct TransactionFilter: Sendable, Hashable {
   public var type: TransactionType?
   public var from: String?
   public var to: String?
+  public var cycleId: TransactionCycleFilter?
 
   public init(
     query: String? = nil,
@@ -20,7 +21,8 @@ public struct TransactionFilter: Sendable, Hashable {
     spendingOnly: Bool = false,
     type: TransactionType? = nil,
     from: String? = nil,
-    to: String? = nil
+    to: String? = nil,
+    cycleId: TransactionCycleFilter? = nil
   ) {
     let trimmedQuery = query?.trimmingCharacters(in: .whitespacesAndNewlines)
     self.query = (trimmedQuery?.isEmpty == false) ? trimmedQuery : nil
@@ -68,6 +70,7 @@ public struct TransactionFilter: Sendable, Hashable {
     }
     self.from = validFrom
     self.to = validTo
+    self.cycleId = cycleId
   }
 
   private static func parseCalendarDateParts(_ value: String) -> (year: Int, month: Int, day: Int)?
@@ -106,7 +109,7 @@ public struct TransactionFilter: Sendable, Hashable {
   }
 
   public var isEmpty: Bool {
-    query == nil && !hasModalFilters
+    query == nil && cycleId == nil && !hasModalFilters
   }
 
   public var hasModalFilters: Bool {
