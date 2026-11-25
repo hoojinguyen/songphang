@@ -15,6 +15,8 @@ export function normalizeTransaction(
 			...request,
 			category: request.category ?? null,
 			categoryId: request.categoryId ?? null,
+			paymentChannel: null,
+			paymentNote: null,
 		};
 	}
 	const split: SplitInput = {
@@ -31,6 +33,8 @@ export function normalizeTransaction(
 		occurredAt: request.occurredAt,
 		category: null,
 		categoryId: null,
+		paymentChannel: request.paymentChannel ?? null,
+		paymentNote: request.paymentNote ?? null,
 		payers: [{ memberId: request.fromMemberId, amount: request.amount }],
 		split,
 	};

@@ -1,6 +1,7 @@
 import { z } from "@hono/zod-openapi";
 import { isValidCalendarDate, isWithinFiveYears } from "@songphang/core";
 import { AttachmentDto } from "./attachment.ts";
+import { PaymentChannel } from "./payment.ts";
 export const MoneyAmount = z.int().min(1).max(999_999_999_999);
 export const CalendarDate = z
 	.string()
@@ -156,6 +157,8 @@ export const TransferRequest = z
 		toMemberId: z.uuid(),
 		description: z.string().trim().min(1).max(200).optional(),
 		attachmentIds: AttachmentIds.optional(),
+		paymentChannel: PaymentChannel.nullable().optional(),
+		paymentNote: z.string().trim().min(1).max(120).nullable().optional(),
 	})
 	.refine((request) => request.fromMemberId !== request.toMemberId)
 	.openapi("TransferRequest");
@@ -229,6 +232,9 @@ const BaseTransactionFields = {
 	updatedAt: z.iso.datetime(),
 	deletedAt: z.iso.datetime().nullable(),
 	myDelta: z.int().nullable().optional(),
+	paymentChannel: PaymentChannel.nullable().optional(),
+	paymentNote: z.string().nullable().optional(),
+	cycleId: z.uuid().nullable().optional(),
 };
 export const TransactionDto = z
 	.object({
@@ -241,6 +247,7 @@ export const TransactionListItemDto = z
 	.object({
 		...BaseTransactionFields,
 		attachmentCount: z.int().nonnegative(),
+		firstAttachmentId: z.uuid().nullable().optional(),
 	})
 	.openapi("TransactionListItemDto");
 export type TransactionListItemDto = z.infer<typeof TransactionListItemDto>;

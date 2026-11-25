@@ -1,16 +1,19 @@
 import type { z } from "@hono/zod-openapi";
 import {
 	type CreateSettlementRequest,
+	PaymentChannel,
 	SettlementRequestDto,
 	type SettlementRequestsQuery,
 	SettlementRequestsResponse,
 } from "@songphang/contract";
 import {
 	type DbExecutor,
+	findAttachment,
 	findGroup,
 	findMember,
 	findPendingSettlement,
 	findSettlementRequest,
+	findSettlementRequestByProofAttachmentId,
 	findUserById,
 	insertSettlementRequest,
 	listSettlementRequests,
@@ -21,6 +24,7 @@ import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import type { EnqueueFn } from "../queue.js";
+import { toAttachmentDto } from "./attachments.js";
 import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify } from "./notify.js";
 import { createTransactionIn } from "./transactions.js";
@@ -45,12 +49,20 @@ export function mayCancel(access: Access, row: RequestRow, userId: string) {
 	return row.createdBy === userId || row.fromMemberId === access.memberId;
 }
 async function requestDto(executor: DbExecutor, row: RequestRow) {
-	const creator = row.createdBy
-		? await findUserById(executor, row.createdBy)
-		: null;
+	const [creator, resolver, proofAttachment] = await Promise.all([
+		row.createdBy ? findUserById(executor, row.createdBy) : null,
+		row.resolvedBy ? findUserById(executor, row.resolvedBy) : null,
+		row.proofAttachmentId
+			? findAttachment(executor, row.groupId, row.proofAttachmentId)
+			: null,
+	]);
 	return SettlementRequestDto.parse({
 		...row,
+		channel: row.channel ?? null,
+		note: row.note ?? null,
+		proofAttachment: proofAttachment ? toAttachmentDto(proofAttachment) : null,
 		createdBy: creator ? { id: creator.id, name: creator.name } : null,
+		resolvedBy: resolver ? { id: resolver.id, name: resolver.name } : null,
 		createdAt: row.createdAt.toISOString(),
 		resolvedAt: row.resolvedAt?.toISOString() ?? null,
 	});
@@ -67,15 +79,26 @@ export async function getSettlementRequests(
 	});
 	const page = rows.slice(0, query.limit);
 	return SettlementRequestsResponse.parse({
-		requests: page.map(({ request, creatorName }) => ({
-			...request,
-			createdBy:
-				request.createdBy && creatorName
-					? { id: request.createdBy, name: creatorName }
+		requests: page.map(
+			({ request, creatorName, resolverName, proofAttachment }) => ({
+				...request,
+				channel: request.channel ?? null,
+				note: request.note ?? null,
+				proofAttachment: proofAttachment
+					? toAttachmentDto(proofAttachment)
 					: null,
-			createdAt: request.createdAt.toISOString(),
-			resolvedAt: request.resolvedAt?.toISOString() ?? null,
-		})),
+				createdBy:
+					request.createdBy && creatorName
+						? { id: request.createdBy, name: creatorName }
+						: null,
+				resolvedBy:
+					request.resolvedBy && resolverName
+						? { id: request.resolvedBy, name: resolverName }
+						: null,
+				createdAt: request.createdAt.toISOString(),
+				resolvedAt: request.resolvedAt?.toISOString() ?? null,
+			}),
+		),
 		nextCursor:
 			rows.length > query.limit ? (page.at(-1)?.request.id ?? null) : null,
 	});
@@ -108,7 +131,8 @@ export async function createSettlementRequest(
 	}
 	const pending = await findPendingSettlement(executor, {
 		groupId: input.groupId,
-		...input.request,
+		fromMemberId: input.request.fromMemberId,
+		toMemberId: input.request.toMemberId,
 	});
 	if (pending)
 		throw new AppError(
@@ -117,9 +141,39 @@ export async function createSettlementRequest(
 			"A request is already pending",
 			{ requestId: pending.id },
 		);
+	if (input.request.proofAttachmentId !== undefined) {
+		const attachment = await findAttachment(
+			executor,
+			input.groupId,
+			input.request.proofAttachmentId,
+		);
+		if (attachment === null || attachment.transactionId !== null) {
+			throw new AppError(400, "VALIDATION_FAILED", "Invalid proof attachment");
+		}
+		const boundRequest = await findSettlementRequestByProofAttachmentId(
+			executor,
+			input.groupId,
+			input.request.proofAttachmentId,
+		);
+		if (boundRequest !== null) {
+			throw new AppError(
+				400,
+				"VALIDATION_FAILED",
+				"Attachment already belongs to another settlement request",
+			);
+		}
+		if (access.role === "viewer" && attachment.uploadedBy !== input.userId) {
+			throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+		}
+	}
 	const row = await insertSettlementRequest(executor, {
 		groupId: input.groupId,
-		...input.request,
+		fromMemberId: input.request.fromMemberId,
+		toMemberId: input.request.toMemberId,
+		amount: input.request.amount,
+		channel: input.request.channel ?? null,
+		note: input.request.note ?? null,
+		proofAttachmentId: input.request.proofAttachmentId ?? null,
 		createdBy: input.userId,
 		createdAt: input.now,
 	});
@@ -185,6 +239,13 @@ export async function resolveSettlement(
 							toMemberId: row.toMemberId,
 							amount: row.amount,
 							occurredAt: now.toISOString(),
+							...(row.proofAttachmentId
+								? { attachmentIds: [row.proofAttachmentId] }
+								: {}),
+							...(row.channel
+								? { paymentChannel: PaymentChannel.parse(row.channel) }
+								: {}),
+							...(row.note ? { paymentNote: row.note } : {}),
 						},
 					})
 				: null;

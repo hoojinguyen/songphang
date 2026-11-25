@@ -23,7 +23,6 @@ import {
 } from "@songphang/core";
 import {
 	attachToTransaction,
-	countAttachmentsForTransactions,
 	countCommentsForTransactions,
 	type DbExecutor,
 	findGroup,
@@ -35,6 +34,7 @@ import {
 	insertTransaction,
 	insertTransactionPayers,
 	insertTransactionShares,
+	listAttachmentSummariesForTransactions,
 	listAttachmentsForTransactions,
 	listGroupMembers,
 	listOpenDisputesForTransactions,
@@ -304,11 +304,11 @@ async function mapTransactionListItems(
 	viewerUserId: string | null = null,
 ) {
 	const ids = rows.map((row) => row.id);
-	const [payers, shares, attachmentCounts, commentCounts, disputes, access] =
+	const [payers, shares, attachmentSummaries, commentCounts, disputes, access] =
 		await Promise.all([
 			listTransactionPayers(executor, groupId, ids),
 			listTransactionShares(executor, groupId, ids),
-			countAttachmentsForTransactions(executor, groupId, ids),
+			listAttachmentSummariesForTransactions(executor, groupId, ids),
 			countCommentsForTransactions(executor, groupId, ids),
 			listOpenDisputesForTransactions(executor, groupId, ids),
 			viewerUserId === null || rows.length === 0
@@ -316,8 +316,9 @@ async function mapTransactionListItems(
 				: findGroupAccess(executor, groupId, viewerUserId),
 		]);
 	const viewerMemberId = access?.memberId ?? null;
-	return rows.map((row) =>
-		TransactionListItemDto.parse({
+	return rows.map((row) => {
+		const attachmentSummary = attachmentSummaries.get(row.id);
+		return TransactionListItemDto.parse({
 			...toCommonTransactionFields({
 				row,
 				commentCount: commentCounts.get(row.id) ?? 0,
@@ -327,9 +328,10 @@ async function mapTransactionListItems(
 				payers: payers.filter((payer) => payer.transactionId === row.id),
 				shares: shares.filter((share) => share.transactionId === row.id),
 			}),
-			attachmentCount: attachmentCounts.get(row.id) ?? 0,
-		}),
-	);
+			attachmentCount: attachmentSummary?.count ?? 0,
+			firstAttachmentId: attachmentSummary?.firstAttachmentId ?? null,
+		});
+	});
 }
 export async function createTransaction(
 	executor: DbExecutor,
@@ -438,6 +440,8 @@ export async function createTransactionIn(
 		splitMethod: request.split.method,
 		splitInput: request.split,
 		approvalStatus,
+		paymentChannel: request.paymentChannel,
+		paymentNote: request.paymentNote,
 		createdBy: input.userId,
 		updatedBy: input.userId,
 		createdAt: input.now,

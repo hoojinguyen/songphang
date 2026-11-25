@@ -45,6 +45,7 @@ import { registerNotificationRoutes } from "./routes/notifications.js";
 import { registerReceiptScanRoutes } from "./routes/receipt-scans.js";
 import { registerReminderRoutes } from "./routes/reminders.js";
 import { registerSettlementRoutes } from "./routes/settlement-requests.js";
+import { registerSettlementVaultRoutes } from "./routes/settlement-vault.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerTelegramWebhookRoute } from "./routes/telegram-webhook.js";
 import { registerTransactionRoutes } from "./routes/transactions.js";
@@ -140,6 +141,7 @@ export function createApp(deps: AppDeps): OpenAPIHono<AppEnv> {
 	registerFundRoutes(app, resolvedDeps);
 	registerCategoryRoutes(app, resolvedDeps);
 	registerSettlementRoutes(app, resolvedDeps);
+	registerSettlementVaultRoutes(app, resolvedDeps);
 	registerTransactionRoutes(app, resolvedDeps);
 	registerCommentRoutes(app, resolvedDeps);
 	registerAttachmentRoutes(app, resolvedDeps);

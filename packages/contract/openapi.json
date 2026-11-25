@@ -218,6 +218,13 @@
 				],
 				"type": "object"
 			},
+			"AttachmentUploadPurpose": {
+				"enum": [
+					"expense",
+					"transfer_proof"
+				],
+				"type": "string"
+			},
 			"BalancesResponse": {
 				"properties": {
 					"balances": {
@@ -275,6 +282,14 @@
 													"accountNumber": {
 														"pattern": "^[A-Za-z0-9]{4,19}$",
 														"type": "string"
+													},
+													"accountQrPayload": {
+														"maxLength": 512,
+														"minLength": 1,
+														"type": [
+															"string",
+															"null"
+														]
 													},
 													"bankBin": {
 														"pattern": "^\\d{6}$",
@@ -359,12 +374,28 @@
 											"exclusiveMinimum": 0,
 											"type": "integer"
 										},
+										"channel": {
+											"$ref": "#/components/schemas/PaymentChannel"
+										},
 										"createdByMe": {
 											"type": "boolean"
 										},
 										"id": {
 											"format": "uuid",
 											"type": "string"
+										},
+										"note": {
+											"type": [
+												"string",
+												"null"
+											]
+										},
+										"proofAttachmentId": {
+											"format": "uuid",
+											"type": [
+												"string",
+												"null"
+											]
 										}
 									},
 									"required": [
@@ -3004,6 +3035,19 @@
 				],
 				"type": "object"
 			},
+			"PaymentChannel": {
+				"enum": [
+					"bank",
+					"momo",
+					"zalopay",
+					"cash",
+					null
+				],
+				"type": [
+					"string",
+					"null"
+				]
+			},
 			"PersonalTransactionDto": {
 				"properties": {
 					"amount": {
@@ -3795,6 +3839,9 @@
 						"minimum": 1,
 						"type": "integer"
 					},
+					"channel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
 					"createdAt": {
 						"format": "date-time",
 						"type": "string"
@@ -3827,10 +3874,46 @@
 						"format": "uuid",
 						"type": "string"
 					},
+					"note": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"proofAttachment": {
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/AttachmentDto"
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
 					"resolvedAt": {
 						"format": "date-time",
 						"type": [
 							"string",
+							"null"
+						]
+					},
+					"resolvedBy": {
+						"properties": {
+							"id": {
+								"format": "uuid",
+								"type": "string"
+							},
+							"name": {
+								"maxLength": 80,
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"type": [
+							"object",
 							"null"
 						]
 					},
@@ -3865,6 +3948,217 @@
 					"createdBy",
 					"createdAt",
 					"resolvedAt"
+				],
+				"type": "object"
+			},
+			"SettlementVaultFilter": {
+				"default": "all",
+				"enum": [
+					"all",
+					"pending",
+					"confirmed",
+					"with_proof"
+				],
+				"type": "string"
+			},
+			"SettlementVaultItemDto": {
+				"properties": {
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": "integer"
+					},
+					"attachments": {
+						"items": {
+							"$ref": "#/components/schemas/AttachmentDto"
+						},
+						"maxItems": 3,
+						"type": "array"
+					},
+					"channel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"createdBy": {
+						"properties": {
+							"id": {
+								"format": "uuid",
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"type": [
+							"object",
+							"null"
+						]
+					},
+					"cycleId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"description": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"fromMemberId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"kind": {
+						"enum": [
+							"transfer",
+							"request"
+						],
+						"type": "string"
+					},
+					"note": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"occurredAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"resolvedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"resolvedBy": {
+						"properties": {
+							"id": {
+								"format": "uuid",
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"type": [
+							"object",
+							"null"
+						]
+					},
+					"settlementRequestId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"status": {
+						"enum": [
+							"pending",
+							"confirmed",
+							"rejected",
+							"cancelled"
+						],
+						"type": "string"
+					},
+					"toMemberId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"transactionId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					}
+				},
+				"required": [
+					"id",
+					"kind",
+					"status",
+					"transactionId",
+					"settlementRequestId",
+					"fromMemberId",
+					"toMemberId",
+					"amount",
+					"channel",
+					"note",
+					"description",
+					"attachments",
+					"createdBy",
+					"resolvedBy",
+					"occurredAt",
+					"resolvedAt",
+					"cycleId"
+				],
+				"type": "object"
+			},
+			"SettlementVaultResponse": {
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/SettlementVaultItemDto"
+						},
+						"type": "array"
+					},
+					"nextCursor": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"summary": {
+						"$ref": "#/components/schemas/SettlementVaultSummaryDto"
+					}
+				},
+				"required": [
+					"items",
+					"summary",
+					"nextCursor"
+				],
+				"type": "object"
+			},
+			"SettlementVaultSummaryDto": {
+				"properties": {
+					"confirmedCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"confirmedTotalAmount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"pendingCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"proofCount": {
+						"minimum": 0,
+						"type": "integer"
+					}
+				},
+				"required": [
+					"pendingCount",
+					"confirmedCount",
+					"confirmedTotalAmount",
+					"proofCount"
 				],
 				"type": "object"
 			},
@@ -4614,6 +4908,13 @@
 						],
 						"type": "string"
 					},
+					"cycleId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"deletedAt": {
 						"format": "date-time",
 						"type": [
@@ -4665,6 +4966,15 @@
 						"maxItems": 100,
 						"minItems": 1,
 						"type": "array"
+					},
+					"paymentChannel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"paymentNote": {
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"shares": {
 						"items": {
@@ -4820,6 +5130,13 @@
 						],
 						"type": "string"
 					},
+					"cycleId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"deletedAt": {
 						"format": "date-time",
 						"type": [
@@ -4834,6 +5151,13 @@
 					},
 					"dispute": {
 						"$ref": "#/components/schemas/TransactionDisputeDto"
+					},
+					"firstAttachmentId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"id": {
 						"format": "uuid",
@@ -4871,6 +5195,15 @@
 						"maxItems": 100,
 						"minItems": 1,
 						"type": "array"
+					},
+					"paymentChannel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"paymentNote": {
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"shares": {
 						"items": {
@@ -5037,6 +5370,17 @@
 					"occurredAt": {
 						"format": "date-time",
 						"type": "string"
+					},
+					"paymentChannel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"paymentNote": {
+						"maxLength": 120,
+						"minLength": 1,
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"toMemberId": {
 						"format": "uuid",
@@ -6228,6 +6572,14 @@
 						"schema": {
 							"format": "uuid",
 							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "purpose",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/AttachmentUploadPurpose"
 						}
 					}
 				],
@@ -7589,7 +7941,19 @@
 										"minimum": 1,
 										"type": "integer"
 									},
+									"channel": {
+										"$ref": "#/components/schemas/PaymentChannel"
+									},
 									"fromMemberId": {
+										"format": "uuid",
+										"type": "string"
+									},
+									"note": {
+										"maxLength": 120,
+										"minLength": 1,
+										"type": "string"
+									},
+									"proofAttachmentId": {
 										"format": "uuid",
 										"type": "string"
 									},
@@ -7763,6 +8127,80 @@
 							}
 						},
 						"description": "Payment report resolved"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/settlement-vault": {
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "filter",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/SettlementVaultFilter"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cycleId",
+						"required": false,
+						"schema": {
+							"anyOf": [
+								{
+									"enum": [
+										"current"
+									],
+									"type": "string"
+								},
+								{
+									"format": "uuid",
+									"type": "string"
+								}
+							]
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"maxLength": 512,
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"default": 50,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SettlementVaultResponse"
+								}
+							}
+						},
+						"description": "Unified settlement history and proof vault"
 					}
 				}
 			}

@@ -18,6 +18,16 @@ export const AttachmentDto = z
 	.openapi("AttachmentDto");
 export type AttachmentDto = z.infer<typeof AttachmentDto>;
 
+export const AttachmentUploadPurpose = z
+	.enum(["expense", "transfer_proof"])
+	.openapi("AttachmentUploadPurpose");
+export type AttachmentUploadPurpose = z.infer<typeof AttachmentUploadPurpose>;
+
+export const UploadAttachmentQuery = z.object({
+	purpose: AttachmentUploadPurpose.optional(),
+});
+export type UploadAttachmentQuery = z.infer<typeof UploadAttachmentQuery>;
+
 export const AttachmentResponse = z
 	.object({ attachment: AttachmentDto })
 	.openapi("AttachmentResponse");

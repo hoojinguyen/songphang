@@ -80,6 +80,7 @@ export {
 } from "./sessions.js";
 export * from "./settlement-cycles.js";
 export * from "./settlement-requests.js";
+export * from "./settlement-vault.js";
 export * from "./stats.js";
 export * from "./transaction-changes.js";
 export * from "./transactions.js";

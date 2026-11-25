@@ -312,7 +312,6 @@ function compareNode(
 	if (sameJson(oldValue, newValue)) return;
 
 	if (
-		/\.requestBody\.content\..+\.schema\./.test(path) &&
 		Array.isArray(oldValue) &&
 		Array.isArray(newValue) &&
 		oldValue.length === newValue.length &&

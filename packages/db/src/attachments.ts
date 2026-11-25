@@ -99,6 +99,43 @@ export async function listAttachmentsForTransactions(
 		.orderBy(asc(attachments.createdAt), asc(attachments.id));
 }
 
+export async function listAttachmentSummariesForTransactions(
+	executor: DbExecutor,
+	groupId: string,
+	transactionIds: string[],
+): Promise<Map<string, { count: number; firstAttachmentId: string | null }>> {
+	if (transactionIds.length === 0) return new Map();
+	const rows = await executor
+		.select({
+			transactionId: attachments.transactionId,
+			count: sql<number>`count(*)::int`,
+			firstAttachmentId: sql<
+				string | null
+			>`(array_agg(${attachments.id} order by ${attachments.createdAt} asc, ${attachments.id} asc))[1]`,
+		})
+		.from(attachments)
+		.where(
+			and(
+				eq(attachments.groupId, groupId),
+				inArray(attachments.transactionId, transactionIds),
+			),
+		)
+		.groupBy(attachments.transactionId);
+	const summaries = new Map<
+		string,
+		{ count: number; firstAttachmentId: string | null }
+	>();
+	for (const row of rows) {
+		if (row.transactionId !== null) {
+			summaries.set(row.transactionId, {
+				count: row.count,
+				firstAttachmentId: row.firstAttachmentId ?? null,
+			});
+		}
+	}
+	return summaries;
+}
+
 export async function countAttachmentsForTransactions(
 	executor: DbExecutor,
 	groupId: string,
@@ -189,7 +226,11 @@ export async function listStaleUnattachedGroups(
 		.selectDistinct({ groupId: attachments.groupId })
 		.from(attachments)
 		.where(
-			and(isNull(attachments.transactionId), lt(attachments.createdAt, cutoff)),
+			and(
+				isNull(attachments.transactionId),
+				lt(attachments.createdAt, cutoff),
+				sql`not exists (select 1 from settlement_requests sr where sr.proof_attachment_id = ${attachments.id})`,
+			),
 		);
 	return rows.map((row) => row.groupId);
 }
@@ -206,6 +247,7 @@ export async function deleteStaleUnattachedForGroup(
 				eq(attachments.groupId, groupId),
 				isNull(attachments.transactionId),
 				lt(attachments.createdAt, cutoff),
+				sql`not exists (select 1 from settlement_requests sr where sr.proof_attachment_id = ${attachments.id})`,
 			),
 		)
 		.returning({ storageKey: attachments.storageKey });
