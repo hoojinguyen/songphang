@@ -64,6 +64,7 @@ export type TransactionFilters = {
 	type?: "expense" | "transfer" | "income";
 	start?: Date;
 	endExclusive?: Date;
+	cycleFilter?: "current" | string;
 };
 export function listTransactionRows(
 	executor: DbExecutor,
@@ -143,6 +144,11 @@ export function listTransactionRows(
 							transactions.occurredAt,
 							sql`to_timestamp(${filters.endExclusive.getTime() / 1000})`,
 						),
+				filters?.cycleFilter === undefined
+					? undefined
+					: filters.cycleFilter === "current"
+						? isNull(transactions.cycleId)
+						: eq(transactions.cycleId, filters.cycleFilter),
 				cursor === null
 					? undefined
 					: or(

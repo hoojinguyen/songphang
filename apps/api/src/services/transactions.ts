@@ -28,6 +28,7 @@ import {
 	findGroup,
 	findGroupAccess,
 	findGroupOwner,
+	findSettlementCycle,
 	findTransactionRow,
 	findUserById,
 	insertActivity,
@@ -548,6 +549,7 @@ function buildFilters(query: TransactionsQuery): TransactionFilters {
 		...(range.endExclusive === undefined
 			? {}
 			: { endExclusive: range.endExclusive }),
+		...(query.cycleId === undefined ? {} : { cycleFilter: query.cycleId }),
 	};
 }
 export async function listTransactions(
@@ -559,6 +561,16 @@ export async function listTransactions(
 	const filters = buildFilters(query);
 	return deps.db.transaction(
 		async (executor) => {
+			if (query.cycleId !== undefined && query.cycleId !== "current") {
+				const cycle = await findSettlementCycle(
+					executor,
+					groupId,
+					query.cycleId,
+				);
+				if (cycle === null) {
+					throw new AppError(404, "NOT_FOUND", "Resource not found");
+				}
+			}
 			const rows = await listTransactionRows(executor, {
 				groupId,
 				cursor: decodeTransactionCursor(query.cursor),

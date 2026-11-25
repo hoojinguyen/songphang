@@ -320,6 +320,7 @@ export const TransactionsQuery = z
 		type: z.enum(["expense", "transfer", "income"]).optional(),
 		from: CalendarDate.optional(),
 		to: CalendarDate.optional(),
+		cycleId: z.union([z.literal("current"), z.uuid()]).optional(),
 	})
 	.refine(
 		(query) =>

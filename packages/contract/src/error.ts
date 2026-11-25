@@ -39,6 +39,8 @@ export const ErrorCode = z
 		"APPROVAL_NOT_PENDING",
 		"APPLE_REVOCATION_FAILED",
 		"GROUP_ARCHIVED",
+		"CYCLE_EMPTY",
+		"CYCLE_NOT_LATEST",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;
