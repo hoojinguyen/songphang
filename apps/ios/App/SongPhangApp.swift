@@ -62,6 +62,9 @@ final class SongPhangAppDelegate: NSObject, UIApplicationDelegate,
 @main
 struct SongPhangApp: App {
   @UIApplicationDelegateAdaptor(SongPhangAppDelegate.self) private var appDelegate
+  #if DEBUG
+    @State private var debugEnvironmentRevision = 0
+  #endif
 
   init() {
     Typography.registerFontsIfAvailable()
@@ -69,7 +72,19 @@ struct SongPhangApp: App {
 
   var body: some Scene {
     WindowGroup {
-      RootView()
+      #if DEBUG
+        RootView()
+          .id(debugEnvironmentRevision)
+          .onReceive(
+            NotificationCenter.default.publisher(
+              for: DebugOverrides.environmentDidChangeNotification
+            )
+          ) { _ in
+            debugEnvironmentRevision += 1
+          }
+      #else
+        RootView()
+      #endif
     }
   }
 }

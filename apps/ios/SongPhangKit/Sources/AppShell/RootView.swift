@@ -70,7 +70,7 @@ public struct RootView: View {
     Typography.registerFontsIfAvailable()
     #if DEBUG
       let args = ProcessInfo.processInfo.arguments
-      let useScripted =
+      let hasScriptedArg =
         args.contains("--scripted")
         || args.contains("--scenario-empty")
         || args.contains("--scenario-trip0")
@@ -94,6 +94,7 @@ public struct RootView: View {
         || args.contains("--enter-step4")
         || args.contains("--emit-changed")
         || args.contains("--emit-removed")
+      let useScripted = hasScriptedArg || DebugOverrides.useScripted
 
       let resolved: AppDependencies
       let initialSessionState: SessionModel.State
@@ -133,11 +134,16 @@ public struct RootView: View {
           behavior.failure = .rateLimited
         }
 
+        let debugConfig = configuration ?? Self.resolvedDebugConfiguration()
         let world = FakeWorld(preset: preset, behavior: behavior, signedIn: signedIn)
-        resolved = .scripted(world: world)
+        resolved = .scripted(
+          world: world,
+          webBaseURL: debugConfig.webBaseURL,
+          appVersion: debugConfig.appVersion
+        )
         initialSessionState = signedIn ? .signedIn(PreviewSamples.user) : .signedOut
       } else {
-        let liveConfig = configuration ?? Self.bundleConfiguration()
+        let liveConfig = configuration ?? Self.resolvedDebugConfiguration()
         resolved = .live(configuration: liveConfig)
         initialSessionState = .loading
       }
@@ -245,7 +251,7 @@ public struct RootView: View {
     #endif
   }
 
-  private static func bundleConfiguration() -> APIConfiguration {
+  static func bundleConfiguration() -> APIConfiguration {
     let info = Bundle.main.infoDictionary
     #if DEBUG
       let defaultAPIString = "http://127.0.0.1:4000/api/v1"
@@ -282,6 +288,21 @@ public struct RootView: View {
       appStoreURL: appStoreURL
     )
   }
+
+  #if DEBUG
+    static func resolvedDebugConfiguration() -> APIConfiguration {
+      let base = bundleConfiguration()
+      let apiURL = parseOptionalHTTPURL(DebugOverrides.apiBaseURL) ?? base.apiBaseURL
+      let webURL = parseOptionalHTTPURL(DebugOverrides.webBaseURL) ?? base.webBaseURL
+      return APIConfiguration(
+        apiBaseURL: apiURL,
+        webBaseURL: webURL,
+        appVersion: base.appVersion,
+        deviceName: base.deviceName,
+        appStoreURL: base.appStoreURL
+      )
+    }
+  #endif
 
   public static func parseOptionalHTTPURL(_ rawValue: String?) -> URL? {
     guard let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -427,6 +448,10 @@ public struct RootView: View {
           onOpenGallery: {
             selectedTab = .groups
             groupsPath.append(.debugGallery)
+          },
+          onReloadEnvironment: {
+            isShowingDebugPanel = false
+            DebugOverrides.notifyEnvironmentDidChange()
           },
           onDismiss: {
             isShowingDebugPanel = false
