@@ -12,9 +12,11 @@ const COLORS: Record<MemberDto["color"], string> = {
 export function BalanceBars({
 	balances,
 	members,
+	onInspectMember,
 }: {
 	balances: BalancesResponse["balances"];
 	members: MemberDto[];
+	onInspectMember?: (memberId: string) => void;
 }) {
 	const largest = Math.max(
 		1,
@@ -36,8 +38,8 @@ export function BalanceBars({
 				const member = members.find((member) => member.id === balance.memberId);
 				if (!member || (!member.active && balance.balance === 0)) return null;
 				const width = (Math.abs(balance.balance) / largest) * 50;
-				return (
-					<div key={member.id}>
+				const content = (
+					<>
 						<div className="mb-1 flex justify-between gap-2 text-[13px]">
 							<span className="min-w-0 break-words">
 								{member.name}
@@ -47,7 +49,7 @@ export function BalanceBars({
 									</span>
 								)}
 							</span>
-							<span className="shrink-0 font-bold">
+							<span className="shrink-0 tabular-nums font-bold">
 								{formatSignedAmount(balance.balance)}
 							</span>
 						</div>
@@ -60,8 +62,21 @@ export function BalanceBars({
 								}}
 							/>
 						</div>
-					</div>
+					</>
 				);
+				if (onInspectMember && member.kind === "person") {
+					return (
+						<button
+							key={member.id}
+							type="button"
+							onClick={() => onInspectMember(member.id)}
+							className="min-h-11 w-full rounded-[14px] text-left transition-colors hover:bg-sunken/50"
+						>
+							{content}
+						</button>
+					);
+				}
+				return <div key={member.id}>{content}</div>;
 			})}
 		</section>
 	);

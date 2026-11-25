@@ -1,6 +1,7 @@
 "use client";
 import type { MemberDto } from "@songphang/contract";
 import Link from "next/link";
+import { useState } from "react";
 import { useBalances } from "../../lib/balances";
 import { useGroup } from "../../lib/groups";
 import { useMembers } from "../../lib/members";
@@ -9,6 +10,7 @@ import { useMe } from "../../lib/session";
 import { useTransaction } from "../../lib/transaction-changes";
 import { dayLabel } from "../../lib/transactions";
 import { t, vi } from "../../messages/vi";
+import { MemberBreakdownSheet } from "../balances/MemberBreakdownSheet";
 import {
 	fundTransferCaption,
 	TransferAction,
@@ -137,6 +139,9 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 	const me = useMe();
 	const showNotice = useSnackbar();
 	const { selectedTx, clearTx } = useDesktopInspector();
+	const [inspectedMemberId, setInspectedMemberId] = useState<string | null>(
+		null,
+	);
 	const verified = me.data?.emailVerified ?? true;
 
 	const group = groupQuery.data;
@@ -229,12 +234,16 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 									className="flex flex-col gap-2 rounded-[22px] bg-surface p-3.5"
 								>
 									<div className="flex items-center justify-between gap-2">
-										<div className="flex items-center gap-2 min-w-0">
+										<button
+											type="button"
+											onClick={() => setInspectedMemberId(from.id)}
+											className="flex min-w-0 items-center gap-2 text-left hover:underline"
+										>
 											<MemberShape {...(iPay ? to : from)} size={24} />
 											<span className="truncate text-xs font-bold text-ink">
 												{caption}
 											</span>
-										</div>
+										</button>
 										{fundCaption === null && (
 											<span className="shrink-0 tabular-nums text-xs font-black text-ink">
 												{formatMoney(transfer.amount)}
@@ -277,9 +286,15 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 									: "text-muted";
 
 						return (
-							<div
+							<button
 								key={b.memberId}
-								className="flex items-center justify-between gap-2 py-1 text-xs"
+								type="button"
+								onClick={() =>
+									member.kind === "person"
+										? setInspectedMemberId(member.id)
+										: undefined
+								}
+								className="flex min-h-11 w-full items-center justify-between gap-2 rounded-[12px] px-1 py-1 text-left text-xs hover:bg-sunken/50"
 							>
 								<div className="flex items-center gap-2 truncate">
 									<MemberShape {...member} size={18} />
@@ -290,11 +305,19 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 								<span className={`shrink-0 tabular-nums font-bold ${tone}`}>
 									{formatSignedAmount(b.balance)}
 								</span>
-							</div>
+							</button>
 						);
 					})}
 				</div>
 			</section>
+			<MemberBreakdownSheet
+				open={inspectedMemberId !== null}
+				memberId={inspectedMemberId}
+				groupId={groupId}
+				transfers={balances.transfers}
+				members={members}
+				onClose={() => setInspectedMemberId(null)}
+			/>
 		</aside>
 	);
 }

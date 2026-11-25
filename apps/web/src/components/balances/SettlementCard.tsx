@@ -11,6 +11,7 @@ export function SettlementCard({
 	role,
 	verified,
 	onRemindNotice,
+	onInspectMember,
 }: {
 	groupId: string;
 	transfer: BalancesResponse["transfers"][number];
@@ -19,6 +20,7 @@ export function SettlementCard({
 	role: "owner" | "editor" | "viewer";
 	verified: boolean;
 	onRemindNotice?: (message: string) => void;
+	onInspectMember?: (memberId: string) => void;
 }) {
 	const from = members.find((member) => member.id === transfer.fromMemberId);
 	const to = members.find((member) => member.id === transfer.toMemberId);
@@ -35,13 +37,22 @@ export function SettlementCard({
 		<div className="settlement-card grid gap-4 rounded-[36px] bg-surface p-5">
 			<div className="flex items-center gap-4">
 				<MemberShape {...other} size={76} />
-				<div className="min-w-0">
+				<div className="min-w-0 flex-1">
 					<p className="break-words text-[13px] font-semibold text-muted">
 						{caption}
 					</p>
-					<p className="break-words text-[26px] font-black">
+					<p className="break-words tabular-nums text-[26px] font-black">
 						{formatAmount(transfer.amount)}
 					</p>
+					{onInspectMember && from.kind === "person" && (
+						<button
+							type="button"
+							onClick={() => onInspectMember(from.id)}
+							className="mt-1 inline-flex min-h-11 items-center text-xs font-bold text-muted underline hover:text-ink"
+						>
+							{vi.breakdown.viewAction}
+						</button>
+					)}
 				</div>
 			</div>
 			<TransferAction
