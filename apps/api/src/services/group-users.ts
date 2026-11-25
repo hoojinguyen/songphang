@@ -16,6 +16,7 @@ import {
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { getGroup } from "./groups.js";
 
 type UserOperation = { groupId: string; userId: string; targetId: string };
@@ -57,8 +58,9 @@ export async function changeGroupUser(
 	input: UserOperation & { request: UpdateGroupUserRequest },
 ) {
 	await deps.db.transaction(async (tx) => {
-		await lockGroup(tx, input.groupId);
+		const locked = await lockGroup(tx, input.groupId);
 		const target = await ownerAndTarget(tx, input);
+		assertGroupRowNotArchived(locked);
 		if (target.role === "owner")
 			throw new AppError(
 				422,
@@ -92,8 +94,9 @@ export async function changeGroupUser(
 }
 export async function removeGroupUser(deps: AppDeps, input: UserOperation) {
 	await deps.db.transaction(async (tx) => {
-		await lockGroup(tx, input.groupId);
+		const locked = await lockGroup(tx, input.groupId);
 		const target = await ownerAndTarget(tx, input);
+		assertGroupRowNotArchived(locked);
 		if (target.role === "owner")
 			throw new AppError(
 				422,
@@ -155,8 +158,9 @@ export async function transferOwnership(deps: AppDeps, input: UserOperation) {
 	const result = await deps.db.transaction(async (tx) => {
 		for (const id of [...new Set([input.userId, input.targetId])].sort())
 			await lockAccount(tx, id);
-		await lockGroup(tx, input.groupId);
+		const locked = await lockGroup(tx, input.groupId);
 		const target = await ownerAndTarget(tx, input);
+		assertGroupRowNotArchived(locked);
 		if (input.targetId === input.userId)
 			throw new AppError(422, "OWNER_REQUIRED", "Choose another group user");
 		const targetApple = await findUserAppleIdentity(tx, input.targetId);

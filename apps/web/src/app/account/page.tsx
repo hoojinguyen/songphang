@@ -1,4 +1,5 @@
 "use client";
+import { AppearanceCard } from "../../components/account/AppearanceCard";
 import { ChangePasswordCard } from "../../components/account/ChangePasswordCard";
 import { DeleteAccountCard } from "../../components/account/DeleteAccountCard";
 import { NotificationSettingsCard } from "../../components/account/NotificationSettingsCard";
@@ -49,6 +50,7 @@ export default function AccountPage() {
 							</p>
 						</div>
 					</div>
+					<AppearanceCard />
 					{me.data.hasPassword && <ChangePasswordCard />}
 					<SessionsCard />
 					<NotificationSettingsCard />

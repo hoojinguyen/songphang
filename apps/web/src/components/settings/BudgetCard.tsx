@@ -10,7 +10,13 @@ import { Button } from "../ui/Button";
 import { LoadError } from "../ui/LoadError";
 import { SegmentedControl } from "../ui/SegmentedControl";
 
-export function BudgetCard({ groupId }: { groupId: string }) {
+export function BudgetCard({
+	groupId,
+	disabled = false,
+}: {
+	groupId: string;
+	disabled?: boolean;
+}) {
 	const query = useBudget(groupId);
 	const save = usePutBudget(groupId);
 	const remove = useDeleteBudget(groupId);
@@ -38,7 +44,7 @@ export function BudgetCard({ groupId }: { groupId: string }) {
 		draft?.amountText ?? (existing ? formatAmount(existing.amount) : "");
 	const parsed = parseAmountInput(amountText);
 	const valid = parsed !== null && parsed >= 1 && parsed <= 999_999_999_999;
-	const busy = save.isPending || remove.isPending;
+	const busy = disabled || save.isPending || remove.isPending;
 	const unchanged =
 		existing !== null &&
 		period === existing.period &&
@@ -70,6 +76,7 @@ export function BudgetCard({ groupId }: { groupId: string }) {
 					value={amountText}
 					onChange={(next) => setDraft({ period, amountText: next })}
 					autoFocus={false}
+					disabled={busy}
 					label={vi.budget.amountLabel}
 				/>
 			</div>

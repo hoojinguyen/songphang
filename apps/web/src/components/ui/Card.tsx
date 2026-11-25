@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
 const TONES = {
-	surface: "bg-surface",
-	accent: "bg-accent",
-	sunken: "bg-sunken",
+	surface: "bg-surface text-ink",
+	accent: "bg-accent text-on-accent",
+	sunken: "bg-sunken text-ink",
 } as const;
 
 export function Card({

@@ -316,6 +316,91 @@ public struct SplitEditorState: Sendable, Equatable {
     values[memberId] = value
   }
 
+  public mutating func pumpMember(_ id: Member.ID, members: [Member], totalAmount: Money) {
+    let selected = selectedMembers(from: members)
+    guard selected.contains(where: { $0.id == id }) else { return }
+
+    switch method {
+    case .shares:
+      let member = members.first(where: { $0.id == id })
+      let currentStr = values[id] ?? member?.defaultWeight ?? "1"
+      let parsed = Double(currentStr)
+      let currentVal = (parsed?.isFinite == true) ? (parsed ?? 1.0) : 1.0
+      let clampedCurrent = min(9999.99, max(0.0, currentVal))
+      let nextVal = min(9999.99, max(1.0, clampedCurrent + 1.0))
+      let rounded = (nextVal * 100.0).rounded() / 100.0
+      if rounded.isFinite, rounded >= 0, rounded <= Double(Int.max),
+        rounded.truncatingRemainder(dividingBy: 1) == 0
+      {
+        values[id] = String(Int(rounded))
+      } else {
+        var formatted = String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), rounded)
+        while formatted.contains(".") && (formatted.hasSuffix("0") || formatted.hasSuffix(".")) {
+          formatted.removeLast()
+        }
+        values[id] = formatted
+      }
+
+    case .exact:
+      let currentStr = values[id] ?? ""
+      let currentVal = MoneyFormat.parseInput(currentStr) ?? .zero
+      let step: Money = totalAmount < Money(100_000) ? Money(1_000) : Money(10_000)
+      let nextVal = min(totalAmount, currentVal + step)
+      values[id] = MoneyFormat.amount(nextVal)
+
+    case .percent:
+      let currentStr = values[id] ?? ""
+      let currentHundredths = Self.parseHundredths(currentStr) ?? 0
+      if currentHundredths >= 10_000 { return }
+      let step = min(500, 10_000 - currentHundredths)
+      let otherMembers = selected.filter { $0.id != id }
+      let positiveOthers = otherMembers.filter {
+        (Self.parseHundredths(values[$0.id] ?? "") ?? 0) > 0
+      }
+      let otherTotalHundredths = positiveOthers.reduce(0) { sum, m in
+        sum + (Self.parseHundredths(values[m.id] ?? "") ?? 0)
+      }
+
+      guard otherTotalHundredths > 0, !positiveOthers.isEmpty else { return }
+      let actualStep = min(step, otherTotalHundredths)
+      var remainingToDeduct = actualStep
+
+      for (i, m) in positiveOthers.enumerated() {
+        let mHundredths = Self.parseHundredths(values[m.id] ?? "") ?? 0
+        let isLast = (i == positiveOthers.count - 1)
+        let roundedTarget =
+          (mHundredths * actualStep + otherTotalHundredths / 2) / otherTotalHundredths
+        let deduct = min(
+          mHundredths,
+          remainingToDeduct,
+          isLast ? remainingToDeduct : roundedTarget
+        )
+        let nextM = max(0, mHundredths - deduct)
+        values[m.id] = Self.formatHundredths(nextM)
+        remainingToDeduct -= deduct
+      }
+
+      if remainingToDeduct > 0 {
+        for m in positiveOthers {
+          let curM = Self.parseHundredths(values[m.id] ?? "") ?? 0
+          guard curM > 0 else { continue }
+          let extra = min(curM, remainingToDeduct)
+          values[m.id] = Self.formatHundredths(curM - extra)
+          remainingToDeduct -= extra
+          if remainingToDeduct <= 0 { break }
+        }
+      }
+
+      let finalAdded = actualStep - remainingToDeduct
+      if finalAdded > 0 {
+        values[id] = Self.formatHundredths(currentHundredths + finalAdded)
+      }
+
+    case .equal, .items:
+      break
+    }
+  }
+
   public mutating func toggle(_ memberId: Member.ID, members: [Member]) {
     if ids.contains(memberId) {
       ids.removeAll { $0 == memberId }

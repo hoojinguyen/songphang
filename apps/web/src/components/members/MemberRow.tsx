@@ -42,7 +42,7 @@ export function MemberRow({
 			</span>
 			{role && (
 				<span
-					className={`rounded-[14px] px-3 py-1 text-xs text-ink ${role === "owner" ? "bg-accent" : "bg-sunken"}`}
+					className={`rounded-[14px] px-3 py-1 text-xs ${role === "owner" ? "bg-accent font-bold text-on-accent" : "bg-sunken text-ink"}`}
 				>
 					{role === "owner"
 						? vi.members.ownerBadge

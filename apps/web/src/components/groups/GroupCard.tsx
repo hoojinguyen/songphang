@@ -4,12 +4,13 @@ import { formatSignedAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
 export function GroupCard({ group }: { group: GroupSummaryDto }) {
+	const isArchived = Boolean(group.archivedAt);
 	const tone =
 		group.myBalance > 0
-			? "bg-accent"
+			? "bg-accent text-on-accent"
 			: group.myBalance < 0
-				? "bg-debt-soft"
-				: "bg-sunken";
+				? "bg-debt-soft text-ink"
+				: "bg-sunken text-ink";
 	const caption =
 		group.myBalance > 0
 			? vi.groups.chipOwedToYou
@@ -31,6 +32,18 @@ export function GroupCard({ group }: { group: GroupSummaryDto }) {
 							{t(vi.groups.moreMembers, {
 								count: String(group.memberCount - 4),
 							})}
+						</span>
+					)}
+					{isArchived && (
+						<span className="ml-1 rounded-pill bg-sunken px-2 py-0.5 text-[11px] font-bold text-muted">
+							{vi.groups.tabArchived}
+						</span>
+					)}
+					{Boolean(
+						group.pendingActionCount && group.pendingActionCount > 0,
+					) && (
+						<span className="ml-1 rounded-pill bg-coral px-2 py-0.5 text-[11px] font-extrabold text-on-accent">
+							{vi.groups.needsAction}
 						</span>
 					)}
 				</div>

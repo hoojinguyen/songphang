@@ -74,14 +74,35 @@ struct FeedTransactionRowView: View {
     }
     .buttonStyle(.plain)
     .accessibilityLabel(L10n.t("feed.viewRow", ["description": transaction.description]))
+    .accessibilityValue(accessibilityStatusSummary)
+  }
+
+  private var accessibilityStatusSummary: String {
+    var parts: [String] = []
+    if transaction.approval.status == .pending {
+      parts.append(L10n.tr("approval.pendingTag"))
+    } else if transaction.approval.status == .rejected {
+      parts.append(L10n.tr("approval.rejectedTag"))
+    }
+    if transaction.dispute != nil {
+      parts.append(L10n.tr("transactionView.disputeTag"))
+    }
+    if transaction.commentCount > 0 {
+      parts.append(
+        L10n.t("transactionView.commentCount", ["count": String(transaction.commentCount)]))
+    }
+    if transaction.version > 1 {
+      parts.append(L10n.tr("feed.edited"))
+    }
+    return parts.joined(separator: ", ")
   }
 
   @ViewBuilder
   private var rowContent: some View {
-    if transaction.type == .expense {
-      expenseBubble
+    if transaction.type == .transfer || transaction.type == .income {
+      compactTransferCard
     } else {
-      ledgerPill
+      fullWidthExpenseCard
     }
   }
 
@@ -95,24 +116,37 @@ struct FeedTransactionRowView: View {
       .joined(separator: ", ")
   }
 
-  private var expenseBubble: some View {
+  private var fullWidthExpenseCard: some View {
     let payer = members.first(where: { $0.id == transaction.payers.first?.memberId })
     let isMine = payer?.id == myMemberId && myMemberId != nil
-    let myShare = transaction.shares.first(where: { $0.memberId == myMemberId })
+    let time = LedgerDateLabels.timeLabel(for: transaction.occurredAt)
 
-    return HStack(alignment: .bottom, spacing: 8) {
-      if isMine {
-        Spacer(minLength: 48)
-      } else if let payer {
-        MemberShapeView(
-          shape: payer.shape,
-          color: payer.color,
-          name: payer.name,
-          size: 36
-        )
+    let participantMembers = transaction.shares.compactMap { share in
+      members.first(where: { $0.id == share.memberId })
+    }
+
+    let methodLabel: String = {
+      switch transaction.split {
+      case .exact: return L10n.tr("feed.splitExact")
+      case .shares: return L10n.tr("feed.splitShares")
+      case .items: return L10n.tr("split.methodItems")
+      case .percent: return L10n.tr("feed.splitPercent")
+      case .equal: return ""
       }
+    }()
 
-      VStack(alignment: .leading, spacing: 4) {
+    return VStack(alignment: .leading, spacing: 10) {
+      // Row 1: Top row
+      HStack(alignment: .center, spacing: 8) {
+        if let payer {
+          MemberShapeView(
+            shape: payer.shape,
+            color: payer.color,
+            name: payer.name,
+            size: 28,
+            showInitial: false
+          )
+        }
         Text(
           transaction.payers.count > 1
             ? L10n.t("feed.memberPaid", ["name": payerNames])
@@ -121,185 +155,197 @@ struct FeedTransactionRowView: View {
               : L10n.t("feed.memberPaid", ["name": payer?.name ?? ""])
         )
         .font(Typography.captionBold)
-        .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
+        .foregroundStyle(Tokens.ink)
 
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
+        if !time.isEmpty {
+          Text("·")
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
+          Text(time)
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
+        }
+
+        Spacer(minLength: 4)
+
+        HStack(spacing: 6) {
+          if transaction.version > 1 {
+            Text(L10n.tr("feed.edited"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+          }
+
+          if transaction.commentCount > 0 {
+            HStack(spacing: 3) {
+              Image(systemName: "bubble.left")
+                .font(.system(size: 11, weight: .semibold))
+              Text(String(transaction.commentCount))
+                .font(Typography.captionBold)
+            }
+            .foregroundStyle(Tokens.muted)
+          }
+
+          if transaction.attachmentCount > 0 {
+            HStack(spacing: 3) {
+              Image(systemName: "photo")
+                .font(.system(size: 11, weight: .semibold))
+              if transaction.attachmentCount > 1 {
+                Text(String(transaction.attachmentCount))
+                  .font(Typography.captionBold)
+              }
+            }
+            .foregroundStyle(Tokens.muted)
+          }
+
+          if transaction.approval.status == .pending {
+            Text(L10n.tr("approval.pendingTag"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.onAccent)
+              .padding(.horizontal, 7)
+              .padding(.vertical, 2)
+              .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+          } else if transaction.approval.status == .rejected {
+            Text(L10n.tr("approval.rejectedTag"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.onAccent)
+              .padding(.horizontal, 7)
+              .padding(.vertical, 2)
+              .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+          }
+
+          if transaction.dispute != nil {
+            Text(L10n.tr("transactionView.disputeTag"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.onAccent)
+              .padding(.horizontal, 7)
+              .padding(.vertical, 2)
+              .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+          }
+        }
+      }
+
+      // Row 2: Middle row
+      HStack(alignment: .top, spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
           Text(transaction.description)
             .font(Typography.bodyBold)
-            .foregroundStyle(isMine ? Tokens.surface : Tokens.ink)
-          Spacer(minLength: 4)
+            .foregroundStyle(Tokens.ink)
+            .lineLimit(2)
+
+          if let catDisplay = CategoryDisplay.label(
+            category: transaction.category,
+            categoryId: transaction.categoryId,
+            categories: categories,
+            includeArchivedTag: true
+          ) {
+            HStack(spacing: 4) {
+              if let dotColor = catDisplay.color {
+                Circle()
+                  .fill(dotColor)
+                  .frame(width: 6, height: 6)
+              }
+              Text(catDisplay.name)
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Tokens.sunken, in: Capsule())
+          }
+        }
+
+        Spacer(minLength: 8)
+
+        VStack(alignment: .trailing, spacing: 2) {
           MoneyText(
             transaction.amount,
             style: .amountOnly,
             font: Typography.sectionTitle,
-            color: isMine ? Tokens.surface : Tokens.ink
+            color: Tokens.ink
           )
-        }
+          .monospacedDigit()
+          .lineLimit(1)
 
-        if transaction.approval.status == .pending {
-          Text(L10n.tr("approval.pendingTag"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        } else if transaction.approval.status == .rejected {
-          Text(L10n.tr("approval.rejectedTag"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        }
-
-        if transaction.dispute != nil {
-          Text(L10n.tr("transactionView.disputeTag"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        }
-
-        if transaction.version > 1 {
-          Text(L10n.tr("feed.edited"))
-            .font(Typography.captionBold)
-            .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
-        }
-
-        if let catDisplay = CategoryDisplay.label(
-          category: transaction.category,
-          categoryId: transaction.categoryId,
-          categories: categories,
-          includeArchivedTag: true
-        ) {
-          HStack(spacing: 5) {
-            if let dotColor = catDisplay.color {
-              Circle()
-                .fill(dotColor)
-                .frame(width: 8, height: 8)
-            }
-            Text(catDisplay.name)
-              .font(Typography.captionBold)
-              .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
-          }
-        }
-
-        if transaction.attachmentCount > 0 {
-          HStack(spacing: 4) {
-            Image(systemName: "photo")
-              .font(.system(size: 11, weight: .semibold))
-            if transaction.attachmentCount > 1 {
-              Text(String(transaction.attachmentCount))
-                .font(Typography.captionBold)
-            }
-          }
-          .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
-          .accessibilityLabel(L10n.tr("attachments.hasPhotos"))
-        }
-
-        if transaction.commentCount > 0 {
-          HStack(spacing: 4) {
-            Image(systemName: "bubble.left")
-              .font(.system(size: 11, weight: .semibold))
-            Text(String(transaction.commentCount))
-              .font(Typography.captionBold)
-          }
-          .foregroundStyle(isMine ? Tokens.onInkMuted : Tokens.muted)
-          .accessibilityLabel(
-            L10n.t("transactionView.commentCount", ["count": String(transaction.commentCount)])
-          )
-        }
-
-        if isMine {
-          HStack(spacing: 4) {
-            ForEach(Array(transaction.shares.prefix(4))) { share in
-              let member = members.first(where: { $0.id == share.memberId })
-              HStack(spacing: 4) {
-                if let member {
-                  MemberShapeView(
-                    shape: member.shape,
-                    color: member.color,
-                    name: member.name,
-                    size: 14,
-                    showInitial: false
-                  )
-                }
-                Text(MoneyFormat.compact(share.amount))
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.surface)
-              }
-              .padding(.horizontal, 9)
-              .padding(.vertical, 5)
-              .background(Tokens.inkRaised)
-              .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            if transaction.shares.count > 4 {
-              Text(L10n.t("feed.moreShares", ["count": String(transaction.shares.count - 4)]))
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.surface)
-                .padding(.horizontal, 6)
-            }
-          }
-          .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-          .padding(.top, 4)
-        } else {
-          let methodLabel: String = {
-            switch transaction.split {
-            case .exact: return L10n.tr("feed.splitExact")
-            case .shares: return L10n.tr("feed.splitShares")
-            case .items: return L10n.tr("split.methodItems")
-            case .percent: return L10n.tr("feed.splitPercent")
-            case .equal: return ""
-            }
-          }()
-          let shareLine: String = {
-            let isEqual = if case .equal = transaction.split { true } else { false }
-            if let myShare {
-              return L10n.t(
-                isEqual ? "feed.equalSplitMine" : "feed.splitMine",
-                [
-                  "method": methodLabel,
-                  "count": String(transaction.shares.count),
-                  "amount": MoneyFormat.amount(myShare.amount),
-                ]
+          if let delta = transaction.myDelta {
+            if delta.isZero {
+              MoneyText(
+                delta,
+                style: .amountOnly,
+                font: Typography.captionBold,
+                color: Tokens.muted
               )
+              .monospacedDigit()
+              .lineLimit(1)
+            } else {
+              MoneyText(
+                delta,
+                style: .signed,
+                font: Typography.captionBold,
+                color: delta.isPositive
+                  ? Tokens.credit
+                  : (delta.isNegative ? Tokens.debt : Tokens.ink)
+              )
+              .monospacedDigit()
+              .lineLimit(1)
             }
-            return L10n.t(
-              isEqual ? "feed.equalSplitNotMine" : "feed.splitNotMine",
-              [
-                "method": methodLabel,
-                "count": String(transaction.shares.count),
-              ]
+          } else if let myShare = transaction.shares.first(where: { $0.memberId == myMemberId }) {
+            MoneyText(
+              myShare.amount,
+              style: .amountOnly,
+              font: Typography.captionBold,
+              color: Tokens.muted
             )
-          }()
-          Text(shareLine)
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.muted)
-            .padding(.top, 2)
+            .monospacedDigit()
+            .lineLimit(1)
+          } else {
+            Text(L10n.tr("ledger.notParticipating"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+              .lineLimit(1)
+          }
         }
       }
-      .padding(.horizontal, 16)
-      .padding(.top, 12)
-      .padding(.bottom, 14)
-      .background(isMine ? Tokens.ink : Tokens.surface)
-      .clipShape(
-        UnevenRoundedRectangle(
-          topLeadingRadius: 26,
-          bottomLeadingRadius: isMine ? 26 : 8,
-          bottomTrailingRadius: isMine ? 8 : 26,
-          topTrailingRadius: 26,
-          style: .continuous
-        )
-      )
 
-      if !isMine {
-        Spacer(minLength: 48)
+      // Row 3: Bottom row
+      HStack(alignment: .center, spacing: 8) {
+        HStack(spacing: -6) {
+          ForEach(Array(participantMembers.prefix(5))) { member in
+            MemberShapeView(
+              shape: member.shape,
+              color: member.color,
+              name: member.name,
+              size: 20,
+              showInitial: false
+            )
+            .overlay(
+              Circle().stroke(Tokens.surface, lineWidth: 1.5)
+            )
+          }
+          if participantMembers.count > 5 {
+            Text("+\(participantMembers.count - 5)")
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+              .padding(.leading, 8)
+          }
+        }
+
+        Spacer()
+
+        if !methodLabel.isEmpty {
+          Text(methodLabel)
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
+        }
       }
     }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
   }
 
-  private var ledgerPill: some View {
+  private var compactTransferCard: some View {
     let from = members.first(where: { $0.id == transaction.payers.first?.memberId })
     let to = members.first(where: { $0.id == transaction.shares.first?.memberId })
     let amountStr = MoneyFormat.full(transaction.amount)
@@ -331,63 +377,84 @@ struct FeedTransactionRowView: View {
       text = transaction.description
     }
 
-    return HStack(spacing: 8) {
-      if let from {
-        MemberShapeView(
-          shape: from.shape,
-          color: from.color,
-          name: from.name,
-          size: 18,
-          showInitial: false
-        )
+    return HStack(spacing: 12) {
+      HStack(spacing: 6) {
+        if let from {
+          MemberShapeView(
+            shape: from.shape,
+            color: from.color,
+            name: from.name,
+            size: 24,
+            showInitial: false
+          )
+        }
+        Image(systemName: "arrow.right")
+          .font(.system(size: 11, weight: .bold))
+          .foregroundStyle(Tokens.muted)
+        if let to {
+          MemberShapeView(
+            shape: to.shape,
+            color: to.color,
+            name: to.name,
+            size: 24,
+            showInitial: false
+          )
+        }
       }
+
       Text(text)
         .font(Typography.captionBold)
         .foregroundStyle(Tokens.ink)
-      if transaction.approval.status == .pending {
-        Text(L10n.tr("approval.pendingTag"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 2)
-          .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-      } else if transaction.approval.status == .rejected {
-        Text(L10n.tr("approval.rejectedTag"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 2)
-          .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-      }
-      if transaction.dispute != nil {
-        Text(L10n.tr("transactionView.disputeTag"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 2)
-          .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-      }
-      if transaction.commentCount > 0 {
-        HStack(spacing: 4) {
-          Image(systemName: "bubble.left")
-            .font(.system(size: 11, weight: .semibold))
-          Text(String(transaction.commentCount))
+        .lineLimit(1)
+
+      Spacer(minLength: 8)
+
+      HStack(spacing: 6) {
+        if transaction.approval.status == .pending {
+          Text(L10n.tr("approval.pendingTag"))
             .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
-        .foregroundStyle(Tokens.muted)
-      }
-      if transaction.version > 1 {
-        Text(L10n.tr("feed.edited"))
-          .font(Typography.captionBold)
+        if transaction.approval.status == .rejected {
+          Text(L10n.tr("approval.rejectedTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.onAccent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        if transaction.dispute != nil {
+          Text(L10n.tr("transactionView.disputeTag"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.onAccent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        if transaction.commentCount > 0 {
+          HStack(spacing: 3) {
+            Image(systemName: "bubble.left")
+              .font(.system(size: 11, weight: .semibold))
+            Text(String(transaction.commentCount))
+              .font(Typography.captionBold)
+          }
           .foregroundStyle(Tokens.muted)
+        }
+        if transaction.version > 1 {
+          Text(L10n.tr("feed.edited"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.muted)
+        }
       }
     }
-    .padding(.vertical, 6)
-    .padding(.leading, 8)
-    .padding(.trailing, 12)
-    .background(Tokens.sunken)
-    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    .frame(maxWidth: .infinity)
+    .padding(.horizontal, 16)
+    .padding(.vertical, 12)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
   }
 }
 
@@ -456,29 +523,45 @@ struct FeedEmptyStreamView: View {
 struct FeedSearchBarView: View {
   @Binding var text: String
   let hasModalFilters: Bool
+  var activeModalFilterCount: Int = 0
   let onSearchChange: (String) -> Void
   let onOpenFilters: () -> Void
 
   var body: some View {
     HStack(spacing: 8) {
-      TextField(L10n.tr("filter.searchPlaceholder"), text: $text)
-        .font(Typography.subheadlineBold)
-        .foregroundStyle(Tokens.ink)
-        .padding(.horizontal, 16)
-        .frame(minHeight: 44)
-        .background(Tokens.surface, in: Capsule())
-        .accessibilityLabel(L10n.tr("filter.searchPlaceholder"))
-        .onChange(of: text) { _, next in
-          onSearchChange(next)
-        }
+      let searchPrompt = L10n.tr("filter.searchPlaceholder")
+      TextField(
+        searchPrompt,
+        text: $text,
+        prompt: Text(searchPrompt).foregroundStyle(Tokens.placeholder)
+      )
+      .font(Typography.subheadlineBold)
+      .foregroundStyle(Tokens.ink)
+      .padding(.horizontal, 16)
+      .frame(minHeight: 44)
+      .background(Tokens.surface, in: Capsule())
+      .accessibilityLabel(L10n.tr("filter.searchPlaceholder"))
+      .onChange(of: text) { _, next in
+        onSearchChange(next)
+      }
 
       Button(action: onOpenFilters) {
-        Text(L10n.tr("filter.button"))
-          .font(Typography.captionBold)
-          .foregroundStyle(hasModalFilters ? Tokens.surface : Tokens.ink)
-          .padding(.horizontal, 16)
-          .frame(minHeight: 44)
-          .background(hasModalFilters ? Tokens.ink : Tokens.surface, in: Capsule())
+        HStack(spacing: 4) {
+          Text(L10n.tr("filter.button"))
+          if activeModalFilterCount > 0 {
+            Text(String(activeModalFilterCount))
+              .font(Typography.captionBold)
+              .foregroundStyle(hasModalFilters ? Tokens.ink : Tokens.surface)
+              .padding(.horizontal, 6)
+              .padding(.vertical, 2)
+              .background(hasModalFilters ? Tokens.surface : Tokens.ink, in: Capsule())
+          }
+        }
+        .font(Typography.captionBold)
+        .foregroundStyle(hasModalFilters ? Tokens.surface : Tokens.ink)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 44)
+        .background(hasModalFilters ? Tokens.ink : Tokens.surface, in: Capsule())
       }
       .buttonStyle(.plain)
     }
@@ -707,7 +790,7 @@ struct FeedEntryBarView: View {
           HStack {
             Text(L10n.tr("feed.entryPlaceholder"))
               .font(Typography.body)
-              .foregroundStyle(Tokens.muted)
+              .foregroundStyle(Tokens.placeholder)
             Spacer()
           }
           .padding(.horizontal, 16)

@@ -24,8 +24,8 @@ export function BudgetBanner({
 	return (
 		<Link
 			href={`/g/${encodeURIComponent(groupId)}/stats`}
-			className={`flex min-h-11 items-center rounded-[22px] px-4 py-2 text-xs font-bold text-ink ${
-				isOver ? "bg-coral" : "bg-sunken"
+			className={`flex min-h-11 items-center rounded-[22px] px-4 py-2 text-xs font-bold ${
+				isOver ? "bg-coral text-on-accent" : "bg-sunken text-ink"
 			}`}
 		>
 			{message}

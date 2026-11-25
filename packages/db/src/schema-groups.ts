@@ -4,6 +4,7 @@ import {
 	bigint,
 	boolean,
 	check,
+	index,
 	integer,
 	numeric,
 	pgTable,
@@ -32,6 +33,7 @@ export const groups = pgTable(
 		createdBy: uuid("created_by").references(() => users.id, {
 			onDelete: "set null",
 		}),
+		archivedAt: timestamp("archived_at", { withTimezone: true }),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),
@@ -40,6 +42,7 @@ export const groups = pgTable(
 			.defaultNow(),
 	},
 	(table) => [
+		index("groups_archived_at_idx").on(table.archivedAt),
 		check(
 			"groups_name_length_check",
 			sql`char_length(${table.name}) between 1 and 80`,

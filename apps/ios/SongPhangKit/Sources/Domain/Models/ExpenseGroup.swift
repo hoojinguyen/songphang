@@ -1,3 +1,5 @@
+public import Foundation
+
 public struct ExpenseGroup: Sendable, Hashable, Identifiable {
   public struct ID: Sendable, Hashable {
     public let rawValue: String
@@ -33,6 +35,10 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
   public var approvalThreshold: Money?
   public var ownerName: String
   public var createdAt: String
+  public var archivedAt: Date?
+  public var pendingActionCount: Int
+
+  public var isArchived: Bool { archivedAt != nil }
 
   public init(
     id: ID,
@@ -49,7 +55,9 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
     reminderIntervalDays: Int? = nil,
     approvalThreshold: Money? = nil,
     ownerName: String = "",
-    createdAt: String = "2026-11-16T14:23:26.244Z"
+    createdAt: String = "2026-11-16T14:23:26.244Z",
+    archivedAt: Date? = nil,
+    pendingActionCount: Int = 0
   ) {
     self.id = id
     self.name = name
@@ -66,5 +74,7 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
     self.approvalThreshold = approvalThreshold
     self.ownerName = ownerName
     self.createdAt = createdAt
+    self.archivedAt = archivedAt
+    self.pendingActionCount = pendingActionCount
   }
 }

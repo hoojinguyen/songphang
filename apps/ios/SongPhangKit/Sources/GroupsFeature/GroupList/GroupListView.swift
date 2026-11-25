@@ -20,6 +20,8 @@ public struct GroupListView: View {
   @State private var isResendingVerification = false
   @State private var verificationResent = false
   @State private var verificationError: String?
+  @State private var archivingGroup: ExpenseGroup?
+  @State private var cloningGroup: ExpenseGroup?
 
   public init(
     model: GroupListModel,
@@ -44,7 +46,7 @@ public struct GroupListView: View {
   }
 
   private var isOffline: Bool {
-    if model.refreshError == .offline { return true }
+    if model.refreshError == .offline || model.actionError == .offline { return true }
     if case .failed(.offline) = model.groups { return true }
     return false
   }
@@ -52,7 +54,7 @@ public struct GroupListView: View {
   public var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
-        if model.refreshError != nil {
+        if model.refreshError != nil || model.actionError == .offline {
           OfflineBanner()
         }
 
@@ -62,6 +64,12 @@ public struct GroupListView: View {
           Text(statusNotice)
             .font(Typography.subheadlineBold)
             .foregroundStyle(Tokens.ink)
+        }
+
+        if let actionError = model.actionError, actionError != .offline {
+          Text(L10n.tr("common.saveError"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.debt)
         }
 
         contentSection
@@ -80,6 +88,43 @@ public struct GroupListView: View {
     .background(Tokens.bg.ignoresSafeArea())
     .task {
       await model.load()
+    }
+    .confirmationDialog(
+      archivingGroup.map { L10n.t("groups.archiveConfirmBody", ["name": $0.name]) }
+        ?? L10n.tr("groups.archiveConfirmBody"),
+      isPresented: Binding(
+        get: { archivingGroup != nil },
+        set: { if !$0 { archivingGroup = nil } }
+      ),
+      titleVisibility: .visible
+    ) {
+      if let target = archivingGroup {
+        Button(L10n.tr("groups.archiveAction"), role: .destructive) {
+          Task {
+            _ = await model.archive(groupId: target.id)
+            archivingGroup = nil
+          }
+        }
+      }
+      Button(L10n.tr("common.cancel"), role: .cancel) {
+        archivingGroup = nil
+      }
+    } message: {
+      Text(L10n.tr("groups.archiveConfirmBody"))
+    }
+    .sheet(item: $cloningGroup) { group in
+      CloneGroupSheetView(
+        group: group,
+        repository: model.repository,
+        onDismiss: { cloningGroup = nil },
+        onCloned: { newGroup in
+          cloningGroup = nil
+          Task {
+            await model.load()
+            onOpenGroup(newGroup.id)
+          }
+        }
+      )
     }
   }
 
@@ -114,6 +159,19 @@ public struct GroupListView: View {
 
   @ViewBuilder
   private var contentSection: some View {
+    SPSegmentedControl(
+      label: L10n.tr("groups.title"),
+      options: [
+        SPSegmentedControl.Option(value: "active", label: L10n.tr("groups.tabActive")),
+        SPSegmentedControl.Option(value: "archived", label: L10n.tr("groups.tabArchived")),
+      ],
+      value: model.selectedTab.rawValue
+    ) { newValue in
+      if let tab = GroupListModel.Tab(rawValue: newValue) {
+        model.selectedTab = tab
+      }
+    }
+
     switch model.groups {
     case .loading:
       LoadingSkeleton(rowCount: 2, rowHeight: 160)
@@ -123,27 +181,62 @@ public struct GroupListView: View {
         Task { await model.load() }
       }
 
-    case .loaded(let items):
+    case .loaded:
+      let items = model.displayedGroups
       if items.isEmpty {
         VStack(spacing: 12) {
-          Text(L10n.tr("groups.emptyTitle"))
-            .font(Typography.sectionTitle)
-            .foregroundStyle(Tokens.ink)
-          Text(L10n.tr("groups.emptyHint"))
-            .font(Typography.body)
-            .foregroundStyle(Tokens.muted)
+          Text(
+            model.selectedTab == .archived
+              ? L10n.tr("groups.archivedEmpty") : L10n.tr("groups.emptyTitle")
+          )
+          .font(Typography.sectionTitle)
+          .foregroundStyle(Tokens.ink)
+          if model.selectedTab == .active {
+            Text(L10n.tr("groups.emptyHint"))
+              .font(Typography.body)
+              .foregroundStyle(Tokens.muted)
+          }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 48)
       } else {
         VStack(spacing: 16) {
           ForEach(Array(items.enumerated()), id: \.element.id) { index, group in
-            if index == 0 {
+            if index == 0 && model.selectedTab == .active {
               featuredCard(for: group)
             } else {
               regularCard(for: group)
             }
           }
+        }
+      }
+    }
+  }
+
+  private func groupContextMenu(for group: ExpenseGroup) -> some View {
+    Group {
+      if group.role.isOwner {
+        if group.isArchived {
+          Button {
+            Task { _ = await model.unarchive(groupId: group.id) }
+          } label: {
+            Label(L10n.tr("groups.unarchiveAction"), systemImage: "arrow.uturn.backward")
+          }
+          .disabled(model.isPerformingAction)
+        } else {
+          Button(role: .destructive) {
+            archivingGroup = group
+          } label: {
+            Label(L10n.tr("groups.archiveAction"), systemImage: "archivebox")
+          }
+          .disabled(model.isPerformingAction)
+        }
+      }
+      if group.role.canWrite {
+        Button {
+          cloningGroup = group
+        } label: {
+          Label(L10n.tr("clone.title"), systemImage: "doc.on.doc")
         }
       }
     }
@@ -170,6 +263,16 @@ public struct GroupListView: View {
               size: 30
             )
           }
+          Spacer()
+          if group.pendingActionCount > 0 {
+            Text(L10n.tr("groups.needsAction"))
+              .font(Typography.captionBold)
+              .padding(.horizontal, 8)
+              .padding(.vertical, 4)
+              .background(Tokens.debt)
+              .foregroundStyle(Tokens.surface)
+              .clipShape(Capsule())
+          }
         }
         .padding(.bottom, 4)
 
@@ -195,6 +298,9 @@ public struct GroupListView: View {
       .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
     }
     .buttonStyle(.plain)
+    .contextMenu {
+      groupContextMenu(for: group)
+    }
   }
 
   private func regularCard(for group: ExpenseGroup) -> some View {
@@ -233,13 +339,39 @@ public struct GroupListView: View {
             }
           }
 
-          Text(group.name)
-            .font(Typography.screenHeaderTitle)
-            .foregroundStyle(Tokens.ink)
+          HStack(spacing: 6) {
+            Text(group.name)
+              .font(Typography.screenHeaderTitle)
+              .foregroundStyle(Tokens.ink)
 
-          Text(L10n.t("groups.memberCount", ["count": String(group.memberCount)]))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.muted)
+            if group.pendingActionCount > 0 {
+              Text(L10n.tr("groups.needsAction"))
+                .font(Typography.captionBold)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Tokens.debt)
+                .foregroundStyle(Tokens.surface)
+                .clipShape(Capsule())
+            }
+          }
+
+          HStack(spacing: 8) {
+            Text(L10n.t("groups.memberCount", ["count": String(group.memberCount)]))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+
+            let roleLabel: String = {
+              switch group.role {
+              case .owner: return L10n.tr("members.roleOwner")
+              case .editor: return L10n.tr("members.roleEditor")
+              case .viewer: return L10n.tr("members.roleViewer")
+              case .unknown: return ""
+              }
+            }()
+            Text(roleLabel)
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.muted)
+          }
         }
         Spacer(minLength: 8)
         VStack(alignment: .trailing, spacing: 2) {
@@ -265,6 +397,9 @@ public struct GroupListView: View {
       .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
     }
     .buttonStyle(.plain)
+    .contextMenu {
+      groupContextMenu(for: group)
+    }
   }
 
   @ViewBuilder

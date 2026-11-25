@@ -8,6 +8,7 @@ public import SwiftUI
 
 public struct BalancesView: View {
   @Bindable private var model: BalancesModel
+  private let showHeader: Bool
   private let currentUserId: User.ID?
   private let isEmailVerified: Bool
   private let onBack: () -> Void
@@ -19,6 +20,7 @@ public struct BalancesView: View {
 
   public init(
     model: BalancesModel,
+    showHeader: Bool = true,
     currentUserId: User.ID? = nil,
     isEmailVerified: Bool = true,
     onBack: @escaping () -> Void,
@@ -29,6 +31,7 @@ public struct BalancesView: View {
     onCreateFund: (() -> Void)? = nil
   ) {
     self.model = model
+    self.showHeader = showHeader
     self.currentUserId = currentUserId
     self.isEmailVerified = isEmailVerified
     self.onBack = onBack
@@ -88,10 +91,12 @@ public struct BalancesView: View {
 
   @ViewBuilder
   private func loadedContent(data: BalancesViewData) -> some View {
-    SPScreenHeader(
-      title: data.group.name,
-      onBack: onBack
-    )
+    if showHeader {
+      SPScreenHeader(
+        title: data.group.name,
+        onBack: onBack
+      )
+    }
 
     if let noticeText = model.reminderNotice ?? noticeMessage {
       SPCard(tone: .accent, padding: 14) {

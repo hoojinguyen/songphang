@@ -103,8 +103,10 @@ public struct SPButton: View {
     }
     switch variant {
     case .primary:
-      return Tokens.surface
-    case .accent, .surface:
+      return Tokens.onInk
+    case .accent:
+      return Tokens.onAccent
+    case .surface:
       return Tokens.ink
     }
   }

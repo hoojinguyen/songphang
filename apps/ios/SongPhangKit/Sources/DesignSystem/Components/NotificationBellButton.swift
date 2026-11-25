@@ -23,7 +23,7 @@ public struct NotificationBellButton: View {
         if unreadCount > 0 {
           Text(unreadCount > 9 ? "9+" : "\(unreadCount)")
             .font(.system(size: 11, weight: .black))
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
             .padding(.horizontal, 4)
             .frame(minWidth: 18, minHeight: 18)
             .background(Tokens.coral)

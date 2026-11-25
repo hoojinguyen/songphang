@@ -14,8 +14,13 @@
     private let onOpenLinkURL: (URL) -> Bool
     private let onSimulatePushTap: (String?, String?) -> Void
     private let onOpenGallery: () -> Void
+    private let onReloadEnvironment: () -> Void
     private let onDismiss: () -> Void
 
+    @State private var useScriptedMode: Bool
+    @State private var apiBaseText: String
+    @State private var webBaseText: String
+    @State private var configStatusMessage: String?
     @State private var selectedPreset: ScenarioPreset = .tripStep4
     @State private var selectedLatencyIndex: Int = 0
     @State private var selectedFailureKind: FailureKind = .none
@@ -23,7 +28,7 @@
     @State private var selectedRole: RoleChoice = .owner
     @State private var unverifiedEmail: Bool = false
     @State private var joinTokenText: String = TripScenario.invite.token
-    @State private var linkURLText: String = "http://localhost:3000/join/"
+    @State private var linkURLText: String
     @State private var linkStatusMessage: String?
     @State private var debugPushToken: String = "sim_debug_device_token_5c5_0123456789abcdef"
     @State private var pushGroupIdText: String = TripScenario.groupId.rawValue
@@ -81,6 +86,7 @@
       onOpenLinkURL: @escaping (URL) -> Bool,
       onSimulatePushTap: @escaping (String?, String?) -> Void,
       onOpenGallery: @escaping () -> Void,
+      onReloadEnvironment: @escaping () -> Void = {},
       onDismiss: @escaping () -> Void
     ) {
       self.world = world
@@ -91,18 +97,111 @@
       self.onOpenLinkURL = onOpenLinkURL
       self.onSimulatePushTap = onSimulatePushTap
       self.onOpenGallery = onOpenGallery
+      self.onReloadEnvironment = onReloadEnvironment
       self.onDismiss = onDismiss
+      let currentConfig = liveConfiguration ?? RootView.resolvedDebugConfiguration()
+      self._useScriptedMode = State(initialValue: world != nil)
+      self._apiBaseText = State(initialValue: currentConfig.apiBaseURL.absoluteString)
+      self._webBaseText = State(initialValue: currentConfig.webBaseURL.absoluteString)
+      let trimmedWeb = currentConfig.webBaseURL.absoluteString.trimmingCharacters(
+        in: CharacterSet(charactersIn: "/"))
+      self._linkURLText = State(initialValue: "\(trimmedWeb)/join/")
+    }
+
+    private var previewOriginText: String {
+      guard let apiURL = RootView.parseOptionalHTTPURL(apiBaseText) else {
+        return "Invalid URL"
+      }
+      let dummyWeb =
+        RootView.parseOptionalHTTPURL(webBaseText)
+        ?? RootView.resolvedDebugConfiguration().webBaseURL
+      return APIConfiguration(
+        apiBaseURL: apiURL,
+        webBaseURL: dummyWeb,
+        appVersion: "1.0.0",
+        deviceName: "iPhone"
+      )
+      .serverOriginURL.absoluteString
     }
 
     var body: some View {
       NavigationStack {
         Form {
-          if let liveConfiguration {
-            Section("Live API") {
-              LabeledContent("API Base", value: liveConfiguration.apiBaseURL.absoluteString)
-              LabeledContent("Origin", value: liveConfiguration.serverOriginURL.absoluteString)
-              LabeledContent("Web Base", value: liveConfiguration.webBaseURL.absoluteString)
-              LabeledContent("Version", value: liveConfiguration.appVersion)
+          Section("Mode") {
+            Picker("Environment", selection: $useScriptedMode) {
+              Text("Live API").tag(false)
+              Text("Scripted (FakeWorld)").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: useScriptedMode) { _, nextValue in
+              let isCurrentlyScripted = (world != nil)
+              guard nextValue != isCurrentlyScripted else { return }
+              DebugOverrides.useScripted = nextValue
+              onReloadEnvironment()
+            }
+          }
+
+          Section("Live API & LAN") {
+            VStack(alignment: .leading, spacing: 4) {
+              Text("API Base")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              TextField("http://192.168.1.x:4000/api/v1", text: $apiBaseText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+            }
+
+            LabeledContent("Origin", value: previewOriginText)
+
+            VStack(alignment: .leading, spacing: 4) {
+              Text("Web Base")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              TextField("http://192.168.1.x:3000", text: $webBaseText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+            }
+
+            LabeledContent(
+              "Version",
+              value: liveConfiguration?.appVersion
+                ?? RootView.resolvedDebugConfiguration().appVersion
+            )
+
+            Button("Apply LAN URLs & Switch to Live API") {
+              guard let parsedAPI = RootView.parseOptionalHTTPURL(apiBaseText),
+                let parsedWeb = RootView.parseOptionalHTTPURL(webBaseText)
+              else {
+                configStatusMessage = "URL không hợp lệ (cần http:// hoặc https:// kèm host)."
+                return
+              }
+              configStatusMessage = nil
+              DebugOverrides.apiBaseURL = parsedAPI.absoluteString
+              DebugOverrides.webBaseURL = parsedWeb.absoluteString
+              DebugOverrides.useScripted = false
+              onReloadEnvironment()
+            }
+
+            Button("Reset to Defaults") {
+              configStatusMessage = nil
+              DebugOverrides.resetURLs()
+              let defaults = RootView.bundleConfiguration()
+              apiBaseText = defaults.apiBaseURL.absoluteString
+              webBaseText = defaults.webBaseURL.absoluteString
+              if !useScriptedMode {
+                onReloadEnvironment()
+              }
+            }
+
+            if let configStatusMessage {
+              Text(configStatusMessage)
+                .font(.caption)
+                .foregroundStyle(.red)
+            }
+
+            if liveConfiguration != nil {
               Button("Sign Out", role: .destructive) {
                 Task {
                   await sessionModel.signOut()
@@ -110,7 +209,9 @@
                 }
               }
             }
+          }
 
+          if liveConfiguration != nil {
             Section("Push Registration & Routing") {
               TextField("Debug Push Token", text: $debugPushToken)
                 .textInputAutocapitalization(.never)

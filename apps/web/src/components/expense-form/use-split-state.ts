@@ -331,6 +331,79 @@ export function useSplitState(
 		setValue: (id: string, value: string) => {
 			setValues((current) => ({ ...current, [id]: value }));
 		},
+		pumpMember: (id: string) => {
+			if (method === "shares") {
+				const member = members.find((m) => m.id === id);
+				const currentStr = values[id] ?? member?.defaultWeight ?? "1";
+				const currentVal = parseInt(currentStr, 10);
+				const nextVal =
+					Number.isSafeInteger(currentVal) && currentVal >= 1
+						? currentVal + 1
+						: 1;
+				setValues((current) => ({ ...current, [id]: String(nextVal) }));
+			} else if (method === "exact") {
+				const currentStr = values[id] ?? "";
+				const currentVal = parseAmountInput(currentStr) ?? 0;
+				const step = amount < 100_000 ? 1_000 : 10_000;
+				const nextVal = Math.min(amount, currentVal + step);
+				setValues((current) => ({ ...current, [id]: String(nextVal) }));
+			} else if (method === "percent") {
+				const currentStr = values[id] ?? "";
+				const currentHundredths = hundredths(currentStr) ?? 0;
+				if (currentHundredths >= 10000) return;
+				const step = Math.min(500, 10000 - currentHundredths);
+				const otherMembers = selected.filter((m) => m.id !== id);
+				setValues((current) => {
+					const positiveOthers = otherMembers.filter(
+						(m) => (hundredths(current[m.id] ?? "") ?? 0) > 0,
+					);
+					const otherTotalHundredths = positiveOthers.reduce(
+						(sum, m) => sum + (hundredths(current[m.id] ?? "") ?? 0),
+						0,
+					);
+					if (otherTotalHundredths <= 0 || positiveOthers.length === 0) {
+						return current;
+					}
+					const actualStep = Math.min(step, otherTotalHundredths);
+					const next = { ...current };
+					let remainingToDeduct = actualStep;
+
+					for (let i = 0; i < positiveOthers.length; i++) {
+						const m = positiveOthers[i];
+						if (!m) continue;
+						const mHundredths = hundredths(current[m.id] ?? "") ?? 0;
+						const isLast = i === positiveOthers.length - 1;
+						const targetDeduct = isLast
+							? remainingToDeduct
+							: Math.round((mHundredths / otherTotalHundredths) * actualStep);
+						const deduct = Math.min(
+							mHundredths,
+							remainingToDeduct,
+							targetDeduct,
+						);
+						const nextM = Math.max(0, mHundredths - deduct);
+						next[m.id] = percentText(nextM);
+						remainingToDeduct -= deduct;
+					}
+
+					if (remainingToDeduct > 0) {
+						for (const m of positiveOthers) {
+							const curM = hundredths(next[m.id] ?? "") ?? 0;
+							if (curM <= 0) continue;
+							const extra = Math.min(curM, remainingToDeduct);
+							next[m.id] = percentText(curM - extra);
+							remainingToDeduct -= extra;
+							if (remainingToDeduct <= 0) break;
+						}
+					}
+
+					const finalAdded = actualStep - remainingToDeduct;
+					if (finalAdded <= 0) return current;
+					next[id] = percentText(currentHundredths + finalAdded);
+					return next;
+				});
+			}
+		},
 		toggle: (id: string) => {
 			setIds((current) =>
 				current.includes(id)

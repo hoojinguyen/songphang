@@ -40,7 +40,7 @@ export function OfflineBanner() {
 	return (
 		<aside
 			role="status"
-			className="mx-auto flex max-w-[390px] items-center gap-3 rounded-[22px] bg-ink px-4 py-3 text-[13px] font-bold text-white"
+			className="mx-auto flex max-w-[390px] items-center gap-3 rounded-[22px] bg-ink px-4 py-3 text-[13px] font-bold text-on-ink"
 		>
 			<Icon name="wifi-off" size={22} />
 			<div>

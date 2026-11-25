@@ -40,17 +40,17 @@ export function LedgerPill({
 			<MemberShape {...from} size={18} />
 			<span>{text}</span>
 			{approvalStatus === "pending" && (
-				<span className="rounded-[10px] bg-accent px-2 py-0.5 text-[11px] font-bold text-ink">
+				<span className="rounded-[10px] bg-accent px-2 py-0.5 text-[11px] font-bold text-on-accent">
 					{vi.approval.pendingTag}
 				</span>
 			)}
 			{approvalStatus === "rejected" && (
-				<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
+				<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-on-accent">
 					{vi.approval.rejectedTag}
 				</span>
 			)}
 			{transaction.dispute !== null && (
-				<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-ink">
+				<span className="rounded-[10px] bg-coral px-2 py-0.5 text-[11px] font-bold text-on-accent">
 					{vi.transactionView.disputeTag}
 				</span>
 			)}

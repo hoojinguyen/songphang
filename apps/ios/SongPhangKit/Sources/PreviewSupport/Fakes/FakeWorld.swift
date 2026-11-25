@@ -52,7 +52,7 @@
     ]
 
     internal var groupsById: [ExpenseGroup.ID: ExpenseGroup] = [:]
-    private var groupOrder: [ExpenseGroup.ID] = []
+    internal var groupOrder: [ExpenseGroup.ID] = []
     internal var membersByGroup: [ExpenseGroup.ID: [Member]] = [:]
     private var usersByGroup: [ExpenseGroup.ID: [GroupUser]] = [:]
     private var invitesByGroup: [ExpenseGroup.ID: Invite] = [:]
@@ -66,6 +66,7 @@
     internal var attachmentDataById: [Attachment.ID: Data] = [:]
     internal var scansById: [ReceiptScan.ID: ReceiptScan] = [:]
     internal var seenIdempotencyKeys: Set<IdempotencyKey> = []
+    internal var clonedGroupsByKey: [IdempotencyKey: ExpenseGroup] = [:]
     internal var deletedTransactionsByGroup:
       [ExpenseGroup.ID: [LedgerTransaction.ID: LedgerTransaction]] = [:]
     internal var deletedPrevBalancesByGroup:
@@ -210,6 +211,7 @@
       self.activityByGroup = next.activityByGroup
       self.categoriesByGroup = next.categoriesByGroup
       self.seenIdempotencyKeys.removeAll()
+      self.clonedGroupsByKey.removeAll()
       self.budgetsByGroup.removeAll()
       self.deletedTransactionsByGroup.removeAll()
       self.deletedPrevBalancesByGroup.removeAll()

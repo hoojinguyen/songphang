@@ -15,6 +15,7 @@ import {
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 
 export function budgetRangeFor(period: "month" | "total", now: Date) {
 	if (period === "total") {
@@ -59,8 +60,9 @@ export async function putBudget(
 ) {
 	const now = deps.now();
 	const response = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, { ...input, minimumRole: "owner" });
+		assertGroupRowNotArchived(lockedGroup);
 		const before = await findBudget(executor, input.groupId);
 		await upsertBudget(executor, {
 			groupId: input.groupId,
@@ -92,8 +94,9 @@ export async function removeBudget(
 ) {
 	const now = deps.now();
 	await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, { ...input, minimumRole: "owner" });
+		assertGroupRowNotArchived(lockedGroup);
 		const before = await findBudget(executor, input.groupId);
 		if (before === null) return;
 		await deleteBudget(executor, input.groupId);

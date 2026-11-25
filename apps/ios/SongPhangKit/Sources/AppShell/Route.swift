@@ -31,6 +31,7 @@ public enum Route: Hashable, Sendable {
     initialAmount: Money
   )
   case notifications
+  case personalLedger
   #if DEBUG
     case debugGallery
   #endif

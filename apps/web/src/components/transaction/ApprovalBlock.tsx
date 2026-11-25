@@ -39,7 +39,7 @@ export function ApprovalBlock({
 
 	if (approval.status === "rejected") {
 		return (
-			<section className="grid gap-2 rounded-[28px] bg-coral p-4 text-ink">
+			<section className="grid gap-2 rounded-[28px] bg-coral p-4 text-on-accent">
 				<p className="text-sm font-extrabold">
 					{t(vi.approval.rejectedTitle, { owner: ownerName })}
 				</p>
@@ -57,7 +57,7 @@ export function ApprovalBlock({
 
 	return (
 		<>
-			<section className="grid gap-3 rounded-[28px] bg-accent p-4 text-ink">
+			<section className="grid gap-3 rounded-[28px] bg-accent p-4 text-on-accent">
 				<p className="text-sm font-extrabold">
 					{t(vi.approval.pendingBanner, { owner: ownerName })}
 				</p>

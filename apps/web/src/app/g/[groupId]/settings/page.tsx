@@ -3,6 +3,8 @@ import type { GroupDto } from "@songphang/contract";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { ArchiveGroupDialog } from "../../../../components/groups/ArchiveGroupDialog";
+import { CloneGroupDialog } from "../../../../components/groups/CloneGroupDialog";
 import { ApprovalCard } from "../../../../components/settings/ApprovalCard";
 import { BudgetCard } from "../../../../components/settings/BudgetCard";
 import { CategoryList } from "../../../../components/settings/CategoryList";
@@ -16,7 +18,12 @@ import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { SegmentedControl } from "../../../../components/ui/SegmentedControl";
 import { Switch } from "../../../../components/ui/Switch";
 import { VerifyEmailBanner } from "../../../../components/ui/VerifyEmailBanner";
-import { useGroup, useUpdateGroup } from "../../../../lib/groups";
+import {
+	useArchiveGroup,
+	useGroup,
+	useUnarchiveGroup,
+	useUpdateGroup,
+} from "../../../../lib/groups";
 import { useMe } from "../../../../lib/session";
 import { useSessionGuard } from "../../../../lib/use-session-guard";
 import { vi } from "../../../../messages/vi";
@@ -24,11 +31,28 @@ import { vi } from "../../../../messages/vi";
 function SettingsForm({ group }: { group: GroupDto }) {
 	const [name, setName] = useState(group.name);
 	const [minimizeDebts, setMinimizeDebts] = useState(group.minimizeDebts);
+	const [archiveOpen, setArchiveOpen] = useState(false);
+	const [cloneOpen, setCloneOpen] = useState(false);
+	const [lastAction, setLastAction] = useState<
+		"update" | "archive" | "unarchive" | null
+	>(null);
 	const update = useUpdateGroup(group.id);
-	useSessionGuard(update.error);
+	const archiveMutation = useArchiveGroup(group.id);
+	const unarchiveMutation = useUnarchiveGroup(group.id);
+	const actionError =
+		lastAction === "archive"
+			? archiveMutation.error
+			: lastAction === "unarchive"
+				? unarchiveMutation.error
+				: lastAction === "update"
+					? update.error
+					: null;
+	const isArchived = group.archivedAt !== null;
+	useSessionGuard(actionError);
 	const changeMode = (checked: boolean) => {
 		const previous = minimizeDebts;
 		setMinimizeDebts(checked);
+		setLastAction("update");
 		update.mutate(
 			{ minimizeDebts: checked },
 			{ onError: () => setMinimizeDebts(previous) },
@@ -36,21 +60,36 @@ function SettingsForm({ group }: { group: GroupDto }) {
 	};
 	return (
 		<>
+			{isArchived && (
+				<div
+					role="status"
+					className="rounded-[22px] bg-sunken px-4 py-3 text-sm font-bold text-ink"
+				>
+					{vi.groups.archivedBanner}
+				</div>
+			)}
 			<label className="grid gap-2 text-[13px] font-semibold text-muted">
 				{vi.settings.nameLabel}
 				<input
 					value={name}
 					maxLength={80}
+					disabled={isArchived || update.isPending}
 					onChange={(event) => setName(event.target.value)}
-					className="h-16 min-w-0 w-full rounded-[26px] bg-surface px-5 text-[22px] font-black text-ink"
+					className="h-16 min-w-0 w-full rounded-[26px] bg-surface px-5 text-[22px] font-black text-ink disabled:opacity-60"
 				/>
 			</label>
 			<Button
 				variant="primary"
 				disabled={
-					update.isPending || !name.trim() || name.trim() === group.name
+					isArchived ||
+					update.isPending ||
+					!name.trim() ||
+					name.trim() === group.name
 				}
-				onClick={() => update.mutate({ name: name.trim() })}
+				onClick={() => {
+					setLastAction("update");
+					update.mutate({ name: name.trim() });
+				}}
 			>
 				{vi.settings.saveName}
 			</Button>
@@ -65,7 +104,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					checked={minimizeDebts}
 					onChange={changeMode}
 					label={vi.settings.minimizeTitle}
-					disabled={update.isPending}
+					disabled={isArchived || update.isPending}
 				/>
 			</section>
 			<section className="grid gap-3 rounded-[28px] bg-surface p-5">
@@ -78,10 +117,12 @@ function SettingsForm({ group }: { group: GroupDto }) {
 						{ value: "editor", label: vi.members.roleEditor },
 						{ value: "viewer", label: vi.members.roleViewer },
 					]}
-					disabled={update.isPending}
+					disabled={isArchived || update.isPending}
 					onChange={(defaultRole) => {
-						if (defaultRole === "editor" || defaultRole === "viewer")
+						if (defaultRole === "editor" || defaultRole === "viewer") {
+							setLastAction("update");
 							update.mutate({ defaultRole });
+						}
 					}}
 				/>
 			</section>
@@ -100,7 +141,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 						{ value: "7", label: vi.reminders.interval7 },
 						{ value: "14", label: vi.reminders.interval14 },
 					]}
-					disabled={update.isPending}
+					disabled={isArchived || update.isPending}
 					onChange={(value) => {
 						const reminderIntervalDays =
 							value === "3"
@@ -110,22 +151,82 @@ function SettingsForm({ group }: { group: GroupDto }) {
 									: value === "14"
 										? 14
 										: null;
+						setLastAction("update");
 						update.mutate({ reminderIntervalDays });
 					}}
 				/>
 			</section>
-			<ApprovalCard group={group} />
-			<BudgetCard groupId={group.id} />
-			<CategoryList groupId={group.id} />
-			<InviteLinkCard groupId={group.id} />
-			<TelegramCard groupId={group.id} />
-			<TransferOwnershipCard groupId={group.id} />
+			<ApprovalCard group={group} disabled={isArchived} />
+			<BudgetCard groupId={group.id} disabled={isArchived} />
+			<CategoryList groupId={group.id} disabled={isArchived} />
+			<InviteLinkCard groupId={group.id} disabled={isArchived} />
+			<TelegramCard groupId={group.id} disabled={isArchived} />
+			<TransferOwnershipCard groupId={group.id} disabled={isArchived} />
+			<section className="flex items-center justify-between gap-4 rounded-[28px] bg-surface p-5">
+				<div>
+					<h2 className="text-[15px] font-extrabold">{vi.clone.title}</h2>
+				</div>
+				<Button variant="surface" onClick={() => setCloneOpen(true)}>
+					{vi.clone.title}
+				</Button>
+			</section>
+			{group.archivedAt ? (
+				<section className="flex items-center justify-between gap-4 rounded-[28px] bg-surface p-5">
+					<div>
+						<h2 className="text-[15px] font-extrabold">
+							{vi.groups.unarchiveAction}
+						</h2>
+					</div>
+					<Button
+						variant="primary"
+						disabled={unarchiveMutation.isPending}
+						onClick={() => {
+							setLastAction("unarchive");
+							unarchiveMutation.mutate();
+						}}
+					>
+						{vi.groups.unarchiveAction}
+					</Button>
+				</section>
+			) : (
+				<section className="flex items-center justify-between gap-4 rounded-[28px] bg-surface p-5">
+					<div>
+						<h2 className="text-[15px] font-extrabold">
+							{vi.groups.archiveAction}
+						</h2>
+					</div>
+					<Button variant="surface" onClick={() => setArchiveOpen(true)}>
+						{vi.groups.archiveAction}
+					</Button>
+				</section>
+			)}
+			<ArchiveGroupDialog
+				open={archiveOpen}
+				groupName={group.name}
+				isPending={archiveMutation.isPending}
+				onConfirm={() => {
+					setLastAction("archive");
+					archiveMutation.mutate(undefined, {
+						onSuccess: () => setArchiveOpen(false),
+						onError: () => setArchiveOpen(false),
+					});
+				}}
+				onCancel={() => setArchiveOpen(false)}
+			/>
+			<CloneGroupDialog
+				open={cloneOpen}
+				groupId={group.id}
+				groupName={group.name}
+				onClose={() => setCloneOpen(false)}
+			/>
 			<DeleteGroupCard group={group} />
-			{update.isError && (
-				<p role="alert">
-					{update.error.status === 403
+			{actionError && (
+				<p role="alert" className="text-sm font-bold text-debt">
+					{actionError.status === 403
 						? vi.common.forbidden
-						: vi.common.saveError}
+						: actionError.status === 409
+							? vi.groups.archivedReadOnlyError
+							: vi.common.saveError}
 				</p>
 			)}
 		</>

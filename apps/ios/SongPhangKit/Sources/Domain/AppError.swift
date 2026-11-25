@@ -3,6 +3,7 @@ public enum AppError: Error, Sendable, Equatable {
   case unauthorized
   case upgradeRequired
   case conflict
+  case groupArchived
   case rateLimited
   case reminderTooSoon(nextAt: String)
   case api(code: String, status: Int)

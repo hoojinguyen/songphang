@@ -46,7 +46,7 @@ public struct MemberShapeView: View {
       if showInitial && size >= 44, let firstLetter = initialLetter {
         Text(firstLetter)
           .font(.system(size: size * 0.36, weight: .black))
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
           .accessibilityHidden(true)
       }
     }

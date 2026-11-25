@@ -26,6 +26,7 @@ import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import type { EnqueueFn } from "../queue.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify } from "./notify.js";
 
 const CURSOR_SCHEMA = z.object({ createdAt: z.iso.datetime(), id: z.uuid() });
@@ -126,12 +127,13 @@ export async function createComment(
 		pushEnabled?: boolean;
 	},
 ): Promise<CommentResponse> {
-	await lockGroup(executor, input.groupId);
+	const lockedGroup = await lockGroup(executor, input.groupId);
 	await getGroupAccess(executor, {
 		groupId: input.groupId,
 		userId: input.user.id,
 		minimumRole: "viewer",
 	});
+	assertGroupRowNotArchived(lockedGroup);
 	const transaction = await assertTransactionInGroup(
 		executor,
 		input.groupId,
@@ -194,12 +196,13 @@ export async function deleteComment(
 	if (!z.uuid().safeParse(input.commentId).success)
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		const access = await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.userId,
 			minimumRole: "viewer",
 		});
+		assertGroupRowNotArchived(lockedGroup);
 		await assertTransactionInGroup(
 			executor,
 			input.groupId,

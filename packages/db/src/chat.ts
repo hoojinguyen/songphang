@@ -114,6 +114,7 @@ export function findChatLinkByChat(
 			id: chatLinks.id,
 			groupId: chatLinks.groupId,
 			groupName: groups.name,
+			groupArchivedAt: groups.archivedAt,
 			platform: chatLinks.platform,
 			chatId: chatLinks.chatId,
 			createdAt: chatLinks.createdAt,

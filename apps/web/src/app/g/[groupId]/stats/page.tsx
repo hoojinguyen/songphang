@@ -7,13 +7,13 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { GroupNavHeader } from "../../../../components/layout/GroupNavHeader";
 import {
 	PeriodChips,
 	type StatsPeriod,
 } from "../../../../components/stats/PeriodChips";
 import { StatsContent } from "../../../../components/stats/StatsContent";
 import { LoadError } from "../../../../components/ui/LoadError";
-import { ScreenHeader } from "../../../../components/ui/ScreenHeader";
 import { useBudget } from "../../../../lib/budget";
 import { useCategories } from "../../../../lib/categories";
 import { useGroup } from "../../../../lib/groups";
@@ -114,13 +114,8 @@ export default function StatsPage() {
 		);
 
 	return (
-		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 py-6">
-			<ScreenHeader
-				title={vi.stats.title}
-				subtitle={group.data.name}
-				backHref={`/g/${encodeURIComponent(groupId)}`}
-				backLabel={vi.common.back}
-			/>
+		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 pb-24 pt-6">
+			<GroupNavHeader groupId={groupId} />
 			<PeriodChips
 				period={period}
 				from={customFrom}

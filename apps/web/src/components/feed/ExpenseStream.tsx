@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { dayLabel, type useTransactions } from "../../lib/transactions";
 import { t, vi } from "../../messages/vi";
+import { useDesktopInspector } from "../layout/DesktopInspectorContext";
 import { LoadError } from "../ui/LoadError";
 import { ExpenseRow } from "./ExpenseRow";
 import { LedgerPill } from "./LedgerPill";
@@ -122,6 +123,8 @@ export function ExpenseStream({
 								)}
 								<FeedLink
 									newest={transaction.id === newest}
+									groupId={groupId}
+									transactionId={transaction.id}
 									href={`/g/${groupId}/tx/${transaction.id}/view`}
 									enabled={true}
 									label={t(vi.feed.viewRow, {
@@ -163,20 +166,52 @@ export function ExpenseStream({
 
 function FeedLink({
 	href,
+	groupId,
+	transactionId,
 	enabled,
 	newest,
 	label,
 	children,
 }: {
 	href: string;
+	groupId: string;
+	transactionId: string;
 	enabled: boolean;
 	newest: boolean;
 	label: string;
 	children: import("react").ReactNode;
 }) {
-	const content = <div className={newest ? "row-enter" : ""}>{children}</div>;
+	const { selectedTx, selectTx } = useDesktopInspector();
+	const isSelected =
+		selectedTx?.groupId === groupId &&
+		selectedTx.transactionId === transactionId;
+	const content = (
+		<div
+			className={`${newest ? "row-enter" : ""} ${isSelected ? "rounded-[24px] ring-2 ring-ink" : ""}`}
+		>
+			{children}
+		</div>
+	);
 	return enabled ? (
-		<Link href={href} aria-label={label}>
+		<Link
+			href={href}
+			aria-label={label}
+			onClick={(event) => {
+				if (
+					event.metaKey ||
+					event.ctrlKey ||
+					event.shiftKey ||
+					event.altKey ||
+					event.button !== 0
+				) {
+					return;
+				}
+				if (window.matchMedia("(min-width: 1280px)").matches) {
+					event.preventDefault();
+					selectTx(groupId, transactionId);
+				}
+			}}
+		>
 			{content}
 		</Link>
 	) : (

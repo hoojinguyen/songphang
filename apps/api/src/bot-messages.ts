@@ -11,6 +11,7 @@ export const BOT_MESSAGES = {
 	linkAccountButton: "Liên kết tài khoản",
 	notInGroup: (group: string) => `Bạn chưa ở trong sổ "${group}".`,
 	viewerCannotAdd: "Bạn chỉ có quyền xem sổ này.",
+	groupArchived: "Sổ này đã lưu trữ — chỉ xem.",
 	chiEmpty: "Gõ khoản chi sau /chi, ví dụ: /chi lẩu 600k chia 4",
 	notUnderstood: (issueText: string) =>
 		`Mình chưa đọc được câu này: ${issueText}.`,

@@ -294,3 +294,23 @@ Real member/user/group IDs and email never leave the server. Every request uses 
 The cost ceiling counts reserved provider attempts, including retry and uncertain outcomes. One group-locked transaction creates the unique scan, admission reservation and durable job. The worker atomically claims the existing reservation; redelivery cannot cause a second unreserved call. Receipts allow one separately reserved retry; sentences have an eight-second overall deadline and no retry. Claim/recovery metadata prevents indefinite processing. Database transaction integration for the installed stable pg-boss version must be demonstrated before scan implementation; otherwise an advisor outbox amendment is required. See Phase 3 spec section 15.3.
 
 Hand-writing a queue, accepting model-computed money and sending persistent database IDs were rejected. pg-boss is the only approved new external library; version/license/size are recorded at installation, not guessed during preparation. Shared storage/AI workspace packages contain reused code and are not external libraries.
+
+## ADR-034 — UI/UX v2 navigation shell, 3-segment group detail, full-width feed cards, and Web Desktop layout
+
+**Status:** approved by the project owner on 2026-11-24 with the Phase 5.5 overview and Wave 5.5A specs; implementation pending on `phase-5-5a`.
+
+**Context.** Physical iPhone acceptance during Phase 5 (`TD-006`) demonstrated that single-stream chat-bubble cards and inline per-person split chips wrap amounts across lines on 7+ member splits and overcrowd `S4` as Phases 2–4 features accumulated. Waves 5.5A–C also introduce cross-group overview, personal ledger, settlement history/cycles, and recurring bills.
+
+**Decision.** Adopt a 4-tab app shell (`Tổng quan`, `Nhóm`, `Thông báo`, `Tài khoản`), a 3-segment group detail shell (`Chi tiêu`, `Thanh toán`, `Quỹ & Thống kê`), 3-row full-width transaction cards displaying server-computed `myDelta` instead of indented chat bubbles and inline share chips, and a 2–3 column responsive Web Desktop layout (`>= 1024px` / `>= 1280px`). On iOS, place Cross-Group Overview and Personal Ledger in a new `OverviewFeature` module (`Domain`, `DesignSystem`, `PreviewSupport` only) and host the 3-segment group container (`GroupContainerView`) in `AppShell` so feature modules never import one another (`apps/ios/AGENTS.md` §3). Preserve all existing Web deep routes and additive-only `/api/v1` contract compatibility.
+
+**Considered.** Keeping a single feed screen with nested sheets (worsens discoverability and horizontal density); letting `LedgerFeature` import `PaymentsFeature` and `StatisticsFeature` (violates compiler-enforced module boundaries).
+
+## ADR-035 — Per-device Light/Dark theme persistence, semantic tokens, and bundled Be Vietnam Pro .ttf on iOS
+
+**Status:** approved by the project owner on 2026-11-24; implementation pending on `phase-5-5a`.
+
+**Context.** Physical iPhone screenshots (`TD-004`, missing `.ttf` fonts in Phase 5) showed default SwiftUI placeholders have poor contrast on white fields, and iOS fell back to system fonts because `apps/web/public/fonts/be-vietnam-pro/` ships `.woff2` files only.
+
+**Decision.** Define WCAG-verified Light and Dark semantic color tokens across `apps/web/src/app/globals.css` and `apps/ios/SongPhangKit/Sources/DesignSystem/Tokens/Tokens.swift` (including explicit `placeholder`, `credit`, `debt`, `warning`, `surfaceElevated`, and `borderSubtle`). Persist appearance mode (`system` | `light` | `dark`) per device only (`@AppStorage("appearanceMode")` on iOS; `localStorage` plus a static synchronous `/theme-init.js` script setting `data-theme` on `<html>` on Web — never `dangerouslySetInnerHTML`, respecting `AGENTS.md` §9). Bundle static `Be Vietnam Pro` `.ttf` weights (`400`–`900`, SIL OFL 1.1) in `apps/ios/SongPhangKit/Sources/DesignSystem/Resources/Fonts/` and register them via `CTFontManagerRegisterFontsForURL` with Dynamic Type scaling and tabular digits (`monospacedDigit()` / `tabular-nums`).
+
+**Considered.** Storing theme preference in PostgreSQL `users` (unnecessary migration and cross-device surprise); keeping iOS on the system font (diverges from Sòng Phẳng's typography identity); inline `dangerouslySetInnerHTML` boot script (violates `AGENTS.md` §9).

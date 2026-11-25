@@ -24,6 +24,7 @@ import { uuidv7 } from "uuidv7";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
+import { assertGroupRowNotArchived } from "./group-guards.js";
 
 const GROUP_QUOTA_BYTES = 209_715_200; // 200 MiB
 
@@ -77,12 +78,13 @@ export async function uploadAttachment(
 	const createdAt = deps.now();
 
 	const row = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.userId,
 			minimumRole: "editor",
 		});
+		assertGroupRowNotArchived(lockedGroup);
 		const used = await sumGroupAttachmentBytes(executor, input.groupId);
 		if (used + input.bytes.byteLength > GROUP_QUOTA_BYTES) {
 			throw new AppError(
@@ -145,12 +147,13 @@ export async function deleteAttachment(
 		throw new AppError(404, "NOT_FOUND", "Resource not found");
 	}
 	const row = await deps.db.transaction(async (executor) => {
-		await lockGroup(executor, input.groupId);
+		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.userId,
 			minimumRole: "editor",
 		});
+		assertGroupRowNotArchived(lockedGroup);
 		const existing = await findAttachment(
 			executor,
 			input.groupId,

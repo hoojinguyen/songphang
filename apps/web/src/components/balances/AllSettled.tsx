@@ -16,7 +16,7 @@ export function AllSettled({
 }) {
 	return (
 		<>
-			<div className="rounded-[40px] bg-accent p-6">
+			<div className="rounded-[40px] bg-accent p-6 text-on-accent">
 				<h2 className="text-[48px] font-black leading-tight">
 					{vi.balances.allSettledTitle}
 				</h2>

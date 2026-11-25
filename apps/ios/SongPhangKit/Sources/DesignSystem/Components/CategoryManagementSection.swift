@@ -63,6 +63,8 @@ public struct CategoryManagementSection: View {
           text: $newName,
           maxLength: 30
         )
+        .disabled(isDisabled || isBusy)
+        .opacity((isDisabled || isBusy) ? 0.6 : 1)
 
         CategoryColorSwatchesView(
           selected: $newColor,
@@ -278,6 +280,7 @@ private struct CategoryRowItemView: View {
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
         .accessibilityLabel(L10n.t("categories.edit", ["name": category.name]))
 
         Button(L10n.tr("categories.archive")) {

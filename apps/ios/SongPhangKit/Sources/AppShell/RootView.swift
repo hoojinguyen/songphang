@@ -3,6 +3,8 @@ import AuthFeature
 import DesignSystem
 import Domain
 import GroupsFeature
+import NotificationsFeature
+import OverviewFeature
 public import Repositories
 public import SwiftUI
 import UIKit
@@ -27,13 +29,28 @@ import UIKit
 #endif
 
 public struct RootView: View {
+  public enum Tab: String, Hashable, Sendable {
+    case overview
+    case groups
+    case notifications
+    case account
+  }
+
   private let dependencies: AppDependencies
   @Environment(\.scenePhase) private var scenePhase
   @State private var sessionModel: SessionModel
   @State private var groupListModel: GroupListModel
+  @State private var overviewModel: OverviewModel
+  @State private var notificationsModel: NotificationsModel
+  @State private var accountModel: AccountModel
   @State private var signInModel: SignInModel
   @State private var pushCoordinator: PushCoordinator
+  @State private var selectedTab: Tab = .overview
   @State private var path: [Route] = []
+  @State private var overviewPath: [Route] = []
+  @State private var groupsPath: [Route] = []
+  @State private var notificationsPath: [Route] = []
+  @State private var accountPath: [Route] = []
   @State private var pendingInviteState = PendingInviteState()
   @State private var pendingPushTap: PushTapPayload?
   @State private var statusNotice: String?
@@ -42,15 +59,18 @@ public struct RootView: View {
     @State private var isShowingDebugPanel = false
   #endif
   @State private var hasCompletedInitialAppear = false
+  @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system
+    .rawValue
 
   private var linkRouter: LinkRouter {
     LinkRouter(webBaseURL: dependencies.webBaseURL)
   }
 
   public init(dependencies: AppDependencies? = nil, configuration: APIConfiguration? = nil) {
+    Typography.registerFontsIfAvailable()
     #if DEBUG
       let args = ProcessInfo.processInfo.arguments
-      let useScripted =
+      let hasScriptedArg =
         args.contains("--scripted")
         || args.contains("--scenario-empty")
         || args.contains("--scenario-trip0")
@@ -74,6 +94,7 @@ public struct RootView: View {
         || args.contains("--enter-step4")
         || args.contains("--emit-changed")
         || args.contains("--emit-removed")
+      let useScripted = hasScriptedArg || DebugOverrides.useScripted
 
       let resolved: AppDependencies
       let initialSessionState: SessionModel.State
@@ -113,11 +134,16 @@ public struct RootView: View {
           behavior.failure = .rateLimited
         }
 
+        let debugConfig = configuration ?? Self.resolvedDebugConfiguration()
         let world = FakeWorld(preset: preset, behavior: behavior, signedIn: signedIn)
-        resolved = .scripted(world: world)
+        resolved = .scripted(
+          world: world,
+          webBaseURL: debugConfig.webBaseURL,
+          appVersion: debugConfig.appVersion
+        )
         initialSessionState = signedIn ? .signedIn(PreviewSamples.user) : .signedOut
       } else {
-        let liveConfig = configuration ?? Self.bundleConfiguration()
+        let liveConfig = configuration ?? Self.resolvedDebugConfiguration()
         resolved = .live(configuration: liveConfig)
         initialSessionState = .loading
       }
@@ -133,6 +159,28 @@ public struct RootView: View {
       )
       self._groupListModel = State(
         initialValue: GroupListModel(repository: resolved.groups)
+      )
+      self._overviewModel = State(
+        initialValue: OverviewModel(repository: resolved.overview)
+      )
+      self._notificationsModel = State(
+        initialValue: NotificationsModel(
+          repository: resolved.notifications,
+          onUnauthorized: {
+            Task { await session.signOut() }
+          }
+        )
+      )
+      self._accountModel = State(
+        initialValue: AccountModel(
+          repository: resolved.auth,
+          devicesRepository: resolved.devices,
+          notificationsRepository: resolved.notifications,
+          chatLinksRepository: resolved.chatLinks,
+          onSignedOut: {
+            Task { await session.signOut() }
+          }
+        )
       )
       let initialError: AppError?
       if args.contains("--fail-rate-limited") {
@@ -170,6 +218,28 @@ public struct RootView: View {
       self._groupListModel = State(
         initialValue: GroupListModel(repository: resolved.groups)
       )
+      self._overviewModel = State(
+        initialValue: OverviewModel(repository: resolved.overview)
+      )
+      self._notificationsModel = State(
+        initialValue: NotificationsModel(
+          repository: resolved.notifications,
+          onUnauthorized: {
+            Task { await session.signOut() }
+          }
+        )
+      )
+      self._accountModel = State(
+        initialValue: AccountModel(
+          repository: resolved.auth,
+          devicesRepository: resolved.devices,
+          notificationsRepository: resolved.notifications,
+          chatLinksRepository: resolved.chatLinks,
+          onSignedOut: {
+            Task { await session.signOut() }
+          }
+        )
+      )
       self._signInModel = State(
         initialValue: SignInModel(
           repository: resolved.auth,
@@ -181,7 +251,7 @@ public struct RootView: View {
     #endif
   }
 
-  private static func bundleConfiguration() -> APIConfiguration {
+  static func bundleConfiguration() -> APIConfiguration {
     let info = Bundle.main.infoDictionary
     #if DEBUG
       let defaultAPIString = "http://127.0.0.1:4000/api/v1"
@@ -218,6 +288,21 @@ public struct RootView: View {
       appStoreURL: appStoreURL
     )
   }
+
+  #if DEBUG
+    static func resolvedDebugConfiguration() -> APIConfiguration {
+      let base = bundleConfiguration()
+      let apiURL = parseOptionalHTTPURL(DebugOverrides.apiBaseURL) ?? base.apiBaseURL
+      let webURL = parseOptionalHTTPURL(DebugOverrides.webBaseURL) ?? base.webBaseURL
+      return APIConfiguration(
+        apiBaseURL: apiURL,
+        webBaseURL: webURL,
+        appVersion: base.appVersion,
+        deviceName: base.deviceName,
+        appStoreURL: base.appStoreURL
+      )
+    }
+  #endif
 
   public static func parseOptionalHTTPURL(_ rawValue: String?) -> URL? {
     guard let trimmed = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -270,23 +355,31 @@ public struct RootView: View {
         } else if args.contains("--route-forgot") {
           path = [.forgotPassword]
         } else if args.contains("--route-create-group") {
-          path = [.createGroup]
+          selectedTab = .groups
+          groupsPath = [.createGroup]
         } else if args.contains("--route-account") {
-          path = [.account]
+          selectedTab = .account
         } else if args.contains("--route-members") {
-          path = [.groupMembers(groupId: targetGroupId)]
+          selectedTab = .groups
+          groupsPath = [.groupMembers(groupId: targetGroupId)]
         } else if args.contains("--route-settings") {
-          path = [.groupSettings(groupId: targetGroupId)]
+          selectedTab = .groups
+          groupsPath = [.groupSettings(groupId: targetGroupId)]
         } else if args.contains("--route-join") {
-          path = [.joinGroup(token: TripScenario.invite.token)]
+          selectedTab = .groups
+          groupsPath = [.joinGroup(token: TripScenario.invite.token)]
         } else if args.contains("--route-join-invalid") {
-          path = [.joinGroup(token: "invalid-token")]
+          selectedTab = .groups
+          groupsPath = [.joinGroup(token: "invalid-token")]
         } else if args.contains("--route-feed") {
-          path = [.groupFeed(groupId: targetGroupId)]
+          selectedTab = .groups
+          groupsPath = [.groupFeed(groupId: targetGroupId)]
         } else if args.contains("--route-balances") {
-          path = [.groupBalances(groupId: targetGroupId)]
+          selectedTab = .groups
+          groupsPath = [.groupBalances(groupId: targetGroupId)]
         } else if args.contains("--route-activity") {
-          path = [.groupActivity(groupId: targetGroupId)]
+          selectedTab = .groups
+          groupsPath = [.groupActivity(groupId: targetGroupId)]
         } else if args.contains("--route-quick-entry") {
           let sentence: String? = {
             if args.contains("--sentence-1") { return "cà phê 180k chia 4" }
@@ -303,19 +396,24 @@ public struct RootView: View {
             if args.contains("--sentence-10") { return "cà phê 180k chia 9" }
             return nil
           }()
-          path = [.quickEntry(groupId: targetGroupId, initialSentence: sentence)]
+          selectedTab = .groups
+          groupsPath = [.quickEntry(groupId: targetGroupId, initialSentence: sentence)]
         } else if args.contains("--route-new-tx") {
-          path = [.newTransactionForm(groupId: targetGroupId, initialReading: nil)]
+          selectedTab = .groups
+          groupsPath = [.newTransactionForm(groupId: targetGroupId, initialReading: nil)]
         } else if args.contains("--route-edit-t1") {
-          path = [
+          selectedTab = .groups
+          groupsPath = [
             .editTransaction(groupId: targetGroupId, transactionId: TripScenario.t1Transaction.id)
           ]
         } else if args.contains("--route-edit-t4") {
-          path = [
+          selectedTab = .groups
+          groupsPath = [
             .editTransaction(groupId: targetGroupId, transactionId: TripScenario.t4Transaction.id)
           ]
         } else if args.contains("--route-settle") {
-          path = [
+          selectedTab = .groups
+          groupsPath = [
             .settle(
               groupId: targetGroupId,
               fromMemberId: TripScenario.thuId,
@@ -324,7 +422,12 @@ public struct RootView: View {
             )
           ]
         } else if args.contains("--route-notifications") {
-          path = [.notifications]
+          selectedTab = .notifications
+        } else if args.contains("--route-overview") {
+          selectedTab = .overview
+        } else if args.contains("--route-ledger") {
+          selectedTab = .overview
+          overviewPath = [.personalLedger]
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
@@ -343,7 +446,12 @@ public struct RootView: View {
             Task { await handlePushTap(PushTapPayload(groupId: groupId, target: target)) }
           },
           onOpenGallery: {
-            path.append(.debugGallery)
+            selectedTab = .groups
+            groupsPath.append(.debugGallery)
+          },
+          onReloadEnvironment: {
+            isShowingDebugPanel = false
+            DebugOverrides.notifyEnvironmentDidChange()
           },
           onDismiss: {
             isShowingDebugPanel = false
@@ -403,8 +511,29 @@ public struct RootView: View {
         if case .signedIn = oldState {
           pendingInviteState.clear()
           path.removeAll()
+          overviewPath.removeAll()
+          groupsPath.removeAll()
+          notificationsPath.removeAll()
+          accountPath.removeAll()
           statusNotice = nil
+          selectedTab = .overview
+          overviewModel = OverviewModel(repository: dependencies.overview)
           groupListModel = GroupListModel(repository: dependencies.groups)
+          notificationsModel = NotificationsModel(
+            repository: dependencies.notifications,
+            onUnauthorized: {
+              Task { await sessionModel.signOut() }
+            }
+          )
+          accountModel = AccountModel(
+            repository: dependencies.auth,
+            devicesRepository: dependencies.devices,
+            notificationsRepository: dependencies.notifications,
+            chatLinksRepository: dependencies.chatLinks,
+            onSignedOut: {
+              Task { await sessionModel.signOut() }
+            }
+          )
           signInModel = SignInModel(
             repository: dependencies.auth,
             onSignedIn: { user in
@@ -419,9 +548,30 @@ public struct RootView: View {
         if case .signedIn = oldState {
           pushCoordinator.clearSessionState()
           path.removeAll()
+          overviewPath.removeAll()
+          groupsPath.removeAll()
+          notificationsPath.removeAll()
+          accountPath.removeAll()
           statusNotice = nil
+          selectedTab = .overview
         }
+        overviewModel = OverviewModel(repository: dependencies.overview)
         groupListModel = GroupListModel(repository: dependencies.groups)
+        notificationsModel = NotificationsModel(
+          repository: dependencies.notifications,
+          onUnauthorized: {
+            Task { await sessionModel.signOut() }
+          }
+        )
+        accountModel = AccountModel(
+          repository: dependencies.auth,
+          devicesRepository: dependencies.devices,
+          notificationsRepository: dependencies.notifications,
+          chatLinksRepository: dependencies.chatLinks,
+          onSignedOut: {
+            Task { await sessionModel.signOut() }
+          }
+        )
         consumePendingRouteIfSignedIn()
         Task {
           await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
@@ -522,6 +672,7 @@ public struct RootView: View {
         }
       #endif
     }
+    .preferredColorScheme((AppearanceMode(rawValue: appearanceModeRaw) ?? .system).colorScheme)
   }
 
   private var isSignedIn: Bool {
@@ -537,15 +688,35 @@ public struct RootView: View {
     return true
   }
 
+  private func navigate(to route: Route) {
+    statusNotice = nil
+    switch route {
+    case .account:
+      selectedTab = .account
+    case .notifications:
+      selectedTab = .notifications
+    case .personalLedger:
+      selectedTab = .overview
+      overviewPath.append(.personalLedger)
+    default:
+      selectedTab = .groups
+      groupsPath.append(route)
+    }
+  }
+
   private func routeValidated(_ route: Route) {
     if let immediate = pendingInviteState.receiveValidated(route, isSignedIn: isSignedIn) {
-      path.append(immediate)
+      if isSignedIn {
+        navigate(to: immediate)
+      } else {
+        path.append(immediate)
+      }
     }
   }
 
   private func consumePendingRouteIfSignedIn() {
     if let route = pendingInviteState.consumeIfSignedIn(isSignedIn) {
-      path.append(route)
+      navigate(to: route)
     }
   }
 
@@ -566,10 +737,31 @@ public struct RootView: View {
   private func resetToSignedOut() {
     pushCoordinator.clearSessionState()
     path.removeAll()
+    overviewPath.removeAll()
+    groupsPath.removeAll()
+    notificationsPath.removeAll()
+    accountPath.removeAll()
     pendingInviteState.clear()
     pendingPushTap = nil
     statusNotice = nil
+    selectedTab = .overview
+    overviewModel = OverviewModel(repository: dependencies.overview)
     groupListModel = GroupListModel(repository: dependencies.groups)
+    notificationsModel = NotificationsModel(
+      repository: dependencies.notifications,
+      onUnauthorized: {
+        Task { await sessionModel.signOut() }
+      }
+    )
+    accountModel = AccountModel(
+      repository: dependencies.auth,
+      devicesRepository: dependencies.devices,
+      notificationsRepository: dependencies.notifications,
+      chatLinksRepository: dependencies.chatLinks,
+      onSignedOut: {
+        Task { await sessionModel.signOut() }
+      }
+    )
     signInModel = SignInModel(
       repository: dependencies.auth,
       onSignedIn: { user in
@@ -607,7 +799,7 @@ public struct RootView: View {
       )
     else {
       statusNotice = nil
-      path.removeAll()
+      groupsPath.removeAll()
       await groupListModel.load()
       return
     }
@@ -616,7 +808,8 @@ public struct RootView: View {
     switch destination {
     case .notifications:
       statusNotice = nil
-      path = [.notifications]
+      selectedTab = .notifications
+      notificationsPath.removeAll()
       return
     case .groupFeed(let id),
       .groupBalances(let id),
@@ -629,22 +822,26 @@ public struct RootView: View {
     do throws(AppError) {
       _ = try await dependencies.groups.group(id: groupId)
       statusNotice = nil
+      selectedTab = .groups
       switch destination {
       case .notifications:
-        path = [.notifications]
+        selectedTab = .notifications
+        notificationsPath.removeAll()
       case .groupFeed(let id):
-        path = [.groupFeed(groupId: id)]
+        groupsPath = [.groupFeed(groupId: id)]
       case .groupBalances(let id):
-        path = [.groupFeed(groupId: id), .groupBalances(groupId: id)]
+        groupsPath = [.groupFeed(groupId: id), .groupBalances(groupId: id)]
       case .groupStats(let id):
-        path = [.groupFeed(groupId: id), .groupStats(groupId: id)]
+        groupsPath = [.groupFeed(groupId: id), .groupStats(groupId: id)]
       case .groupFund(let id):
-        path = [.groupFeed(groupId: id), .groupFund(groupId: id)]
+        groupsPath = [.groupFeed(groupId: id), .groupFund(groupId: id)]
       case .transactionDetail(let id, let txId):
         if (try? await dependencies.transactions.transaction(groupId: id, id: txId)) != nil {
-          path = [.groupFeed(groupId: id), .transactionDetail(groupId: id, transactionId: txId)]
+          groupsPath = [
+            .groupFeed(groupId: id), .transactionDetail(groupId: id, transactionId: txId),
+          ]
         } else {
-          path = [.groupFeed(groupId: id)]
+          groupsPath = [.groupFeed(groupId: id)]
         }
       }
     } catch {
@@ -652,10 +849,12 @@ public struct RootView: View {
         await sessionModel.signOut()
       } else if case .api(_, let status) = error, status == 404 {
         statusNotice = L10n.tr("common.removed")
-        path.removeAll()
+        groupsPath.removeAll()
+        selectedTab = .groups
         await groupListModel.load()
       } else {
-        path.removeAll()
+        groupsPath.removeAll()
+        selectedTab = .groups
         await groupListModel.load()
       }
     }
@@ -699,50 +898,154 @@ public struct RootView: View {
         }
         .toolbar { keyboardDoneToolbar }
         .navigationDestination(for: Route.self) { route in
-          destinationView(for: route, currentUser: nil)
+          destinationView(for: route, currentUser: nil, path: $path)
         }
       }
 
     case .signedIn(let user):
-      NavigationStack(path: $path) {
-        GroupListView(
-          model: groupListModel,
-          user: user,
-          statusNotice: statusNotice,
-          unreadNotificationCount: sessionModel.unreadNotificationCount,
-          onOpenGroup: { groupId in
-            statusNotice = nil
-            path.append(.groupFeed(groupId: groupId))
-          },
-          onOpenCreateGroup: {
-            statusNotice = nil
-            path.append(.createGroup)
-          },
-          onOpenAccount: {
-            statusNotice = nil
-            path.append(.account)
-          },
-          onOpenNotifications: {
-            statusNotice = nil
-            path.append(.notifications)
-          },
-          onResendVerification: { () async throws(AppError) in
-            try await dependencies.auth.resendVerification()
-          }
-        )
-        .toolbar {
-          #if DEBUG
-            ToolbarItem(placement: .topBarTrailing) {
-              Button("Debug") {
-                isShowingDebugPanel = true
-              }
+      TabView(selection: $selectedTab) {
+        NavigationStack(path: $overviewPath) {
+          OverviewView(
+            model: overviewModel,
+            user: user,
+            unreadNotificationCount: sessionModel.unreadNotificationCount,
+            onOpenGroup: { groupId in
+              selectedTab = .groups
+              groupsPath = [.groupFeed(groupId: groupId)]
+            },
+            onOpenBalances: { groupId in
+              selectedTab = .groups
+              groupsPath = [.groupBalances(groupId: groupId)]
+            },
+            onOpenTransaction: { groupId, txId in
+              selectedTab = .groups
+              groupsPath = [
+                .groupFeed(groupId: groupId),
+                .transactionDetail(groupId: groupId, transactionId: txId),
+              ]
+            },
+            onOpenPersonalLedger: {
+              overviewPath.append(.personalLedger)
+            },
+            onOpenNotifications: {
+              selectedTab = .notifications
+            },
+            onOpenAccount: {
+              selectedTab = .account
             }
-          #endif
+          )
+          .toolbar {
+            #if DEBUG
+              ToolbarItem(placement: .topBarTrailing) {
+                Button("Debug") {
+                  isShowingDebugPanel = true
+                }
+              }
+            #endif
+          }
+          .navigationDestination(for: Route.self) { route in
+            destinationView(for: route, currentUser: user, path: $overviewPath)
+          }
         }
-        .navigationDestination(for: Route.self) { route in
-          destinationView(for: route, currentUser: user)
+        .tabItem {
+          Label(L10n.tr("tabs.overview"), systemImage: "sparkles")
         }
+        .tag(Tab.overview)
+
+        NavigationStack(path: $groupsPath) {
+          GroupListView(
+            model: groupListModel,
+            user: user,
+            statusNotice: statusNotice,
+            unreadNotificationCount: sessionModel.unreadNotificationCount,
+            onOpenGroup: { groupId in
+              statusNotice = nil
+              groupsPath.append(.groupFeed(groupId: groupId))
+            },
+            onOpenCreateGroup: {
+              statusNotice = nil
+              groupsPath.append(.createGroup)
+            },
+            onOpenAccount: {
+              selectedTab = .account
+            },
+            onOpenNotifications: {
+              selectedTab = .notifications
+            },
+            onResendVerification: { () async throws(AppError) in
+              try await dependencies.auth.resendVerification()
+            }
+          )
+          .toolbar {
+            #if DEBUG
+              ToolbarItem(placement: .topBarTrailing) {
+                Button("Debug") {
+                  isShowingDebugPanel = true
+                }
+              }
+            #endif
+          }
+          .navigationDestination(for: Route.self) { route in
+            destinationView(for: route, currentUser: user, path: $groupsPath)
+          }
+        }
+        .tabItem {
+          Label(L10n.tr("tabs.groups"), systemImage: "person.2")
+        }
+        .tag(Tab.groups)
+
+        NavigationStack(path: $notificationsPath) {
+          NotificationsView(
+            model: notificationsModel,
+            onBack: {},
+            onSelectTarget: { target in
+              let route = RouteDestination.notificationDestination(for: target)
+              navigate(to: route)
+            }
+          )
+          .toolbar {
+            #if DEBUG
+              ToolbarItem(placement: .topBarTrailing) {
+                Button("Debug") {
+                  isShowingDebugPanel = true
+                }
+              }
+            #endif
+          }
+          .navigationDestination(for: Route.self) { route in
+            destinationView(for: route, currentUser: user, path: $notificationsPath)
+          }
+        }
+        .tabItem {
+          Label(L10n.tr("tabs.notifications"), systemImage: "bell")
+        }
+        .badge(sessionModel.unreadNotificationCount)
+        .tag(Tab.notifications)
+
+        NavigationStack(path: $accountPath) {
+          AccountView(
+            model: accountModel,
+            onBack: {}
+          )
+          .toolbar {
+            #if DEBUG
+              ToolbarItem(placement: .topBarTrailing) {
+                Button("Debug") {
+                  isShowingDebugPanel = true
+                }
+              }
+            #endif
+          }
+          .navigationDestination(for: Route.self) { route in
+            destinationView(for: route, currentUser: user, path: $accountPath)
+          }
+        }
+        .tabItem {
+          Label(L10n.tr("tabs.account"), systemImage: "person.crop.circle")
+        }
+        .tag(Tab.account)
       }
+      .tint(Tokens.ink)
     }
   }
 
@@ -761,29 +1064,36 @@ public struct RootView: View {
     }
   }
 
-  private func destinationView(for route: Route, currentUser: User?) -> some View {
+  private func destinationView(
+    for route: Route,
+    currentUser: User?,
+    path: Binding<[Route]>
+  ) -> some View {
     RouteDestination(
       route: route,
       dependencies: dependencies,
       sessionModel: sessionModel,
       currentUser: currentUser,
-      onNavigate: { path.append($0) },
+      onNavigate: { path.wrappedValue.append($0) },
       onReplaceTop: { newRoute in
-        if path.isEmpty {
-          path = [newRoute]
+        if path.wrappedValue.isEmpty {
+          path.wrappedValue = [newRoute]
         } else {
-          path[path.count - 1] = newRoute
+          path.wrappedValue[path.wrappedValue.count - 1] = newRoute
         }
       },
       onPop: {
-        if !path.isEmpty { path.removeLast() }
+        if !path.wrappedValue.isEmpty { path.wrappedValue.removeLast() }
       },
       onPopToRoot: { notice in
         if let notice {
           statusNotice = notice
         }
-        path.removeAll()
-        Task { await groupListModel.load() }
+        path.wrappedValue.removeAll()
+        Task {
+          await groupListModel.load()
+          await overviewModel.load()
+        }
       },
       onExpenseSaved: {
         guard case .signedIn(let signedInUser) = sessionModel.state else { return }

@@ -97,7 +97,7 @@ export default function FundPage() {
 				backHref={`/g/${groupId}/balances`}
 				backLabel={vi.common.back}
 			/>
-			<section className="grid justify-items-center gap-2 rounded-[40px] bg-sun p-6 text-center text-ink">
+			<section className="grid justify-items-center gap-2 rounded-[40px] bg-sun p-6 text-center text-on-accent">
 				<FundShape name={fund.name} size={40} />
 				<p className="text-xs font-bold">
 					{fund.cash < 0 ? vi.fund.negativeLabel : vi.fund.remainingLabel}
@@ -111,7 +111,7 @@ export default function FundPage() {
 					</p>
 				)}
 				{!fund.active && (
-					<p className="rounded-pill bg-surface/80 px-3 py-1 text-xs font-bold">
+					<p className="rounded-pill bg-surface/80 px-3 py-1 text-xs font-bold text-ink">
 						{vi.fund.inactiveTag}
 					</p>
 				)}

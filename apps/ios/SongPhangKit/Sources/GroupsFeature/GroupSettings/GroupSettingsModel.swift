@@ -26,7 +26,7 @@ public final class GroupSettingsModel {
   public private(set) var telegramError: AppError?
   public var nameDraft = ""
 
-  private let groupsRepository: any GroupsRepository
+  public let groupsRepository: any GroupsRepository
   private let invitesRepository: any InvitesRepository
   private let membersRepository: any MembersRepository
   public let categoriesRepository: any CategoriesRepository
@@ -204,6 +204,32 @@ public final class GroupSettingsModel {
         current.group.muted = muted
         state = .loaded(current)
       }
+    } catch {
+      actionError = error
+    }
+  }
+
+  public func archive() async {
+    guard !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      _ = try await groupsRepository.archive(groupId: groupId)
+      await load()
+    } catch {
+      actionError = error
+    }
+  }
+
+  public func unarchive() async {
+    guard !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      _ = try await groupsRepository.unarchive(groupId: groupId)
+      await load()
     } catch {
       actionError = error
     }

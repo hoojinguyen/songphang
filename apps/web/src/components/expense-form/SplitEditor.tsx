@@ -1,8 +1,7 @@
 import type { MemberDto } from "@songphang/contract";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
-import { ShareShapes } from "../quick-entry/ShareShapes";
 import { ItemsAssignmentPanel } from "../receipt/ItemsAssignmentPanel";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
@@ -12,6 +11,55 @@ import { SplitMemberRow } from "./SplitMemberRow";
 import { SplitModeTabs } from "./SplitModeTabs";
 import { SplitStatus } from "./SplitStatus";
 import type { useSplitState } from "./use-split-state";
+
+function useHoldToGrow(onPump: (id: string) => void) {
+	const onPumpRef = useRef(onPump);
+	useEffect(() => {
+		onPumpRef.current = onPump;
+	});
+
+	const timerRef = useRef<NodeJS.Timeout | null>(null);
+	const intervalRef = useRef<NodeJS.Timeout | null>(null);
+	const [heldId, setHeldId] = useState<string | null>(null);
+	const didPumpLongRef = useRef(false);
+
+	const stop = () => {
+		if (timerRef.current) clearTimeout(timerRef.current);
+		if (intervalRef.current) clearInterval(intervalRef.current);
+		timerRef.current = null;
+		intervalRef.current = null;
+		setHeldId(null);
+	};
+
+	useEffect(() => {
+		return () => {
+			if (timerRef.current) clearTimeout(timerRef.current);
+			if (intervalRef.current) clearInterval(intervalRef.current);
+		};
+	}, []);
+
+	const start = (id: string) => {
+		stop();
+		setHeldId(id);
+		didPumpLongRef.current = false;
+		timerRef.current = setTimeout(() => {
+			didPumpLongRef.current = true;
+			onPumpRef.current(id);
+			intervalRef.current = setInterval(() => {
+				onPumpRef.current(id);
+			}, 180);
+		}, 250);
+	};
+
+	const finish = (id: string) => {
+		if (!didPumpLongRef.current && heldId === id) {
+			onPumpRef.current(id);
+		}
+		stop();
+	};
+
+	return { heldId, start, finish, stop };
+}
 export function SplitEditor({
 	banner,
 	state,
@@ -37,6 +85,11 @@ export function SplitEditor({
 		state.method === "items" && state.itemsComputedAmount !== undefined
 			? state.itemsComputedAmount
 			: amount;
+	const { heldId, start, finish, stop } = useHoldToGrow(state.pumpMember);
+	const canPump =
+		state.method === "shares" ||
+		state.method === "percent" ||
+		state.method === "exact";
 	return (
 		<section
 			aria-label={vi.split.changeLabel}
@@ -87,28 +140,51 @@ export function SplitEditor({
 				/>
 			) : (
 				<>
-					{shares.length > 0 ? (
-						<ShareShapes
-							shares={state.selected.map((member) => ({
-								member,
-								amount:
-									shares.find((s) => s.memberId === member.id)?.amount ?? 0,
-							}))}
-						/>
-					) : (
-						<div className="flex flex-wrap justify-center gap-3 rounded-[30px] bg-bg p-4">
-							{state.selected.map((member) => (
-								<div
-									key={member.id}
-									className="grid justify-items-center gap-2"
-								>
-									<MemberShape {...member} size={56} />
-									<span>{member.name}</span>
-									<span>{vi.common.pendingValue}</span>
-								</div>
-							))}
-						</div>
+					{canPump && (
+						<p className="text-center text-xs font-semibold text-muted">
+							{vi.split.holdToGrowHint}
+						</p>
 					)}
+					<div className="flex max-h-[220px] flex-wrap justify-center gap-3 overflow-y-auto rounded-[30px] bg-bg p-4">
+						{state.selected.map((member) => {
+							const shareAmt = shares.find(
+								(s) => s.memberId === member.id,
+							)?.amount;
+							const isHeld = heldId === member.id;
+
+							return (
+								<button
+									key={member.id}
+									type="button"
+									disabled={!canPump}
+									onPointerDown={() => canPump && start(member.id)}
+									onPointerUp={() => canPump && finish(member.id)}
+									onPointerLeave={stop}
+									onPointerCancel={stop}
+									onKeyDown={(e) => {
+										if (!canPump) return;
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											state.pumpMember(member.id);
+										}
+									}}
+									aria-label={`${member.name}: ${vi.split.holdToGrowHint}`}
+									title={vi.split.holdToGrowHint}
+									className={`grid justify-items-center gap-1.5 rounded-[20px] p-2 transition-transform duration-300 motion-reduce:transition-none select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ink ${isHeld ? "scale-115" : "scale-100"}`}
+								>
+									<MemberShape {...member} size={52} />
+									<span className="max-w-[70px] truncate text-[12px] font-bold text-ink">
+										{member.name}
+									</span>
+									<span className="tabular-nums text-[11px] font-extrabold text-ink">
+										{shareAmt !== undefined
+											? formatMoney(shareAmt)
+											: vi.common.pendingValue}
+									</span>
+								</button>
+							);
+						})}
+					</div>
 
 					{state.selected.map((member) => (
 						<SplitMemberRow
