@@ -37,3 +37,21 @@
 - **Options:** (1) Disable warnings-as-errors; (2) Keep `SWIFT_TREAT_WARNINGS_AS_ERRORS = YES` on all first-party Xcode configurations and `.treatAllWarnings(as: .error)` in `SongPhangKit/Package.swift`, and build with `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -configuration Debug -destination 'generic/platform=iOS Simulator' -skipPackagePluginValidation build`.
 - **Choice:** Option 2.
 - **Reason:** Preserves strict compiler warnings-as-errors across all first-party Swift code.
+
+### D3 — OpenAPI response union diffing (`5.5B.1.2`, `apps/api/src/openapi/diff.ts`)
+- **Problem:** Adding optional `accountQrPayload` inside the `"bank"` branch of `PayTo` (`BalancesResponse`) caused `diffOpenApiSnapshots` to flag `PayTo.oneOf` as breaking because `allOf|oneOf|anyOf` array element descent was gated by `/.requestBody.content..+.schema./`.
+- **Options:** (1) Flatten `PayTo` away from `oneOf` (breaking); (2) Allow element-by-element comparison on same-length `allOf|oneOf|anyOf` arrays in `compareNode` across response and component schemas too.
+- **Choice:** Option 2.
+- **Reason:** Keeps `PayTo` strictly additive while still catching breaking changes inside union branches or length mismatches.
+
+### D4 — Nullable `$ref` on `SettlementRequestDto.proofAttachment` (`5.5B.1.2`, `packages/contract/src/settlement-request.ts`)
+- **Problem:** Calling `AttachmentDto.nullable()` mutated the shared `AttachmentDto` component schema's `type` from `"object"` to `["object", "null"]`.
+- **Options:** (1) Inline `z.object(AttachmentDto.shape).nullable()`; (2) `z.union([AttachmentDto, z.null()]).optional()`.
+- **Choice:** Option 2.
+- **Reason:** Keeps `AttachmentDto` untouched and emits OpenAPI 3.1 `anyOf: [$ref AttachmentDto, null]` for clean client codegen.
+
+### D5 — Drizzle schema export placement (`5.5B.1.1`, `packages/db/src/`)
+- **Problem:** `schema-cycles.ts` imports `users` from `schema.ts`, so re-exporting `schema-cycles.ts` from `schema.ts` would create an ESM evaluation cycle.
+- **Options:** (1) Inline `settlementCycles` inside `schema.ts`; (2) Export `settlementCycles` from `packages/db/src/index.ts` and register `./src/schema-cycles.ts` in `packages/db/drizzle.config.ts`.
+- **Choice:** Option 2.
+- **Reason:** Matches all existing `schema-*.ts` modules cleanly without circular imports.
