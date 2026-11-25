@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { CreateFundDialog } from "../../../../components/fund/CreateFundDialog";
+import { GuestLinkModal } from "../../../../components/guest/GuestLinkModal";
 import { AddMemberRow } from "../../../../components/members/AddMemberRow";
 import { InviteCard } from "../../../../components/members/InviteCard";
 import { LeaveGroupButton } from "../../../../components/members/LeaveGroupButton";
@@ -28,6 +29,7 @@ export default function MembersPage() {
 	const { groupId } = useParams<{ groupId: string }>();
 	const [expanded, setExpanded] = useState<string | null>(null);
 	const [fundDialogOpen, setFundDialogOpen] = useState(false);
+	const [guestLinkOpen, setGuestLinkOpen] = useState(false);
 	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
@@ -237,7 +239,33 @@ export default function MembersPage() {
 				<LeaveGroupButton groupId={groupId} name={group.data.name} />
 			)}
 
-			{group.data.role !== "viewer" && <InviteCard groupId={groupId} />}
+			{group.data.role !== "viewer" && (
+				<>
+					<InviteCard groupId={groupId} />
+					<section className="grid gap-3 rounded-[30px] bg-surface p-5">
+						<div>
+							<h2 className="text-base font-black">{vi.guestLink.fullTitle}</h2>
+							<p className="mt-1 text-xs font-semibold text-muted">
+								{vi.guestLink.description}
+							</p>
+						</div>
+						<Button
+							variant="surface"
+							allowOffline
+							className="bg-sunken"
+							onClick={() => setGuestLinkOpen(true)}
+						>
+							{vi.guestLink.fullTitle}
+						</Button>
+					</section>
+					<GuestLinkModal
+						open={guestLinkOpen}
+						groupId={groupId}
+						isArchived={group.data.archivedAt !== null}
+						onClose={() => setGuestLinkOpen(false)}
+					/>
+				</>
+			)}
 			<div className="flex gap-3">
 				<Link
 					href={`/g/${groupId}/activity`}

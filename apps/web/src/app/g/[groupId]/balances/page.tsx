@@ -13,6 +13,7 @@ import { SettlementCard } from "../../../../components/balances/SettlementCard";
 import { SettlementCyclesView } from "../../../../components/balances/SettlementCyclesView";
 import { SettlementVaultView } from "../../../../components/balances/SettlementVaultView";
 import { FundBlock } from "../../../../components/fund/FundBlock";
+import { GuestLinkModal } from "../../../../components/guest/GuestLinkModal";
 import { GroupNavHeader } from "../../../../components/layout/GroupNavHeader";
 import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
@@ -39,6 +40,7 @@ export default function BalancesPage() {
 		null,
 	);
 	const [closeCycleOpen, setCloseCycleOpen] = useState(false);
+	const [guestLinkOpen, setGuestLinkOpen] = useState(false);
 
 	const me = useMe();
 	const group = useGroup(groupId);
@@ -291,19 +293,31 @@ export default function BalancesPage() {
 						</section>
 					)}
 
-					{canCloseCycle && (
+					{(canCloseCycle || group.data.role !== "viewer") && (
 						<div className="grid gap-1.5">
 							<div className="flex flex-wrap gap-2">
-								<Button
-									variant="surface"
-									disabled={!canTriggerClose}
-									onClick={() => setCloseCycleOpen(true)}
-									className="flex-1 text-xs"
-								>
-									{vi.cycles.closeAction}
-								</Button>
+								{group.data.role !== "viewer" && (
+									<Button
+										variant="surface"
+										allowOffline
+										onClick={() => setGuestLinkOpen(true)}
+										className="flex-1 text-xs"
+									>
+										{vi.guestLink.title}
+									</Button>
+								)}
+								{canCloseCycle && (
+									<Button
+										variant="surface"
+										disabled={!canTriggerClose}
+										onClick={() => setCloseCycleOpen(true)}
+										className="flex-1 text-xs"
+									>
+										{vi.cycles.closeAction}
+									</Button>
+								)}
 							</div>
-							{!canTriggerClose && (
+							{canCloseCycle && !canTriggerClose && (
 								<p className="text-center text-xs font-semibold text-muted">
 									{vi.cycles.emptyPeriodError}
 								</p>
@@ -479,6 +493,14 @@ export default function BalancesPage() {
 					nextCycleNumber={(cycles.data.cycles[0]?.cycleNumber ?? 0) + 1}
 					currentPeriod={cycles.data.currentPeriod}
 					onClose={() => setCloseCycleOpen(false)}
+				/>
+			)}
+			{group.data.role !== "viewer" && (
+				<GuestLinkModal
+					open={guestLinkOpen}
+					groupId={groupId}
+					isArchived={isArchived}
+					onClose={() => setGuestLinkOpen(false)}
 				/>
 			)}
 		</main>
