@@ -12,6 +12,7 @@ import { PendingRequestRow } from "../../../../components/balances/PendingReques
 import { SettlementCard } from "../../../../components/balances/SettlementCard";
 import { SettlementCyclesView } from "../../../../components/balances/SettlementCyclesView";
 import { SettlementVaultView } from "../../../../components/balances/SettlementVaultView";
+import { ShareCardModal } from "../../../../components/balances/ShareCardModal";
 import { FundBlock } from "../../../../components/fund/FundBlock";
 import { GuestLinkModal } from "../../../../components/guest/GuestLinkModal";
 import { GroupNavHeader } from "../../../../components/layout/GroupNavHeader";
@@ -41,6 +42,7 @@ export default function BalancesPage() {
 	);
 	const [closeCycleOpen, setCloseCycleOpen] = useState(false);
 	const [guestLinkOpen, setGuestLinkOpen] = useState(false);
+	const [shareCardOpen, setShareCardOpen] = useState(false);
 
 	const me = useMe();
 	const group = useGroup(groupId);
@@ -212,6 +214,12 @@ export default function BalancesPage() {
 		cycles.data !== undefined;
 	const canTriggerClose =
 		(cycles.data?.currentPeriod.countedTransactionCount ?? 0) > 0;
+	const canShareCard =
+		transfers.length > 0 ||
+		balances.data.balances.some((balance) => balance.balance !== 0);
+	const loadedTransactions = transactions.data.pages.flatMap(
+		(page) => page.transactions,
+	);
 
 	const subTabs: Array<{
 		id: BalancesSubTab;
@@ -293,9 +301,19 @@ export default function BalancesPage() {
 						</section>
 					)}
 
-					{(canCloseCycle || group.data.role !== "viewer") && (
+					{(canShareCard || canCloseCycle || group.data.role !== "viewer") && (
 						<div className="grid gap-1.5">
 							<div className="flex flex-wrap gap-2">
+								{canShareCard && (
+									<Button
+										variant="surface"
+										allowOffline
+										onClick={() => setShareCardOpen(true)}
+										className="flex-1 text-xs"
+									>
+										{vi.shareCard.openAction}
+									</Button>
+								)}
 								{group.data.role !== "viewer" && (
 									<Button
 										variant="surface"
@@ -503,6 +521,18 @@ export default function BalancesPage() {
 					onClose={() => setGuestLinkOpen(false)}
 				/>
 			)}
+			<ShareCardModal
+				open={shareCardOpen}
+				groupId={groupId}
+				groupName={group.data.name}
+				role={group.data.role}
+				balances={balances.data}
+				members={members.data}
+				transactions={loadedTransactions}
+				cycles={cycles.data?.cycles ?? []}
+				currentPeriod={cycles.data?.currentPeriod}
+				onClose={() => setShareCardOpen(false)}
+			/>
 		</main>
 	);
 }
