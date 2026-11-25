@@ -10,6 +10,7 @@ export default defineConfig({
 		"./src/schema-records.ts",
 		"./src/schema-accounts.ts",
 		"./src/schema-payments.ts",
+		"./src/schema-cycles.ts",
 		"./src/schema-settlements.ts",
 		"./src/schema-categories.ts",
 		"./src/schema-budgets.ts",

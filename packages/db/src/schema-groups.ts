@@ -27,6 +27,11 @@ export const groups = pgTable(
 		minimizeDebts: boolean("minimize_debts").notNull().default(true),
 		inviteToken: text("invite_token").notNull().unique(),
 		inviteActive: boolean("invite_active").notNull().default(true),
+		guestToken: text("guest_token").unique(),
+		guestLinkActive: boolean("guest_link_active").notNull().default(false),
+		guestLinkCreatedAt: timestamp("guest_link_created_at", {
+			withTimezone: true,
+		}),
 		defaultRole: text("default_role").notNull().default("editor"),
 		reminderIntervalDays: integer("reminder_interval_days"),
 		approvalThreshold: bigint("approval_threshold", { mode: "number" }),
@@ -58,6 +63,10 @@ export const groups = pgTable(
 		check(
 			"groups_approval_threshold_check",
 			sql`${table.approvalThreshold} is null or ${table.approvalThreshold} > 0`,
+		),
+		check(
+			"groups_guest_link_consistency_check",
+			sql`(${table.guestLinkActive} = false and ${table.guestToken} is null) or (${table.guestLinkActive} = true and ${table.guestToken} is not null and char_length(${table.guestToken}) >= 32)`,
 		),
 	],
 );

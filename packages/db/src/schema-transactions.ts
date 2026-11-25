@@ -14,6 +14,7 @@ import {
 import { uuidv7 } from "uuidv7";
 import { users } from "./schema.js";
 import { groupCategories } from "./schema-categories.js";
+import { settlementCycles } from "./schema-cycles.js";
 import { groups, members } from "./schema-groups.js";
 
 export const transactions = pgTable(
@@ -42,6 +43,11 @@ export const transactions = pgTable(
 		}),
 		approvalDecidedAt: timestamp("approval_decided_at", { withTimezone: true }),
 		approvalNote: text("approval_note"),
+		paymentChannel: text("payment_channel"),
+		paymentNote: text("payment_note"),
+		cycleId: uuid("cycle_id").references(() => settlementCycles.id, {
+			onDelete: "set null",
+		}),
 		createdBy: uuid("created_by").references(() => users.id, {
 			onDelete: "set null",
 		}),
@@ -89,8 +95,24 @@ export const transactions = pgTable(
 			"transactions_approval_note_check",
 			sql`${table.approvalNote} is null or char_length(${table.approvalNote}) <= 300`,
 		),
+		check(
+			"transactions_payment_channel_check",
+			sql`${table.paymentChannel} is null or (${table.type} = 'transfer' and ${table.paymentChannel} in ('bank', 'momo', 'zalopay', 'cash'))`,
+		),
+		check(
+			"transactions_payment_note_check",
+			sql`${table.paymentNote} is null or (${table.type} = 'transfer' and char_length(${table.paymentNote}) between 1 and 120)`,
+		),
 		index("transactions_group_feed_index")
 			.on(table.groupId, table.occurredAt.desc(), table.id.desc())
+			.where(sql`${table.deletedAt} is null`),
+		index("transactions_group_cycle_feed_idx")
+			.on(
+				table.groupId,
+				table.cycleId,
+				table.occurredAt.desc(),
+				table.id.desc(),
+			)
 			.where(sql`${table.deletedAt} is null`),
 	],
 );

@@ -68,8 +68,10 @@ export {
 	suggestCategory,
 } from "./suggest-category.ts";
 export {
+	buildStaticVietQrPayload,
 	buildVietQrPayload,
 	crc16CcittFalse,
 	findBank,
+	groupTransferPurpose,
 	transferPurpose,
 } from "./vietqr.ts";
