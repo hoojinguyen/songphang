@@ -52,7 +52,7 @@ public final class PersonalLedgerModel {
     return ([], false)
   }
 
-  public func loadInitial() async {
+  public func loadInitial(refreshGroups: Bool = false) async {
     generation &+= 1
     let currentGen = generation
     let targetGroupId = selectedGroupId
@@ -68,7 +68,7 @@ public final class PersonalLedgerModel {
       }
     }
     do {
-      let shouldFetchGroups = !hasLoadedGroups
+      let shouldFetchGroups = refreshGroups || (!hasLoadedGroups && availableGroups.isEmpty)
       async let fetchedPage = repository.transactions(
         cursor: nil,
         limit: 20,
@@ -85,7 +85,9 @@ public final class PersonalLedgerModel {
         (query.isEmpty ? nil : query) == targetQuery
       else { return }
       if let groupsOutcome {
-        availableGroups = groupsOutcome.groups
+        if groupsOutcome.authoritative || availableGroups.isEmpty {
+          availableGroups = groupsOutcome.groups
+        }
         if groupsOutcome.authoritative {
           hasLoadedGroups = true
         }

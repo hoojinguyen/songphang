@@ -55,7 +55,7 @@ public struct PersonalLedgerView: View {
         .padding(.bottom, 32)
       }
       .refreshable {
-        await model.loadInitial()
+        await model.loadInitial(refreshGroups: true)
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
