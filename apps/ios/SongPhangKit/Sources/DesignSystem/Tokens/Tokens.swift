@@ -90,7 +90,7 @@ public enum Tokens {
     ("phrase-rest", "#E7D9FF / #33214D", phraseRest),
   ]
 
-  private static func dynamicColor(lightHex: UInt32, darkHex: UInt32) -> Color {
+  private nonisolated static func dynamicColor(lightHex: UInt32, darkHex: UInt32) -> Color {
     Color(
       uiColor: UIColor { traitCollection in
         let hex = traitCollection.userInterfaceStyle == .dark ? darkHex : lightHex
