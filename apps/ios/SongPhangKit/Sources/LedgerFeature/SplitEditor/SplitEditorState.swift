@@ -334,7 +334,7 @@ public struct SplitEditorState: Sendable, Equatable {
       {
         values[id] = String(Int(rounded))
       } else {
-        var formatted = String(format: "%.2f", rounded)
+        var formatted = String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), rounded)
         while formatted.contains(".") && (formatted.hasSuffix("0") || formatted.hasSuffix(".")) {
           formatted.removeLast()
         }

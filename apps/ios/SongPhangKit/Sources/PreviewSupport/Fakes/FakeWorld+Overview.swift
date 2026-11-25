@@ -142,8 +142,8 @@
 
       var pendingActions: [OverviewPendingAction] = []
       for group in activeGroups {
-        if let txs = transactionsByGroup[group.id] {
-          for tx in txs {
+        if group.role == .owner, let txs = transactionsByGroup[group.id] {
+          for tx in txs where tx.deletedAt == nil {
             if tx.approval.status == LedgerTransaction.TransactionApproval.Status.pending {
               pendingActions.append(
                 OverviewPendingAction(
@@ -183,7 +183,7 @@
                   description: "\(fromName) → \(toName)",
                   amount: req.amount,
                   occurredAt: req.createdAt,
-                  actorName: req.createdByName ?? fromName
+                  actorName: fromName
                 )
               )
             }

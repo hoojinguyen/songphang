@@ -9,7 +9,13 @@ import { AmountField } from "../expense-form/AmountField";
 import { Button } from "../ui/Button";
 import { Switch } from "../ui/Switch";
 
-export function ApprovalCard({ group }: { group: GroupDto }) {
+export function ApprovalCard({
+	group,
+	disabled = false,
+}: {
+	group: GroupDto;
+	disabled?: boolean;
+}) {
 	const update = useUpdateGroup(group.id);
 	useSessionGuard(update.error);
 	const [draft, setDraft] = useState<{
@@ -50,7 +56,7 @@ export function ApprovalCard({ group }: { group: GroupDto }) {
 				<Switch
 					checked={enabled}
 					onChange={handleToggle}
-					disabled={update.isPending}
+					disabled={disabled || update.isPending}
 					label={vi.approval.settingsTitle}
 				/>
 			</div>
@@ -64,6 +70,7 @@ export function ApprovalCard({ group }: { group: GroupDto }) {
 							value={amountText}
 							onChange={(next) => setDraft({ enabled: true, amountText: next })}
 							autoFocus={false}
+							disabled={disabled || update.isPending}
 							label={vi.approval.thresholdLabel}
 						/>
 					</div>
@@ -77,7 +84,7 @@ export function ApprovalCard({ group }: { group: GroupDto }) {
 					)}
 					<Button
 						variant="primary"
-						disabled={update.isPending || !valid || unchanged}
+						disabled={disabled || update.isPending || !valid || unchanged}
 						onClick={() => {
 							if (!valid) return;
 							update.mutate(

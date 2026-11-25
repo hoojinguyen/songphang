@@ -186,7 +186,7 @@ While `group.archivedAt !== null`, the service layer (inside the group lock) ref
       type: "expense" | "income" | "transfer";
       description: string;
       amount: number;
-      myDelta: number; // exact signed integer for the caller in this transaction (`0` when settled or pending/rejected in ledger scope; `TransactionDto.myDelta` stays `number | null`)
+      myDelta: number; // exact signed integer for the caller in this transaction (`0` when pending/rejected or when caller's paid equals share; `TransactionDto.myDelta` stays `number | null`)
       occurredAt: string;
       category: TransactionCategory | null;
       categoryName: string | null;

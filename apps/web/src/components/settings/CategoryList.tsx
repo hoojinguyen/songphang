@@ -17,7 +17,13 @@ function categoryErrorText(error: ApiError | null): string | null {
 	return vi.common.saveError;
 }
 
-export function CategoryList({ groupId }: { groupId: string }) {
+export function CategoryList({
+	groupId,
+	disabled = false,
+}: {
+	groupId: string;
+	disabled?: boolean;
+}) {
 	const query = useCategories(groupId);
 	const create = useCreateCategory(groupId);
 	useSessionGuard(query.error ?? create.error);
@@ -74,6 +80,7 @@ export function CategoryList({ groupId }: { groupId: string }) {
 							key={category.id}
 							groupId={groupId}
 							category={category}
+							disabled={disabled}
 							onError={setError}
 						/>
 					))}
@@ -85,18 +92,19 @@ export function CategoryList({ groupId }: { groupId: string }) {
 					placeholder={vi.categories.nameLabel}
 					value={newName}
 					maxLength={30}
+					disabled={disabled || create.isPending}
 					onChange={(event) => setNewName(event.target.value)}
-					className="h-12 min-w-0 rounded-[20px] bg-bg px-3 text-sm font-bold text-ink"
+					className="h-12 min-w-0 rounded-[20px] bg-bg px-3 text-sm font-bold text-ink disabled:opacity-60"
 				/>
 				<ColorSwatches
 					value={newColor}
 					onChange={setNewColor}
-					disabled={create.isPending}
+					disabled={disabled || create.isPending}
 				/>
 				<Button
 					variant="surface"
 					className="h-12 bg-bg"
-					disabled={create.isPending || !newName.trim()}
+					disabled={disabled || create.isPending || !newName.trim()}
 					onClick={addCategory}
 				>
 					{vi.categories.add}

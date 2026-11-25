@@ -71,7 +71,7 @@ function MobileTabBar() {
 						{tab.badge !== undefined && tab.badge > 0 && (
 							<span
 								aria-hidden="true"
-								className="absolute left-1/2 top-1.5 -translate-x-1/2 translate-x-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-coral px-1 text-[10px] font-extrabold text-ink"
+								className="absolute left-1/2 top-1.5 -translate-x-1/2 translate-x-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-coral px-1 text-[10px] font-extrabold text-on-accent"
 							>
 								{tab.badge > 9 ? "9+" : String(tab.badge)}
 							</span>

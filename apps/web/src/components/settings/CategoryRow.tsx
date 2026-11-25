@@ -52,10 +52,12 @@ export function ColorSwatches({
 export function CategoryRow({
 	groupId,
 	category,
+	disabled = false,
 	onError,
 }: {
 	groupId: string;
 	category: CategoryDto;
+	disabled?: boolean;
 	onError: (err: ApiError | null) => void;
 }) {
 	const [editing, setEditing] = useState(false);
@@ -64,7 +66,7 @@ export function CategoryRow({
 	const update = useUpdateCategory(groupId);
 	const archive = useArchiveCategory(groupId);
 	useSessionGuard(update.error ?? archive.error);
-	const busy = update.isPending || archive.isPending;
+	const busy = disabled || update.isPending || archive.isPending;
 
 	const save = () => {
 		const trimmed = name.trim();
@@ -94,6 +96,7 @@ export function CategoryRow({
 				/>
 				<button
 					type="button"
+					disabled={busy}
 					onClick={() => {
 						setName(category.name);
 						setColor(category.color);
@@ -101,7 +104,7 @@ export function CategoryRow({
 						setEditing(true);
 					}}
 					aria-label={t(vi.categories.edit, { name: category.name })}
-					className="min-h-11 min-w-0 flex-1 break-words text-left text-sm font-bold text-ink"
+					className="min-h-11 min-w-0 flex-1 break-words text-left text-sm font-bold text-ink disabled:opacity-60"
 				>
 					{category.name}
 				</button>
@@ -112,7 +115,7 @@ export function CategoryRow({
 						onError(null);
 						archive.mutate(category.id, { onError: (err) => onError(err) });
 					}}
-					className="min-h-11 shrink-0 rounded-pill px-3 text-xs font-bold text-muted"
+					className="min-h-11 shrink-0 rounded-pill px-3 text-xs font-bold text-muted disabled:opacity-60"
 				>
 					{vi.categories.archive}
 				</button>
@@ -127,8 +130,9 @@ export function CategoryRow({
 				aria-label={vi.categories.nameLabel}
 				value={name}
 				maxLength={30}
+				disabled={busy}
 				onChange={(event) => setName(event.target.value)}
-				className="h-11 min-w-0 rounded-[16px] bg-surface px-3 text-sm font-bold text-ink"
+				className="h-11 min-w-0 rounded-[16px] bg-surface px-3 text-sm font-bold text-ink disabled:opacity-60"
 			/>
 			<ColorSwatches value={color} onChange={setColor} disabled={busy} />
 			<div className="flex gap-2">

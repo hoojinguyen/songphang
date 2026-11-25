@@ -148,7 +148,7 @@ export function CameraButton({ groupId }: { groupId: string }) {
 			{errorState && (
 				<div
 					role="alert"
-					className="fixed bottom-24 left-1/2 z-30 flex w-[calc(100%-40px)] max-w-[390px] -translate-x-1/2 items-center justify-between gap-3 rounded-[20px] bg-coral px-4 py-3 text-xs font-bold text-ink"
+					className="fixed bottom-24 left-1/2 z-30 flex w-[calc(100%-40px)] max-w-[390px] -translate-x-1/2 items-center justify-between gap-3 rounded-[20px] bg-coral px-4 py-3 text-xs font-bold text-on-accent"
 				>
 					<span>{errorState.message}</span>
 					{errorState.attachmentId && (

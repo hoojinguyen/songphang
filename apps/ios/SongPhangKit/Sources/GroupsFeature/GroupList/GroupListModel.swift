@@ -12,6 +12,7 @@ public final class GroupListModel {
   public private(set) var refreshError: AppError?
   public private(set) var actionError: AppError?
   public private(set) var isRefreshing = false
+  public private(set) var isPerformingAction = false
   public var selectedTab: Tab = .active
 
   public let repository: any GroupsRepository
@@ -36,7 +37,10 @@ public final class GroupListModel {
   }
 
   public func archive(groupId: ExpenseGroup.ID) async -> Bool {
+    guard !isPerformingAction else { return false }
+    isPerformingAction = true
     actionError = nil
+    defer { isPerformingAction = false }
     do throws(AppError) {
       _ = try await repository.archive(groupId: groupId)
       await load()
@@ -48,7 +52,10 @@ public final class GroupListModel {
   }
 
   public func unarchive(groupId: ExpenseGroup.ID) async -> Bool {
+    guard !isPerformingAction else { return false }
+    isPerformingAction = true
     actionError = nil
+    defer { isPerformingAction = false }
     do throws(AppError) {
       _ = try await repository.unarchive(groupId: groupId)
       await load()
@@ -71,6 +78,9 @@ public final class GroupListModel {
       let fetched = try await repository.groups()
       groups = .loaded(fetched)
       refreshError = nil
+      if actionError == .offline {
+        actionError = nil
+      }
     } catch {
       if case .loaded = groups {
         refreshError = error

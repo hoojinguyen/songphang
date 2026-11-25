@@ -1,4 +1,5 @@
 "use client";
+import { usePathname } from "next/navigation";
 import {
 	createContext,
 	type ReactNode,
@@ -32,13 +33,18 @@ export function DesktopInspectorProvider({
 	currentGroupId: string | null;
 	children: ReactNode;
 }) {
+	const pathname = usePathname();
 	const [selectedTx, setSelectedTx] = useState<SelectedPreview | null>(null);
+	const isGroupFeedRoute =
+		currentGroupId !== null && /^\/g\/[^/]+\/?$/.test(pathname);
 
 	useEffect(() => {
 		setSelectedTx((current) =>
-			current && current.groupId === currentGroupId ? current : null,
+			isGroupFeedRoute && current && current.groupId === currentGroupId
+				? current
+				: null,
 		);
-	}, [currentGroupId]);
+	}, [currentGroupId, isGroupFeedRoute]);
 
 	const selectTx = useCallback((groupId: string, transactionId: string) => {
 		setSelectedTx({ groupId, transactionId });

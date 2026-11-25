@@ -11,7 +11,13 @@ import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
 import { LoadError } from "../ui/LoadError";
 
-export function TelegramCard({ groupId }: { groupId: string }) {
+export function TelegramCard({
+	groupId,
+	disabled = false,
+}: {
+	groupId: string;
+	disabled?: boolean;
+}) {
 	const features = useFeatures();
 	const telegramEnabled = features.data?.telegram === true;
 	const links = useGroupChatLinks(groupId, telegramEnabled);
@@ -59,7 +65,7 @@ export function TelegramCard({ groupId }: { groupId: string }) {
 			<Button
 				variant="surface"
 				className="h-12 bg-bg"
-				disabled={createCode.isPending}
+				disabled={disabled || createCode.isPending}
 				onClick={() => {
 					setCopied(false);
 					createCode.mutate();
@@ -96,7 +102,7 @@ export function TelegramCard({ groupId }: { groupId: string }) {
 							</span>
 							<button
 								type="button"
-								disabled={unlink.isPending}
+								disabled={disabled || unlink.isPending}
 								onClick={() => unlink.mutate(link.id)}
 								className="min-h-11 shrink-0 rounded-pill bg-surface px-3 text-xs font-bold text-ink disabled:opacity-60"
 							>

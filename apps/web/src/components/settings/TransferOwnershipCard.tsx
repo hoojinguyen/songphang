@@ -8,7 +8,13 @@ import { t, vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { LoadError } from "../ui/LoadError";
-export function TransferOwnershipCard({ groupId }: { groupId: string }) {
+export function TransferOwnershipCard({
+	groupId,
+	disabled = false,
+}: {
+	groupId: string;
+	disabled?: boolean;
+}) {
 	const users = useGroupUsers(groupId);
 	const action = useGroupUserAction(groupId);
 	const router = useRouter();
@@ -38,6 +44,7 @@ export function TransferOwnershipCard({ groupId }: { groupId: string }) {
 						key={user.userId}
 						variant="surface"
 						className="bg-bg"
+						disabled={disabled || action.isPending}
 						onClick={() => setTarget(user)}
 					>
 						{user.name}
@@ -50,7 +57,7 @@ export function TransferOwnershipCard({ groupId }: { groupId: string }) {
 					body={vi.settings.transferConfirmBody}
 					confirmLabel={vi.settings.transferConfirm}
 					cancelLabel={vi.common.cancel}
-					confirmDisabled={action.isPending}
+					confirmDisabled={disabled || action.isPending}
 					onCancel={() => setTarget(null)}
 					onConfirm={() =>
 						action.mutate(

@@ -22,7 +22,7 @@ export function BalanceBlock({
 	return (
 		<Link
 			href={`/g/${groupId}/balances`}
-			className="flex items-center justify-between gap-2 rounded-[32px] bg-accent pb-4 pl-5 pr-[18px] pt-[14px]"
+			className="flex items-center justify-between gap-2 rounded-[32px] bg-accent pb-4 pl-5 pr-[18px] pt-[14px] text-on-accent"
 		>
 			<div className="min-w-0">
 				<p className="text-[13px] font-semibold">{caption}</p>

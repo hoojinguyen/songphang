@@ -33,16 +33,26 @@ function SettingsForm({ group }: { group: GroupDto }) {
 	const [minimizeDebts, setMinimizeDebts] = useState(group.minimizeDebts);
 	const [archiveOpen, setArchiveOpen] = useState(false);
 	const [cloneOpen, setCloneOpen] = useState(false);
+	const [lastAction, setLastAction] = useState<
+		"update" | "archive" | "unarchive" | null
+	>(null);
 	const update = useUpdateGroup(group.id);
 	const archiveMutation = useArchiveGroup(group.id);
 	const unarchiveMutation = useUnarchiveGroup(group.id);
 	const actionError =
-		update.error ?? archiveMutation.error ?? unarchiveMutation.error;
+		lastAction === "archive"
+			? archiveMutation.error
+			: lastAction === "unarchive"
+				? unarchiveMutation.error
+				: lastAction === "update"
+					? update.error
+					: null;
 	const isArchived = group.archivedAt !== null;
 	useSessionGuard(actionError);
 	const changeMode = (checked: boolean) => {
 		const previous = minimizeDebts;
 		setMinimizeDebts(checked);
+		setLastAction("update");
 		update.mutate(
 			{ minimizeDebts: checked },
 			{ onError: () => setMinimizeDebts(previous) },
@@ -76,7 +86,10 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					!name.trim() ||
 					name.trim() === group.name
 				}
-				onClick={() => update.mutate({ name: name.trim() })}
+				onClick={() => {
+					setLastAction("update");
+					update.mutate({ name: name.trim() });
+				}}
 			>
 				{vi.settings.saveName}
 			</Button>
@@ -106,8 +119,10 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					]}
 					disabled={isArchived || update.isPending}
 					onChange={(defaultRole) => {
-						if (defaultRole === "editor" || defaultRole === "viewer")
+						if (defaultRole === "editor" || defaultRole === "viewer") {
+							setLastAction("update");
 							update.mutate({ defaultRole });
+						}
 					}}
 				/>
 			</section>
@@ -136,16 +151,17 @@ function SettingsForm({ group }: { group: GroupDto }) {
 									: value === "14"
 										? 14
 										: null;
+						setLastAction("update");
 						update.mutate({ reminderIntervalDays });
 					}}
 				/>
 			</section>
-			<ApprovalCard group={group} />
-			<BudgetCard groupId={group.id} />
-			<CategoryList groupId={group.id} />
-			<InviteLinkCard groupId={group.id} />
-			<TelegramCard groupId={group.id} />
-			<TransferOwnershipCard groupId={group.id} />
+			<ApprovalCard group={group} disabled={isArchived} />
+			<BudgetCard groupId={group.id} disabled={isArchived} />
+			<CategoryList groupId={group.id} disabled={isArchived} />
+			<InviteLinkCard groupId={group.id} disabled={isArchived} />
+			<TelegramCard groupId={group.id} disabled={isArchived} />
+			<TransferOwnershipCard groupId={group.id} disabled={isArchived} />
 			<section className="flex items-center justify-between gap-4 rounded-[28px] bg-surface p-5">
 				<div>
 					<h2 className="text-[15px] font-extrabold">{vi.clone.title}</h2>
@@ -164,7 +180,10 @@ function SettingsForm({ group }: { group: GroupDto }) {
 					<Button
 						variant="primary"
 						disabled={unarchiveMutation.isPending}
-						onClick={() => unarchiveMutation.mutate()}
+						onClick={() => {
+							setLastAction("unarchive");
+							unarchiveMutation.mutate();
+						}}
 					>
 						{vi.groups.unarchiveAction}
 					</Button>
@@ -186,6 +205,7 @@ function SettingsForm({ group }: { group: GroupDto }) {
 				groupName={group.name}
 				isPending={archiveMutation.isPending}
 				onConfirm={() => {
+					setLastAction("archive");
 					archiveMutation.mutate(undefined, {
 						onSuccess: () => setArchiveOpen(false),
 						onError: () => setArchiveOpen(false),

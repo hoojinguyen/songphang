@@ -64,9 +64,10 @@ function OverviewContent({ name }: { name: string }) {
 	);
 
 	useEffect(() => {
+		if (!overview.isSuccess) return;
 		client.removeQueries({ queryKey: ["notice", "removed"] });
 		client.removeQueries({ queryKey: ["notice", "deleted"] });
-	}, [client]);
+	}, [client, overview.isSuccess]);
 
 	useSessionGuard(overview.error ?? recentTransactionsQuery.error);
 

@@ -88,7 +88,7 @@ export function DesktopSidebar() {
 									<span>{item.label}</span>
 								</div>
 								{item.badge !== undefined && item.badge > 0 && (
-									<span className="rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-black text-ink">
+									<span className="rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-black text-on-accent">
 										{item.badge > 9 ? "9+" : item.badge}
 									</span>
 								)}

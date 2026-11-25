@@ -38,6 +38,7 @@ public final class GroupFeedModel {
   private var loadMoreTask: Task<Void, Never>?
   private var listGeneration: UInt64 = 0
   private var locallyDeletedIds: Set<LedgerTransaction.ID> = []
+  private var isUndoingDelete = false
 
   @discardableResult
   private func invalidatePagination() -> UInt64 {
@@ -103,10 +104,14 @@ public final class GroupFeedModel {
   }
 
   public func undoDelete(restoredMessage: String, errorMessage: String) async {
-    guard let id = lastDeletedTransactionId else { return }
-    lastDeletedTransactionId = nil
+    guard !isUndoingDelete, let id = lastDeletedTransactionId else { return }
+    isUndoingDelete = true
+    defer { isUndoingDelete = false }
     do throws(AppError) {
       _ = try await transactionsRepository.restore(groupId: groupId, id: id)
+      if lastDeletedTransactionId == id {
+        lastDeletedTransactionId = nil
+      }
       locallyDeletedIds.remove(id)
       toastMessage = restoredMessage
       await load()
@@ -189,7 +194,7 @@ public final class GroupFeedModel {
           balances: b,
           categories: c,
           budget: bud,
-          transactions: p.items.filter { !locallyDeletedIds.contains($0.id) },
+          transactions: p.items,
           nextCursor: p.nextCursor
         )
       )

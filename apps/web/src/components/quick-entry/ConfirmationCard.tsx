@@ -198,7 +198,7 @@ export function ConfirmationCard({
 			{overBudget && (
 				<p
 					role="status"
-					className="rounded-[18px] bg-coral px-3 py-2 text-xs font-bold text-ink"
+					className="rounded-[18px] bg-coral px-3 py-2 text-xs font-bold text-on-accent"
 				>
 					{vi.budget.overWarning}
 				</p>

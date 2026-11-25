@@ -7,11 +7,13 @@ export function AmountField({
 	value,
 	onChange,
 	autoFocus = true,
+	disabled = false,
 	label = vi.expenseForm.amountLabel,
 }: {
 	value: string;
 	onChange: (value: string) => void;
 	autoFocus?: boolean;
+	disabled?: boolean;
 	label?: string;
 }) {
 	const input = useRef<HTMLInputElement>(null);
@@ -33,17 +35,19 @@ export function AmountField({
 				aria-label={label}
 				inputMode="numeric"
 				size={1}
+				disabled={disabled}
 				value={value}
 				onChange={(event) => change(event.target.value)}
-				className="min-w-0 w-full flex-1 bg-transparent text-center text-[52px] font-black tracking-tight outline-none"
+				className="min-w-0 w-full flex-1 bg-transparent text-center text-[52px] font-black tracking-tight outline-none disabled:opacity-60"
 			/>
 			<span className="text-[22px] font-black text-muted">
 				{vi.common.currency}
 			</span>
 			<OnlineButton
 				type="button"
+				disabled={disabled}
 				onClick={() => change(`${value}000`)}
-				className="min-h-11 min-w-11 rounded-pill bg-sunken text-xs font-bold"
+				className="min-h-11 min-w-11 rounded-pill bg-sunken text-xs font-bold disabled:opacity-60"
 			>
 				{vi.expenseForm.addThousands}
 			</OnlineButton>

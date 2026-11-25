@@ -200,14 +200,14 @@ struct FeedTransactionRowView: View {
           if transaction.approval.status == .pending {
             Text(L10n.tr("approval.pendingTag"))
               .font(Typography.captionBold)
-              .foregroundStyle(Tokens.ink)
+              .foregroundStyle(Tokens.onAccent)
               .padding(.horizontal, 7)
               .padding(.vertical, 2)
               .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
           } else if transaction.approval.status == .rejected {
             Text(L10n.tr("approval.rejectedTag"))
               .font(Typography.captionBold)
-              .foregroundStyle(Tokens.ink)
+              .foregroundStyle(Tokens.onAccent)
               .padding(.horizontal, 7)
               .padding(.vertical, 2)
               .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -216,7 +216,7 @@ struct FeedTransactionRowView: View {
           if transaction.dispute != nil {
             Text(L10n.tr("transactionView.disputeTag"))
               .font(Typography.captionBold)
-              .foregroundStyle(Tokens.ink)
+              .foregroundStyle(Tokens.onAccent)
               .padding(.horizontal, 7)
               .padding(.vertical, 2)
               .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -421,7 +421,7 @@ struct FeedTransactionRowView: View {
         if transaction.approval.status == .rejected {
           Text(L10n.tr("approval.rejectedTag"))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -429,7 +429,7 @@ struct FeedTransactionRowView: View {
         if transaction.dispute != nil {
           Text(L10n.tr("transactionView.disputeTag"))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
             .padding(.horizontal, 8)
             .padding(.vertical, 2)
             .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 10, style: .continuous))

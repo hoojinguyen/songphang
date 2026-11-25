@@ -278,7 +278,7 @@ export function ExpenseForm({
 				preview.data?.warnings.includes("BUDGET_OVER") && (
 					<p
 						role="status"
-						className="rounded-[20px] bg-coral px-4 py-3 text-sm font-bold text-ink"
+						className="rounded-[20px] bg-coral px-4 py-3 text-sm font-bold text-on-accent"
 					>
 						{vi.budget.overWarning}
 					</p>

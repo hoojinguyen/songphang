@@ -413,10 +413,6 @@ public struct GroupSettingsView: View {
   private func archiveCard(group: ExpenseGroup, isOffline: Bool) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       if group.isArchived {
-        Text(L10n.tr("groups.archivedBanner"))
-          .font(Typography.bodyBold)
-          .foregroundStyle(Tokens.ink)
-
         SPButton(
           L10n.tr("groups.unarchiveAction"),
           variant: .primary,

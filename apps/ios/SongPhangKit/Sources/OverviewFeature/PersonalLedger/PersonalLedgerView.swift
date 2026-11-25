@@ -151,7 +151,7 @@ public struct PersonalLedgerView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(isSelected ? Tokens.accent : Tokens.surface)
-        .foregroundStyle(Tokens.ink)
+        .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.ink)
         .clipShape(Capsule())
     }
     .buttonStyle(.plain)
@@ -169,58 +169,9 @@ public struct PersonalLedgerView: View {
 
   private var itemsList: some View {
     ForEach(model.items) { tx in
-      Button {
+      PersonalTransactionRowView(transaction: tx) {
         onOpenTransaction(tx.groupId, tx.transactionId)
-      } label: {
-        HStack(spacing: 12) {
-          VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-              Text(tx.groupName)
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.muted)
-                .lineLimit(1)
-              Text("• \(DayLabelFormat.dayLabel(for: tx.occurredAt))")
-                .font(Typography.caption)
-                .foregroundStyle(Tokens.muted)
-                .lineLimit(1)
-            }
-
-            Text(tx.description)
-              .font(Typography.bodyBold)
-              .foregroundStyle(Tokens.ink)
-              .lineLimit(1)
-          }
-
-          Spacer(minLength: 8)
-
-          VStack(alignment: .trailing, spacing: 2) {
-            MoneyText(
-              tx.myDelta,
-              style: tx.myDelta.isZero ? .amountOnly : .signed,
-              font: Typography.subheadlineBold,
-              color: tx.myDelta.isPositive
-                ? Tokens.credit
-                : (tx.myDelta.isNegative ? Tokens.debt : Tokens.muted)
-            )
-            .monospacedDigit()
-            .lineLimit(1)
-
-            MoneyText(
-              tx.amount,
-              style: .amountOnly,
-              font: Typography.caption,
-              color: Tokens.muted
-            )
-            .monospacedDigit()
-            .lineLimit(1)
-          }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(Tokens.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
       }
-      .buttonStyle(.plain)
       .onAppear {
         if tx.id == model.items.last?.id && model.hasMore {
           Task { await model.loadMore() }

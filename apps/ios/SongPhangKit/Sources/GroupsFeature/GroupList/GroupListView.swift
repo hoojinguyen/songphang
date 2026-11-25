@@ -46,7 +46,7 @@ public struct GroupListView: View {
   }
 
   private var isOffline: Bool {
-    if model.refreshError == .offline { return true }
+    if model.refreshError == .offline || model.actionError == .offline { return true }
     if case .failed(.offline) = model.groups { return true }
     return false
   }
@@ -222,12 +222,14 @@ public struct GroupListView: View {
           } label: {
             Label(L10n.tr("groups.unarchiveAction"), systemImage: "arrow.uturn.backward")
           }
+          .disabled(model.isPerformingAction)
         } else {
           Button(role: .destructive) {
             archivingGroup = group
           } label: {
             Label(L10n.tr("groups.archiveAction"), systemImage: "archivebox")
           }
+          .disabled(model.isPerformingAction)
         }
       }
       if group.role.canWrite {

@@ -33,7 +33,7 @@ export function DisputeBlock({
 	if (dispute) {
 		const canResolve = verified && (dispute.mine || role === "owner");
 		return (
-			<section className="grid gap-3 rounded-[28px] bg-coral p-4 text-ink">
+			<section className="grid gap-3 rounded-[28px] bg-coral p-4 text-on-accent">
 				<p className="text-sm font-extrabold">
 					{t(vi.transactionView.disputedBy, { name: dispute.openedByName })}
 				</p>

@@ -4,7 +4,13 @@ import { useSessionGuard } from "../../lib/use-session-guard";
 import { vi } from "../../messages/vi";
 import { Button } from "../ui/Button";
 import { LoadError } from "../ui/LoadError";
-export function InviteLinkCard({ groupId }: { groupId: string }) {
+export function InviteLinkCard({
+	groupId,
+	disabled = false,
+}: {
+	groupId: string;
+	disabled?: boolean;
+}) {
 	const invite = useInvite(groupId);
 	const change = useChangeInvite(groupId);
 	useSessionGuard(invite.error ?? change.error);
@@ -28,7 +34,7 @@ export function InviteLinkCard({ groupId }: { groupId: string }) {
 			<Button
 				variant="surface"
 				className="h-12 bg-bg"
-				disabled={change.isPending}
+				disabled={disabled || change.isPending}
 				onClick={() => change.mutate({ active: !invite.data.active })}
 			>
 				{invite.data.active ? vi.settings.disableLink : vi.settings.enableLink}
@@ -36,7 +42,7 @@ export function InviteLinkCard({ groupId }: { groupId: string }) {
 			<Button
 				variant="surface"
 				className="h-12 bg-bg"
-				disabled={change.isPending}
+				disabled={disabled || change.isPending}
 				onClick={() => change.mutate({ rotate: true })}
 			>
 				{vi.settings.rotateLink}

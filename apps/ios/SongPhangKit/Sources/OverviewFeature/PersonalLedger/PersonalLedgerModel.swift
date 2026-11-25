@@ -17,6 +17,7 @@ public final class PersonalLedgerModel {
   private let repository: any OverviewRepository
   private let groupsRepository: (any GroupsRepository)?
   private var generation: UInt64 = 0
+  private var hasLoadedGroups = false
 
   public init(
     repository: any OverviewRepository,
@@ -28,6 +29,27 @@ public final class PersonalLedgerModel {
 
   public var hasMore: Bool {
     nextCursor != nil
+  }
+
+  private func loadAvailableGroups() async -> (
+    groups: [(id: ExpenseGroup.ID, name: String)], authoritative: Bool
+  ) {
+    if let groupsRepository {
+      do {
+        let fetchedGroups = try await groupsRepository.list(status: nil)
+        return (fetchedGroups.map { ($0.id, $0.name) }, true)
+      } catch {
+        if let cachedGroups = await groupsRepository.lastKnownGroups(),
+          !cachedGroups.isEmpty
+        {
+          return (cachedGroups.map { ($0.id, $0.name) }, false)
+        }
+      }
+    }
+    if let cached = await repository.lastKnownOverview() {
+      return (cached.groupBalances.map { ($0.groupId, $0.groupName) }, false)
+    }
+    return ([], false)
   }
 
   public func loadInitial() async {
@@ -45,40 +67,37 @@ public final class PersonalLedgerModel {
         isLoading = false
       }
     }
-    do throws(AppError) {
-      if availableGroups.isEmpty {
-        if let groupsRepository {
-          if let fetchedGroups = try? await groupsRepository.list(status: nil),
-            !fetchedGroups.isEmpty
-          {
-            availableGroups = fetchedGroups.map { ($0.id, $0.name) }
-          } else if let cachedGroups = await groupsRepository.lastKnownGroups(),
-            !cachedGroups.isEmpty
-          {
-            availableGroups = cachedGroups.map { ($0.id, $0.name) }
-          }
-        }
-        if availableGroups.isEmpty, let cached = await repository.lastKnownOverview() {
-          availableGroups = cached.groupBalances.map { ($0.groupId, $0.groupName) }
-        }
-      }
-      let page = try await repository.transactions(
+    do {
+      let shouldFetchGroups = !hasLoadedGroups
+      async let fetchedPage = repository.transactions(
         cursor: nil,
         limit: 20,
         type: targetType,
         groupId: targetGroupId,
         query: targetQuery
       )
+      async let fetchedGroupsOutcome = shouldFetchGroups ? loadAvailableGroups() : nil
+      let page = try await fetchedPage
+      let groupsOutcome = await fetchedGroupsOutcome
       guard currentGen == generation,
         selectedGroupId == targetGroupId,
         selectedType == targetType,
         (query.isEmpty ? nil : query) == targetQuery
       else { return }
+      if let groupsOutcome {
+        availableGroups = groupsOutcome.groups
+        if groupsOutcome.authoritative {
+          hasLoadedGroups = true
+        }
+      }
       items = page.items
       nextCursor = page.nextCursor
-    } catch {
+    } catch let error as AppError {
       guard currentGen == generation else { return }
       self.error = error
+    } catch {
+      guard currentGen == generation else { return }
+      self.error = .unexpected
     }
   }
 
