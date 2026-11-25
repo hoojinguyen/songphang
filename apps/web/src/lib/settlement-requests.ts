@@ -27,6 +27,10 @@ async function invalidateAfterSettlement(
 		client.invalidateQueries({
 			queryKey: ["group", groupId, "settlementRequests"],
 		}),
+		client.invalidateQueries({
+			queryKey: ["group", groupId, "settlement-vault"],
+		}),
+		client.invalidateQueries({ queryKey: ["group", groupId, "breakdowns"] }),
 		...(action === "confirm"
 			? [
 					client.invalidateQueries({
@@ -35,6 +39,9 @@ async function invalidateAfterSettlement(
 					}),
 					client.invalidateQueries({
 						queryKey: ["group", groupId, "transactions"],
+					}),
+					client.invalidateQueries({
+						queryKey: ["group", groupId, "settlementCycles"],
 					}),
 					client.invalidateQueries({
 						queryKey: ["group", groupId, "activity"],

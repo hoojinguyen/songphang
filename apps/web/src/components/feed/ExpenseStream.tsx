@@ -140,6 +140,7 @@ export function ExpenseStream({
 										/>
 									) : (
 										<LedgerPill
+											groupId={groupId}
 											transaction={transaction}
 											members={members}
 											myMemberId={myMemberId}

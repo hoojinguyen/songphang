@@ -285,6 +285,9 @@ export default function BalancesPage() {
 									id: request.id,
 									amount: request.amount,
 									createdByMe: request.createdBy?.id === me.data.id,
+									channel: request.channel ?? null,
+									note: request.note ?? null,
+									proofAttachmentId: request.proofAttachment?.id ?? null,
 								}}
 								fromName={from.name}
 								toName={to.name}

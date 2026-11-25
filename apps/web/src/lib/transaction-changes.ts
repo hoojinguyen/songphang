@@ -33,6 +33,10 @@ function transferRequest(t: TransactionDto): CreateTransactionRequest {
 		occurredAt: t.occurredAt,
 		fromMemberId: t.payers[0]?.memberId ?? "",
 		toMemberId: t.shares[0]?.memberId ?? "",
+		...(t.paymentChannel !== undefined
+			? { paymentChannel: t.paymentChannel }
+			: {}),
+		...(t.paymentNote !== undefined ? { paymentNote: t.paymentNote } : {}),
 	};
 }
 export function useTransaction(groupId: string, id: string) {

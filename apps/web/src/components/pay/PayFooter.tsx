@@ -1,5 +1,9 @@
 "use client";
-import type { BalancesResponse, MemberDto } from "@songphang/contract";
+import type {
+	BalancesResponse,
+	MemberDto,
+	PaymentChannel,
+} from "@songphang/contract";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +30,10 @@ export function PayFooter({
 	canResolve,
 	canCancel,
 	verified,
+	channel,
+	note,
+	proofAttachmentId,
+	uploadingProof = false,
 }: {
 	groupId: string;
 	from: MemberDto;
@@ -37,6 +45,10 @@ export function PayFooter({
 	canResolve: boolean;
 	canCancel: boolean;
 	verified: boolean;
+	channel?: PaymentChannel | null;
+	note?: string;
+	proofAttachmentId?: string | null;
+	uploadingProof?: boolean;
 }) {
 	const router = useRouter();
 	const snackbar = useSnackbar();
@@ -47,8 +59,9 @@ export function PayFooter({
 	useSessionGuard(createRequest.error);
 
 	function submitReport() {
-		if (!verified || sendingRef.current) return;
+		if (!verified || sendingRef.current || uploadingProof) return;
 		sendingRef.current = true;
+		const trimmedNote = note?.trim();
 		createRequest.mutate(
 			{
 				key: idempotencyKey,
@@ -56,6 +69,9 @@ export function PayFooter({
 					fromMemberId: from.id,
 					toMemberId: to.id,
 					amount: payAmount,
+					...(channel ? { channel } : {}),
+					...(trimmedNote ? { note: trimmedNote } : {}),
+					...(proofAttachmentId ? { proofAttachmentId } : {}),
 				},
 			},
 			{
@@ -114,7 +130,7 @@ export function PayFooter({
 								variant="primary"
 								size="lg"
 								className="w-full"
-								disabled={createRequest.isPending}
+								disabled={createRequest.isPending || uploadingProof}
 								onClick={submitReport}
 							>
 								{vi.pay.reportedButton}

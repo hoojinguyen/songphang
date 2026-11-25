@@ -2,6 +2,7 @@
 import {
 	type AttachmentDto,
 	AttachmentResponse,
+	type AttachmentUploadPurpose,
 	ErrorResponse,
 } from "@songphang/contract";
 import { ApiError } from "./api";
@@ -18,10 +19,18 @@ export function attachmentContentUrl(
 	return `/api/v1/groups/${encodeURIComponent(groupId)}/attachments/${encodeURIComponent(attachmentId)}/content`;
 }
 
+export function guestAttachmentContentUrl(
+	token: string,
+	attachmentId: string,
+): string {
+	return `/api/v1/guest-links/${encodeURIComponent(token)}/attachments/${encodeURIComponent(attachmentId)}`;
+}
+
 export async function uploadAttachment(
 	groupId: string,
 	blob: Blob,
 	filename = "hoa-don.jpg",
+	purpose?: AttachmentUploadPurpose,
 ): Promise<AttachmentDto> {
 	if (!connectionSnapshot().online) {
 		requestFailed();
@@ -33,10 +42,11 @@ export async function uploadAttachment(
 	}
 	const formData = new FormData();
 	formData.append("file", blob, filename);
+	const query = purpose ? `?purpose=${encodeURIComponent(purpose)}` : "";
 	let response: Response;
 	try {
 		response = await fetch(
-			`/api/v1/groups/${encodeURIComponent(groupId)}/attachments`,
+			`/api/v1/groups/${encodeURIComponent(groupId)}/attachments${query}`,
 			{
 				method: "POST",
 				body: formData,

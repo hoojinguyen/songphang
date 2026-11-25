@@ -244,6 +244,12 @@ export function useExpenseForm(
 					fromMemberId: transferFrom,
 					toMemberId: transferTo,
 					...(description.trim() ? { description: description.trim() } : {}),
+					...(transaction?.paymentChannel !== undefined
+						? { paymentChannel: transaction.paymentChannel }
+						: {}),
+					...(transaction?.paymentNote !== undefined
+						? { paymentNote: transaction.paymentNote }
+						: {}),
 					...optionalAttachments,
 				}
 			: {

@@ -1,11 +1,16 @@
 "use client";
-import type { MemberDto } from "@songphang/contract";
+import type {
+	AttachmentDto,
+	MemberDto,
+	PaymentChannel,
+} from "@songphang/contract";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { formatAmount, formatMoney, parseAmountInput } from "../../lib/money";
 import { useCreateTransaction } from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
 import { t, vi } from "../../messages/vi";
+import { TransferProofFields } from "../pay/TransferProofFields";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
@@ -43,6 +48,12 @@ export function SettlementForm({
 	const [key] = useState(() => crypto.randomUUID());
 	const sending = useRef(false);
 	const [recorded, setRecorded] = useState(false);
+	const [paymentChannel, setPaymentChannel] = useState<PaymentChannel | null>(
+		null,
+	);
+	const [paymentNote, setPaymentNote] = useState("");
+	const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
+	const [uploadingProof, setUploadingProof] = useState(false);
 	const mutation = useCreateTransaction(groupId);
 	const router = useRouter();
 	useSessionGuard(mutation.error);
@@ -139,6 +150,32 @@ export function SettlementForm({
 					{t(vi.settle.clears, { name: from.name })}
 				</p>
 			)}
+			{verified && (
+				<TransferProofFields
+					groupId={groupId}
+					channel={paymentChannel}
+					onChannelChange={setPaymentChannel}
+					note={paymentNote}
+					onNoteChange={setPaymentNote}
+					attachments={attachments}
+					onAddAttachment={(attachment) =>
+						setAttachments((current) =>
+							current.some((item) => item.id === attachment.id) ||
+							current.length >= 3
+								? current
+								: [...current, attachment],
+						)
+					}
+					onRemoveAttachment={(id) =>
+						setAttachments((current) =>
+							current.filter((item) => item.id !== id),
+						)
+					}
+					maxAttachments={3}
+					uploadPurpose="transfer_proof"
+					onUploadingChange={setUploadingProof}
+				/>
+			)}
 			{mutation.isError && (
 				<p role="alert">
 					{mutation.error.status === 403
@@ -151,10 +188,14 @@ export function SettlementForm({
 					variant="accent"
 					size="lg"
 					className="min-h-[68px]"
-					disabled={!amount || !validDate || mutation.isPending}
+					disabled={
+						!amount || !validDate || mutation.isPending || uploadingProof
+					}
 					onClick={() => {
-						if (!amount || !validDate || sending.current) return;
+						if (!amount || !validDate || sending.current || uploadingProof)
+							return;
 						sending.current = true;
+						const trimmedNote = paymentNote.trim();
 						mutation.mutate(
 							{
 								key,
@@ -164,6 +205,11 @@ export function SettlementForm({
 									toMemberId: to.id,
 									amount,
 									occurredAt: date.toISOString(),
+									...(paymentChannel ? { paymentChannel } : {}),
+									...(trimmedNote ? { paymentNote: trimmedNote } : {}),
+									...(attachments.length > 0
+										? { attachmentIds: attachments.map((item) => item.id) }
+										: {}),
 								},
 							},
 							{

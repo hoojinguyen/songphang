@@ -1,5 +1,11 @@
 "use client";
-import type { BalancesResponse, MemberDto } from "@songphang/contract";
+import type {
+	AttachmentDto,
+	BalancesResponse,
+	MemberDto,
+	PaymentChannel,
+} from "@songphang/contract";
+import { useState } from "react";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
@@ -8,6 +14,7 @@ import { ScreenHeader } from "../ui/ScreenHeader";
 import { CopyRow } from "./CopyRow";
 import { PayFooter } from "./PayFooter";
 import { PayMethodsCard } from "./PayMethodsCard";
+import { TransferProofFields } from "./TransferProofFields";
 
 type Transfer = BalancesResponse["transfers"][number];
 const MAX_TRANSFER_AMOUNT = 999_999_999_999;
@@ -40,6 +47,17 @@ export function PayContent({
 		Boolean(transfer.pendingRequest?.createdByMe) || myMemberId === from.id;
 	const payAmount = Math.min(transfer.amount, MAX_TRANSFER_AMOUNT);
 	const isPartial = transfer.amount > MAX_TRANSFER_AMOUNT;
+
+	const defaultChannel: PaymentChannel | null =
+		transfer.payTo[0]?.kind === "bank" ||
+		transfer.payTo[0]?.kind === "momo" ||
+		transfer.payTo[0]?.kind === "zalopay"
+			? transfer.payTo[0].kind
+			: null;
+	const [channel, setChannel] = useState<PaymentChannel | null>(defaultChannel);
+	const [note, setNote] = useState("");
+	const [attachments, setAttachments] = useState<AttachmentDto[]>([]);
+	const [uploadingProof, setUploadingProof] = useState(false);
 
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 py-6 pb-28">
@@ -87,6 +105,29 @@ export function PayContent({
 				toName={to.name}
 				canAddDetails={canAddDetails}
 			/>
+			{!transfer.pendingRequest && mayCreate && verified && (
+				<TransferProofFields
+					groupId={groupId}
+					channel={channel}
+					onChannelChange={setChannel}
+					note={note}
+					onNoteChange={setNote}
+					attachments={attachments}
+					onAddAttachment={(attachment) =>
+						setAttachments((current) =>
+							current.length >= 1 ? current : [attachment],
+						)
+					}
+					onRemoveAttachment={(id) =>
+						setAttachments((current) =>
+							current.filter((item) => item.id !== id),
+						)
+					}
+					maxAttachments={1}
+					uploadPurpose="transfer_proof"
+					onUploadingChange={setUploadingProof}
+				/>
+			)}
 			<PayFooter
 				groupId={groupId}
 				from={from}
@@ -98,6 +139,10 @@ export function PayContent({
 				canResolve={canResolve}
 				canCancel={canCancel}
 				verified={verified}
+				channel={channel}
+				note={note}
+				proofAttachmentId={attachments[0]?.id ?? null}
+				uploadingProof={uploadingProof}
 			/>
 		</main>
 	);
