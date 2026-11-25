@@ -52,6 +52,25 @@ public final class PersonalLedgerModel {
     return ([], false)
   }
 
+  private func fetchInitialPage(
+    type: TransactionType?,
+    groupId: ExpenseGroup.ID?,
+    query: String?
+  ) async -> Result<PersonalTransactionsPage, AppError> {
+    do throws(AppError) {
+      let page = try await repository.transactions(
+        cursor: nil,
+        limit: 20,
+        type: type,
+        groupId: groupId,
+        query: query
+      )
+      return .success(page)
+    } catch {
+      return .failure(error)
+    }
+  }
+
   public func loadInitial(refreshGroups: Bool = false) async {
     generation &+= 1
     let currentGen = generation
@@ -67,39 +86,36 @@ public final class PersonalLedgerModel {
         isLoading = false
       }
     }
-    do {
-      let shouldFetchGroups = refreshGroups || (!hasLoadedGroups && availableGroups.isEmpty)
-      async let fetchedPage = repository.transactions(
-        cursor: nil,
-        limit: 20,
-        type: targetType,
-        groupId: targetGroupId,
-        query: targetQuery
-      )
-      async let fetchedGroupsOutcome = shouldFetchGroups ? loadAvailableGroups() : nil
-      let page = try await fetchedPage
-      let groupsOutcome = await fetchedGroupsOutcome
+    let shouldFetchGroups = refreshGroups || (!hasLoadedGroups && availableGroups.isEmpty)
+    async let fetchedPageResult = fetchInitialPage(
+      type: targetType,
+      groupId: targetGroupId,
+      query: targetQuery
+    )
+    async let fetchedGroupsOutcome = shouldFetchGroups ? loadAvailableGroups() : nil
+
+    let groupsOutcome = await fetchedGroupsOutcome
+    if let groupsOutcome, currentGen == generation {
+      if groupsOutcome.authoritative || availableGroups.isEmpty {
+        availableGroups = groupsOutcome.groups
+      }
+      if groupsOutcome.authoritative {
+        hasLoadedGroups = true
+      }
+    }
+
+    switch await fetchedPageResult {
+    case .success(let page):
       guard currentGen == generation,
         selectedGroupId == targetGroupId,
         selectedType == targetType,
         (query.isEmpty ? nil : query) == targetQuery
       else { return }
-      if let groupsOutcome {
-        if groupsOutcome.authoritative || availableGroups.isEmpty {
-          availableGroups = groupsOutcome.groups
-        }
-        if groupsOutcome.authoritative {
-          hasLoadedGroups = true
-        }
-      }
       items = page.items
       nextCursor = page.nextCursor
-    } catch let error as AppError {
+    case .failure(let error):
       guard currentGen == generation else { return }
       self.error = error
-    } catch {
-      guard currentGen == generation else { return }
-      self.error = .unexpected
     }
   }
 
