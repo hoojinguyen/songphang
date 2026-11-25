@@ -104,6 +104,7 @@ public struct GroupContainerView: View {
       budgetRepository: dependencies.budget,
       transactionsRepository: dependencies.transactions,
       eventsRepository: dependencies.groupEvents,
+      attachmentsRepository: dependencies.attachments,
       initialFilter: initialFilter
     )
     self._feedModel = State(initialValue: feed)
@@ -270,6 +271,18 @@ public struct GroupContainerView: View {
         role: role,
         isEmailVerified: isVerified,
         repository: dependencies.settlementRequests,
+        uploadProof: { data, filename, contentType async throws(AppError) in
+          try await dependencies.attachments.upload(
+            groupId: groupId,
+            data: data,
+            filename: filename,
+            contentType: contentType,
+            purpose: .transferProof
+          )
+        },
+        loadAttachment: { attachmentId in
+          try await dependencies.attachments.content(groupId: groupId, attachmentId: attachmentId)
+        },
         onReload: { await balancesModel.load() },
         onUnauthorized: {
           paymentSheet = nil
@@ -537,7 +550,10 @@ public struct GroupContainerView: View {
           ? nil
           : {
             onNavigate(.groupMembers(groupId: groupId))
-          }
+          },
+        loadAttachment: { attachmentId in
+          try await dependencies.attachments.content(groupId: groupId, attachmentId: attachmentId)
+        }
       )
 
     case .fundAndStats:

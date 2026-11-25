@@ -405,7 +405,10 @@ public struct GroupFeedView: View {
               members: data.members,
               categories: data.categories,
               myMemberId: data.group.myMemberId,
-              canEdit: canEdit
+              canEdit: canEdit,
+              loadAttachment: { id in
+                try await model.loadAttachment(id: id)
+              }
             ) {
               if let onOpenTransactionDetail {
                 onOpenTransactionDetail(model.groupId, tx.id)

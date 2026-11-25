@@ -1,5 +1,5 @@
 public import Domain
-import Foundation
+public import Foundation
 public import Observation
 
 @Observable
@@ -34,6 +34,7 @@ public final class GroupFeedModel {
   private let budgetRepository: any BudgetRepository
   private let transactionsRepository: any TransactionsRepository
   private let eventsRepository: any GroupEventsRepository
+  private let attachmentsRepository: (any AttachmentsRepository)?
   private var searchTask: Task<Void, Never>?
   private var loadMoreTask: Task<Void, Never>?
   private var listGeneration: UInt64 = 0
@@ -60,6 +61,7 @@ public final class GroupFeedModel {
     budgetRepository: any BudgetRepository,
     transactionsRepository: any TransactionsRepository,
     eventsRepository: any GroupEventsRepository,
+    attachmentsRepository: (any AttachmentsRepository)? = nil,
     initialFilter: TransactionFilter? = nil,
     initialHasNewItemsPill: Bool = false,
     initialDeletedTransactionId: LedgerTransaction.ID? = nil
@@ -72,11 +74,17 @@ public final class GroupFeedModel {
     self.budgetRepository = budgetRepository
     self.transactionsRepository = transactionsRepository
     self.eventsRepository = eventsRepository
+    self.attachmentsRepository = attachmentsRepository
     let resolvedFilter = initialFilter ?? TransactionFilter()
     self.filter = resolvedFilter
     self.searchText = resolvedFilter.query ?? ""
     self.hasNewItemsPill = initialHasNewItemsPill
     self.lastDeletedTransactionId = initialDeletedTransactionId
+  }
+
+  public func loadAttachment(id: Attachment.ID) async throws -> Data {
+    guard let attachmentsRepository else { return Data() }
+    return try await attachmentsRepository.content(groupId: groupId, attachmentId: id)
   }
 
   public func markDeleted(_ id: LedgerTransaction.ID) {

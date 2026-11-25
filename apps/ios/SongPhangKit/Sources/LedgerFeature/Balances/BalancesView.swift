@@ -1,5 +1,6 @@
 import DesignSystem
 public import Domain
+public import Foundation
 public import SwiftUI
 
 #if DEBUG
@@ -17,6 +18,7 @@ public struct BalancesView: View {
   private let onOpenSettle: (SuggestedTransfer) -> Void
   private let onOpenFund: ((ExpenseGroup.ID) -> Void)?
   private let onCreateFund: (() -> Void)?
+  private let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
 
   public init(
     model: BalancesModel,
@@ -28,7 +30,8 @@ public struct BalancesView: View {
     onOpenPay: ((SuggestedTransfer, Member, Member) -> Void)? = nil,
     onOpenSettle: @escaping (SuggestedTransfer) -> Void,
     onOpenFund: ((ExpenseGroup.ID) -> Void)? = nil,
-    onCreateFund: (() -> Void)? = nil
+    onCreateFund: (() -> Void)? = nil,
+    loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)? = nil
   ) {
     self.model = model
     self.showHeader = showHeader
@@ -40,6 +43,7 @@ public struct BalancesView: View {
     self.onOpenSettle = onOpenSettle
     self.onOpenFund = onOpenFund
     self.onCreateFund = onCreateFund
+    self.loadAttachment = loadAttachment
   }
 
   public var body: some View {
@@ -225,6 +229,7 @@ public struct BalancesView: View {
               && (onOpenPay != nil ? model.hasCurrentPaymentDetails : canWrite),
             opensPay: onOpenPay != nil,
             isResolvingSettlement: model.isResolvingSettlement,
+            loadAttachment: loadAttachment,
             onSettle: { openTransfer(transfer, members: data.members) },
             onResolvePending: { pending, fromName, decision in
               Task {
@@ -251,6 +256,7 @@ public struct BalancesView: View {
             isResolvingSettlement: model.isResolvingSettlement,
             hasCurrentPaymentDetails: model.hasCurrentPaymentDetails,
             isSendingReminder: model.isSendingReminder,
+            loadAttachment: loadAttachment,
             onSettle: { openTransfer($0, members: data.members) },
             onResolvePending: { pending, fromName, decision in
               Task {
@@ -281,6 +287,7 @@ public struct BalancesView: View {
             isResolvingSettlement: model.isResolvingSettlement,
             hasCurrentPaymentDetails: model.hasCurrentPaymentDetails,
             isSendingReminder: model.isSendingReminder,
+            loadAttachment: loadAttachment,
             onSettle: { openTransfer(transfer, members: data.members) },
             onResolvePending: { pending, fromName, decision in
               Task {
@@ -367,6 +374,10 @@ public struct BalancesView: View {
             amount: request.amount,
             fromName: from.name,
             toName: to.name,
+            channel: request.channel,
+            note: request.note,
+            proofAttachmentId: request.proofAttachment?.id,
+            loadAttachment: loadAttachment,
             canResolve: canResolve,
             canCancel: canCancel,
             isDisabled: !isEmailVerified || isOffline,
@@ -479,6 +490,7 @@ private struct OwnSettlementCardView: View {
   let canOpenAction: Bool
   let opensPay: Bool
   let isResolvingSettlement: Bool
+  let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
   let onSettle: () -> Void
   let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
 
@@ -514,6 +526,10 @@ private struct OwnSettlementCardView: View {
             amount: pending.amount,
             fromName: fromMember.name,
             toName: toMember.name,
+            channel: pending.channel,
+            note: pending.note,
+            proofAttachmentId: pending.proofAttachmentId,
+            loadAttachment: loadAttachment,
             canResolve: canResolvePending(toMember: toMember, group: group),
             canCancel: canCancelPending(pending: pending, fromMember: fromMember, group: group),
             isDisabled: !isEmailVerified || isOffline,
@@ -555,6 +571,7 @@ private struct SettlementCardView: View {
   let isResolvingSettlement: Bool
   let hasCurrentPaymentDetails: Bool
   let isSendingReminder: Bool
+  let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
   let onSettle: () -> Void
   let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
   let onRemind: (Member, Member) -> Void
@@ -602,6 +619,10 @@ private struct SettlementCardView: View {
             amount: pending.amount,
             fromName: fromMember.name,
             toName: toMember.name,
+            channel: pending.channel,
+            note: pending.note,
+            proofAttachmentId: pending.proofAttachmentId,
+            loadAttachment: loadAttachment,
             canResolve: canResolvePending(toMember: toMember, group: group),
             canCancel: canCancelPending(pending: pending, fromMember: fromMember, group: group),
             isDisabled: !isEmailVerified || isOffline,
@@ -679,6 +700,7 @@ private struct OtherSettlementsSection: View {
   let isResolvingSettlement: Bool
   let hasCurrentPaymentDetails: Bool
   let isSendingReminder: Bool
+  let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
   let onSettle: (SuggestedTransfer) -> Void
   let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
   let onRemind: (Member, Member) -> Void
@@ -770,6 +792,10 @@ private struct OtherSettlementsSection: View {
                 amount: pending.amount,
                 fromName: fromMember.name,
                 toName: toMember.name,
+                channel: pending.channel,
+                note: pending.note,
+                proofAttachmentId: pending.proofAttachmentId,
+                loadAttachment: loadAttachment,
                 canResolve: canResolvePending(toMember: toMember, group: group),
                 canCancel: canCancelPending(
                   pending: pending, fromMember: fromMember, group: group),

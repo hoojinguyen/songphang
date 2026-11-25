@@ -187,6 +187,7 @@ public struct RouteDestination: View {
           budgetRepository: dependencies.budget,
           transactionsRepository: dependencies.transactions,
           eventsRepository: dependencies.groupEvents,
+          attachmentsRepository: dependencies.attachments,
           initialFilter: initialFilter,
           initialHasNewItemsPill: args.contains("--new-items-pill"),
           initialDeletedTransactionId: deletedId
@@ -364,6 +365,7 @@ public struct RouteDestination: View {
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
+          attachmentsRepository: dependencies.attachments,
           onSaved: onPop
         )
       )

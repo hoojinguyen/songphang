@@ -1,3 +1,4 @@
+public import DesignSystem
 public import Domain
 public import Foundation
 public import Observation
