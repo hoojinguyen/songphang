@@ -261,32 +261,50 @@ public struct GroupFeedView: View {
       .buttonStyle(.plain)
     }
 
-    if !data.transactions.isEmpty || !model.filter.isEmpty {
+    let hasSearchOrModal =
+      !data.transactions.isEmpty || model.filter.query != nil || model.filter.hasModalFilters
+    let hasCycles = data.cyclesOverview?.cycles.isEmpty == false
+
+    if hasSearchOrModal || hasCycles {
       VStack(spacing: 8) {
-        FeedSearchBarView(
-          text: $model.searchText,
-          hasModalFilters: model.filter.hasModalFilters,
-          activeModalFilterCount: model.filter.activeModalFilterCount,
-          onSearchChange: { next in model.updateSearchText(next) },
-          onOpenFilters: { isFilterSheetOpen = true }
-        )
-        FeedFilterChipsView(
-          filter: model.filter,
-          members: data.members,
-          categories: data.categories,
-          onChange: { next in
-            Task { await model.applyFilter(next) }
-          },
-          onClear: {
-            Task { await model.clearFilter() }
-          }
-        )
+        if hasSearchOrModal {
+          FeedSearchBarView(
+            text: $model.searchText,
+            hasModalFilters: model.filter.hasModalFilters,
+            activeModalFilterCount: model.filter.activeModalFilterCount,
+            onSearchChange: { next in model.updateSearchText(next) },
+            onOpenFilters: { isFilterSheetOpen = true }
+          )
+          FeedFilterChipsView(
+            filter: model.filter,
+            members: data.members,
+            categories: data.categories,
+            onChange: { next in
+              Task { await model.applyFilter(next) }
+            },
+            onClear: {
+              Task { await model.clearFilter() }
+            }
+          )
+        }
+        if let cyclesOverview = data.cyclesOverview, !cyclesOverview.cycles.isEmpty {
+          CycleFilterChipView(
+            overview: cyclesOverview,
+            selectedCycle: model.filter.cycleId,
+            onSelectCycle: { next in
+              Task { await model.selectCycle(next) }
+            }
+          )
+        }
       }
       .padding(.horizontal, 20)
     }
 
     if data.transactions.isEmpty {
-      if model.filter.isEmpty {
+      let isEmptyCurrentOrUnfiltered =
+        model.filter.query == nil && !model.filter.hasModalFilters
+        && (model.filter.cycleId == nil || model.filter.cycleId == .current)
+      if isEmptyCurrentOrUnfiltered {
         FeedEmptyStreamView(
           members: data.members,
           canInvite: data.group.role.canWrite,

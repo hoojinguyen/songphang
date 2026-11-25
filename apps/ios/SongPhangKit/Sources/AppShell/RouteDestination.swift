@@ -188,6 +188,7 @@ public struct RouteDestination: View {
           transactionsRepository: dependencies.transactions,
           eventsRepository: dependencies.groupEvents,
           attachmentsRepository: dependencies.attachments,
+          settlementCyclesRepository: dependencies.settlementCycles,
           initialFilter: initialFilter,
           initialHasNewItemsPill: args.contains("--new-items-pill"),
           initialDeletedTransactionId: deletedId
@@ -218,6 +219,8 @@ public struct RouteDestination: View {
           transactionsRepository: dependencies.transactions,
           settlementRequests: dependencies.settlementRequests,
           remindersRepository: dependencies.reminders,
+          settlementCyclesRepository: dependencies.settlementCycles,
+          eventsRepository: dependencies.groupEvents,
           onUnauthorized: {
             onPopToRoot(nil)
             Task { await sessionModel.signOut() }

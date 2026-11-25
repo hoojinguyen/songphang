@@ -10,8 +10,29 @@ public final class GroupFeedModel {
     public var balances: GroupBalances
     public var categories: [GroupCategory]
     public var budget: GroupBudget?
+    public var cyclesOverview: SettlementCyclesOverview?
     public var transactions: [LedgerTransaction]
     public var nextCursor: String?
+
+    public init(
+      group: ExpenseGroup,
+      members: [Member],
+      balances: GroupBalances,
+      categories: [GroupCategory],
+      budget: GroupBudget?,
+      cyclesOverview: SettlementCyclesOverview? = nil,
+      transactions: [LedgerTransaction],
+      nextCursor: String?
+    ) {
+      self.group = group
+      self.members = members
+      self.balances = balances
+      self.categories = categories
+      self.budget = budget
+      self.cyclesOverview = cyclesOverview
+      self.transactions = transactions
+      self.nextCursor = nextCursor
+    }
   }
 
   public let groupId: ExpenseGroup.ID
@@ -35,6 +56,9 @@ public final class GroupFeedModel {
   private let transactionsRepository: any TransactionsRepository
   private let eventsRepository: any GroupEventsRepository
   private let attachmentsRepository: (any AttachmentsRepository)?
+  private let settlementCyclesRepository: (any SettlementCyclesRepository)?
+  private let hasInitialFilter: Bool
+  private var hasExplicitCycleSelection = false
   private var searchTask: Task<Void, Never>?
   private var loadMoreTask: Task<Void, Never>?
   private var listGeneration: UInt64 = 0
@@ -62,6 +86,7 @@ public final class GroupFeedModel {
     transactionsRepository: any TransactionsRepository,
     eventsRepository: any GroupEventsRepository,
     attachmentsRepository: (any AttachmentsRepository)? = nil,
+    settlementCyclesRepository: (any SettlementCyclesRepository)? = nil,
     initialFilter: TransactionFilter? = nil,
     initialHasNewItemsPill: Bool = false,
     initialDeletedTransactionId: LedgerTransaction.ID? = nil
@@ -75,6 +100,8 @@ public final class GroupFeedModel {
     self.transactionsRepository = transactionsRepository
     self.eventsRepository = eventsRepository
     self.attachmentsRepository = attachmentsRepository
+    self.settlementCyclesRepository = settlementCyclesRepository
+    self.hasInitialFilter = initialFilter != nil
     let resolvedFilter = initialFilter ?? TransactionFilter()
     self.filter = resolvedFilter
     self.searchText = resolvedFilter.query ?? ""
@@ -180,6 +207,7 @@ public final class GroupFeedModel {
       async let fetchedBalances = balancesRepository.balances(groupId: groupId)
       async let fetchedCategories = categoriesRepository.list(groupId: groupId)
       async let fetchedBudget = budgetRepository.budget(groupId: groupId)
+      async let fetchedCycles = fetchCyclesOverview()
       async let fetchedPage = transactionsRepository.page(
         groupId: groupId,
         filter: requestedFilter,
@@ -191,9 +219,26 @@ public final class GroupFeedModel {
       let b = try await fetchedBalances
       let c = try await fetchedCategories
       let bud = try await fetchedBudget
-      let p = try await fetchedPage
+      let cycles = try await fetchedCycles
+      var p = try await fetchedPage
       guard listGeneration == generation, filter == requestedFilter else {
         return
+      }
+      if !hasInitialFilter,
+        !hasExplicitCycleSelection,
+        cycles?.cycles.isEmpty == false,
+        filter.cycleId == nil
+      {
+        filter.cycleId = .current
+        let scopedFilter = filter
+        p = try await transactionsRepository.page(
+          groupId: groupId,
+          filter: scopedFilter,
+          cursor: nil
+        )
+        guard listGeneration == generation, filter == scopedFilter else {
+          return
+        }
       }
       state = .loaded(
         ScreenData(
@@ -202,6 +247,7 @@ public final class GroupFeedModel {
           balances: b,
           categories: c,
           budget: bud,
+          cyclesOverview: cycles,
           transactions: p.items,
           nextCursor: p.nextCursor
         )
@@ -250,8 +296,21 @@ public final class GroupFeedModel {
     await reloadTransactionsOnly()
   }
 
+  public func selectCycle(_ selection: TransactionCycleFilter?) async {
+    hasExplicitCycleSelection = true
+    var next = filter
+    next.cycleId = selection
+    await applyFilter(next)
+  }
+
   public func clearFilter() async {
+    hasExplicitCycleSelection = true
     await applyFilter(TransactionFilter())
+  }
+
+  private func fetchCyclesOverview() async throws(AppError) -> SettlementCyclesOverview? {
+    guard let settlementCyclesRepository else { return nil }
+    return try await settlementCyclesRepository.list(groupId: groupId)
   }
 
   private func reloadTransactionsOnly() async {
@@ -366,6 +425,9 @@ public final class GroupFeedModel {
       let fetchedBudget =
         (resources.contains("budget") || resources.contains("transactions"))
         ? try await budgetRepository.budget(groupId: groupId) : nil
+      let fetchedCycles =
+        (resources.contains("settlementCycles") || resources.contains("transactions"))
+        ? try await fetchCyclesOverview() : nil
 
       guard listGeneration == refetchGeneration, filter == refetchFilter else { return }
 
@@ -388,6 +450,7 @@ public final class GroupFeedModel {
       if let fetchedBalances { current.balances = fetchedBalances }
       if let fetchedCategories { current.categories = fetchedCategories }
       if let fetchedBudget { current.budget = fetchedBudget }
+      if let fetchedCycles { current.cyclesOverview = fetchedCycles }
       if let fetchedPage {
         current.transactions = fetchedPage.items
         current.nextCursor = fetchedPage.nextCursor

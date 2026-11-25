@@ -105,6 +105,7 @@ public struct GroupContainerView: View {
       transactionsRepository: dependencies.transactions,
       eventsRepository: dependencies.groupEvents,
       attachmentsRepository: dependencies.attachments,
+      settlementCyclesRepository: dependencies.settlementCycles,
       initialFilter: initialFilter
     )
     self._feedModel = State(initialValue: feed)
@@ -117,6 +118,8 @@ public struct GroupContainerView: View {
       transactionsRepository: dependencies.transactions,
       settlementRequests: dependencies.settlementRequests,
       remindersRepository: dependencies.reminders,
+      settlementCyclesRepository: dependencies.settlementCycles,
+      eventsRepository: dependencies.groupEvents,
       onUnauthorized: {
         onPopToRoot(nil)
         Task { await sessionModel.signOut() }
@@ -553,6 +556,15 @@ public struct GroupContainerView: View {
           },
         loadAttachment: { attachmentId in
           try await dependencies.attachments.content(groupId: groupId, attachmentId: attachmentId)
+        },
+        onOpenTransaction: { txId in
+          onNavigate(.transactionDetail(groupId: groupId, transactionId: txId))
+        },
+        onViewCycleExpenses: { cycleId in
+          withAnimation(.easeInOut(duration: 0.18)) {
+            selectedSegment = .expenses
+          }
+          Task { await feedModel.selectCycle(.cycle(cycleId)) }
         }
       )
 

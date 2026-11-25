@@ -3,25 +3,40 @@ public import Domain
 import Foundation
 public import Observation
 
+public enum BalancesSubTab: String, Sendable, CaseIterable, Hashable {
+  case toPay
+  case vault
+  case cycles
+}
+
 public struct BalancesViewData: Sendable, Equatable {
   public var group: ExpenseGroup
   public var members: [Member]
   public var balances: GroupBalances
   public var transactions: [LedgerTransaction]
   public var pendingRequests: [SettlementRequest]
+  public var cyclesOverview: SettlementCyclesOverview?
+  public var vault: SettlementVaultPage?
+  public var breakdowns: MemberBreakdownsResult?
 
   public init(
     group: ExpenseGroup,
     members: [Member],
     balances: GroupBalances,
     transactions: [LedgerTransaction],
-    pendingRequests: [SettlementRequest] = []
+    pendingRequests: [SettlementRequest] = [],
+    cyclesOverview: SettlementCyclesOverview? = nil,
+    vault: SettlementVaultPage? = nil,
+    breakdowns: MemberBreakdownsResult? = nil
   ) {
     self.group = group
     self.members = members
     self.balances = balances
     self.transactions = transactions
     self.pendingRequests = pendingRequests
+    self.cyclesOverview = cyclesOverview
+    self.vault = vault
+    self.breakdowns = breakdowns
   }
 }
 
@@ -40,9 +55,18 @@ public final class BalancesModel {
   private let transactionsRepository: any TransactionsRepository
   private let settlementRequests: (any SettlementRequestsRepository)?
   private let remindersRepository: (any RemindersRepository)?
+  private let settlementCyclesRepository: (any SettlementCyclesRepository)?
+  private let eventsRepository: (any GroupEventsRepository)?
   private let onUnauthorized: () -> Void
 
   public private(set) var state: Loadable<BalancesViewData> = .loading
+  public var selectedSubTab: BalancesSubTab = .toPay
+  public private(set) var vaultFilter: SettlementVaultFilter = .all
+  public private(set) var isLoadingVault = false
+  public private(set) var isLoadingMoreVault = false
+  public private(set) var isClosingCycle = false
+  public private(set) var isReopeningCycle = false
+  public var cycleErrorMessage: String?
   private(set) var hasCurrentPaymentDetails = false
   public private(set) var refreshError: AppError?
   public private(set) var isNotFound = false
@@ -60,6 +84,8 @@ public final class BalancesModel {
     transactionsRepository: any TransactionsRepository,
     settlementRequests: (any SettlementRequestsRepository)? = nil,
     remindersRepository: (any RemindersRepository)? = nil,
+    settlementCyclesRepository: (any SettlementCyclesRepository)? = nil,
+    eventsRepository: (any GroupEventsRepository)? = nil,
     onUnauthorized: @escaping () -> Void = {}
   ) {
     self.groupId = groupId
@@ -69,12 +95,17 @@ public final class BalancesModel {
     self.transactionsRepository = transactionsRepository
     self.settlementRequests = settlementRequests
     self.remindersRepository = remindersRepository
+    self.settlementCyclesRepository = settlementCyclesRepository
+    self.eventsRepository = eventsRepository
     self.onUnauthorized = onUnauthorized
   }
 
   public func load() async {
     isNotFound = false
     hasCurrentPaymentDetails = false
+    let existingCycles = state.value?.cyclesOverview
+    let existingVault = state.value?.vault
+    let existingBreakdowns = state.value?.breakdowns
     if let cachedGroup = await groupsRepository.lastKnownGroup(id: groupId),
       let cachedMembers = await membersRepository.lastKnownMembers(groupId: groupId),
       let cachedBalances = await balancesRepository.lastKnownBalances(groupId: groupId),
@@ -85,7 +116,10 @@ public final class BalancesModel {
           group: cachedGroup,
           members: cachedMembers,
           balances: cachedBalances,
-          transactions: cachedPage.items
+          transactions: cachedPage.items,
+          cyclesOverview: existingCycles,
+          vault: existingVault,
+          breakdowns: existingBreakdowns
         )
       )
     } else if case .failed = state {
@@ -98,9 +132,28 @@ public final class BalancesModel {
       async let fetchedBalances = balancesRepository.balances(groupId: groupId)
       async let fetchedPage = transactionsRepository.page(groupId: groupId, cursor: nil)
       async let fetchedPending = fetchPendingRequests()
+      async let fetchedCycles = fetchCyclesOverview()
+      async let fetchedVault = fetchVaultPage(filter: vaultFilter, cursor: nil)
+      async let fetchedBreakdowns = fetchBreakdowns()
 
-      let (group, members, balances, firstPage, pendingRequests) = try await (
-        fetchedGroup, fetchedMembers, fetchedBalances, fetchedPage, fetchedPending
+      let (
+        group,
+        members,
+        balances,
+        firstPage,
+        pendingRequests,
+        cyclesOverview,
+        vault,
+        breakdowns
+      ) = try await (
+        fetchedGroup,
+        fetchedMembers,
+        fetchedBalances,
+        fetchedPage,
+        fetchedPending,
+        fetchedCycles,
+        fetchedVault,
+        fetchedBreakdowns
       )
       var allTransactions = firstPage.items
       var nextCursor = firstPage.nextCursor
@@ -117,7 +170,10 @@ public final class BalancesModel {
           members: members,
           balances: balances,
           transactions: allTransactions,
-          pendingRequests: pendingRequests
+          pendingRequests: pendingRequests,
+          cyclesOverview: cyclesOverview,
+          vault: vault,
+          breakdowns: breakdowns
         )
       )
       refreshError = nil
@@ -208,9 +264,152 @@ public final class BalancesModel {
     }
   }
 
+  public func selectVaultFilter(_ next: SettlementVaultFilter) async {
+    vaultFilter = next
+    guard case .loaded(var current) = state else { return }
+    isLoadingVault = true
+    defer { isLoadingVault = false }
+    do throws(AppError) {
+      let page = try await balancesRepository.settlementVault(
+        groupId: groupId,
+        filter: next,
+        cycleId: nil,
+        cursor: nil
+      )
+      if vaultFilter == next {
+        current.vault = page
+        state = .loaded(current)
+      }
+    } catch {
+      if error == .unauthorized {
+        onUnauthorized()
+      }
+    }
+  }
+
+  public func loadMoreVaultIfNeeded() async {
+    guard !isLoadingMoreVault,
+      case .loaded(let current) = state,
+      let existing = current.vault,
+      let cursor = existing.nextCursor
+    else { return }
+    let activeFilter = vaultFilter
+    isLoadingMoreVault = true
+    defer { isLoadingMoreVault = false }
+    do throws(AppError) {
+      let nextPage = try await balancesRepository.settlementVault(
+        groupId: groupId,
+        filter: activeFilter,
+        cycleId: nil,
+        cursor: cursor
+      )
+      guard vaultFilter == activeFilter, case .loaded(var latest) = state else { return }
+      let combinedItems = (latest.vault?.items ?? []) + nextPage.items
+      latest.vault = SettlementVaultPage(
+        items: combinedItems,
+        summary: nextPage.summary,
+        nextCursor: nextPage.nextCursor
+      )
+      state = .loaded(latest)
+    } catch {
+      if error == .unauthorized {
+        onUnauthorized()
+      }
+    }
+  }
+
+  public func closeCycle(title: String?) async -> Bool {
+    guard let settlementCyclesRepository, !isClosingCycle else { return false }
+    isClosingCycle = true
+    cycleErrorMessage = nil
+    defer { isClosingCycle = false }
+    let trimmed = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let normalized = (trimmed?.isEmpty == false) ? trimmed : nil
+    do throws(AppError) {
+      _ = try await settlementCyclesRepository.close(
+        groupId: groupId,
+        title: normalized,
+        idempotencyKey: IdempotencyKey()
+      )
+      await load()
+      return true
+    } catch {
+      if error == .unauthorized {
+        onUnauthorized()
+      } else if error == .cycleEmpty {
+        cycleErrorMessage = L10n.tr("cycles.emptyPeriodError")
+      } else if case .api(_, 403) = error {
+        cycleErrorMessage = L10n.tr("common.forbidden")
+      } else {
+        cycleErrorMessage = L10n.tr("common.saveError")
+      }
+      return false
+    }
+  }
+
+  public func reopenLatestCycle(_ cycleId: SettlementCycle.ID) async {
+    guard let settlementCyclesRepository, !isReopeningCycle else { return }
+    isReopeningCycle = true
+    cycleErrorMessage = nil
+    defer { isReopeningCycle = false }
+    do throws(AppError) {
+      try await settlementCyclesRepository.reopen(groupId: groupId, cycleId: cycleId)
+      await load()
+    } catch {
+      if error == .unauthorized {
+        onUnauthorized()
+      } else if case .api(_, 403) = error {
+        cycleErrorMessage = L10n.tr("common.forbidden")
+      } else {
+        cycleErrorMessage = L10n.tr("common.saveError")
+      }
+    }
+  }
+
+  public func listenForEvents(onRemoved: @escaping () -> Void) async {
+    guard let eventsRepository else { return }
+    for await event in eventsRepository.events(groupId: groupId) {
+      switch event {
+      case .removed:
+        onRemoved()
+        return
+      case .reconnected:
+        await load()
+      case .changed(let resources):
+        let interesting = [
+          "balances", "transactions", "settlementRequests", "settlementCycles", "members", "group",
+        ]
+        if resources.contains(where: { interesting.contains($0) }) {
+          await load()
+        }
+      }
+    }
+  }
+
   private func fetchPendingRequests() async throws(AppError) -> [SettlementRequest] {
     guard let settlementRequests else { return [] }
     return try await settlementRequests.list(groupId: groupId, status: .pending)
+  }
+
+  private func fetchCyclesOverview() async throws(AppError) -> SettlementCyclesOverview? {
+    guard let settlementCyclesRepository else { return nil }
+    return try await settlementCyclesRepository.list(groupId: groupId)
+  }
+
+  private func fetchVaultPage(
+    filter: SettlementVaultFilter,
+    cursor: String?
+  ) async throws(AppError) -> SettlementVaultPage? {
+    try await balancesRepository.settlementVault(
+      groupId: groupId,
+      filter: filter,
+      cycleId: nil,
+      cursor: cursor
+    )
+  }
+
+  private func fetchBreakdowns() async throws(AppError) -> MemberBreakdownsResult? {
+    try await balancesRepository.breakdowns(groupId: groupId)
   }
 
   private func isConflictAPIError(_ error: AppError) -> Bool {
