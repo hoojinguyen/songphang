@@ -7,11 +7,14 @@ import {
 	GuestToken,
 	MemberColorCode,
 	PaymentChannel,
+	type SettlementCyclesResponse,
 	SplitInput,
 	TransactionCategory,
 } from "@songphang/contract";
 import { groupTransferPurpose, transferPurpose } from "@songphang/core";
 import {
+	type AttachmentRow,
+	type DbExecutor,
 	findGroupByGuestToken,
 	findGuestAttachment,
 	findSettlementCycle,
@@ -41,6 +44,11 @@ import {
 	encodeTransactionCursor,
 } from "./transactions.js";
 
+type MemberRow = Awaited<ReturnType<typeof listGroupMembers>>[number];
+type GuestTxRow = Awaited<ReturnType<typeof listGuestTransactionRows>>[number];
+type PaymentMethodsMap = Awaited<ReturnType<typeof listPaymentMethodsByGroup>>;
+type TxAmountRow = { transactionId: string; memberId: string; amount: number };
+
 function toGuestLinkDto(
 	webOrigin: string,
 	row: { active: boolean; token: string | null; createdAt: Date | null },
@@ -49,6 +57,104 @@ function toGuestLinkDto(
 		active: row.active,
 		url: row.active && row.token ? `${webOrigin}/share/${row.token}` : null,
 		createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+	};
+}
+
+async function resolveGuestSelectedCycleId(
+	executor: DbExecutor,
+	input: {
+		groupId: string;
+		requestedCycleId: GuestGroupViewQuery["cycleId"];
+		cyclesPayload: SettlementCyclesResponse;
+	},
+): Promise<"current" | string> {
+	if (input.requestedCycleId === undefined) {
+		if (
+			input.cyclesPayload.currentPeriod.expenseCount === 0 &&
+			input.cyclesPayload.cycles.length > 0
+		) {
+			return input.cyclesPayload.cycles[0]?.id ?? "current";
+		}
+		return "current";
+	}
+	if (input.requestedCycleId !== "current") {
+		const cycle = await findSettlementCycle(
+			executor,
+			input.groupId,
+			input.requestedCycleId,
+		);
+		if (cycle === null) {
+			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		}
+	}
+	return input.requestedCycleId;
+}
+
+function mapGuestTransfers(input: {
+	transfers: Array<{
+		fromMemberId: string;
+		toMemberId: string;
+		amount: number;
+	}>;
+	memberById: Map<string, MemberRow>;
+	methods: PaymentMethodsMap;
+	staticPurpose: string;
+}) {
+	return input.transfers.map((transfer) => {
+		const from = input.memberById.get(transfer.fromMemberId);
+		const to = input.memberById.get(transfer.toMemberId);
+		if (!from || !to) throw new Error("Settlement member not found");
+		const purpose = transferPurpose(from.name, to.name);
+		return {
+			fromMemberId: transfer.fromMemberId,
+			toMemberId: transfer.toMemberId,
+			amount: transfer.amount,
+			purpose,
+			payTo: buildPayToMethods({
+				rows: input.methods.get(to.id) ?? [],
+				amount: transfer.amount,
+				purpose,
+				staticPurpose: input.staticPurpose,
+			}),
+		};
+	});
+}
+
+function mapGuestTransaction(input: {
+	row: GuestTxRow;
+	payers: TxAmountRow[];
+	shares: TxAmountRow[];
+	attachmentRows: AttachmentRow[];
+}) {
+	const { row } = input;
+	return {
+		id: row.id,
+		type: row.type,
+		description: row.description,
+		amount: row.amount,
+		currency: row.currency,
+		occurredAt: row.occurredAt.toISOString(),
+		category: TransactionCategory.nullable().parse(row.category),
+		categoryId: row.categoryId,
+		categoryName: row.categoryName ?? null,
+		categoryColor: MemberColorCode.nullable().parse(row.categoryColor ?? null),
+		payers: input.payers
+			.filter((payer) => payer.transactionId === row.id)
+			.map((payer) => ({ memberId: payer.memberId, amount: payer.amount })),
+		shares: input.shares
+			.filter((share) => share.transactionId === row.id)
+			.map((share) => ({ memberId: share.memberId, amount: share.amount })),
+		split: SplitInput.parse(row.split),
+		paymentChannel: PaymentChannel.nullable().parse(row.paymentChannel ?? null),
+		paymentNote: row.paymentNote ?? null,
+		cycleId: row.cycleId ?? null,
+		attachments:
+			row.type === "transfer"
+				? []
+				: input.attachmentRows
+						.filter((attachment) => attachment.transactionId === row.id)
+						.slice(0, 3)
+						.map(toAttachmentDto),
 	};
 }
 
@@ -185,29 +291,12 @@ export async function getGuestGroupView(
 				throw new AppError(404, "NOT_FOUND", "Resource not found");
 			}
 			const cyclesPayload = await getSettlementCyclesIn(executor, group.id);
-			let selectedCycleId: "current" | string;
-			if (input.query.cycleId !== undefined) {
-				if (input.query.cycleId !== "current") {
-					const cycle = await findSettlementCycle(
-						executor,
-						group.id,
-						input.query.cycleId,
-					);
-					if (cycle === null) {
-						throw new AppError(404, "NOT_FOUND", "Resource not found");
-					}
-				}
-				selectedCycleId = input.query.cycleId;
-			} else if (
-				cyclesPayload.currentPeriod.expenseCount === 0 &&
-				cyclesPayload.cycles.length > 0
-			) {
-				selectedCycleId = cyclesPayload.cycles[0]?.id ?? "current";
-			} else {
-				selectedCycleId = "current";
-			}
+			const selectedCycleId = await resolveGuestSelectedCycleId(executor, {
+				groupId: group.id,
+				requestedCycleId: input.query.cycleId,
+				cyclesPayload,
+			});
 
-			const breakdownCycleId = input.query.cycleId ?? "auto";
 			const [members, methods, fund, settlements, breakdownPayload, txRows] =
 				await Promise.all([
 					listGroupMembers(executor, group.id),
@@ -219,7 +308,7 @@ export async function getGuestGroupView(
 					}),
 					computeMemberBreakdownsIn(executor, {
 						groupId: group.id,
-						cycleId: breakdownCycleId,
+						cycleId: input.query.cycleId ?? "auto",
 					}),
 					listGuestTransactionRows(executor, {
 						groupId: group.id,
@@ -229,16 +318,12 @@ export async function getGuestGroupView(
 					}),
 				]);
 
+			const memberById = new Map(members.map((member) => [member.id, member]));
 			const peopleIds = new Set(
 				members
 					.filter((member) => member.kind === "person")
 					.map((member) => member.id),
 			);
-			const peopleBalances = settlements.balances.filter((entry) =>
-				peopleIds.has(entry.memberId),
-			);
-			const staticPurpose = groupTransferPurpose(group.name);
-
 			const page = txRows.slice(0, input.query.limit);
 			const pageIds = page.map((row) => row.id);
 			const nonTransferIds = page
@@ -270,72 +355,22 @@ export async function getGuestGroupView(
 				cycles: cyclesPayload.cycles,
 				selectedCycleId,
 				currentPeriod: cyclesPayload.currentPeriod,
-				balances: peopleBalances,
-				transfers: settlements.transfers.map((transfer) => {
-					const from = members.find(
-						(member) => member.id === transfer.fromMemberId,
-					);
-					const to = members.find(
-						(member) => member.id === transfer.toMemberId,
-					);
-					if (!from || !to) throw new Error("Settlement member not found");
-					const purpose = transferPurpose(from.name, to.name);
-					return {
-						fromMemberId: transfer.fromMemberId,
-						toMemberId: transfer.toMemberId,
-						amount: transfer.amount,
-						purpose,
-						payTo: buildPayToMethods({
-							rows: methods.get(to.id) ?? [],
-							amount: transfer.amount,
-							purpose,
-							staticPurpose,
-						}),
-					};
+				balances: settlements.balances.filter((entry) =>
+					peopleIds.has(entry.memberId),
+				),
+				transfers: mapGuestTransfers({
+					transfers: settlements.transfers,
+					memberById,
+					methods,
+					staticPurpose: groupTransferPurpose(group.name),
 				}),
 				fund,
 				resolvedFocus: breakdownPayload.resolvedFocus,
 				breakdowns: breakdownPayload.breakdowns,
 				transactions: {
-					items: page.map((row) => ({
-						id: row.id,
-						type: row.type,
-						description: row.description,
-						amount: row.amount,
-						currency: row.currency,
-						occurredAt: row.occurredAt.toISOString(),
-						category: TransactionCategory.nullable().parse(row.category),
-						categoryId: row.categoryId,
-						categoryName: row.categoryName ?? null,
-						categoryColor: MemberColorCode.nullable().parse(
-							row.categoryColor ?? null,
-						),
-						payers: payers
-							.filter((payer) => payer.transactionId === row.id)
-							.map((payer) => ({
-								memberId: payer.memberId,
-								amount: payer.amount,
-							})),
-						shares: shares
-							.filter((share) => share.transactionId === row.id)
-							.map((share) => ({
-								memberId: share.memberId,
-								amount: share.amount,
-							})),
-						split: SplitInput.parse(row.split),
-						paymentChannel: PaymentChannel.nullable().parse(
-							row.paymentChannel ?? null,
-						),
-						paymentNote: row.paymentNote ?? null,
-						cycleId: row.cycleId ?? null,
-						attachments:
-							row.type === "transfer"
-								? []
-								: attachmentRows
-										.filter((attachment) => attachment.transactionId === row.id)
-										.slice(0, 3)
-										.map(toAttachmentDto),
-					})),
+					items: page.map((row) =>
+						mapGuestTransaction({ row, payers, shares, attachmentRows }),
+					),
 					nextCursor:
 						txRows.length > input.query.limit && last
 							? encodeTransactionCursor(last)
