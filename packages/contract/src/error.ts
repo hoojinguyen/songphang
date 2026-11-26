@@ -41,6 +41,9 @@ export const ErrorCode = z
 		"GROUP_ARCHIVED",
 		"CYCLE_EMPTY",
 		"CYCLE_NOT_LATEST",
+		"HOUSEHOLD_MEMBER_CONFLICT",
+		"HOUSEHOLD_REPRESENTATIVE_ACTIVE_REQUIRED",
+		"RECURRING_MEMBER_INACTIVE",
 	])
 	.openapi("ErrorCode");
 export type ErrorCode = z.infer<typeof ErrorCode>;

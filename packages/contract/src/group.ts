@@ -51,6 +51,8 @@ export const GroupSummaryDto = z
 			)
 			.max(4),
 		myBalance: z.int(),
+		myIndividualBalance: z.int().optional(),
+		householdName: z.string().nullable().optional(),
 		archivedAt: z.iso.datetime().nullable().optional(),
 		role: GroupRole.optional(),
 		pendingActionCount: z.int().nonnegative().optional(),
@@ -93,6 +95,7 @@ export type DeleteGroupRequest = z.infer<typeof DeleteGroupRequest>;
 export const CloneGroupRequest = z
 	.object({
 		name: GroupName,
+		includeMembers: z.boolean().optional(),
 		copyPaymentMethods: z.boolean().default(true),
 		copyCategories: z.boolean().default(false),
 	})

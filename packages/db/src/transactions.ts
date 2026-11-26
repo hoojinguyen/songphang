@@ -47,6 +47,7 @@ export const TRANSACTION_COLUMNS = {
 	paymentChannel: transactions.paymentChannel,
 	paymentNote: transactions.paymentNote,
 	cycleId: transactions.cycleId,
+	recurringExpenseId: transactions.recurringExpenseId,
 	createdAt: transactions.createdAt,
 	updatedAt: transactions.updatedAt,
 	deletedAt: transactions.deletedAt,

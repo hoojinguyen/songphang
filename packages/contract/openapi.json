@@ -255,6 +255,12 @@
 					"fund": {
 						"$ref": "#/components/schemas/FundSummary"
 					},
+					"households": {
+						"items": {
+							"$ref": "#/components/schemas/HouseholdBalanceDto"
+						},
+						"type": "array"
+					},
 					"minimized": {
 						"type": "boolean"
 					},
@@ -264,6 +270,9 @@
 								"amount": {
 									"exclusiveMinimum": 0,
 									"type": "integer"
+								},
+								"fromHousehold": {
+									"$ref": "#/components/schemas/HouseholdTransferRefDto"
 								},
 								"fromMemberId": {
 									"format": "uuid",
@@ -412,6 +421,9 @@
 									"maxLength": 25,
 									"minLength": 1,
 									"type": "string"
+								},
+								"toHousehold": {
+									"$ref": "#/components/schemas/HouseholdTransferRefDto"
 								},
 								"toMemberId": {
 									"format": "uuid",
@@ -700,6 +712,9 @@
 						"default": true,
 						"type": "boolean"
 					},
+					"includeMembers": {
+						"type": "boolean"
+					},
 					"name": {
 						"maxLength": 80,
 						"minLength": 1,
@@ -884,6 +899,83 @@
 				},
 				"type": "object"
 			},
+			"CreateHouseholdRequest": {
+				"properties": {
+					"memberIds": {
+						"items": {
+							"format": "uuid",
+							"type": "string"
+						},
+						"maxItems": 20,
+						"minItems": 2,
+						"type": "array"
+					},
+					"name": {
+						"maxLength": 50,
+						"minLength": 1,
+						"type": "string"
+					},
+					"representativeMemberId": {
+						"format": "uuid",
+						"type": "string"
+					}
+				},
+				"required": [
+					"name",
+					"memberIds",
+					"representativeMemberId"
+				],
+				"type": "object"
+			},
+			"CreateInlineRecurringInput": {
+				"properties": {
+					"dayOfMonth": {
+						"maximum": 31,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"dayOfWeek": {
+						"maximum": 7,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"frequency": {
+						"enum": [
+							"weekly",
+							"monthly",
+							"quarterly",
+							"yearly"
+						],
+						"type": "string"
+					},
+					"mode": {
+						"enum": [
+							"fixed",
+							"variable"
+						],
+						"type": "string"
+					},
+					"monthOfYear": {
+						"maximum": 12,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					}
+				},
+				"required": [
+					"mode",
+					"frequency"
+				],
+				"type": "object"
+			},
 			"CreateMemberRequest": {
 				"properties": {
 					"name": {
@@ -906,6 +998,121 @@
 				},
 				"required": [
 					"attachmentId"
+				],
+				"type": "object"
+			},
+			"CreateRecurringExpenseRequest": {
+				"properties": {
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"category": {
+						"default": null,
+						"enum": [
+							"food",
+							"transport",
+							"lodging",
+							"shopping",
+							"entertainment",
+							"bills",
+							"other",
+							null
+						],
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"categoryId": {
+						"default": null,
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"dayOfMonth": {
+						"maximum": 31,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"dayOfWeek": {
+						"maximum": 7,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"description": {
+						"maxLength": 200,
+						"minLength": 1,
+						"type": "string"
+					},
+					"frequency": {
+						"enum": [
+							"weekly",
+							"monthly",
+							"quarterly",
+							"yearly"
+						],
+						"type": "string"
+					},
+					"mode": {
+						"enum": [
+							"fixed",
+							"variable"
+						],
+						"type": "string"
+					},
+					"monthOfYear": {
+						"maximum": 12,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"payersTemplate": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 1,
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId"
+							],
+							"type": "object"
+						},
+						"maxItems": 100,
+						"minItems": 1,
+						"type": "array"
+					},
+					"splitTemplate": {
+						"$ref": "#/components/schemas/SplitInput"
+					}
+				},
+				"required": [
+					"mode",
+					"description",
+					"payersTemplate",
+					"splitTemplate",
+					"frequency"
 				],
 				"type": "object"
 			},
@@ -1028,7 +1235,10 @@
 					"APPLE_REVOCATION_FAILED",
 					"GROUP_ARCHIVED",
 					"CYCLE_EMPTY",
-					"CYCLE_NOT_LATEST"
+					"CYCLE_NOT_LATEST",
+					"HOUSEHOLD_MEMBER_CONFLICT",
+					"HOUSEHOLD_REPRESENTATIVE_ACTIVE_REQUIRED",
+					"RECURRING_MEMBER_INACTIVE"
 				],
 				"type": "string"
 			},
@@ -1315,6 +1525,12 @@
 						],
 						"type": "string"
 					},
+					"householdName": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"id": {
 						"format": "uuid",
 						"type": "string"
@@ -1324,6 +1540,9 @@
 						"type": "integer"
 					},
 					"myBalance": {
+						"type": "integer"
+					},
+					"myIndividualBalance": {
 						"type": "integer"
 					},
 					"name": {
@@ -1537,6 +1756,18 @@
 						],
 						"type": "object"
 					},
+					"householdBreakdowns": {
+						"items": {
+							"$ref": "#/components/schemas/HouseholdDebtBreakdownDto"
+						},
+						"type": "array"
+					},
+					"households": {
+						"items": {
+							"$ref": "#/components/schemas/HouseholdBalanceDto"
+						},
+						"type": "array"
+					},
 					"members": {
 						"items": {
 							"$ref": "#/components/schemas/GuestMemberDto"
@@ -1588,6 +1819,9 @@
 									"maximum": 999999999999,
 									"minimum": 1,
 									"type": "integer"
+								},
+								"fromHousehold": {
+									"$ref": "#/components/schemas/HouseholdTransferRefDto"
 								},
 								"fromMemberId": {
 									"format": "uuid",
@@ -1697,6 +1931,9 @@
 									"minLength": 1,
 									"type": "string"
 								},
+								"toHousehold": {
+									"$ref": "#/components/schemas/HouseholdTransferRefDto"
+								},
 								"toMemberId": {
 									"format": "uuid",
 									"type": "string"
@@ -1780,6 +2017,13 @@
 							"sun"
 						],
 						"type": "string"
+					},
+					"householdId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"id": {
 						"format": "uuid",
@@ -1997,6 +2241,209 @@
 				"required": [
 					"status",
 					"db"
+				],
+				"type": "object"
+			},
+			"HouseholdBalanceDto": {
+				"properties": {
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"memberBalances": {
+						"items": {
+							"properties": {
+								"balance": {
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId",
+								"balance"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"memberIds": {
+						"items": {
+							"format": "uuid",
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"name": {
+						"maxLength": 50,
+						"minLength": 1,
+						"type": "string"
+					},
+					"netBalance": {
+						"type": "integer"
+					},
+					"representativeMemberId": {
+						"format": "uuid",
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"representativeMemberId",
+					"memberIds",
+					"netBalance",
+					"memberBalances"
+				],
+				"type": "object"
+			},
+			"HouseholdDebtBreakdownDto": {
+				"properties": {
+					"carryOverBalance": {
+						"type": "integer"
+					},
+					"focusExpenseDelta": {
+						"type": "integer"
+					},
+					"focusTransferDelta": {
+						"type": "integer"
+					},
+					"householdId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"memberIds": {
+						"items": {
+							"format": "uuid",
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"name": {
+						"maxLength": 50,
+						"minLength": 1,
+						"type": "string"
+					},
+					"netBalance": {
+						"type": "integer"
+					},
+					"postCycleDelta": {
+						"type": "integer"
+					},
+					"representativeMemberId": {
+						"format": "uuid",
+						"type": "string"
+					}
+				},
+				"required": [
+					"householdId",
+					"name",
+					"representativeMemberId",
+					"memberIds",
+					"carryOverBalance",
+					"focusExpenseDelta",
+					"focusTransferDelta",
+					"postCycleDelta",
+					"netBalance"
+				],
+				"type": "object"
+			},
+			"HouseholdDto": {
+				"properties": {
+					"createdAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"memberIds": {
+						"items": {
+							"format": "uuid",
+							"type": "string"
+						},
+						"maxItems": 20,
+						"minItems": 2,
+						"type": "array"
+					},
+					"name": {
+						"maxLength": 50,
+						"minLength": 1,
+						"type": "string"
+					},
+					"representativeMemberId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"updatedAt": {
+						"format": "date-time",
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"representativeMemberId",
+					"memberIds",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object"
+			},
+			"HouseholdResponse": {
+				"properties": {
+					"household": {
+						"$ref": "#/components/schemas/HouseholdDto"
+					}
+				},
+				"required": [
+					"household"
+				],
+				"type": "object"
+			},
+			"HouseholdTransferRefDto": {
+				"properties": {
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"memberIds": {
+						"items": {
+							"format": "uuid",
+							"type": "string"
+						},
+						"type": "array"
+					},
+					"name": {
+						"maxLength": 50,
+						"minLength": 1,
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"memberIds"
+				],
+				"type": [
+					"object",
+					"null"
+				]
+			},
+			"HouseholdsResponse": {
+				"properties": {
+					"households": {
+						"items": {
+							"$ref": "#/components/schemas/HouseholdDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"households"
 				],
 				"type": "object"
 			},
@@ -2331,6 +2778,12 @@
 					"hasClosedCycles": {
 						"type": "boolean"
 					},
+					"householdBreakdowns": {
+						"items": {
+							"$ref": "#/components/schemas/HouseholdDebtBreakdownDto"
+						},
+						"type": "array"
+					},
 					"resolvedFocus": {
 						"$ref": "#/components/schemas/MemberBreakdownsResolvedFocus"
 					}
@@ -2430,6 +2883,13 @@
 					},
 					"fundHolderMemberId": {
 						"default": null,
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"householdId": {
 						"format": "uuid",
 						"type": [
 							"string",
@@ -3188,11 +3648,20 @@
 						"minLength": 1,
 						"type": "string"
 					},
+					"householdName": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"memberCount": {
 						"minimum": 0,
 						"type": "integer"
 					},
 					"myBalance": {
+						"type": "integer"
+					},
+					"myIndividualBalance": {
 						"type": "integer"
 					},
 					"previewMembers": {
@@ -3274,6 +3743,56 @@
 					}
 				]
 			},
+			"OverviewRecurringDueAction": {
+				"properties": {
+					"description": {
+						"type": "string"
+					},
+					"dueDate": {
+						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+						"type": "string"
+					},
+					"groupId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"groupName": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"payerMemberId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"payerName": {
+						"type": "string"
+					},
+					"suggestedAmount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					}
+				},
+				"required": [
+					"id",
+					"groupId",
+					"groupName",
+					"description",
+					"dueDate",
+					"suggestedAmount",
+					"payerMemberId",
+					"payerName"
+				],
+				"type": "object"
+			},
 			"OverviewResponse": {
 				"properties": {
 					"activeGroupCount": {
@@ -3281,6 +3800,17 @@
 						"type": "integer"
 					},
 					"archivedGroupCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"dueRecurringActions": {
+						"items": {
+							"$ref": "#/components/schemas/OverviewRecurringDueAction"
+						},
+						"maxItems": 20,
+						"type": "array"
+					},
+					"dueRecurringCount": {
 						"minimum": 0,
 						"type": "integer"
 					},
@@ -4578,6 +5108,221 @@
 				],
 				"type": "object"
 			},
+			"RecurringExpenseDto": {
+				"properties": {
+					"active": {
+						"type": "boolean"
+					},
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"category": {
+						"enum": [
+							"food",
+							"transport",
+							"lodging",
+							"shopping",
+							"entertainment",
+							"bills",
+							"other",
+							null
+						],
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"categoryId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"createdAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"dayOfMonth": {
+						"maximum": 31,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"dayOfWeek": {
+						"maximum": 7,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"description": {
+						"type": "string"
+					},
+					"frequency": {
+						"enum": [
+							"weekly",
+							"monthly",
+							"quarterly",
+							"yearly"
+						],
+						"type": "string"
+					},
+					"groupId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"lastPostedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"lastProcessedDueDate": {
+						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"lastTransactionId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"mode": {
+						"enum": [
+							"fixed",
+							"variable"
+						],
+						"type": "string"
+					},
+					"monthOfYear": {
+						"maximum": 12,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"nextDueDate": {
+						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+						"type": "string"
+					},
+					"pauseReason": {
+						"enum": [
+							"member_invalid",
+							"split_invalid",
+							null
+						],
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"payersTemplate": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 1,
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId"
+							],
+							"type": "object"
+						},
+						"maxItems": 100,
+						"minItems": 1,
+						"type": "array"
+					},
+					"pendingDueDate": {
+						"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"splitTemplate": {
+						"$ref": "#/components/schemas/SplitInput"
+					},
+					"updatedAt": {
+						"format": "date-time",
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"groupId",
+					"mode",
+					"active",
+					"description",
+					"amount",
+					"category",
+					"categoryId",
+					"payersTemplate",
+					"splitTemplate",
+					"frequency",
+					"dayOfWeek",
+					"dayOfMonth",
+					"monthOfYear",
+					"nextDueDate",
+					"pendingDueDate",
+					"lastProcessedDueDate",
+					"lastPostedAt",
+					"lastTransactionId",
+					"pauseReason",
+					"createdAt",
+					"updatedAt"
+				],
+				"type": "object"
+			},
+			"RecurringExpenseResponse": {
+				"properties": {
+					"recurringExpense": {
+						"$ref": "#/components/schemas/RecurringExpenseDto"
+					}
+				},
+				"required": [
+					"recurringExpense"
+				],
+				"type": "object"
+			},
+			"RecurringExpensesResponse": {
+				"properties": {
+					"recurringExpenses": {
+						"items": {
+							"$ref": "#/components/schemas/RecurringExpenseDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"recurringExpenses"
+				],
+				"type": "object"
+			},
 			"RegisterDeviceRequest": {
 				"properties": {
 					"environment": {
@@ -5834,6 +6579,13 @@
 						"minItems": 1,
 						"type": "array"
 					},
+					"recurring": {
+						"$ref": "#/components/schemas/CreateInlineRecurringInput"
+					},
+					"recurringExpenseId": {
+						"format": "uuid",
+						"type": "string"
+					},
 					"split": {
 						"$ref": "#/components/schemas/SplitInput"
 					},
@@ -6312,6 +7064,13 @@
 							"null"
 						]
 					},
+					"recurringExpenseId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"shares": {
 						"items": {
 							"properties": {
@@ -6536,6 +7295,13 @@
 						"$ref": "#/components/schemas/PaymentChannel"
 					},
 					"paymentNote": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"recurringExpenseId": {
+						"format": "uuid",
 						"type": [
 							"string",
 							"null"
@@ -6868,6 +7634,29 @@
 				],
 				"type": "object"
 			},
+			"UpdateHouseholdRequest": {
+				"properties": {
+					"memberIds": {
+						"items": {
+							"format": "uuid",
+							"type": "string"
+						},
+						"maxItems": 20,
+						"minItems": 2,
+						"type": "array"
+					},
+					"name": {
+						"maxLength": 50,
+						"minLength": 1,
+						"type": "string"
+					},
+					"representativeMemberId": {
+						"format": "uuid",
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
 			"UpdateMemberRequest": {
 				"properties": {
 					"active": {
@@ -6905,6 +7694,115 @@
 				"required": [
 					"hideContent"
 				],
+				"type": "object"
+			},
+			"UpdateRecurringExpenseRequest": {
+				"properties": {
+					"active": {
+						"type": "boolean"
+					},
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"category": {
+						"enum": [
+							"food",
+							"transport",
+							"lodging",
+							"shopping",
+							"entertainment",
+							"bills",
+							"other",
+							null
+						],
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"categoryId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"dayOfMonth": {
+						"maximum": 31,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"dayOfWeek": {
+						"maximum": 7,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"description": {
+						"maxLength": 200,
+						"minLength": 1,
+						"type": "string"
+					},
+					"frequency": {
+						"enum": [
+							"weekly",
+							"monthly",
+							"quarterly",
+							"yearly"
+						],
+						"type": "string"
+					},
+					"mode": {
+						"enum": [
+							"fixed",
+							"variable"
+						],
+						"type": "string"
+					},
+					"monthOfYear": {
+						"maximum": 12,
+						"minimum": 1,
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"payersTemplate": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 1,
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId"
+							],
+							"type": "object"
+						},
+						"maxItems": 100,
+						"minItems": 1,
+						"type": "array"
+					},
+					"splitTemplate": {
+						"$ref": "#/components/schemas/SplitInput"
+					}
+				},
 				"type": "object"
 			},
 			"UpdateSplitTransactionRequest": {
@@ -8729,6 +9627,152 @@
 				}
 			}
 		},
+		"/api/v1/groups/{groupId}/households": {
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HouseholdsResponse"
+								}
+							}
+						},
+						"description": "Group households"
+					}
+				}
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "idempotency-key",
+						"required": true,
+						"schema": {
+							"maxLength": 128,
+							"minLength": 8,
+							"pattern": "^[A-Za-z0-9_-]+$",
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateHouseholdRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HouseholdResponse"
+								}
+							}
+						},
+						"description": "Household created"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/households/{householdId}": {
+			"delete": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "householdId",
+						"required": true,
+						"schema": {
+							"maxLength": 100,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Household deleted"
+					}
+				}
+			},
+			"patch": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "householdId",
+						"required": true,
+						"schema": {
+							"maxLength": 100,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateHouseholdRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HouseholdResponse"
+								}
+							}
+						},
+						"description": "Household updated"
+					}
+				}
+			}
+		},
 		"/api/v1/groups/{groupId}/invite": {
 			"get": {
 				"parameters": [
@@ -9283,6 +10327,188 @@
 							}
 						},
 						"description": "Receipt scan status and reading"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/recurring-expenses": {
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecurringExpensesResponse"
+								}
+							}
+						},
+						"description": "Group recurring expenses"
+					}
+				}
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "idempotency-key",
+						"required": true,
+						"schema": {
+							"maxLength": 128,
+							"minLength": 8,
+							"pattern": "^[A-Za-z0-9_-]+$",
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateRecurringExpenseRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecurringExpenseResponse"
+								}
+							}
+						},
+						"description": "Recurring expense created"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/recurring-expenses/{recurringId}": {
+			"delete": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "recurringId",
+						"required": true,
+						"schema": {
+							"maxLength": 100,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Recurring expense deleted"
+					}
+				}
+			},
+			"patch": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "recurringId",
+						"required": true,
+						"schema": {
+							"maxLength": 100,
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/UpdateRecurringExpenseRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecurringExpenseResponse"
+								}
+							}
+						},
+						"description": "Recurring expense updated"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/recurring-expenses/{recurringId}/skip": {
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "recurringId",
+						"required": true,
+						"schema": {
+							"maxLength": 100,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/RecurringExpenseResponse"
+								}
+							}
+						},
+						"description": "Recurring expense occurrence skipped"
 					}
 				}
 			}

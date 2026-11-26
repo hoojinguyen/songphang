@@ -64,15 +64,19 @@ export async function getBalances(
 			const group = await findGroup(executor, groupId);
 			if (group === null)
 				throw new AppError(404, "NOT_FOUND", "Resource not found");
-			const { balances, transfers } = await suggestGroupTransfers(executor, {
-				groupId,
-				minimizeDebts: group.minimizeDebts,
-			});
+			const { balances, transfers, households } = await suggestGroupTransfers(
+				executor,
+				{
+					groupId,
+					minimizeDebts: group.minimizeDebts,
+				},
+			);
 			if (balances.length === 0)
 				return BalancesResponse.parse({
 					currency: group.currency,
 					minimized: group.minimizeDebts,
 					balances: [],
+					households: [],
 					transfers: [],
 					fund: null,
 				});
@@ -82,6 +86,16 @@ export async function getBalances(
 				listPendingSettlements(executor, groupId),
 				fundCashAndContributions(executor, groupId),
 			]);
+			const householdByRep = new Map(
+				households.map((household) => [
+					household.representativeMemberId,
+					{
+						id: household.id,
+						name: household.name,
+						memberIds: household.memberIds,
+					},
+				]),
+			);
 			const peopleIds = new Set(
 				members
 					.filter((member) => member.kind === "person")
@@ -95,6 +109,7 @@ export async function getBalances(
 				currency: group.currency,
 				minimized: group.minimizeDebts,
 				balances: peopleBalances,
+				households,
 				fund,
 				transfers: transfers.map((transfer) => {
 					const from = members.find(
@@ -116,6 +131,8 @@ export async function getBalances(
 					});
 					return {
 						...transfer,
+						fromHousehold: householdByRep.get(from.id) ?? null,
+						toHousehold: householdByRep.get(to.id) ?? null,
 						purpose,
 						payTo,
 						pendingRequest: request

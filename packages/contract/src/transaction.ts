@@ -156,11 +156,25 @@ const LedgerFields = {
 	category: TransactionCategory.nullable().default(null),
 	categoryId: z.uuid().nullable().default(null),
 };
+export const CreateInlineRecurringInput = z
+	.object({
+		mode: z.enum(["fixed", "variable"]),
+		frequency: z.enum(["weekly", "monthly", "quarterly", "yearly"]),
+		dayOfWeek: z.int().min(1).max(7).nullable().optional(),
+		dayOfMonth: z.int().min(1).max(31).nullable().optional(),
+		monthOfYear: z.int().min(1).max(12).nullable().optional(),
+	})
+	.openapi("CreateInlineRecurringInput");
+export type CreateInlineRecurringInput = z.infer<
+	typeof CreateInlineRecurringInput
+>;
 export const SplitTransactionRequest = z
 	.object({
 		type: z.enum(["expense", "income"]),
 		...LedgerFields,
 		attachmentIds: AttachmentIds.optional(),
+		recurringExpenseId: z.uuid().optional(),
+		recurring: CreateInlineRecurringInput.optional(),
 	})
 	.refine(
 		(request) =>
@@ -170,6 +184,15 @@ export const SplitTransactionRequest = z
 				request.type === "income" &&
 				request.split.method !== "items" &&
 				(request.split.extras?.length ?? 0) > 0
+			) &&
+			!(
+				request.type === "income" &&
+				(request.recurringExpenseId !== undefined ||
+					request.recurring !== undefined)
+			) &&
+			!(
+				request.recurringExpenseId !== undefined &&
+				request.recurring !== undefined
 			),
 	)
 	.openapi("SplitTransactionRequest");
@@ -261,6 +284,7 @@ const BaseTransactionFields = {
 	paymentChannel: PaymentChannel.nullable().optional(),
 	paymentNote: z.string().nullable().optional(),
 	cycleId: z.uuid().nullable().optional(),
+	recurringExpenseId: z.uuid().nullable().optional(),
 };
 export const TransactionDto = z
 	.object({

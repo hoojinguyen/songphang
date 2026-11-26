@@ -1,5 +1,8 @@
+import { z } from "@hono/zod-openapi";
 import {
+	CalendarDate,
 	JOB_NAMES,
+	MoneyAmount,
 	NotificationPayload,
 	type TransactionWarning,
 } from "@songphang/contract";
@@ -11,7 +14,29 @@ import {
 } from "@songphang/db";
 import type { EnqueueFn } from "../queue.js";
 
-const IMMEDIATE_KINDS = new Set<NotificationPayload["kind"]>([
+export const ExtendedNotificationPayload = z.union([
+	NotificationPayload,
+	z.object({
+		kind: z.literal("recurring_posted"),
+		groupName: z.string(),
+		transactionId: z.uuid(),
+		description: z.string(),
+		amount: MoneyAmount,
+		share: z.int().nonnegative(),
+	}),
+	z.object({
+		kind: z.literal("recurring_due"),
+		groupName: z.string(),
+		recurringExpenseId: z.uuid(),
+		description: z.string(),
+		dueDate: CalendarDate,
+	}),
+]);
+export type ExtendedNotificationPayload = z.infer<
+	typeof ExtendedNotificationPayload
+>;
+
+const IMMEDIATE_KINDS = new Set<ExtendedNotificationPayload["kind"]>([
 	"dispute_opened",
 	"dispute_resolved",
 	"settlement_requested",
@@ -20,21 +45,24 @@ const IMMEDIATE_KINDS = new Set<NotificationPayload["kind"]>([
 	"debt_reminder",
 	"approval_requested",
 	"approval_decided",
+	"recurring_due",
 ]);
 
-const PUSH_KINDS = new Set<NotificationPayload["kind"]>([
+const PUSH_KINDS = new Set<ExtendedNotificationPayload["kind"]>([
 	...IMMEDIATE_KINDS,
 	"expense_added",
 	"comment_added",
+	"recurring_posted",
 ]);
 
 export type NotifyInput<
-	K extends NotificationPayload["kind"] = NotificationPayload["kind"],
+	K extends
+		ExtendedNotificationPayload["kind"] = ExtendedNotificationPayload["kind"],
 > = {
 	groupId: string;
 	actorUserId: string | null;
 	kind: K;
-	payload: Extract<NotificationPayload, { kind: K }>;
+	payload: Extract<ExtendedNotificationPayload, { kind: K }>;
 	toUserIds?: string[];
 	toMemberIds?: string[];
 	now?: Date;
@@ -45,7 +73,7 @@ export type NotifyInput<
 /**
  * Single writer for in-app notifications. Runs inside the caller's open DB transaction.
  */
-export async function notify<K extends NotificationPayload["kind"]>(
+export async function notify<K extends ExtendedNotificationPayload["kind"]>(
 	executor: DbExecutor,
 	input: NotifyInput<K>,
 ): Promise<Array<{ id: string; userId: string }>> {
@@ -56,7 +84,7 @@ export async function notify<K extends NotificationPayload["kind"]>(
 		...(input.toMemberIds ? { memberIds: input.toMemberIds } : {}),
 	});
 	if (recipientIds.length === 0) return [];
-	const payload = NotificationPayload.parse(input.payload);
+	const payload = ExtendedNotificationPayload.parse(input.payload);
 	const createdAt = input.now ?? new Date();
 	const inserted = await insertNotificationRows(
 		executor,

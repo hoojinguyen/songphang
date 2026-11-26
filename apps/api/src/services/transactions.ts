@@ -29,6 +29,7 @@ import {
 	localDateRangeToUtc,
 	nextEditApprovalStatusFor,
 	receiptAdjustment,
+	toVietnamDate,
 } from "@songphang/core";
 import {
 	attachToTransaction,
@@ -37,6 +38,7 @@ import {
 	findGroup,
 	findGroupAccess,
 	findGroupOwner,
+	findRecurringExpense,
 	findSettlementCycle,
 	findTransactionRow,
 	findUserById,
@@ -54,6 +56,8 @@ import {
 	lockGroup,
 	type TransactionCursor,
 	type TransactionFilters,
+	updateRecurringExpense,
+	updateTransactionRow,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
@@ -66,6 +70,7 @@ import {
 import { assertLiveCategory } from "./categories.js";
 import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify, notifyBudgetWarnings } from "./notify.js";
+import { createRecurringExpenseIn } from "./recurring-expenses.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { type ReplacedTransaction, transactionWarnings } from "./warnings.js";
 
@@ -430,6 +435,20 @@ export async function createTransactionIn(
 				: {}),
 		},
 	);
+	const completedRecurringId =
+		input.request.type === "expense"
+			? input.request.recurringExpenseId
+			: undefined;
+	if (completedRecurringId !== undefined) {
+		const existingRecurring = await findRecurringExpense(
+			executor,
+			input.groupId,
+			completedRecurringId,
+		);
+		if (existingRecurring === null) {
+			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		}
+	}
 	const [group, owner, actor] = await Promise.all([
 		findGroup(executor, input.groupId),
 		findGroupOwner(executor, input.groupId),
@@ -459,6 +478,7 @@ export async function createTransactionIn(
 		approvalStatus,
 		paymentChannel: request.paymentChannel,
 		paymentNote: request.paymentNote,
+		recurringExpenseId: completedRecurringId ?? null,
 		createdBy: input.userId,
 		updatedBy: input.userId,
 		createdAt: input.now,
@@ -473,6 +493,69 @@ export async function createTransactionIn(
 		shares.map((share) => ({ ...share, transactionId: row.id })),
 	);
 	await attachToTransaction(executor, input.groupId, row.id, attachmentIds);
+	if (completedRecurringId !== undefined) {
+		await updateRecurringExpense(
+			executor,
+			input.groupId,
+			completedRecurringId,
+			{
+				pendingDueDate: null,
+				amount: request.amount,
+				lastPostedAt: input.now,
+				lastTransactionId: row.id,
+				updatedAt: input.now,
+				updatedBy: input.userId,
+			},
+		);
+	}
+	if (
+		input.request.type === "expense" &&
+		input.request.recurring !== undefined
+	) {
+		const inline = input.request.recurring;
+		const occurredDateVN = toVietnamDate(new Date(request.occurredAt));
+		const occurredMs = new Date(request.occurredAt).getTime() + 7 * 3600_000;
+		const occurredIsoDow = ((new Date(occurredMs).getUTCDay() + 6) % 7) + 1;
+		const occurredDay = Number(occurredDateVN.slice(8, 10));
+		const occurredMonth = Number(occurredDateVN.slice(5, 7));
+		const createdRecurring = await createRecurringExpenseIn(executor, {
+			groupId: input.groupId,
+			userId: input.userId,
+			request: {
+				mode: inline.mode,
+				description: request.description,
+				amount: inline.mode === "fixed" ? request.amount : null,
+				category: request.category,
+				categoryId: request.categoryId,
+				payersTemplate:
+					inline.mode === "fixed"
+						? request.payers
+						: [{ memberId: request.payers[0]?.memberId ?? "" }],
+				splitTemplate: request.split,
+				frequency: inline.frequency,
+				dayOfWeek:
+					inline.frequency === "weekly"
+						? (inline.dayOfWeek ?? occurredIsoDow)
+						: null,
+				dayOfMonth:
+					inline.frequency === "weekly"
+						? null
+						: (inline.dayOfMonth ?? occurredDay),
+				monthOfYear:
+					inline.frequency === "yearly"
+						? (inline.monthOfYear ?? occurredMonth)
+						: null,
+			},
+			now: input.now,
+			strictlyAfterToday: true,
+			lastTransactionId: row.id,
+		});
+		await updateTransactionRow(executor, {
+			groupId: input.groupId,
+			id: row.id,
+			changes: { recurringExpenseId: createdRecurring.recurringExpense.id },
+		});
+	}
 	await insertActivity(executor, {
 		groupId: input.groupId,
 		actorUserId: input.userId,

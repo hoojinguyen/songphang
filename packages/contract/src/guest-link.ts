@@ -3,6 +3,7 @@ import { AttachmentDto } from "./attachment.ts";
 import { BalancesResponse, PayTo } from "./balance.ts";
 import { FundSummary } from "./fund.ts";
 import { GroupName } from "./group.ts";
+import { HouseholdBalanceDto, HouseholdTransferRefDto } from "./household.ts";
 import {
 	AnyMemberColorCode,
 	AnyMemberShapeCode,
@@ -11,6 +12,7 @@ import {
 	MemberName,
 } from "./member.ts";
 import {
+	HouseholdDebtBreakdownDto,
 	MemberBreakdownsResolvedFocus,
 	MemberDebtBreakdownDto,
 } from "./member-breakdown.ts";
@@ -71,6 +73,7 @@ export const GuestMemberDto = z
 		active: z.boolean(),
 		shape: AnyMemberShapeCode,
 		color: AnyMemberColorCode,
+		householdId: z.uuid().nullable().optional(),
 	})
 	.openapi("GuestMemberDto");
 export type GuestMemberDto = z.infer<typeof GuestMemberDto>;
@@ -116,10 +119,13 @@ export const GuestGroupViewResponse = z
 		selectedCycleId: z.union([z.literal("current"), z.uuid()]),
 		currentPeriod: CurrentPeriodSummaryDto,
 		balances: BalancesResponse.shape.balances,
+		households: z.array(HouseholdBalanceDto).optional(),
 		transfers: z.array(
 			z.object({
 				fromMemberId: z.uuid(),
 				toMemberId: z.uuid(),
+				fromHousehold: HouseholdTransferRefDto.nullable().optional(),
+				toHousehold: HouseholdTransferRefDto.nullable().optional(),
 				amount: MoneyAmount,
 				purpose: z.string().min(1).max(25),
 				payTo: z.array(PayTo).max(3),
@@ -128,6 +134,7 @@ export const GuestGroupViewResponse = z
 		fund: FundSummary.nullable().default(null),
 		resolvedFocus: MemberBreakdownsResolvedFocus,
 		breakdowns: z.array(MemberDebtBreakdownDto),
+		householdBreakdowns: z.array(HouseholdDebtBreakdownDto).optional(),
 		transactions: z.object({
 			items: z.array(GuestTransactionDto),
 			nextCursor: z.string().nullable(),

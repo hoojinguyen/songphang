@@ -229,6 +229,11 @@ export function registerTransactionRoutes(
 							"balances",
 							"activity",
 							"budget",
+							...(request.type === "expense" &&
+							(request.recurring !== undefined ||
+								request.recurringExpenseId !== undefined)
+								? (["recurringExpenses"] as const)
+								: []),
 						]),
 					requestHash: hashRequest("POST", context.req.path, request),
 				},

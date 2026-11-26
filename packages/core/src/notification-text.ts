@@ -136,6 +136,23 @@ export function formatNotificationText(dto: {
 						: `Nhóm ${group} sắp chạm hạn mức`,
 				href: `/g/${dto.groupId}/stats`,
 			};
+		case "recurring_posted": {
+			const amount = asPositiveInt(p.amount);
+			if (!transactionId || amount === null) return fallback;
+			const share = asNonNegativeInt(p.share);
+			return {
+				text:
+					share === null
+						? `Khoản định kỳ ${description} · ${formatMoney(amount)} đã được ghi vào ${group}`
+						: `Khoản định kỳ ${description} · ${formatMoney(amount)} (phần bạn ${formatMoney(share)})`,
+				href: txHref,
+			};
+		}
+		case "recurring_due":
+			return {
+				text: `Đến kỳ nhập: ${description} (${group})`,
+				href: `/g/${dto.groupId}/stats`,
+			};
 		default:
 			return fallback;
 	}

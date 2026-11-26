@@ -3,6 +3,7 @@ import { GroupName, GroupRole } from "./group.ts";
 import { MemberColorCode, MemberName, MemberShapeCode } from "./member.ts";
 import {
 	ApprovalStatus,
+	CalendarDate,
 	MoneyAmount,
 	TransactionCategory,
 } from "./transaction.ts";
@@ -50,6 +51,8 @@ export const OverviewGroupBalance = z
 		archivedAt: z.iso.datetime().nullable(),
 		role: GroupRole,
 		myBalance: z.int(),
+		myIndividualBalance: z.int().optional(),
+		householdName: z.string().nullable().optional(),
 		memberCount: z.int().nonnegative(),
 		previewMembers: z
 			.array(
@@ -65,6 +68,22 @@ export const OverviewGroupBalance = z
 	.openapi("OverviewGroupBalance");
 export type OverviewGroupBalance = z.infer<typeof OverviewGroupBalance>;
 
+export const OverviewRecurringDueAction = z
+	.object({
+		id: z.uuid(),
+		groupId: z.uuid(),
+		groupName: GroupName,
+		description: z.string(),
+		dueDate: CalendarDate,
+		suggestedAmount: MoneyAmount.nullable(),
+		payerMemberId: z.uuid(),
+		payerName: z.string(),
+	})
+	.openapi("OverviewRecurringDueAction");
+export type OverviewRecurringDueAction = z.infer<
+	typeof OverviewRecurringDueAction
+>;
+
 export const OverviewResponse = z
 	.object({
 		totalOwedToMe: z.int().nonnegative(),
@@ -76,6 +95,8 @@ export const OverviewResponse = z
 		pendingApprovalCount: z.int().nonnegative(),
 		pendingActions: z.array(OverviewPendingAction).max(20),
 		groupBalances: z.array(OverviewGroupBalance),
+		dueRecurringCount: z.int().nonnegative().optional(),
+		dueRecurringActions: z.array(OverviewRecurringDueAction).max(20).optional(),
 	})
 	.openapi("OverviewResponse");
 export type OverviewResponse = z.infer<typeof OverviewResponse>;

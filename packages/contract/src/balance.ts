@@ -1,5 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { FundSummary } from "./fund.ts";
+import { HouseholdBalanceDto, HouseholdTransferRefDto } from "./household.ts";
 import { PaymentChannel, PaymentMethodDto } from "./payment.ts";
 export const PayTo = z.discriminatedUnion("kind", [
 	PaymentMethodDto.options[0].extend({
@@ -14,10 +15,13 @@ export const BalancesResponse = z
 		currency: z.literal("VND"),
 		minimized: z.boolean(),
 		balances: z.array(z.object({ memberId: z.uuid(), balance: z.int() })),
+		households: z.array(HouseholdBalanceDto).optional(),
 		transfers: z.array(
 			z.object({
 				fromMemberId: z.uuid(),
 				toMemberId: z.uuid(),
+				fromHousehold: HouseholdTransferRefDto.nullable().optional(),
+				toHousehold: HouseholdTransferRefDto.nullable().optional(),
 				amount: z.int().positive(),
 				payTo: z.array(PayTo).max(3),
 				purpose: z.string().min(1).max(25),

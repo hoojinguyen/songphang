@@ -16,6 +16,7 @@ import {
 	findSettlementRequestByProofAttachmentId,
 	findUserById,
 	insertSettlementRequest,
+	listGroupHouseholds,
 	listSettlementRequests,
 	lockGroup,
 	resolveSettlementRequest,
@@ -32,8 +33,17 @@ import { createTransactionIn } from "./transactions.js";
 type Access = { role: "owner" | "editor" | "viewer"; memberId: string | null };
 type RequestRow = Awaited<ReturnType<typeof insertSettlementRequest>>;
 type Actor = { groupId: string; userId: string };
-export function mayCreate(access: Access, fromMemberId: string) {
-	return access.role !== "viewer" || access.memberId === fromMemberId;
+export function mayCreate(
+	access: Access,
+	fromMemberId: string,
+	fromHouseholdMemberIds?: readonly string[],
+) {
+	return (
+		access.role !== "viewer" ||
+		access.memberId === fromMemberId ||
+		(access.memberId !== null &&
+			(fromHouseholdMemberIds?.includes(access.memberId) ?? false))
+	);
 }
 export function mayResolve(
 	access: Access,
@@ -45,8 +55,18 @@ export function mayResolve(
 		(access.role === "editor" && !receiver.claimed)
 	);
 }
-export function mayCancel(access: Access, row: RequestRow, userId: string) {
-	return row.createdBy === userId || row.fromMemberId === access.memberId;
+export function mayCancel(
+	access: Access,
+	row: RequestRow,
+	userId: string,
+	fromHouseholdMemberIds?: readonly string[],
+) {
+	return (
+		row.createdBy === userId ||
+		row.fromMemberId === access.memberId ||
+		(access.memberId !== null &&
+			(fromHouseholdMemberIds?.includes(access.memberId) ?? false))
+	);
 }
 async function requestDto(executor: DbExecutor, row: RequestRow) {
 	const [creator, resolver, proofAttachment] = await Promise.all([
@@ -117,7 +137,11 @@ export async function createSettlementRequest(
 		...input,
 		minimumRole: "viewer",
 	});
-	if (!mayCreate(access, input.request.fromMemberId))
+	const households = await listGroupHouseholds(executor, input.groupId);
+	const fromHousehold = households.find(
+		(h) => h.representativeMemberId === input.request.fromMemberId,
+	);
+	if (!mayCreate(access, input.request.fromMemberId, fromHousehold?.memberIds))
 		throw new AppError(403, "FORBIDDEN", "Insufficient group role");
 	assertGroupRowNotArchived(lockedGroup);
 	for (const id of [input.request.fromMemberId, input.request.toMemberId]) {
@@ -217,9 +241,15 @@ export async function resolveSettlement(
 		if (!row) throw new AppError(404, "NOT_FOUND", "Resource not found");
 		const receiver = await findMember(executor, input.groupId, row.toMemberId);
 		if (!receiver) throw new AppError(404, "NOT_FOUND", "Resource not found");
+		const fromHousehold =
+			input.action === "cancel"
+				? (await listGroupHouseholds(executor, input.groupId)).find(
+						(h) => h.representativeMemberId === row.fromMemberId,
+					)
+				: undefined;
 		const allowed =
 			input.action === "cancel"
-				? mayCancel(access, row, input.userId)
+				? mayCancel(access, row, input.userId, fromHousehold?.memberIds)
 				: mayResolve(access, receiver);
 		if (!allowed)
 			throw new AppError(403, "FORBIDDEN", "Insufficient group role");

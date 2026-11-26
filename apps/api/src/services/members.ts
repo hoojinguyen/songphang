@@ -11,6 +11,7 @@ import {
 import {
 	type DbExecutor,
 	deleteMember,
+	findHouseholdByRepresentative,
 	findMember,
 	hasMemberSettlementRequests,
 	hasMemberTransactions,
@@ -26,6 +27,10 @@ import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { assertGroupRowNotArchived } from "./group-guards.js";
 import { paymentMethodDto } from "./payment-methods.js";
+import {
+	hasMemberRecurringReferences,
+	pauseRecurringTemplatesForMember,
+} from "./recurring-expenses.js";
 
 type MemberOperation = {
 	groupId: string;
@@ -109,12 +114,35 @@ export async function editMember(
 	deps: AppDeps,
 	input: MemberOperation & { memberId: string; request: UpdateMemberRequest },
 ) {
+	let pausedRecurring = false;
 	const result = await deps.db.transaction(async (transaction) => {
 		const group = await lockGroup(transaction, input.groupId);
 		await getGroupAccess(transaction, { ...input, minimumRole: "editor" });
 		assertGroupRowNotArchived(group);
 		const before = await getMember(transaction, input.groupId, input.memberId);
 		const { name, active, defaultWeight } = input.request;
+		const now = deps.now();
+		if (active === false) {
+			const representativeOf = await findHouseholdByRepresentative(
+				transaction,
+				input.groupId,
+				input.memberId,
+			);
+			if (representativeOf !== null) {
+				throw new AppError(
+					422,
+					"HOUSEHOLD_REPRESENTATIVE_ACTIVE_REQUIRED",
+					"Household representative must remain active",
+				);
+			}
+			const pausedCount = await pauseRecurringTemplatesForMember(transaction, {
+				groupId: input.groupId,
+				memberId: input.memberId,
+				actorUserId: input.userId,
+				now,
+			});
+			pausedRecurring = pausedCount > 0;
+		}
 		await updateMember(transaction, {
 			groupId: input.groupId,
 			memberId: input.memberId,
@@ -122,7 +150,7 @@ export async function editMember(
 				...(name === undefined ? {} : { name }),
 				...(active === undefined ? {} : { active }),
 				...(defaultWeight === undefined ? {} : { defaultWeight }),
-				updatedAt: deps.now(),
+				updatedAt: now,
 			},
 		});
 		const member = await getMember(transaction, input.groupId, input.memberId);
@@ -140,7 +168,7 @@ export async function editMember(
 			after: Object.fromEntries(
 				Object.entries(member).filter(([key]) => fields.includes(key)),
 			),
-			createdAt: deps.now(),
+			createdAt: now,
 		});
 		return MemberResponse.parse({
 			member: {
@@ -157,6 +185,7 @@ export async function editMember(
 		"members",
 		"balances",
 		"activity",
+		...(pausedRecurring ? (["recurringExpenses"] as const) : []),
 	]);
 	return result;
 }
@@ -169,9 +198,25 @@ export async function removeMember(
 		await getGroupAccess(transaction, { ...input, minimumRole: "editor" });
 		assertGroupRowNotArchived(group);
 		const member = await getMember(transaction, input.groupId, input.memberId);
+		if (member.householdId !== null) {
+			throw new AppError(
+				409,
+				"HOUSEHOLD_MEMBER_CONFLICT",
+				"Remove member from household before deleting",
+			);
+		}
 		if (
 			(await hasMemberTransactions(transaction, input.groupId, member.id)) ||
-			(await hasMemberSettlementRequests(transaction, input.groupId, member.id))
+			(await hasMemberSettlementRequests(
+				transaction,
+				input.groupId,
+				member.id,
+			)) ||
+			(await hasMemberRecurringReferences(
+				transaction,
+				input.groupId,
+				member.id,
+			))
 		)
 			throw new AppError(
 				422,

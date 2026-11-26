@@ -22,6 +22,10 @@ import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { assertGroupRowNotArchived } from "./group-guards.js";
+import {
+	hasMemberRecurringReferences,
+	pauseRecurringTemplatesForMember,
+} from "./recurring-expenses.js";
 
 const DEFAULT_FUND_NAME = "Quỹ chung";
 
@@ -107,6 +111,7 @@ export async function updateFund(
 		request: UpdateFundRequest;
 	},
 ) {
+	let pausedRecurring = false;
 	const result = await deps.db.transaction(async (executor) => {
 		const lockedGroup = await lockGroup(executor, input.groupId);
 		await getGroupAccess(executor, { ...input, minimumRole: "editor" });
@@ -122,6 +127,7 @@ export async function updateFund(
 						input.groupId,
 						input.request.holderMemberId,
 					);
+		const now = deps.now();
 		if (input.request.active === false) {
 			const balances = await listMemberBalances(executor, input.groupId);
 			const fundBalance =
@@ -132,6 +138,13 @@ export async function updateFund(
 					"FUND_NOT_EMPTY",
 					"Fund cash must be zero before deactivating",
 				);
+			const pausedCount = await pauseRecurringTemplatesForMember(executor, {
+				groupId: input.groupId,
+				memberId: before.id,
+				actorUserId: input.userId,
+				now,
+			});
+			pausedRecurring = pausedCount > 0;
 		}
 		await updateMember(executor, {
 			groupId: input.groupId,
@@ -144,7 +157,7 @@ export async function updateFund(
 				...(input.request.active === undefined
 					? {}
 					: { active: input.request.active }),
-				updatedAt: deps.now(),
+				updatedAt: now,
 			},
 		});
 		const after = await findFund(executor, input.groupId);
@@ -166,7 +179,7 @@ export async function updateFund(
 				active: after.active,
 				holderMemberId: after.fundHolderMemberId,
 			},
-			createdAt: deps.now(),
+			createdAt: now,
 		});
 		return MemberResponse.parse({ member: { ...after, isMe: false } });
 	});
@@ -174,6 +187,7 @@ export async function updateFund(
 		"members",
 		"balances",
 		"activity",
+		...(pausedRecurring ? (["recurringExpenses"] as const) : []),
 	]);
 	return result;
 }
@@ -191,7 +205,8 @@ export async function deleteFund(
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
 		if (
 			(await hasMemberTransactions(executor, input.groupId, fund.id)) ||
-			(await hasMemberSettlementRequests(executor, input.groupId, fund.id))
+			(await hasMemberSettlementRequests(executor, input.groupId, fund.id)) ||
+			(await hasMemberRecurringReferences(executor, input.groupId, fund.id))
 		)
 			throw new AppError(
 				422,
