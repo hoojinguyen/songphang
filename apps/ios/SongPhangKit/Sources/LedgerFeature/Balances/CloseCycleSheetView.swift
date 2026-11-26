@@ -6,7 +6,7 @@ public import SwiftUI
   import PreviewSupport
 #endif
 
-public struct CloseCycleSheetView: View {
+struct CloseCycleSheetView: View {
   private let currentPeriod: CurrentPeriodSummary
   private let nextCycleNumber: Int
   private let isClosing: Bool
@@ -16,7 +16,7 @@ public struct CloseCycleSheetView: View {
 
   @State private var title: String
 
-  public init(
+  init(
     currentPeriod: CurrentPeriodSummary,
     nextCycleNumber: Int,
     isClosing: Bool = false,
@@ -82,7 +82,7 @@ public struct CloseCycleSheetView: View {
           SPCard(tone: .accent, padding: 16) {
             Text(L10n.tr("cycles.carryOverNote"))
               .font(Typography.subheadlineBold)
-              .foregroundStyle(Tokens.ink)
+              .foregroundStyle(Tokens.onAccent)
           }
 
           if let errorMessage {

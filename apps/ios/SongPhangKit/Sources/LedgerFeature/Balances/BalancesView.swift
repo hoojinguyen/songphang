@@ -179,7 +179,7 @@ public struct BalancesView: View {
       SPCard(tone: .accent, padding: 14) {
         Text(noticeText)
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
     }
 
@@ -308,11 +308,11 @@ public struct BalancesView: View {
       HStack(spacing: 6) {
         Text(title)
           .font(Typography.captionBold)
-          .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
+          .foregroundStyle(isSelected ? Tokens.onInk : Tokens.ink)
         if let badge {
           Text("\(badge)")
             .font(Typography.captionBold)
-            .foregroundStyle(isSelected ? Tokens.ink : Tokens.surface)
+            .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.onInk)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(isSelected ? Tokens.accent : Tokens.ink, in: Capsule())
@@ -1160,10 +1160,10 @@ private struct AllSettledSection: View {
       VStack(alignment: .leading, spacing: 12) {
         Text(L10n.tr("balances.allSettledTitle"))
           .font(Typography.heroNumber)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
         Text(L10n.tr("balances.allSettledHint"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
       .padding(24)
       .frame(maxWidth: .infinity, alignment: .leading)

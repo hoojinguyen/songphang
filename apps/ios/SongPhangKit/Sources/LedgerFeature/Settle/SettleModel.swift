@@ -173,7 +173,7 @@ public final class SettleModel {
         data: prepared,
         filename: "chung-tu.jpg",
         contentType: "image/jpeg",
-        purpose: .expense
+        purpose: .transferProof
       )
       attachments.append(uploaded)
       resetIntent()
@@ -209,7 +209,7 @@ public final class SettleModel {
   }
 
   public func submit(reduceMotion: Bool = false) async {
-    guard let amt = amount, amt.isPositive, !isSubmitting else { return }
+    guard let amt = amount, amt.isPositive, !isSubmitting, !isUploadingProof else { return }
     isSubmitting = true
     submitError = nil
 

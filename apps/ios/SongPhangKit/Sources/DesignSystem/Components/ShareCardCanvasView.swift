@@ -58,6 +58,28 @@ public struct ShareCardContent: Sendable, Equatable {
     }
   }
 
+  public struct SummaryBankDetails: Sendable, Equatable {
+    public let receiverName: String
+    public let bankShortName: String
+    public let accountNumber: String
+    public let accountName: String
+    public let accountQrPayload: String
+
+    public init(
+      receiverName: String,
+      bankShortName: String,
+      accountNumber: String,
+      accountName: String,
+      accountQrPayload: String
+    ) {
+      self.receiverName = receiverName
+      self.bankShortName = bankShortName
+      self.accountNumber = accountNumber
+      self.accountName = accountName
+      self.accountQrPayload = accountQrPayload
+    }
+  }
+
   public let mode: ShareCardMode
   public let groupName: String
   public let periodLabel: String
@@ -66,12 +88,14 @@ public struct ShareCardContent: Sendable, Equatable {
   public let expenseCount: Int
   public let balances: [BalanceRow]
   public let transfers: [TransferRow]
+  public let debtorAllocationTransfers: [TransferRow]
+  public let isSingleTransferReminder: Bool
   public let includeExpenses: Bool
   public let recentExpenses: [ExpenseRow]
   public let targetBreakdown: MemberDebtBreakdown?
   public let customCaption: String
   public let guestShareURL: String?
-  public let summaryStaticQRPayload: String?
+  public let summaryBankDetails: SummaryBankDetails?
 
   public init(
     mode: ShareCardMode,
@@ -82,12 +106,14 @@ public struct ShareCardContent: Sendable, Equatable {
     expenseCount: Int,
     balances: [BalanceRow],
     transfers: [TransferRow],
+    debtorAllocationTransfers: [TransferRow] = [],
+    isSingleTransferReminder: Bool = false,
     includeExpenses: Bool,
     recentExpenses: [ExpenseRow],
     targetBreakdown: MemberDebtBreakdown? = nil,
     customCaption: String = "",
     guestShareURL: String? = nil,
-    summaryStaticQRPayload: String? = nil
+    summaryBankDetails: SummaryBankDetails? = nil
   ) {
     self.mode = mode
     self.groupName = groupName
@@ -97,12 +123,14 @@ public struct ShareCardContent: Sendable, Equatable {
     self.expenseCount = expenseCount
     self.balances = balances
     self.transfers = transfers
+    self.debtorAllocationTransfers = debtorAllocationTransfers
+    self.isSingleTransferReminder = isSingleTransferReminder
     self.includeExpenses = includeExpenses
     self.recentExpenses = recentExpenses
     self.targetBreakdown = targetBreakdown
     self.customCaption = customCaption
     self.guestShareURL = guestShareURL
-    self.summaryStaticQRPayload = summaryStaticQRPayload
+    self.summaryBankDetails = summaryBankDetails
   }
 }
 
@@ -197,7 +225,7 @@ public struct ShareCardCanvasView: View {
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
 
-        ForEach(content.balances.prefix(16)) { row in
+        ForEach(content.balances) { row in
           HStack(spacing: 8) {
             MemberShapeView(
               shape: row.shape,
@@ -227,7 +255,12 @@ public struct ShareCardCanvasView: View {
     }
 
     if !content.transfers.isEmpty {
-      transfersListCard(title: L10n.tr("balances.subTabs.toPay"), transfers: content.transfers)
+      transfersListCard(
+        title: L10n.tr("balances.subTabs.toPay"),
+        transfers: content.transfers,
+        showExactQR: false,
+        showPaymentSummaryLines: content.summaryBankDetails == nil
+      )
     }
 
     if content.includeExpenses && !content.recentExpenses.isEmpty {
@@ -236,7 +269,7 @@ public struct ShareCardCanvasView: View {
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
 
-        ForEach(content.recentExpenses.prefix(6)) { expense in
+        ForEach(content.recentExpenses.prefix(15)) { expense in
           HStack {
             VStack(alignment: .leading, spacing: 1) {
               Text(expense.title)
@@ -256,20 +289,36 @@ public struct ShareCardCanvasView: View {
             )
           }
         }
+
+        if content.recentExpenses.count > 15 {
+          Text("+\(content.recentExpenses.count - 15)")
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.muted)
+        }
       }
       .padding(16)
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 
-    if let qrPayload = content.summaryStaticQRPayload, !qrPayload.isEmpty {
+    if let details = content.summaryBankDetails {
       HStack(spacing: 12) {
-        QRCodeMatrixView(payload: qrPayload, size: 88, accessibilityLabel: L10n.tr("payment.bank"))
-        VStack(alignment: .leading, spacing: 4) {
-          Text(L10n.tr("payment.bank"))
+        QRCodeMatrixView(
+          payload: details.accountQrPayload,
+          size: 88,
+          accessibilityLabel: details.bankShortName
+        )
+        VStack(alignment: .leading, spacing: 3) {
+          Text(details.receiverName)
             .font(Typography.subheadlineBold)
             .foregroundStyle(Tokens.ink)
-          Text(L10n.tr("pay.qrHint"))
+          Text(details.bankShortName)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+          Text(details.accountNumber)
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.ink)
+          Text(details.accountName)
             .font(Typography.caption)
             .foregroundStyle(Tokens.muted)
         }
@@ -283,75 +332,156 @@ public struct ShareCardCanvasView: View {
   @ViewBuilder
   private var reminderBody: some View {
     if let breakdown = content.targetBreakdown {
-      VStack(alignment: .leading, spacing: 10) {
-        HStack(spacing: 10) {
-          MemberShapeView(
-            shape: breakdown.shape,
-            color: breakdown.color,
-            name: breakdown.memberName,
-            size: 36
-          )
-          VStack(alignment: .leading, spacing: 2) {
-            Text(breakdown.memberName)
-              .font(Typography.bodyBold)
-              .foregroundStyle(Tokens.ink)
-            Text(L10n.tr("breakdown.currentBalance"))
-              .font(Typography.caption)
-              .foregroundStyle(Tokens.muted)
-          }
-          Spacer()
-          MoneyText(
-            breakdown.netBalance,
-            style: .signed,
-            font: Typography.sectionTitle,
-            color: breakdown.netBalance.isNegative ? Tokens.debt : Tokens.credit
-          )
-        }
+      breakdownSummaryCard(breakdown: breakdown)
 
-        if !breakdown.lines.isEmpty {
-          Divider().overlay(Tokens.borderSubtle)
-          ForEach(breakdown.lines.prefix(6)) { line in
+      if let targeted = content.transfers.first,
+        abs(breakdown.netBalance.amount) != targeted.amount.amount,
+        !content.debtorAllocationTransfers.isEmpty
+      {
+        VStack(alignment: .leading, spacing: 8) {
+          Text(L10n.tr("breakdown.transferAllocation"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+          ForEach(content.debtorAllocationTransfers) { allocation in
             HStack {
-              Text(line.description)
-                .font(Typography.caption)
+              Text("\(allocation.fromName) → \(allocation.toName)")
+                .font(Typography.captionBold)
                 .foregroundStyle(Tokens.ink)
-                .lineLimit(1)
               Spacer(minLength: 8)
               MoneyText(
-                line.delta,
-                style: .signed,
+                allocation.amount,
+                style: .full,
                 font: Typography.captionBold,
-                color: line.delta.isNegative ? Tokens.debt : Tokens.credit
+                color: Tokens.ink
               )
             }
           }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+      }
+    }
+
+    if !content.transfers.isEmpty {
+      transfersListCard(
+        title: L10n.tr("balances.subTabs.toPay"),
+        transfers: content.transfers,
+        showExactQR: content.isSingleTransferReminder,
+        showPaymentSummaryLines: !content.isSingleTransferReminder
+      )
+    }
+
+    if !content.isSingleTransferReminder, let details = content.summaryBankDetails {
+      HStack(spacing: 12) {
+        QRCodeMatrixView(
+          payload: details.accountQrPayload,
+          size: 88,
+          accessibilityLabel: details.bankShortName
+        )
+        VStack(alignment: .leading, spacing: 3) {
+          Text(details.receiverName)
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+          Text(details.bankShortName)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+          Text(details.accountNumber)
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.ink)
+          Text(details.accountName)
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
         }
       }
       .padding(16)
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
+  }
 
-    if !content.transfers.isEmpty {
-      transfersListCard(
-        title: L10n.tr("breakdown.transferAllocation"),
-        transfers: content.transfers,
-        showExactQR: true
-      )
+  private func breakdownSummaryCard(breakdown: MemberDebtBreakdown) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(spacing: 10) {
+        MemberShapeView(
+          shape: breakdown.shape,
+          color: breakdown.color,
+          name: breakdown.memberName,
+          size: 36
+        )
+        VStack(alignment: .leading, spacing: 2) {
+          Text(breakdown.memberName)
+            .font(Typography.bodyBold)
+            .foregroundStyle(Tokens.ink)
+          Text(L10n.tr("breakdown.currentBalance"))
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
+        }
+        Spacer()
+        MoneyText(
+          breakdown.netBalance,
+          style: .signed,
+          font: Typography.sectionTitle,
+          color: breakdown.netBalance.isNegative ? Tokens.debt : Tokens.credit
+        )
+      }
+
+      if !breakdown.carryOverBalance.isZero {
+        HStack {
+          Text(L10n.tr("breakdown.carryOver"))
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
+          Spacer()
+          MoneyText(
+            breakdown.carryOverBalance,
+            style: .signed,
+            font: Typography.captionBold,
+            color: Tokens.ink
+          )
+        }
+      }
+
+      if !breakdown.lines.isEmpty {
+        Divider().overlay(Tokens.borderSubtle)
+        ForEach(breakdown.lines.prefix(12)) { line in
+          HStack {
+            Text(line.description)
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.ink)
+              .lineLimit(1)
+            Spacer(minLength: 8)
+            MoneyText(
+              line.delta,
+              style: .signed,
+              font: Typography.captionBold,
+              color: line.delta.isNegative ? Tokens.debt : Tokens.credit
+            )
+          }
+        }
+        if breakdown.lines.count > 12 {
+          Text("+\(breakdown.lines.count - 12)")
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.muted)
+        }
+      }
     }
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
   }
 
   private func transfersListCard(
     title: String,
     transfers: [ShareCardContent.TransferRow],
-    showExactQR: Bool = false
+    showExactQR: Bool,
+    showPaymentSummaryLines: Bool
   ) -> some View {
     VStack(alignment: .leading, spacing: 10) {
       Text(title)
         .font(Typography.subheadlineBold)
         .foregroundStyle(Tokens.ink)
 
-      ForEach(transfers.prefix(8)) { transfer in
+      ForEach(transfers) { transfer in
         VStack(alignment: .leading, spacing: 6) {
           HStack {
             Text("\(transfer.fromName) → \(transfer.toName)")
@@ -367,41 +497,9 @@ public struct ShareCardCanvasView: View {
           }
 
           if showExactQR {
-            ForEach(Array(transfer.paymentMethods.prefix(2).enumerated()), id: \.offset) {
-              _, method in
-              switch method {
-              case .bank(let bank):
-                HStack(spacing: 10) {
-                  if let payload = bank.qrPayload ?? bank.accountQrPayload {
-                    QRCodeMatrixView(payload: payload, size: 84, accessibilityLabel: bank.name)
-                  }
-                  VStack(alignment: .leading, spacing: 2) {
-                    Text(bank.name)
-                      .font(Typography.captionBold)
-                      .foregroundStyle(Tokens.ink)
-                    Text(bank.accountNumber)
-                      .font(Typography.caption)
-                      .foregroundStyle(Tokens.ink)
-                    Text(bank.accountName)
-                      .font(Typography.caption)
-                      .foregroundStyle(Tokens.muted)
-                    if !transfer.purpose.isEmpty {
-                      Text("\(L10n.tr("pay.purpose")): \(transfer.purpose)")
-                        .font(Typography.caption)
-                        .foregroundStyle(Tokens.muted)
-                    }
-                  }
-                }
-              case .momo(let phone):
-                Text("\(L10n.tr("pay.momoRow")): \(phone)")
-                  .font(Typography.caption)
-                  .foregroundStyle(Tokens.muted)
-              case .zalopay(let phone):
-                Text("\(L10n.tr("pay.zalopayRow")): \(phone)")
-                  .font(Typography.caption)
-                  .foregroundStyle(Tokens.muted)
-              }
-            }
+            exactPaymentDetails(for: transfer)
+          } else if showPaymentSummaryLines {
+            compactPaymentSummary(for: transfer)
           }
         }
         .padding(10)
@@ -411,6 +509,67 @@ public struct ShareCardCanvasView: View {
     .padding(16)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+  }
+
+  @ViewBuilder
+  private func exactPaymentDetails(for transfer: ShareCardContent.TransferRow) -> some View {
+    ForEach(Array(transfer.paymentMethods.prefix(2).enumerated()), id: \.offset) { _, method in
+      switch method {
+      case .bank(let bank):
+        HStack(spacing: 10) {
+          if let payload = bank.qrPayload ?? bank.accountQrPayload {
+            QRCodeMatrixView(payload: payload, size: 84, accessibilityLabel: bank.name)
+          }
+          VStack(alignment: .leading, spacing: 2) {
+            Text(transfer.toName)
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.ink)
+            Text(bank.name)
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.ink)
+            Text(bank.accountNumber)
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.ink)
+            Text(bank.accountName)
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.muted)
+            if !transfer.purpose.isEmpty {
+              Text("\(L10n.tr("pay.purpose")): \(transfer.purpose)")
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+            }
+          }
+        }
+      case .momo(let phone):
+        Text(L10n.t("pay.momoRow", ["phone": phone]))
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.muted)
+      case .zalopay(let phone):
+        Text(L10n.t("pay.zalopayRow", ["phone": phone]))
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.muted)
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func compactPaymentSummary(for transfer: ShareCardContent.TransferRow) -> some View {
+    ForEach(Array(transfer.paymentMethods.prefix(2).enumerated()), id: \.offset) { _, method in
+      switch method {
+      case .bank(let bank):
+        Text("\(bank.name) · \(bank.accountNumber) · \(bank.accountName)")
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.muted)
+      case .momo(let phone):
+        Text(L10n.t("pay.momoRow", ["phone": phone]))
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.muted)
+      case .zalopay(let phone):
+        Text(L10n.t("pay.zalopayRow", ["phone": phone]))
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.muted)
+      }
+    }
   }
 
   private var captionCard: some View {

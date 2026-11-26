@@ -147,7 +147,7 @@ public final class PayModel {
   }
 
   func submitReport(onDone: () -> Void) async {
-    guard isEmailVerified, !isSubmitting, !submitted else { return }
+    guard isEmailVerified, !isSubmitting, !submitted, !isUploadingProof else { return }
     isSubmitting = true
     error = nil
     notice = nil

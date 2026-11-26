@@ -10,6 +10,7 @@ import UIKit
 public struct GuestLinkSheetView: View {
   @Bindable private var model: GuestLinkSheetModel
   private let isOffline: Bool
+  private let isArchived: Bool
   private let onDismiss: () -> Void
 
   @State private var copiedLink = false
@@ -18,10 +19,12 @@ public struct GuestLinkSheetView: View {
   public init(
     model: GuestLinkSheetModel,
     isOffline: Bool = false,
+    isArchived: Bool = false,
     onDismiss: @escaping () -> Void
   ) {
     self.model = model
     self.isOffline = isOffline
+    self.isArchived = isArchived
     self.onDismiss = onDismiss
   }
 
@@ -75,7 +78,7 @@ public struct GuestLinkSheetView: View {
       VStack(alignment: .leading, spacing: 8) {
         Text(L10n.tr("guestLink.readonlyBadge"))
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
           .padding(.horizontal, 10)
           .padding(.vertical, 4)
           .background(Tokens.accent, in: Capsule())
@@ -128,16 +131,18 @@ public struct GuestLinkSheetView: View {
         }
 
         HStack(spacing: 10) {
-          SPButton(
-            L10n.tr("guestLink.rotateAction"),
-            variant: .surface,
-            size: .md,
-            isFullWidth: true,
-            isDisabled: isOffline,
-            isPending: model.isPerformingAction
-          ) {
-            copiedLink = false
-            Task { await model.enableOrRotate(rotate: true) }
+          if !isArchived {
+            SPButton(
+              L10n.tr("guestLink.rotateAction"),
+              variant: .surface,
+              size: .md,
+              isFullWidth: true,
+              isDisabled: isOffline,
+              isPending: model.isPerformingAction
+            ) {
+              copiedLink = false
+              Task { await model.enableOrRotate(rotate: true) }
+            }
           }
 
           SPButton(
@@ -154,7 +159,7 @@ public struct GuestLinkSheetView: View {
       }
       .padding(16)
       .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-    } else {
+    } else if !isArchived {
       SPButton(
         L10n.tr("guestLink.enableAction"),
         variant: .accent,
@@ -164,6 +169,12 @@ public struct GuestLinkSheetView: View {
         isPending: model.isPerformingAction
       ) {
         Task { await model.enableOrRotate(rotate: false) }
+      }
+    } else {
+      SPCard(padding: 16) {
+        Text(L10n.tr("groups.archivedBanner"))
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.muted)
       }
     }
   }

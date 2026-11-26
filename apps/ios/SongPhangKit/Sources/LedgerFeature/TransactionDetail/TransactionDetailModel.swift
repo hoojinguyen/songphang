@@ -46,8 +46,8 @@ public final class TransactionDetailModel: Sendable {
   private let transactionsRepository: any TransactionsRepository
   private let eventsRepository: (any GroupEventsRepository)?
   public let attachmentsRepository: (any AttachmentsRepository)?
-  private let currentUserProvider: (@Sendable () -> User?)?
-  private let onUnauthorized: (@Sendable () -> Void)?
+  private let currentUserProvider: (() -> User?)?
+  private let onUnauthorized: (() -> Void)?
   private var pendingSilentRefresh = false
   private var transactionGeneration: UInt64 = 0
   private var commentsGeneration: UInt64 = 0
@@ -63,8 +63,8 @@ public final class TransactionDetailModel: Sendable {
     transactionsRepository: any TransactionsRepository,
     attachmentsRepository: (any AttachmentsRepository)? = nil,
     eventsRepository: (any GroupEventsRepository)? = nil,
-    currentUserProvider: (@Sendable () -> User?)? = nil,
-    onUnauthorized: (@Sendable () -> Void)? = nil
+    currentUserProvider: (() -> User?)? = nil,
+    onUnauthorized: (() -> Void)? = nil
   ) {
     self.groupId = groupId
     self.transactionId = transactionId

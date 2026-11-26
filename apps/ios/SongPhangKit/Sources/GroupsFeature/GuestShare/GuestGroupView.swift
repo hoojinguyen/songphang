@@ -96,7 +96,7 @@ public struct GuestGroupView: View {
     HStack(spacing: 8) {
       Text(L10n.tr("guestLink.readonlyBadge"))
         .font(Typography.captionBold)
-        .foregroundStyle(Tokens.ink)
+        .foregroundStyle(Tokens.onAccent)
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(Tokens.accent, in: Capsule())
@@ -298,14 +298,14 @@ public struct GuestGroupView: View {
         case .momo(let phone):
           copyableRow(
             id: "momo-\(transfer.id)-\(phone)",
-            label: L10n.tr("pay.momoRow"),
-            value: phone
+            label: L10n.tr("payment.momo"),
+            value: L10n.t("pay.momoRow", ["phone": phone])
           )
         case .zalopay(let phone):
           copyableRow(
             id: "zalopay-\(transfer.id)-\(phone)",
-            label: L10n.tr("pay.zalopayRow"),
-            value: phone
+            label: L10n.tr("payment.zalopay"),
+            value: L10n.t("pay.zalopayRow", ["phone": phone])
           )
         }
       }
@@ -449,231 +449,6 @@ public struct GuestGroupView: View {
           ) {
             Task { await model.loadMoreIfNeeded() }
           }
-        }
-      }
-    }
-  }
-}
-
-private struct GuestBreakdownSheet: View {
-  let breakdown: MemberDebtBreakdown
-  let focusLabel: String
-  let transfers: [GuestTransfer]
-  let members: [GuestMember]
-  let onDismiss: () -> Void
-
-  var body: some View {
-    NavigationStack {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 16) {
-          SPCard(padding: 16) {
-            HStack {
-              VStack(alignment: .leading, spacing: 2) {
-                Text(breakdown.memberName)
-                  .font(Typography.bodyBold)
-                  .foregroundStyle(Tokens.ink)
-                Text(focusLabel)
-                  .font(Typography.caption)
-                  .foregroundStyle(Tokens.muted)
-              }
-              Spacer()
-              MoneyText(
-                breakdown.netBalance,
-                style: .signed,
-                font: Typography.sectionTitle,
-                color: breakdown.netBalance.isPositive
-                  ? Tokens.credit
-                  : (breakdown.netBalance.isNegative ? Tokens.debt : Tokens.ink)
-              )
-            }
-          }
-
-          SPCard(padding: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-              summaryRow(L10n.tr("breakdown.carryOver"), breakdown.carryOverBalance)
-              summaryRow(L10n.tr("breakdown.periodExpenses"), breakdown.focusExpenseDelta)
-              summaryRow(L10n.tr("breakdown.periodTransfers"), breakdown.focusTransferDelta)
-              if !breakdown.postCycleDelta.isZero {
-                summaryRow(L10n.tr("breakdown.postCycleDelta"), breakdown.postCycleDelta)
-              }
-              Divider().overlay(Tokens.borderSubtle)
-              summaryRow(L10n.tr("breakdown.currentBalance"), breakdown.netBalance)
-            }
-          }
-
-          if !transfers.isEmpty {
-            SPCard(padding: 16) {
-              VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.tr("breakdown.transferAllocation"))
-                  .font(Typography.subheadlineBold)
-                  .foregroundStyle(Tokens.ink)
-                ForEach(transfers) { transfer in
-                  let toName = members.first(where: { $0.id == transfer.toMemberId })?.name ?? ""
-                  HStack {
-                    Text("\(breakdown.memberName) → \(toName)")
-                      .font(Typography.captionBold)
-                      .foregroundStyle(Tokens.ink)
-                    Spacer()
-                    MoneyText(
-                      transfer.amount,
-                      style: .full,
-                      font: Typography.captionBold,
-                      color: Tokens.ink
-                    )
-                  }
-                }
-              }
-            }
-          }
-
-          ForEach(breakdown.lines) { line in
-            SPCard(padding: 14) {
-              HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                  Text(line.description)
-                    .font(Typography.subheadlineBold)
-                    .foregroundStyle(Tokens.ink)
-                  Text("\(DayLabelFormat.dayLabel(for: line.occurredAt)) · \(line.payerSummary)")
-                    .font(Typography.caption)
-                    .foregroundStyle(Tokens.muted)
-                }
-                Spacer()
-                MoneyText(
-                  line.delta,
-                  style: .signed,
-                  font: Typography.subheadlineBold,
-                  color: line.delta.isPositive
-                    ? Tokens.credit
-                    : (line.delta.isNegative ? Tokens.debt : Tokens.ink)
-                )
-              }
-            }
-          }
-        }
-        .padding(20)
-      }
-      .background(Tokens.bg.ignoresSafeArea())
-      .navigationTitle(L10n.tr("breakdown.title"))
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button(L10n.tr("split.done"), action: onDismiss)
-        }
-      }
-    }
-  }
-
-  private func summaryRow(_ label: String, _ money: Money) -> some View {
-    HStack {
-      Text(label)
-        .font(Typography.caption)
-        .foregroundStyle(Tokens.muted)
-      Spacer()
-      MoneyText(
-        money,
-        style: .signed,
-        font: Typography.captionBold,
-        color: money.isPositive ? Tokens.credit : (money.isNegative ? Tokens.debt : Tokens.ink)
-      )
-    }
-  }
-}
-
-private struct GuestTransactionDetailSheet: View {
-  let transaction: GuestTransaction
-  let members: [GuestMember]
-  let loadAttachment: @Sendable (Attachment.ID) async throws -> Data
-  let onDismiss: () -> Void
-
-  var body: some View {
-    NavigationStack {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 16) {
-          SPCard(padding: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-              Text(DayLabelFormat.dayLabel(for: transaction.occurredAt))
-                .font(Typography.caption)
-                .foregroundStyle(Tokens.muted)
-              Text(transaction.description)
-                .font(Typography.sectionTitle)
-                .foregroundStyle(Tokens.ink)
-              MoneyText(
-                transaction.amount,
-                style: .full,
-                font: Typography.heroNumber,
-                color: Tokens.ink
-              )
-            }
-          }
-
-          if let note = transaction.paymentNote, !note.isEmpty {
-            SPCard(padding: 14) {
-              Text(note)
-                .font(Typography.subheadline)
-                .foregroundStyle(Tokens.ink)
-            }
-          }
-
-          if !transaction.payers.isEmpty || !transaction.shares.isEmpty {
-            SPCard(padding: 16) {
-              VStack(alignment: .leading, spacing: 10) {
-                ForEach(transaction.payers, id: \.memberId) { item in
-                  let name = members.first(where: { $0.id == item.memberId })?.name ?? ""
-                  HStack {
-                    Text(L10n.t("compose.payer", ["name": name]))
-                      .font(Typography.captionBold)
-                      .foregroundStyle(Tokens.ink)
-                    Spacer()
-                    MoneyText(
-                      item.amount,
-                      style: .full,
-                      font: Typography.captionBold,
-                      color: Tokens.credit
-                    )
-                  }
-                }
-                if !transaction.shares.isEmpty {
-                  Divider().overlay(Tokens.borderSubtle)
-                  ForEach(transaction.shares, id: \.memberId) { item in
-                    let name = members.first(where: { $0.id == item.memberId })?.name ?? ""
-                    HStack {
-                      Text(name)
-                        .font(Typography.caption)
-                        .foregroundStyle(Tokens.muted)
-                      Spacer()
-                      MoneyText(
-                        item.amount,
-                        style: .full,
-                        font: Typography.captionBold,
-                        color: Tokens.ink
-                      )
-                    }
-                  }
-                }
-              }
-            }
-          }
-
-          if !transaction.attachments.isEmpty {
-            HStack(spacing: 12) {
-              ForEach(transaction.attachments) { attachment in
-                RemoteAttachmentThumbnail(
-                  attachmentId: attachment.id,
-                  size: 88,
-                  cornerRadius: 16,
-                  loadContent: loadAttachment
-                )
-              }
-            }
-          }
-        }
-        .padding(20)
-      }
-      .background(Tokens.bg.ignoresSafeArea())
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button(L10n.tr("split.done"), action: onDismiss)
         }
       }
     }

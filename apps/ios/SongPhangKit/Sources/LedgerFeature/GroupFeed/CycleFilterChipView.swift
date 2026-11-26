@@ -1,13 +1,13 @@
 import DesignSystem
-public import Domain
-public import SwiftUI
+import Domain
+import SwiftUI
 
-public struct CycleFilterChipView: View {
+struct CycleFilterChipView: View {
   private let overview: SettlementCyclesOverview
   private let selectedCycle: TransactionCycleFilter?
   private let onSelectCycle: (TransactionCycleFilter?) -> Void
 
-  public init(
+  init(
     overview: SettlementCyclesOverview,
     selectedCycle: TransactionCycleFilter?,
     onSelectCycle: @escaping (TransactionCycleFilter?) -> Void
@@ -17,7 +17,7 @@ public struct CycleFilterChipView: View {
     self.onSelectCycle = onSelectCycle
   }
 
-  public var body: some View {
+  var body: some View {
     if !overview.cycles.isEmpty {
       VStack(alignment: .leading, spacing: 8) {
         HStack(spacing: 8) {
@@ -26,7 +26,7 @@ public struct CycleFilterChipView: View {
               onSelectCycle(.current)
             } label: {
               Label(
-                "\(L10n.tr("cycles.currentPeriod")) (\(overview.currentPeriod.expenseCount))",
+                "\(L10n.tr("cycles.currentPeriod")) (\(overview.currentPeriod.countedTransactionCount))",
                 systemImage: selectedCycle == .current ? "checkmark" : ""
               )
             }
@@ -77,13 +77,13 @@ public struct CycleFilterChipView: View {
           HStack(spacing: 8) {
             Text(L10n.t("cycles.viewingBanner", ["title": activeCycle.title]))
               .font(Typography.captionBold)
-              .foregroundStyle(Tokens.ink)
+              .foregroundStyle(Tokens.onAccent)
             Spacer(minLength: 4)
             Button(L10n.tr("cycles.backToCurrent")) {
               onSelectCycle(.current)
             }
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
             .underline()
             .buttonStyle(.plain)
           }
@@ -98,7 +98,8 @@ public struct CycleFilterChipView: View {
   private var currentLabel: String {
     switch selectedCycle {
     case .current:
-      return "\(L10n.tr("cycles.currentPeriod")) (\(overview.currentPeriod.expenseCount))"
+      return
+        "\(L10n.tr("cycles.currentPeriod")) (\(overview.currentPeriod.countedTransactionCount))"
     case .cycle(let id):
       return overview.cycles.first(where: { $0.id == id })?.title
         ?? L10n.tr("cycles.currentPeriod")

@@ -1,12 +1,12 @@
 import DesignSystem
-public import Domain
-public import SwiftUI
+import Domain
+import SwiftUI
 
 #if DEBUG
   import PreviewSupport
 #endif
 
-public struct SettlementCyclesSectionView: View {
+struct SettlementCyclesSectionView: View {
   private let overview: SettlementCyclesOverview?
   private let isOwner: Bool
   private let isArchived: Bool
@@ -19,7 +19,7 @@ public struct SettlementCyclesSectionView: View {
   @State private var expandedCycleId: SettlementCycle.ID?
   @State private var cyclePendingReopen: SettlementCycle?
 
-  public init(
+  init(
     overview: SettlementCyclesOverview?,
     isOwner: Bool,
     isArchived: Bool,
@@ -39,7 +39,7 @@ public struct SettlementCyclesSectionView: View {
     self.onReopenLatest = onReopenLatest
   }
 
-  public var body: some View {
+  var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       if let errorMessage {
         Text(errorMessage)

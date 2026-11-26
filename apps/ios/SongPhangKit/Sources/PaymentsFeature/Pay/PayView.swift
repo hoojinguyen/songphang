@@ -299,7 +299,7 @@ public struct PayView: View {
             .foregroundStyle(Tokens.ink)
             .underline()
             .frame(minHeight: 44)
-            .disabled(isOffline)
+            .disabled(isOffline || model.isUploadingProof)
         }
 
         if let errorMessage = model.errorMessage {
@@ -323,7 +323,7 @@ public struct PayView: View {
               variant: .primary,
               size: .lg,
               isFullWidth: true,
-              isDisabled: model.submitted,
+              isDisabled: model.submitted || model.isUploadingProof,
               isOfflineBlocked: isOffline,
               isPending: model.isSubmitting
             ) {

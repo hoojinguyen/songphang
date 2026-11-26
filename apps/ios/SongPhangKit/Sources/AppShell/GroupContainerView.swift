@@ -285,6 +285,7 @@ public struct GroupContainerView: View {
           }
         ),
         isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
+        isArchived: balancesModel.state.value?.group.isArchived ?? false,
         onDismiss: { isGuestLinkSheetOpen = false }
       )
     }

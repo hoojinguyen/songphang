@@ -96,6 +96,10 @@ public struct TransferProofInputSection: View {
         }
 
         if attachments.count < maxAttachments {
+          let attachTitle = L10n.tr("settlementProof.attachPhoto")
+          let titleFont = Typography.subheadlineBold
+          let inkColor = Tokens.ink
+          let sunkenColor = Tokens.sunken
           PhotosPicker(
             selection: $pickedPhotoItem,
             matching: .images,
@@ -104,13 +108,13 @@ public struct TransferProofInputSection: View {
             HStack(spacing: 8) {
               Image(systemName: "photo.badge.plus")
                 .font(.system(size: 15, weight: .semibold))
-              Text(L10n.tr("settlementProof.attachPhoto"))
-                .font(Typography.subheadlineBold)
+              Text(attachTitle)
+                .font(titleFont)
             }
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(inkColor)
             .padding(.horizontal, 14)
             .frame(minHeight: 44)
-            .background(Tokens.sunken, in: Capsule())
+            .background(sunkenColor, in: Capsule())
           }
           .disabled(isDisabled || isUploading)
           .onChange(of: pickedPhotoItem) { _, newItem in

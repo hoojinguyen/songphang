@@ -476,6 +476,7 @@ public struct RouteDestination: View {
               }
             ),
             isOffline: membersModel.refreshError == .offline,
+            isArchived: membersModel.state.value?.group.isArchived ?? false,
             onDismiss: { isGuestLinkSheetOpen = false }
           )
         }

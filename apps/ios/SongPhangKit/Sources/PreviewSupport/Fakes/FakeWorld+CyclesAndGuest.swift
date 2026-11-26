@@ -14,95 +14,164 @@
         throw .api(code: "NOT_FOUND", status: 404)
       }
       let cycles = settlementCyclesByGroup[groupId] ?? []
-      let txs = transactionsByGroup[groupId] ?? []
-      let targetCycle: SettlementCycle? = {
-        switch cycleId {
-        case .auto:
-          let openHasExpense = txs.contains {
-            $0.cycleId == nil
-              && $0.deletedAt == nil
-              && ($0.type == .expense || $0.type == .income)
-              && ($0.approval.status == .none || $0.approval.status == .approved)
-          }
-          if openHasExpense || cycles.isEmpty { return nil }
-          return cycles.first
-        case .current:
-          return nil
-        case .cycle(let id):
-          return cycles.first { $0.id == id }
-        }
-      }()
+      let cycleById = Dictionary(uniqueKeysWithValues: cycles.map { ($0.id, $0) })
+      let txs = (transactionsByGroup[groupId] ?? []).filter {
+        $0.deletedAt == nil && ($0.approval.status == .none || $0.approval.status == .approved)
+      }
+      let openHasExpense = txs.contains {
+        $0.cycleId == nil && ($0.type == .expense || $0.type == .income)
+      }
 
-      let focus: MemberBreakdownsResolvedFocus = {
-        if let targetCycle {
-          return MemberBreakdownsResolvedFocus(
-            kind: .cycle,
-            cycleId: targetCycle.id,
-            label: targetCycle.title
+      enum FocusMode {
+        case all
+        case current
+        case latestWithPostTransfers(cycleId: SettlementCycle.ID, cycleNumber: Int)
+        case cycle(cycleId: SettlementCycle.ID, cycleNumber: Int)
+      }
+
+      let focus: MemberBreakdownsResolvedFocus
+      let focusMode: FocusMode
+      switch cycleId {
+      case .auto:
+        if cycles.isEmpty {
+          focus = MemberBreakdownsResolvedFocus(kind: .all, cycleId: nil, label: "Đợt hiện tại")
+          focusMode = .all
+        } else if openHasExpense {
+          focus = MemberBreakdownsResolvedFocus(
+            kind: .current,
+            cycleId: nil,
+            label: "Đợt hiện tại"
           )
+          focusMode = .current
+        } else if let latest = cycles.first {
+          focus = MemberBreakdownsResolvedFocus(
+            kind: .cycle,
+            cycleId: latest.id,
+            label: latest.title
+          )
+          focusMode = .latestWithPostTransfers(
+            cycleId: latest.id,
+            cycleNumber: latest.cycleNumber
+          )
+        } else {
+          focus = MemberBreakdownsResolvedFocus(kind: .all, cycleId: nil, label: "Đợt hiện tại")
+          focusMode = .all
         }
-        return MemberBreakdownsResolvedFocus(
+      case .current:
+        focus = MemberBreakdownsResolvedFocus(
           kind: cycles.isEmpty ? .all : .current,
           cycleId: nil,
-          label: cycles.isEmpty ? "Tất cả" : "Đợt hiện tại"
+          label: "Đợt hiện tại"
         )
-      }()
+        focusMode = .current
+      case .cycle(let targetId):
+        guard let target = cycleById[targetId] else {
+          throw .api(code: "NOT_FOUND", status: 404)
+        }
+        focus = MemberBreakdownsResolvedFocus(
+          kind: .cycle,
+          cycleId: target.id,
+          label: target.title
+        )
+        focusMode = .cycle(cycleId: target.id, cycleNumber: target.cycleNumber)
+      }
 
       let memberById = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
       let breakdowns: [MemberDebtBreakdown] = members.filter { $0.kind == .person }.map { member in
-        let netBalance =
-          balances.balances.first(where: { $0.memberId == member.id })?.balance ?? .zero
-        let focusTxs = txs.filter { tx in
-          tx.deletedAt == nil
-            && (tx.approval.status == .none || tx.approval.status == .approved)
-            && (targetCycle == nil
-              ? tx.cycleId == nil
-              : (tx.cycleId == targetCycle?.id || (tx.cycleId == nil && tx.type == .transfer)))
-        }
+        var carryOverBalance = Money.zero
+        var focusExpenseDelta = Money.zero
+        var focusTransferDelta = Money.zero
+        var postCycleDelta = Money.zero
+        var computedNet = Money.zero
         var lines: [MemberBreakdownLine] = []
-        var expenseDelta = Money.zero
-        var transferDelta = Money.zero
-        for tx in focusTxs.reversed() {
+
+        for tx in txs {
           let paid = tx.payers.first(where: { $0.memberId == member.id })?.amount ?? .zero
           let share = tx.shares.first(where: { $0.memberId == member.id })?.amount ?? .zero
           let signedDelta =
             tx.type == .income
             ? Money(share.amount - paid.amount) : Money(paid.amount - share.amount)
-          if signedDelta.isZero { continue }
-          if tx.type == .transfer {
-            transferDelta = transferDelta + signedDelta
-          } else {
-            expenseDelta = expenseDelta + signedDelta
+          computedNet = computedNet + signedDelta
+
+          let txCycleNumber = tx.cycleId.flatMap { cycleById[$0]?.cycleNumber }
+          enum Bucket { case carry, focus, post }
+          let bucket: Bucket
+          var isPostCloseoutTransfer = false
+
+          switch focusMode {
+          case .all:
+            bucket = .focus
+          case .current:
+            bucket = (tx.cycleId == nil) ? .focus : .carry
+          case .latestWithPostTransfers(let targetCycleId, let targetCycleNumber):
+            if tx.cycleId == targetCycleId {
+              bucket = .focus
+            } else if tx.cycleId == nil && tx.type == .transfer {
+              bucket = .focus
+              isPostCloseoutTransfer = true
+            } else if let txCycleNumber, txCycleNumber < targetCycleNumber {
+              bucket = .carry
+            } else {
+              bucket = .post
+            }
+          case .cycle(let targetCycleId, let targetCycleNumber):
+            if tx.cycleId == targetCycleId {
+              bucket = .focus
+            } else if let txCycleNumber, txCycleNumber < targetCycleNumber {
+              bucket = .carry
+            } else {
+              bucket = .post
+            }
           }
-          let payerSummary = tx.payers.compactMap { memberById[$0.memberId]?.name }
-            .joined(separator: ", ")
-          lines.append(
-            MemberBreakdownLine(
-              transactionId: tx.id,
-              type: tx.type,
-              description: tx.description,
-              occurredAt: tx.occurredAt,
-              totalAmount: tx.amount,
-              payerSummary: payerSummary,
-              memberPaid: paid,
-              memberShare: share,
-              delta: signedDelta,
-              isPostCloseoutTransfer: targetCycle != nil && tx.cycleId == nil
-                && tx.type == .transfer
-            )
-          )
+
+          switch bucket {
+          case .carry:
+            carryOverBalance = carryOverBalance + signedDelta
+          case .post:
+            postCycleDelta = postCycleDelta + signedDelta
+          case .focus:
+            if tx.type == .transfer {
+              focusTransferDelta = focusTransferDelta + signedDelta
+            } else {
+              focusExpenseDelta = focusExpenseDelta + signedDelta
+            }
+            if !signedDelta.isZero {
+              let payerSummary = buildBreakdownPayerSummary(
+                type: tx.type,
+                payers: tx.payers,
+                shares: tx.shares,
+                memberById: memberById
+              )
+              lines.append(
+                MemberBreakdownLine(
+                  transactionId: tx.id,
+                  type: tx.type,
+                  description: tx.description,
+                  occurredAt: tx.occurredAt,
+                  totalAmount: tx.amount,
+                  payerSummary: payerSummary,
+                  memberPaid: paid,
+                  memberShare: share,
+                  delta: signedDelta,
+                  isPostCloseoutTransfer: isPostCloseoutTransfer
+                )
+              )
+            }
+          }
         }
-        let carryOver = Money(netBalance.amount - expenseDelta.amount - transferDelta.amount)
+
+        let serverNet =
+          balances.balances.first(where: { $0.memberId == member.id })?.balance ?? computedNet
         return MemberDebtBreakdown(
           memberId: member.id,
           memberName: member.name,
           shape: member.shape,
           color: member.color,
-          carryOverBalance: carryOver,
-          focusExpenseDelta: expenseDelta,
-          focusTransferDelta: transferDelta,
-          postCycleDelta: .zero,
-          netBalance: netBalance,
+          carryOverBalance: carryOverBalance,
+          focusExpenseDelta: focusExpenseDelta,
+          focusTransferDelta: focusTransferDelta,
+          postCycleDelta: postCycleDelta,
+          netBalance: serverNet,
           lines: lines
         )
       }
@@ -112,6 +181,24 @@
         resolvedFocus: focus,
         breakdowns: breakdowns
       )
+    }
+
+    private func buildBreakdownPayerSummary(
+      type: TransactionType,
+      payers: [MemberAmount],
+      shares: [MemberAmount],
+      memberById: [Member.ID: Member]
+    ) -> String {
+      if type == .transfer {
+        let fromName = payers.first.flatMap { memberById[$0.memberId]?.name } ?? ""
+        let toName = shares.first.flatMap { memberById[$0.memberId]?.name } ?? ""
+        return "\(fromName) chuyển \(toName)".trimmingCharacters(in: .whitespaces)
+      }
+      let names = payers.compactMap { memberById[$0.memberId]?.name }
+      if names.isEmpty { return "" }
+      if names.count == 1 { return "\(names[0]) trả" }
+      if names.count == 2 { return "\(names[0]), \(names[1]) trả" }
+      return "\(names[0]) +\(names.count - 1) trả"
     }
 
     public func fetchSettlementVault(

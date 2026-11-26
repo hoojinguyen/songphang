@@ -14,16 +14,21 @@ public struct ShareCardPreviewSheet: View {
   private let loadGuestLink: (@Sendable () async -> GuestLink?)?
   private let onDismiss: () -> Void
 
+  @Environment(\.colorScheme) private var systemColorScheme
   @State private var mode: ShareCardMode = .summary
-  @State private var selectedTheme: ColorScheme = .light
+  @State private var selectedThemeOverride: ColorScheme?
   @State private var includeExpenses = false
-  @State private var selectedTargetMemberId: Member.ID?
+  @State private var selectedTransferId: SuggestedTransfer.ID?
   @State private var caption = ""
   @State private var guestLink: GuestLink?
   @State private var exportedImage: UIImage?
   @State private var copiedImage = false
   @State private var savedToPhotos = false
   @State private var saveErrorMessage: String?
+
+  private var selectedTheme: ColorScheme {
+    selectedThemeOverride ?? systemColorScheme
+  }
 
   public init(
     data: BalancesViewData,
@@ -57,11 +62,11 @@ public struct ShareCardPreviewSheet: View {
         #if DEBUG
           let args = ProcessInfo.processInfo.arguments
           if args.contains("--sharecard-dark") {
-            selectedTheme = .dark
+            selectedThemeOverride = .dark
           }
           if args.contains("--sharecard-reminder") {
             mode = .reminder
-            selectedTargetMemberId = data.balances.transfers.first?.fromMemberId
+            selectedTransferId = data.balances.transfers.first?.id
           }
         #endif
         if let loadGuestLink {
@@ -70,9 +75,10 @@ public struct ShareCardPreviewSheet: View {
         rerenderImage()
       }
       .onChange(of: mode) { _, _ in rerenderImage() }
-      .onChange(of: selectedTheme) { _, _ in rerenderImage() }
+      .onChange(of: selectedThemeOverride) { _, _ in rerenderImage() }
+      .onChange(of: systemColorScheme) { _, _ in rerenderImage() }
       .onChange(of: includeExpenses) { _, _ in rerenderImage() }
-      .onChange(of: selectedTargetMemberId) { _, _ in rerenderImage() }
+      .onChange(of: selectedTransferId) { _, _ in rerenderImage() }
       .onChange(of: caption) { _, _ in rerenderImage() }
       .onChange(of: guestLink) { _, _ in rerenderImage() }
     }
@@ -86,7 +92,13 @@ public struct ShareCardPreviewSheet: View {
       }
       .pickerStyle(.segmented)
 
-      Picker("", selection: $selectedTheme) {
+      Picker(
+        "",
+        selection: Binding(
+          get: { selectedTheme },
+          set: { selectedThemeOverride = $0 }
+        )
+      ) {
         Text(L10n.tr("shareCard.themeLight")).tag(ColorScheme.light)
         Text(L10n.tr("shareCard.themeDark")).tag(ColorScheme.dark)
       }
@@ -108,17 +120,19 @@ public struct ShareCardPreviewSheet: View {
   }
 
   private var targetPicker: some View {
-    let debtorIds = Set(data.balances.transfers.map(\.fromMemberId))
-    let debtors = data.members.filter { debtorIds.contains($0.id) }
+    let membersById = Dictionary(uniqueKeysWithValues: data.members.map { ($0.id, $0) })
     return HStack {
       Text(L10n.tr("shareCard.targetLabel"))
         .font(Typography.subheadlineBold)
         .foregroundStyle(Tokens.ink)
       Spacer()
-      Picker(L10n.tr("shareCard.targetLabel"), selection: $selectedTargetMemberId) {
-        Text(L10n.tr("shareCard.targetAll")).tag(Member.ID?.none)
-        ForEach(debtors) { member in
-          Text(member.name).tag(Member.ID?.some(member.id))
+      Picker(L10n.tr("shareCard.targetLabel"), selection: $selectedTransferId) {
+        Text(L10n.tr("shareCard.targetAll")).tag(SuggestedTransfer.ID?.none)
+        ForEach(data.balances.transfers) { transfer in
+          let fromName = membersById[transfer.fromMemberId]?.name ?? ""
+          let toName = membersById[transfer.toMemberId]?.name ?? ""
+          Text("\(fromName) → \(toName) · \(MoneyFormat.full(transfer.amount))")
+            .tag(SuggestedTransfer.ID?.some(transfer.id))
         }
       }
       .labelsHidden()
@@ -140,7 +154,7 @@ public struct ShareCardPreviewSheet: View {
               caption = String(text.prefix(100))
             }
             .font(Typography.captionBold)
-            .foregroundStyle(caption == text ? Tokens.surface : Tokens.ink)
+            .foregroundStyle(caption == text ? Tokens.onInk : Tokens.ink)
             .padding(.horizontal, 10)
             .frame(minHeight: 34)
             .background(caption == text ? Tokens.ink : Tokens.sunken, in: Capsule())
@@ -256,11 +270,11 @@ public struct ShareCardPreviewSheet: View {
     let totalExpense =
       focusCycle?.totalExpenseAmount
       ?? data.cyclesOverview?.currentPeriod.totalExpenseAmount
-      ?? Money(expenseTxs.reduce(0) { $0 + $1.amount.amount })
+      ?? .zero
     let expenseCount =
       focusCycle?.expenseCount
       ?? data.cyclesOverview?.currentPeriod.expenseCount
-      ?? expenseTxs.count
+      ?? 0
 
     let balanceRows: [ShareCardContent.BalanceRow] = data.balances.balances
       .sorted { $0.balance > $1.balance }
@@ -276,27 +290,34 @@ public struct ShareCardPreviewSheet: View {
         )
       }
 
+    let selectedTransfer: SuggestedTransfer? =
+      if mode == .reminder, let selectedTransferId {
+        data.balances.transfers.first { $0.id == selectedTransferId }
+      } else {
+        nil
+      }
+
     let scopedTransfers: [SuggestedTransfer] =
-      if mode == .reminder, let selectedTargetMemberId {
-        data.balances.transfers.filter { $0.fromMemberId == selectedTargetMemberId }
+      if let selectedTransfer {
+        [selectedTransfer]
       } else {
         data.balances.transfers
       }
 
     let transferRows: [ShareCardContent.TransferRow] = scopedTransfers.compactMap { transfer in
-      guard let from = membersById[transfer.fromMemberId],
-        let to = membersById[transfer.toMemberId]
-      else { return nil }
-      return ShareCardContent.TransferRow(
-        fromName: from.name,
-        toName: to.name,
-        amount: transfer.amount,
-        purpose: transfer.purpose ?? "",
-        paymentMethods: transfer.paymentMethods
-      )
+      mapTransferRow(transfer, membersById: membersById)
     }
 
-    let recentExpenses: [ShareCardContent.ExpenseRow] = expenseTxs.prefix(6).map { tx in
+    let debtorAllocationTransfers: [ShareCardContent.TransferRow] =
+      if let selectedTransfer {
+        data.balances.transfers
+          .filter { $0.fromMemberId == selectedTransfer.fromMemberId }
+          .compactMap { mapTransferRow($0, membersById: membersById) }
+      } else {
+        []
+      }
+
+    let recentExpenses: [ShareCardContent.ExpenseRow] = expenseTxs.prefix(15).map { tx in
       let payerName =
         tx.payers.first.flatMap { membersById[$0.memberId]?.name } ?? ""
       return ShareCardContent.ExpenseRow(
@@ -307,21 +328,17 @@ public struct ShareCardPreviewSheet: View {
     }
 
     let targetBreakdown: MemberDebtBreakdown? =
-      if mode == .reminder, let selectedTargetMemberId {
-        data.breakdowns?.breakdowns.first { $0.memberId == selectedTargetMemberId }
+      if let selectedTransfer {
+        data.breakdowns?.breakdowns.first { $0.memberId == selectedTransfer.fromMemberId }
       } else {
         nil
       }
 
-    let staticQR: String? = data.balances.transfers
-      .flatMap(\.paymentMethods)
-      .compactMap { method -> String? in
-        if case .bank(let bank) = method {
-          return bank.accountQrPayload
-        }
-        return nil
-      }
-      .first
+    let summaryBankDetails: ShareCardContent.SummaryBankDetails? =
+      resolveSingleReceiverBankDetails(
+        transfers: scopedTransfers,
+        membersById: membersById
+      )
 
     return ShareCardContent(
       mode: mode,
@@ -332,12 +349,61 @@ public struct ShareCardPreviewSheet: View {
       expenseCount: expenseCount,
       balances: balanceRows,
       transfers: transferRows,
+      debtorAllocationTransfers: debtorAllocationTransfers,
+      isSingleTransferReminder: selectedTransfer != nil,
       includeExpenses: includeExpenses,
       recentExpenses: recentExpenses,
       targetBreakdown: targetBreakdown,
       customCaption: caption.trimmingCharacters(in: .whitespacesAndNewlines),
       guestShareURL: guestLink?.active == true ? guestLink?.url : nil,
-      summaryStaticQRPayload: staticQR
+      summaryBankDetails: summaryBankDetails
+    )
+  }
+
+  private func mapTransferRow(
+    _ transfer: SuggestedTransfer,
+    membersById: [Member.ID: Member]
+  ) -> ShareCardContent.TransferRow? {
+    guard let from = membersById[transfer.fromMemberId],
+      let to = membersById[transfer.toMemberId]
+    else { return nil }
+    return ShareCardContent.TransferRow(
+      fromName: from.name,
+      toName: to.name,
+      amount: transfer.amount,
+      purpose: transfer.purpose ?? "",
+      paymentMethods: transfer.paymentMethods
+    )
+  }
+
+  private func resolveSingleReceiverBankDetails(
+    transfers: [SuggestedTransfer],
+    membersById: [Member.ID: Member]
+  ) -> ShareCardContent.SummaryBankDetails? {
+    let receiverIds = Set(transfers.map(\.toMemberId))
+    guard receiverIds.count == 1,
+      let singleReceiverId = receiverIds.first,
+      let receiver = membersById[singleReceiverId]
+    else { return nil }
+
+    let bank =
+      transfers
+      .flatMap(\.paymentMethods)
+      .compactMap { method -> BankPayment? in
+        if case .bank(let details) = method { return details }
+        return nil
+      }
+      .first
+
+    guard let bank, let accountQr = bank.accountQrPayload, !accountQr.isEmpty else {
+      return nil
+    }
+    return ShareCardContent.SummaryBankDetails(
+      receiverName: receiver.name,
+      bankShortName: bank.name,
+      accountNumber: bank.accountNumber,
+      accountName: bank.accountName,
+      accountQrPayload: accountQr
     )
   }
 

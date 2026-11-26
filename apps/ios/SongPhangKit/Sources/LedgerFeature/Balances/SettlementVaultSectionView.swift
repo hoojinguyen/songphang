@@ -1,13 +1,13 @@
 import DesignSystem
-public import Domain
-public import Foundation
-public import SwiftUI
+import Domain
+import Foundation
+import SwiftUI
 
 #if DEBUG
   import PreviewSupport
 #endif
 
-public struct SettlementVaultSectionView: View {
+struct SettlementVaultSectionView: View {
   private let page: SettlementVaultPage?
   private let selectedFilter: SettlementVaultFilter
   private let members: [Member]
@@ -18,7 +18,7 @@ public struct SettlementVaultSectionView: View {
   private let onLoadMore: () -> Void
   private let onOpenTransaction: ((LedgerTransaction.ID) -> Void)?
 
-  public init(
+  init(
     page: SettlementVaultPage?,
     selectedFilter: SettlementVaultFilter,
     members: [Member],
@@ -40,7 +40,7 @@ public struct SettlementVaultSectionView: View {
     self.onOpenTransaction = onOpenTransaction
   }
 
-  public var body: some View {
+  var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       if let summary = page?.summary {
         summaryStrip(summary)
@@ -158,49 +158,60 @@ public struct SettlementVaultSectionView: View {
     let canOpenTx =
       item.status == .confirmed && item.transactionId != nil && onOpenTransaction != nil
 
-    let content = SPCard(padding: 16) {
+    let headerRow = HStack(spacing: 10) {
+      if let fromMember {
+        MemberShapeView(
+          shape: fromMember.shape,
+          color: fromMember.color,
+          name: fromMember.name,
+          size: 28,
+          showInitial: false
+        )
+      }
+      Image(systemName: "arrow.right")
+        .font(.system(size: 11, weight: .bold))
+        .foregroundStyle(Tokens.muted)
+      if let toMember {
+        MemberShapeView(
+          shape: toMember.shape,
+          color: toMember.color,
+          name: toMember.name,
+          size: 28,
+          showInitial: false
+        )
+      }
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
+          .lineLimit(1)
+        Text(LedgerDateLabels.dayLabel(for: item.occurredAt))
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.muted)
+      }
+
+      Spacer(minLength: 8)
+
+      MoneyText(
+        item.amount,
+        style: .full,
+        font: Typography.subheadlineBold,
+        color: Tokens.ink
+      )
+    }
+
+    return SPCard(padding: 16) {
       VStack(alignment: .leading, spacing: 10) {
-        HStack(spacing: 10) {
-          if let fromMember {
-            MemberShapeView(
-              shape: fromMember.shape,
-              color: fromMember.color,
-              name: fromMember.name,
-              size: 28,
-              showInitial: false
-            )
+        if canOpenTx, let txId = item.transactionId {
+          Button {
+            onOpenTransaction?(txId)
+          } label: {
+            headerRow
           }
-          Image(systemName: "arrow.right")
-            .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(Tokens.muted)
-          if let toMember {
-            MemberShapeView(
-              shape: toMember.shape,
-              color: toMember.color,
-              name: toMember.name,
-              size: 28,
-              showInitial: false
-            )
-          }
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-              .font(Typography.subheadlineBold)
-              .foregroundStyle(Tokens.ink)
-              .lineLimit(1)
-            Text(LedgerDateLabels.dayLabel(for: item.occurredAt))
-              .font(Typography.caption)
-              .foregroundStyle(Tokens.muted)
-          }
-
-          Spacer(minLength: 8)
-
-          MoneyText(
-            item.amount,
-            style: .full,
-            font: Typography.subheadlineBold,
-            color: Tokens.ink
-          )
+          .buttonStyle(.plain)
+        } else {
+          headerRow
         }
 
         HStack(alignment: .center, spacing: 8) {
@@ -237,19 +248,6 @@ public struct SettlementVaultSectionView: View {
             }
           }
         }
-      }
-    }
-
-    return Group {
-      if canOpenTx, let txId = item.transactionId {
-        Button {
-          onOpenTransaction?(txId)
-        } label: {
-          content
-        }
-        .buttonStyle(.plain)
-      } else {
-        content
       }
     }
   }

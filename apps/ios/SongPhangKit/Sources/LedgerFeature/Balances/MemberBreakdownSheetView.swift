@@ -1,19 +1,19 @@
 import DesignSystem
-public import Domain
-public import SwiftUI
+import Domain
+import SwiftUI
 
 #if DEBUG
   import PreviewSupport
 #endif
 
-public struct MemberBreakdownSheetView: View {
+struct MemberBreakdownSheetView: View {
   private let breakdown: MemberDebtBreakdown
   private let focusLabel: String
   private let memberTransfers: [SuggestedTransfer]
   private let members: [Member]
   private let onDismiss: () -> Void
 
-  public init(
+  init(
     breakdown: MemberDebtBreakdown,
     focusLabel: String,
     memberTransfers: [SuggestedTransfer] = [],
@@ -27,7 +27,7 @@ public struct MemberBreakdownSheetView: View {
     self.onDismiss = onDismiss
   }
 
-  public var body: some View {
+  var body: some View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
@@ -175,12 +175,20 @@ public struct MemberBreakdownSheetView: View {
                   font: Typography.subheadlineBold,
                   color: line.delta.isPositive ? Tokens.credit : Tokens.debt
                 )
-                MoneyText(
-                  line.totalAmount,
-                  style: .full,
-                  font: Typography.caption,
-                  color: Tokens.muted
-                )
+                if !line.memberShare.isZero && line.memberShare != line.totalAmount {
+                  Text(
+                    "\(MoneyFormat.full(line.memberShare)) / \(MoneyFormat.full(line.totalAmount))"
+                  )
+                  .font(Typography.caption)
+                  .foregroundStyle(Tokens.muted)
+                } else {
+                  MoneyText(
+                    line.totalAmount,
+                    style: .full,
+                    font: Typography.caption,
+                    color: Tokens.muted
+                  )
+                }
               }
             }
           }

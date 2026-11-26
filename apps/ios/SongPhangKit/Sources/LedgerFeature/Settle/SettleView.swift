@@ -90,7 +90,7 @@ public struct SettleView: View {
       variant: .accent,
       size: .lg,
       isFullWidth: true,
-      isDisabled: !currentAmount.isPositive,
+      isDisabled: !currentAmount.isPositive || model.isUploadingProof,
       isPending: model.isSubmitting
     ) {
       Task { await model.submit(reduceMotion: reduceMotion) }
