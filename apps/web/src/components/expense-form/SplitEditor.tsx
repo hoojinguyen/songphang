@@ -1,4 +1,4 @@
-import type { MemberDto } from "@songphang/contract";
+import type { MemberDto, PreviewExtrasResponse } from "@songphang/contract";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
@@ -65,6 +65,10 @@ export function SplitEditor({
 	state,
 	members,
 	amount,
+	computedAmount,
+	extrasPreviewData,
+	extrasPreviewCurrent = false,
+	extrasPreviewError = false,
 	description,
 	payerLine,
 	shares,
@@ -75,6 +79,10 @@ export function SplitEditor({
 	state: ReturnType<typeof useSplitState>;
 	members: MemberDto[];
 	amount: number;
+	computedAmount?: number | undefined;
+	extrasPreviewData?: PreviewExtrasResponse | undefined;
+	extrasPreviewCurrent?: boolean;
+	extrasPreviewError?: boolean;
 	description: string;
 	payerLine: string;
 	shares: readonly { memberId: string; amount: number }[];
@@ -82,9 +90,11 @@ export function SplitEditor({
 	onDone: () => void;
 }) {
 	const displayedAmount =
-		state.method === "items" && state.itemsComputedAmount !== undefined
-			? state.itemsComputedAmount
-			: amount;
+		computedAmount !== undefined
+			? computedAmount
+			: state.method === "items" && state.itemsComputedAmount !== undefined
+				? state.itemsComputedAmount
+				: amount;
 	const { heldId, start, finish, stop } = useHoldToGrow(state.pumpMember);
 	const canPump =
 		state.method === "shares" ||
@@ -111,8 +121,15 @@ export function SplitEditor({
 						{description}
 					</h1>
 					<p className="text-xs text-muted">{payerLine}</p>
+					{state.extras.length > 0 && state.method !== "items" && (
+						<p className="tabular-nums text-xs font-bold text-ink">
+							{vi.extras.goodsSubtotal}: {formatMoney(amount)}
+						</p>
+					)}
 				</div>
-				<p className="text-[22px] font-black">{formatMoney(displayedAmount)}</p>
+				<p className="tabular-nums text-[22px] font-black">
+					{formatMoney(displayedAmount)}
+				</p>
 			</header>
 			<SplitModeTabs
 				value={state.method}
@@ -122,12 +139,26 @@ export function SplitEditor({
 			{state.method === "items" ? (
 				<ItemsAssignmentPanel
 					items={state.items}
-					extras={state.extras}
+					extras={state.receiptExtras}
+					extrasAllocation={state.extrasAllocation}
+					onChangeExtrasAllocation={state.setExtrasAllocation}
 					selectedItemId={state.selectedItemId}
 					activePeople={members}
-					previewData={state.itemsPreview.data}
-					previewCurrent={state.itemsPreview.current}
-					previewError={state.itemsPreview.isError}
+					previewData={
+						state.extras.length > 0
+							? extrasPreviewData
+							: state.itemsPreview.data
+					}
+					previewCurrent={
+						state.extras.length > 0
+							? extrasPreviewCurrent
+							: state.itemsPreview.current
+					}
+					previewError={
+						state.extras.length > 0
+							? extrasPreviewError
+							: state.itemsPreview.isError
+					}
 					onSelectItem={state.setSelectedItemId}
 					onChangeItem={state.onChangeItem}
 					onRemoveItem={state.onRemoveItem}

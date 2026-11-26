@@ -7,6 +7,7 @@ import { formatAmount, formatMoney } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { paymentChannelLabel } from "../pay/TransferProofFields";
 import { CATEGORY_COLORS } from "../settings/CategoryRow";
+import { SplitExtrasBreakdown } from "../transaction/SplitExtrasBreakdown";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
 import { PhotoViewer } from "../ui/PhotoViewer";
@@ -170,30 +171,16 @@ export function GuestExpenseDetailModal({
 										);
 									});
 								})()}
-								{(() => {
-									const counts = new Map<string, number>();
-									return transaction.split.extras.map((extra) => {
-										const base = `${extra.kind}:${extra.label}:${extra.amount}`;
-										const seen = (counts.get(base) ?? 0) + 1;
-										counts.set(base, seen);
-										return (
-											<div
-												key={`${base}#${seen}`}
-												className="flex items-center justify-between gap-2 border-t border-sunken pt-1.5 text-muted"
-											>
-												<span>
-													{extra.label || vi.receipts.extrasKinds[extra.kind]}
-												</span>
-												<span className="tabular-nums font-bold">
-													{extra.kind === "discount" ? "−" : "+"}
-													{formatMoney(extra.amount)}
-												</span>
-											</div>
-										);
-									});
-								})()}
 							</section>
 						)}
+
+						{transaction.type === "expense" &&
+							(transaction.split.extras?.length ?? 0) > 0 && (
+								<SplitExtrasBreakdown
+									split={transaction.split}
+									totalAmount={transaction.amount}
+								/>
+							)}
 
 						{transaction.shares.length > 0 && (
 							<section className="grid gap-2 rounded-[22px] bg-surface p-4 text-xs">

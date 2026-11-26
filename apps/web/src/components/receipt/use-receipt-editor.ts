@@ -1,5 +1,9 @@
 "use client";
-import type { MemberDto, ReceiptScanDto } from "@songphang/contract";
+import type {
+	ExtrasAllocation,
+	MemberDto,
+	ReceiptScanDto,
+} from "@songphang/contract";
 import { toVietnamDate } from "@songphang/core";
 import { useEffect, useState } from "react";
 import { vi } from "../../messages/vi";
@@ -64,6 +68,8 @@ export function useReceiptEditor(input: {
 	const [occurredOn, setOccurredOn] = useState<string>(todayVietnamDate);
 	const [items, setItems] = useState<EditableReceiptItem[]>([]);
 	const [extras, setExtras] = useState<EditableReceiptExtra[]>([]);
+	const [extrasAllocation, setExtrasAllocation] =
+		useState<ExtrasAllocation>("proportional");
 	const [selectedItemId, setSelectedItemId] = useState("");
 	const [payerId, setPayerId] = useState<string | null>(null);
 	const [mismatchDismissed, setMismatchDismissed] = useState(false);
@@ -76,6 +82,7 @@ export function useReceiptEditor(input: {
 		setOccurredOn(scan.reading?.occurredOn ?? todayVietnamDate());
 		setItems(nextItems);
 		setExtras(initialExtras(scan));
+		setExtrasAllocation("proportional");
 		setSelectedItemId(nextItems[0]?.id ?? "");
 		setPayerId(
 			payerOptions.find((m) => m.id === myMemberId)?.id ??
@@ -179,6 +186,8 @@ export function useReceiptEditor(input: {
 		setOccurredOn,
 		items,
 		extras,
+		extrasAllocation,
+		setExtrasAllocation,
 		extrasFull: extras.length >= MAX_EXTRAS,
 		selectedItemId,
 		payerId,

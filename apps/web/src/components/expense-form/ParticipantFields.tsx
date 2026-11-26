@@ -28,7 +28,7 @@ export function ParticipantFields({
 		payerIds,
 		togglePayer,
 		payerAmounts,
-		amount,
+		totalAmount,
 		setPayerAmount,
 		splitState,
 		sharers,
@@ -76,7 +76,7 @@ export function ParticipantFields({
 						payerIds.includes(member.id),
 					)}
 					values={payerAmounts}
-					amount={amount}
+					amount={totalAmount}
 					onChange={setPayerAmount}
 				/>
 			)}

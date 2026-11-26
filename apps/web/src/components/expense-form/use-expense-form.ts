@@ -5,28 +5,54 @@ import type {
 	SplitTransactionRequest,
 	TransactionDto,
 } from "@songphang/contract";
-import { CreateTransactionRequest, ParseDraft } from "@songphang/contract";
+import {
+	CreateTransactionRequest,
+	ParseDraft,
+	PreviewExtrasRequest,
+	type SplitInput,
+} from "@songphang/contract";
 import { readSentence } from "@songphang/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useDraft } from "../../lib/draft-context";
 import { useGroup } from "../../lib/groups";
-import { parseAmountInput } from "../../lib/money";
+import { formatAmount, parseAmountInput } from "../../lib/money";
 import {
 	transactionRequestOf,
 	useUpdateTransaction,
 } from "../../lib/transaction-changes";
-import { useCreateTransaction, usePreviewShares } from "../../lib/transactions";
+import {
+	useCreateTransaction,
+	usePreviewExtras,
+	usePreviewShares,
+} from "../../lib/transactions";
 import { useSessionGuard } from "../../lib/use-session-guard";
 import { t, vi } from "../../messages/vi";
 import { useSnackbar } from "../ui/Snackbar";
 import type { FormTransactionType } from "./TypeSwitch";
-import { useSplitState } from "./use-split-state";
+import { toPreviewExtrasItems, useSplitState } from "./use-split-state";
 
 export function localDateTime(value?: string) {
 	const now = value ? new Date(value) : new Date();
 	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
+function initialBaseAmountOf(
+	draft: TransactionDto | ParseDraft | undefined,
+): number | null {
+	if (!draft?.amount) return null;
+	const draftSplit = draft.split;
+	const draftExtras = draftSplit?.extras ?? [];
+	if (draftSplit && draftSplit.method !== "items" && draftExtras.length > 0) {
+		const netExtras = draftExtras.reduce(
+			(sum, extra) =>
+				sum + (extra.kind === "discount" ? -extra.amount : extra.amount),
+			0,
+		);
+		return draft.amount - netExtras;
+	}
+	return draft.amount;
 }
 export type FormPrefill = {
 	type?: FormTransactionType;
@@ -116,8 +142,11 @@ export function useExpenseForm(
 	const [type, setTransactionType] = useState<FormTransactionType>(
 		transaction?.type ?? prefill?.type ?? "expense",
 	);
+	const initialBaseAmount = initialBaseAmountOf(draft);
 	const [amountText, setAmountText] = useState(
-		draft?.amount ? String(draft.amount) : "",
+		initialBaseAmount !== null && initialBaseAmount > 0
+			? formatAmount(initialBaseAmount)
+			: "",
 	);
 	const [description, setDescription] = useState(draft?.description ?? "");
 	const [category, setBuiltInCategory] = useState<
@@ -197,15 +226,21 @@ export function useExpenseForm(
 	const amount = parseAmountInput(amountText);
 	const splitState = useSplitState(active, amount ?? 0, draft?.split, groupId);
 	useEffect(() => {
-		if (
-			splitState.method === "items" &&
-			splitState.itemsComputedAmount !== undefined &&
-			splitState.itemsComputedAmount > 0 &&
-			String(splitState.itemsComputedAmount) !== amountText
-		) {
-			setAmountText(String(splitState.itemsComputedAmount));
+		if (splitState.method !== "items") return;
+		const syncedAmount =
+			splitState.extras.length > 0
+				? splitState.itemsBaseAmount
+				: (splitState.itemsComputedAmount ?? 0);
+		if (syncedAmount > 0 && syncedAmount !== amount) {
+			setAmountText(formatAmount(syncedAmount));
 		}
-	}, [splitState.method, splitState.itemsComputedAmount, amountText]);
+	}, [
+		splitState.method,
+		splitState.extras.length,
+		splitState.itemsBaseAmount,
+		splitState.itemsComputedAmount,
+		amount,
+	]);
 	const date = new Date(occurredAt);
 	const timestamp =
 		baseOccurredAt && occurredAt === localDateTime(baseOccurredAt)
@@ -224,11 +259,72 @@ export function useExpenseForm(
 			: type === "income"
 				? vi.expenseForm.titleIncome
 				: vi.expenseForm.titleTransfer;
+	const hasManualExtras = type === "expense" && splitState.extras.length > 0;
+	const previewExtrasItems = hasManualExtras
+		? toPreviewExtrasItems(splitState.extras)
+		: null;
+	const extrasBaseAmount =
+		splitState.method === "items" ? splitState.itemsBaseAmount : (amount ?? 0);
+	const parsedExtrasPreview =
+		hasManualExtras && previewExtrasItems !== null
+			? PreviewExtrasRequest.safeParse({
+					baseAmount: extrasBaseAmount,
+					extras: previewExtrasItems,
+					extrasAllocation: splitState.extrasAllocation,
+					...(payerIds.length === 1 && payerIds[0]
+						? { payerMemberId: payerIds[0] }
+						: payerIds.length > 1 &&
+								payerIds.every(
+									(id) => (parseAmountInput(payerAmounts[id] ?? "") ?? 0) > 0,
+								)
+							? {
+									payers: payerIds.map((id) => ({
+										memberId: id,
+										amount: parseAmountInput(payerAmounts[id] ?? "") ?? 0,
+									})),
+								}
+							: {}),
+					...(splitState.baseSplit ? { split: splitState.baseSplit } : {}),
+					...(transaction?.id ? { transactionId: transaction.id } : {}),
+				})
+			: null;
+	const extrasPreview = usePreviewExtras(
+		groupId,
+		parsedExtrasPreview?.success ? parsedExtrasPreview.data : null,
+	);
+	useSessionGuard(extrasPreview.error);
+
+	const effectiveTotalAmount = hasManualExtras
+		? extrasPreview.current &&
+			extrasPreview.data &&
+			extrasPreview.data.issues.length === 0 &&
+			extrasPreview.data.computedAmount > 0
+			? extrasPreview.data.computedAmount
+			: null
+		: splitState.method === "items"
+			? splitState.itemsComputedAmount && splitState.itemsComputedAmount > 0
+				? splitState.itemsComputedAmount
+				: null
+			: amount;
+
+	const finalSplit: SplitInput | null = hasManualExtras
+		? splitState.baseSplit &&
+			extrasPreview.current &&
+			extrasPreview.data &&
+			extrasPreview.data.issues.length === 0
+			? {
+					...splitState.baseSplit,
+					extras: extrasPreview.data.resolvedExtras,
+					extrasAllocation: splitState.extrasAllocation,
+				}
+			: null
+		: splitState.split;
+
 	const payers = payerIds.map((memberId) => ({
 		memberId,
 		amount:
 			payerIds.length === 1
-				? amount
+				? effectiveTotalAmount
 				: parseAmountInput(payerAmounts[memberId] ?? ""),
 	}));
 	const paid = payers.reduce((sum, payer) => sum + (payer.amount ?? 0), 0);
@@ -255,30 +351,46 @@ export function useExpenseForm(
 			: {
 					type,
 					description: description.trim() || title,
-					amount,
+					amount: effectiveTotalAmount,
 					occurredAt: timestamp,
 					category,
 					categoryId,
 					payers,
-					split: splitState.split,
+					split: finalSplit,
 					...optionalAttachments,
 				},
 	);
 	const request =
-		parsed.success && (type === "transfer" || paid === amount)
+		parsed.success &&
+		(type === "transfer" ||
+			(effectiveTotalAmount !== null && paid === effectiveTotalAmount))
 			? parsed.data
 			: null;
 	if (initialRequestSnapshot.current === undefined && request && !transaction) {
 		initialRequestSnapshot.current = JSON.stringify(request);
 	}
-	const preview = usePreviewShares(
+	const sharesPreview = usePreviewShares(
 		groupId,
-		request?.type === "transfer" ? null : request,
+		hasManualExtras || request?.type === "transfer" ? null : request,
 		transaction?.id,
 	);
-	useSessionGuard(preview.error);
+	useSessionGuard(sharesPreview.error);
+	const preview = hasManualExtras
+		? {
+				...extrasPreview,
+				data: extrasPreview.data
+					? {
+							shares: extrasPreview.data.shares ?? [],
+							warnings: extrasPreview.data.warnings,
+						}
+					: undefined,
+			}
+		: sharesPreview;
 	const setType = (next: FormTransactionType) => {
 		setTransactionType(next);
+		if (next !== "expense") {
+			splitState.clearExtras();
+		}
 		if (next === "income") {
 			setPayerIds(initial ? [initial] : payerIds.slice(0, 1));
 			if (splitState.method === "items") splitState.changeMode("equal");
@@ -370,6 +482,9 @@ export function useExpenseForm(
 		setType,
 		title,
 		amount: amount ?? 0,
+		totalAmount: effectiveTotalAmount ?? amount ?? 0,
+		hasManualExtras,
+		extrasPreview,
 		amountText,
 		setAmountText,
 		description,

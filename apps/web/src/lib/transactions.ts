@@ -2,6 +2,8 @@
 import {
 	CalendarDate,
 	CreateTransactionRequest,
+	PreviewExtrasRequest,
+	PreviewExtrasResponse,
 	PreviewTransactionRequest,
 	PreviewTransactionResponse,
 	TransactionCategory,
@@ -248,6 +250,47 @@ export function usePreviewShares(
 			serialized === JSON.stringify(debounced) &&
 			!query.isFetching &&
 			!query.isPlaceholderData,
+	};
+}
+
+export function usePreviewExtras(
+	groupId: string,
+	request: PreviewExtrasRequest | null,
+) {
+	const serialized = request === null ? null : JSON.stringify(request);
+	const [debounced, setDebounced] = useState<PreviewExtrasRequest | null>(null);
+	useEffect(() => {
+		const timer = setTimeout(() => {
+			if (serialized === null) {
+				setDebounced(null);
+				return;
+			}
+			const parsed = PreviewExtrasRequest.safeParse(JSON.parse(serialized));
+			setDebounced(parsed.success ? parsed.data : null);
+		}, 300);
+		return () => clearTimeout(timer);
+	}, [serialized]);
+
+	const query = useQuery<z.infer<typeof PreviewExtrasResponse>, ApiError>({
+		queryKey: ["group", groupId, "extrasPreview", debounced],
+		enabled: request !== null && debounced !== null,
+		queryFn: ({ signal }) =>
+			apiFetch(
+				`/groups/${encodeURIComponent(groupId)}/transactions/extras/preview`,
+				PreviewExtrasResponse,
+				{ ...jsonRequest("POST", debounced), signal },
+			),
+		placeholderData: keepPreviousData,
+	});
+
+	return {
+		...query,
+		current:
+			serialized === JSON.stringify(debounced) &&
+			!query.isFetching &&
+			!query.isPlaceholderData &&
+			query.isSuccess &&
+			!query.isError,
 	};
 }
 
