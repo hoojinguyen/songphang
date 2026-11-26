@@ -48,6 +48,7 @@ public final class PayModel {
     role: Role,
     isEmailVerified: Bool,
     isFromHouseholdMember: Bool = false,
+    initialProofAttachment: Attachment? = nil,
     repository: any SettlementRequestsRepository,
     uploadProof: (@Sendable (Data, String, String) async throws(AppError) -> Attachment)? = nil,
     loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)? = nil,
@@ -62,6 +63,7 @@ public final class PayModel {
     self.role = role
     self.isEmailVerified = isEmailVerified
     self.isFromHouseholdMember = isFromHouseholdMember
+    self.proofAttachment = initialProofAttachment
     self.repository = repository
     self.uploadProof = uploadProof
     self.loadAttachment = loadAttachment

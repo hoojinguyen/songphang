@@ -19,6 +19,8 @@ public final class ExpenseFormModel {
   public let initialTransferFrom: Member.ID?
   public let initialTransferTo: Member.ID?
   public let initialAttachmentId: Attachment.ID?
+  public let initialAttachmentIds: [Attachment.ID]
+  public let initialPendingImageDatas: [Data]
   public let initialRecurringExpense: RecurringExpense?
   public let initialRecurringDueAction: OverviewRecurringDueAction?
   public let idempotencyKey: IdempotencyKey
@@ -94,6 +96,8 @@ public final class ExpenseFormModel {
     initialTransferFrom: Member.ID? = nil,
     initialTransferTo: Member.ID? = nil,
     initialAttachmentId: Attachment.ID? = nil,
+    initialAttachmentIds: [Attachment.ID] = [],
+    initialPendingImageDatas: [Data] = [],
     initialRecurringExpense: RecurringExpense? = nil,
     initialRecurringDueAction: OverviewRecurringDueAction? = nil,
     initialSplitEditorOpen: Bool = false,
@@ -113,6 +117,8 @@ public final class ExpenseFormModel {
     self.initialTransferFrom = initialTransferFrom
     self.initialTransferTo = initialTransferTo
     self.initialAttachmentId = initialAttachmentId
+    self.initialAttachmentIds = initialAttachmentIds
+    self.initialPendingImageDatas = initialPendingImageDatas
     self.initialRecurringExpense = initialRecurringExpense
     self.initialRecurringDueAction = initialRecurringDueAction
     self.resolvedRecurringExpense = initialRecurringExpense
@@ -239,6 +245,11 @@ public final class ExpenseFormModel {
       state = .loaded(data)
       configureFields(data: data)
       await refreshPreviewNow()
+      if editingTransactionId == nil && !initialPendingImageDatas.isEmpty {
+        for rawData in initialPendingImageDatas.prefix(3) where attachments.count < 3 {
+          await uploadAttachment(rawImageData: rawData)
+        }
+      }
     } catch let error as AppError {
       state = .failed(error)
     } catch {
@@ -380,10 +391,16 @@ public final class ExpenseFormModel {
       payerIds = defaultMyId.map { [$0] } ?? []
       transferFrom = initialTransferFrom ?? defaultMyId
       transferTo = initialTransferTo
-      attachments =
-        initialAttachmentId.map {
-          [Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)]
-        } ?? []
+      if !initialAttachmentIds.isEmpty {
+        attachments = initialAttachmentIds.prefix(3).map {
+          Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)
+        }
+      } else {
+        attachments =
+          initialAttachmentId.map {
+            [Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)]
+          } ?? []
+      }
       splitState = SplitEditorState(
         members: people,
         initial: nil,

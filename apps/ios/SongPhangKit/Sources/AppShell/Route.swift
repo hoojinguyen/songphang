@@ -1,4 +1,5 @@
 public import Domain
+public import Foundation
 
 public enum Route: Hashable, Sendable {
   case register
@@ -8,7 +9,10 @@ public enum Route: Hashable, Sendable {
   case joinGroup(token: String)
   case guestShare(token: String)
   case groupFeed(groupId: ExpenseGroup.ID, initialFilter: TransactionFilter? = nil)
-  case groupBalances(groupId: ExpenseGroup.ID)
+  case groupBalances(
+    groupId: ExpenseGroup.ID,
+    initialTransferProofAttachmentId: Attachment.ID? = nil
+  )
   case groupStats(groupId: ExpenseGroup.ID)
   case groupActivity(groupId: ExpenseGroup.ID)
   case groupMembers(groupId: ExpenseGroup.ID)
@@ -21,6 +25,8 @@ public enum Route: Hashable, Sendable {
     initialTransferFrom: Member.ID? = nil,
     initialTransferTo: Member.ID? = nil,
     initialAttachmentId: Attachment.ID? = nil,
+    initialAttachmentIds: [Attachment.ID] = [],
+    initialPendingImageDatas: [Data] = [],
     initialRecurringExpense: RecurringExpense? = nil,
     initialRecurringDueAction: OverviewRecurringDueAction? = nil
   )

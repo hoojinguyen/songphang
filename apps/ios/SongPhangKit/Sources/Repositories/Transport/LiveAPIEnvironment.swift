@@ -60,6 +60,10 @@ public final class LiveAPIEnvironment: Sendable {
     invalidationHub.makeStream()
   }
 
+  public func hasStoredToken() async -> Bool {
+    await tokenStore.read() != nil
+  }
+
   @discardableResult
   func invalidateSessionIfMatching(_ expectedGeneration: UInt64) async -> Bool {
     await Self.performInvalidation(

@@ -61,6 +61,7 @@ public struct GroupContainerView: View {
   @State private var isShareCardSheetOpen = false
   @State private var isArchiving = false
   @State private var paymentSheet: PaymentSheet?
+  @State private var pendingProofAttachmentId: Attachment.ID?
 
   @State private var feedModel: GroupFeedModel
   @State private var balancesModel: BalancesModel
@@ -74,6 +75,7 @@ public struct GroupContainerView: View {
     initialSegment: GroupSegment = .expenses,
     initialFilter: TransactionFilter? = nil,
     initialFundSubTab: FundSubTab? = nil,
+    initialTransferProofAttachmentId: Attachment.ID? = nil,
     dependencies: AppDependencies,
     sessionModel: SessionModel,
     currentUser: User?,
@@ -95,6 +97,7 @@ public struct GroupContainerView: View {
     self.onPopToRoot = onPopToRoot
     self.onExpenseSaved = onExpenseSaved
     self._selectedSegment = State(initialValue: initialSegment)
+    self._pendingProofAttachmentId = State(initialValue: initialTransferProofAttachmentId)
     if let initialFundSubTab {
       self._fundSubTab = State(initialValue: initialFundSubTab)
     }
@@ -330,6 +333,9 @@ public struct GroupContainerView: View {
           guard let myMemberId else { return false }
           return selection.transfer.fromHousehold?.memberIds.contains(myMemberId) == true
         }(),
+        initialProofAttachment: pendingProofAttachmentId.map {
+          Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)
+        },
         repository: dependencies.settlementRequests,
         uploadProof: { data, filename, contentType async throws(AppError) in
           try await dependencies.attachments.upload(
@@ -373,6 +379,7 @@ public struct GroupContainerView: View {
               )
             } : nil,
           onFinished: { _ in
+            pendingProofAttachmentId = nil
             paymentSheet = nil
             onExpenseSaved()
           }

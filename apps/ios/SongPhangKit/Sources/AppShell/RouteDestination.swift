@@ -213,7 +213,7 @@ public struct RouteDestination: View {
           }
         )
       )
-    case .groupBalances(let groupId):
+    case .groupBalances(let groupId, _):
       self._balancesModel = State(
         initialValue: BalancesModel(
           groupId: groupId,
@@ -273,6 +273,8 @@ public struct RouteDestination: View {
       let initialTransferFrom,
       let initialTransferTo,
       let initialAttachmentId,
+      let initialAttachmentIds,
+      let initialPendingImageDatas,
       let initialRecurringExpense,
       let initialRecurringDueAction
     ):
@@ -284,6 +286,8 @@ public struct RouteDestination: View {
           initialTransferFrom: initialTransferFrom,
           initialTransferTo: initialTransferTo,
           initialAttachmentId: initialAttachmentId,
+          initialAttachmentIds: initialAttachmentIds,
+          initialPendingImageDatas: initialPendingImageDatas,
           initialRecurringExpense: initialRecurringExpense,
           initialRecurringDueAction: initialRecurringDueAction,
           initialSplitEditorOpen: args.contains("--open-split-editor"),
@@ -576,11 +580,12 @@ public struct RouteDestination: View {
         onPopToRoot: onPopToRoot,
         onExpenseSaved: onExpenseSaved
       )
-    case .groupBalances(let groupId):
+    case .groupBalances(let groupId, let initialTransferProofAttachmentId):
       GroupContainerView(
         groupId: groupId,
         initialSegment: .payments,
         initialFilter: nil,
+        initialTransferProofAttachmentId: initialTransferProofAttachmentId,
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,

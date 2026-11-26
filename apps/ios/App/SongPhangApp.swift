@@ -5,6 +5,37 @@ import UIKit
 import UserNotifications
 import os
 
+final class SongPhangSceneDelegate: NSObject, UIWindowSceneDelegate {
+  func scene(
+    _ scene: UIScene,
+    willConnectTo session: UISceneSession,
+    options connectionOptions: UIScene.ConnectionOptions
+  ) {
+    if let shortcutItem = connectionOptions.shortcutItem {
+      Task { @MainActor in
+        ShortcutEventBridge.shared.didTriggerShortcut(
+          type: shortcutItem.type,
+          userInfo: shortcutItem.userInfo
+        )
+      }
+    }
+  }
+
+  func windowScene(
+    _ windowScene: UIWindowScene,
+    performActionFor shortcutItem: UIApplicationShortcutItem,
+    completionHandler: @escaping (Bool) -> Void
+  ) {
+    Task { @MainActor in
+      ShortcutEventBridge.shared.didTriggerShortcut(
+        type: shortcutItem.type,
+        userInfo: shortcutItem.userInfo
+      )
+    }
+    completionHandler(true)
+  }
+}
+
 final class SongPhangAppDelegate: NSObject, UIApplicationDelegate,
   UNUserNotificationCenterDelegate
 {
@@ -14,6 +45,19 @@ final class SongPhangAppDelegate: NSObject, UIApplicationDelegate,
   ) -> Bool {
     UNUserNotificationCenter.current().delegate = self
     return true
+  }
+
+  func application(
+    _ application: UIApplication,
+    configurationForConnecting connectingSceneSession: UISceneSession,
+    options: UIScene.ConnectionOptions
+  ) -> UISceneConfiguration {
+    let config = UISceneConfiguration(
+      name: "Default Configuration",
+      sessionRole: connectingSceneSession.role
+    )
+    config.delegateClass = SongPhangSceneDelegate.self
+    return config
   }
 
   nonisolated func application(
