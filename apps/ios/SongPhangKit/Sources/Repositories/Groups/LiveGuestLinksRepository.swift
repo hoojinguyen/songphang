@@ -180,7 +180,8 @@ public final class LiveGuestLinksRepository: GuestLinksRepository, Sendable {
           kind: MemberKind(code: $0.kind.rawValue),
           active: $0.active,
           shape: MemberShape(code: $0.shape.rawValue),
-          color: MemberColor(code: $0.color.rawValue)
+          color: MemberColor(code: $0.color.rawValue),
+          householdId: $0.householdId.map(Household.ID.init)
         )
       },
       cycles: dto.cycles.map(LiveSettlementCyclesRepository.mapCycle),
@@ -189,10 +190,13 @@ public final class LiveGuestLinksRepository: GuestLinksRepository, Sendable {
       balances: dto.balances.map {
         Balance(memberId: Member.ID($0.memberId), balance: Money(Int64($0.balance)))
       },
+      households: (dto.households ?? []).map(BalanceMapping.mapHouseholdBalance),
       transfers: dto.transfers.map {
         GuestTransfer(
           fromMemberId: Member.ID($0.fromMemberId),
           toMemberId: Member.ID($0.toMemberId),
+          fromHousehold: $0.fromHousehold.map(BalanceMapping.mapHouseholdTransferRef),
+          toHousehold: $0.toHousehold.map(BalanceMapping.mapHouseholdTransferRef),
           amount: Money(Int64($0.amount)),
           purpose: $0.purpose,
           paymentMethods: $0.payTo.map(mapGuestPaymentMethod)
@@ -201,6 +205,8 @@ public final class LiveGuestLinksRepository: GuestLinksRepository, Sendable {
       fund: dto.fund.map(BalanceMapping.mapFund),
       resolvedFocus: LiveMemberBreakdownsMapping.mapResolvedFocus(dto.resolvedFocus),
       breakdowns: dto.breakdowns.map(LiveMemberBreakdownsMapping.mapBreakdown),
+      householdBreakdowns: (dto.householdBreakdowns ?? []).map(
+        LiveMemberBreakdownsMapping.mapHouseholdBreakdown),
       transactions: Page(
         items: dto.transactions.items.map(mapGuestTransaction),
         nextCursor: dto.transactions.nextCursor

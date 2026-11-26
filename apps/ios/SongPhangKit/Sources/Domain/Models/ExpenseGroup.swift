@@ -26,6 +26,8 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
   public var memberCount: Int
   public var previewMembers: [PreviewMember]
   public var myBalance: Money
+  public var myIndividualBalance: Money?
+  public var householdName: String?
   public var minimizeDebts: Bool
   public var defaultRole: Role
   public var role: Role
@@ -47,6 +49,8 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
     memberCount: Int,
     previewMembers: [PreviewMember],
     myBalance: Money,
+    myIndividualBalance: Money? = nil,
+    householdName: String? = nil,
     minimizeDebts: Bool = true,
     defaultRole: Role = .editor,
     role: Role = .owner,
@@ -65,6 +69,8 @@ public struct ExpenseGroup: Sendable, Hashable, Identifiable {
     self.memberCount = memberCount
     self.previewMembers = previewMembers
     self.myBalance = myBalance
+    self.myIndividualBalance = myIndividualBalance
+    self.householdName = householdName
     self.minimizeDebts = minimizeDebts
     self.defaultRole = defaultRole
     self.role = role

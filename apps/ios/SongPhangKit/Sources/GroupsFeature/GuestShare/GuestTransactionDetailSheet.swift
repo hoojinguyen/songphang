@@ -36,7 +36,7 @@ struct GuestTransactionDetailSheet: View {
                 .foregroundStyle(Tokens.ink)
             }
           }
-          if case .items(let items, let extras) = transaction.split {
+          if case .items(let items, let extras, _) = transaction.split {
             itemsBreakdownCard(items: items, extras: extras)
           }
           if !transaction.payers.isEmpty || !transaction.shares.isEmpty {

@@ -63,6 +63,8 @@
     internal var budgetsByGroup: [ExpenseGroup.ID: GroupBudget] = [:]
     internal var settlementRequestsByGroup: [ExpenseGroup.ID: [SettlementRequest]] = [:]
     internal var settlementCyclesByGroup: [ExpenseGroup.ID: [SettlementCycle]] = [:]
+    internal var recurringExpensesByGroup: [ExpenseGroup.ID: [RecurringExpense]] = [:]
+    internal var householdsByGroup: [ExpenseGroup.ID: [Household]] = [:]
     internal var guestLinksByGroup: [ExpenseGroup.ID: (token: String, link: GuestLink)] = [:]
     internal var attachmentsByGroup: [ExpenseGroup.ID: [Attachment.ID: Attachment]] = [:]
     internal var attachmentDataById: [Attachment.ID: Data] = [:]
@@ -766,6 +768,13 @@
         members[idx].defaultWeight = weight
       }
       if let active = input.active {
+        if !active,
+          (householdsByGroup[groupId] ?? []).contains(where: {
+            $0.representativeMemberId == memberId
+          })
+        {
+          throw .householdRepresentativeActiveRequired
+        }
         members[idx].active = active
       }
       membersByGroup[groupId] = members
@@ -777,6 +786,9 @@
       try await simulateNetwork()
       guard var members = membersByGroup[groupId] else {
         throw .api(code: "NOT_FOUND", status: 404)
+      }
+      if members.first(where: { $0.id == memberId })?.householdId != nil {
+        throw .householdMemberConflict
       }
       let txs = transactionsByGroup[groupId] ?? []
       let hasTx = txs.contains { tx in

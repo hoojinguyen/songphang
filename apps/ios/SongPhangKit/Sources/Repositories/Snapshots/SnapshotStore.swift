@@ -1,3 +1,4 @@
+import Domain
 import Foundation
 
 enum SnapshotKey: Hashable, Sendable {
@@ -72,6 +73,7 @@ actor SnapshotStore {
 
   private let rootURL: URL
   private let maxRecentGroups: Int
+  private let extensionSharedStore: ExtensionSharedStore
   private var sessionGeneration: UInt64 = 0
   private var minAllowedTokenGeneration: UInt64 = 0
   private var activeScope: Scope?
@@ -80,7 +82,11 @@ actor SnapshotStore {
   private var memoryCache: [SnapshotKey: Data] = [:]
   private var recentGroupIds: [String] = []
 
-  init(rootURL: URL? = nil, maxRecentGroups: Int = 20) {
+  init(
+    rootURL: URL? = nil,
+    maxRecentGroups: Int = 20,
+    extensionSharedStore: ExtensionSharedStore = .shared
+  ) {
     if let rootURL {
       self.rootURL = rootURL
     } else {
@@ -90,6 +96,7 @@ actor SnapshotStore {
       self.rootURL = base.appending(path: "SongPhangSnapshots", directoryHint: .isDirectory)
     }
     self.maxRecentGroups = maxRecentGroups
+    self.extensionSharedStore = extensionSharedStore
   }
 
   func currentScope() -> Scope? {
@@ -322,6 +329,7 @@ actor SnapshotStore {
     memoryCache.removeAll()
     recentGroupIds.removeAll()
     try? FileManager.default.removeItem(at: rootURL)
+    extensionSharedStore.clearAll()
   }
 
   // MARK: - Disk helpers

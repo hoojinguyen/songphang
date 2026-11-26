@@ -39,6 +39,10 @@ public struct AppNotification: Sendable, Hashable, Identifiable {
       actorName: String, groupName: String, transactionId: String, description: String,
       decision: String)
     case budgetState(actorName: String, groupName: String, state: String)
+    case recurringPosted(
+      groupName: String, transactionId: String, description: String, amount: Money, share: Money?)
+    case recurringDue(
+      groupName: String, recurringExpenseId: String, description: String, dueDate: String)
     case unknown(kind: String, groupName: String?)
   }
 

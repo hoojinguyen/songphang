@@ -39,6 +39,7 @@ public struct GuestMember: Sendable, Hashable, Identifiable {
   public let active: Bool
   public let shape: MemberShape
   public let color: MemberColor
+  public let householdId: Household.ID?
 
   public init(
     id: Member.ID,
@@ -46,7 +47,8 @@ public struct GuestMember: Sendable, Hashable, Identifiable {
     kind: MemberKind = .person,
     active: Bool = true,
     shape: MemberShape,
-    color: MemberColor
+    color: MemberColor,
+    householdId: Household.ID? = nil
   ) {
     self.id = id
     self.name = name
@@ -54,6 +56,7 @@ public struct GuestMember: Sendable, Hashable, Identifiable {
     self.active = active
     self.shape = shape
     self.color = color
+    self.householdId = householdId
   }
 }
 
@@ -61,6 +64,8 @@ public struct GuestTransfer: Sendable, Hashable, Identifiable {
   public var id: String { "\(fromMemberId.rawValue)-\(toMemberId.rawValue)-\(amount.amount)" }
   public let fromMemberId: Member.ID
   public let toMemberId: Member.ID
+  public let fromHousehold: HouseholdTransferRef?
+  public let toHousehold: HouseholdTransferRef?
   public let amount: Money
   public let purpose: String
   public let paymentMethods: [PaymentMethod]
@@ -68,12 +73,16 @@ public struct GuestTransfer: Sendable, Hashable, Identifiable {
   public init(
     fromMemberId: Member.ID,
     toMemberId: Member.ID,
+    fromHousehold: HouseholdTransferRef? = nil,
+    toHousehold: HouseholdTransferRef? = nil,
     amount: Money,
     purpose: String,
     paymentMethods: [PaymentMethod] = []
   ) {
     self.fromMemberId = fromMemberId
     self.toMemberId = toMemberId
+    self.fromHousehold = fromHousehold
+    self.toHousehold = toHousehold
     self.amount = amount
     self.purpose = purpose
     self.paymentMethods = paymentMethods
@@ -145,10 +154,12 @@ public struct GuestGroupSnapshot: Sendable, Hashable {
   public let selectedCycleId: TransactionCycleFilter
   public let currentPeriod: CurrentPeriodSummary
   public let balances: [Balance]
+  public let households: [HouseholdBalance]
   public let transfers: [GuestTransfer]
   public let fund: FundSummary?
   public let resolvedFocus: MemberBreakdownsResolvedFocus
   public let breakdowns: [MemberDebtBreakdown]
+  public let householdBreakdowns: [HouseholdDebtBreakdown]
   public let transactions: Page<GuestTransaction>
 
   public init(
@@ -158,10 +169,12 @@ public struct GuestGroupSnapshot: Sendable, Hashable {
     selectedCycleId: TransactionCycleFilter,
     currentPeriod: CurrentPeriodSummary,
     balances: [Balance],
+    households: [HouseholdBalance] = [],
     transfers: [GuestTransfer],
     fund: FundSummary? = nil,
     resolvedFocus: MemberBreakdownsResolvedFocus,
     breakdowns: [MemberDebtBreakdown],
+    householdBreakdowns: [HouseholdDebtBreakdown] = [],
     transactions: Page<GuestTransaction>
   ) {
     self.group = group
@@ -170,10 +183,12 @@ public struct GuestGroupSnapshot: Sendable, Hashable {
     self.selectedCycleId = selectedCycleId
     self.currentPeriod = currentPeriod
     self.balances = balances
+    self.households = households
     self.transfers = transfers
     self.fund = fund
     self.resolvedFocus = resolvedFocus
     self.breakdowns = breakdowns
+    self.householdBreakdowns = householdBreakdowns
     self.transactions = transactions
   }
 }

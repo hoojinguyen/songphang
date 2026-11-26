@@ -61,7 +61,7 @@ public struct ItemsSplitDraft: Sendable, Equatable {
   public init(
     initialSplit: SplitSpec?, fallbackTitle: String, totalAmount: Money, members: [Member]
   ) {
-    if case .items(let specItems, let specExtras) = initialSplit {
+    if case .items(let specItems, let specExtras, _) = initialSplit {
       let mappedItems = specItems.map {
         EditableReceiptItem(
           name: $0.name,

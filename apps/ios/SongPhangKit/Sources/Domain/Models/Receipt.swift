@@ -30,18 +30,20 @@ public struct Attachment: Sendable, Hashable, Identifiable {
 public enum ReceiptExtraKind: Sendable, Hashable, CaseIterable {
   case tax
   case service
+  case shipping
   case discount
   case other
   case unknown(String)
 
   public static var allCases: [ReceiptExtraKind] {
-    [.tax, .service, .discount, .other]
+    [.tax, .service, .shipping, .discount, .other]
   }
 
   public init(code: String) {
     switch code {
     case "tax": self = .tax
     case "service": self = .service
+    case "shipping": self = .shipping
     case "discount": self = .discount
     case "other": self = .other
     default: self = .unknown(code)
@@ -52,6 +54,7 @@ public enum ReceiptExtraKind: Sendable, Hashable, CaseIterable {
     switch self {
     case .tax: return "tax"
     case .service: return "service"
+    case .shipping: return "shipping"
     case .discount: return "discount"
     case .other: return "other"
     case .unknown(let raw): return raw

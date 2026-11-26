@@ -122,6 +122,20 @@ public enum NotificationFormatter {
         return L10n.t("notifications.budgetNear", ["group": group])
       }
 
+    case .recurringPosted(let groupName, _, let desc, let amount, let share):
+      let resolvedGroup = groupName.isEmpty ? group : groupName
+      if let share {
+        return
+          "Khoản định kỳ \(desc) · \(MoneyFormat.full(amount)) (phần bạn \(MoneyFormat.full(share)))"
+      } else {
+        return
+          "Khoản định kỳ \(desc) · \(MoneyFormat.full(amount)) đã được ghi vào \(resolvedGroup)"
+      }
+
+    case .recurringDue(let groupName, _, let desc, _):
+      let resolvedGroup = groupName.isEmpty ? group : groupName
+      return "\(L10n.t("recurring.overviewDueTemplate", ["description": desc])) (\(resolvedGroup))"
+
     case .unknown:
       return L10n.t("notifications.fallback", ["group": group])
     }

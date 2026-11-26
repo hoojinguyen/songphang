@@ -9,6 +9,7 @@ enum MemberMapping {
       name: dto.name,
       kind: MemberKind(code: dto.kind?.rawValue ?? "person"),
       fundHolderMemberId: dto.fundHolderMemberId.map(Member.ID.init),
+      householdId: dto.householdId.map(Household.ID.init),
       active: dto.active,
       defaultWeight: dto.defaultWeight,
       position: dto.position,
@@ -57,6 +58,7 @@ enum MemberMapping {
     let name: String
     let kind: String?
     let fundHolderMemberId: String?
+    let householdId: String?
     let active: Bool
     let defaultWeight: String
     let position: Int
@@ -72,6 +74,7 @@ enum MemberMapping {
         name: name,
         kind: MemberKind(code: kind ?? "person"),
         fundHolderMemberId: fundHolderMemberId.map(Member.ID.init),
+        householdId: householdId.map(Household.ID.init),
         active: active,
         defaultWeight: defaultWeight,
         position: position,
@@ -130,6 +133,7 @@ enum MemberMapping {
           name: m.name,
           kind: m.kind.code,
           fundHolderMemberId: m.fundHolderMemberId?.rawValue,
+          householdId: m.householdId?.rawValue,
           active: m.active,
           defaultWeight: m.defaultWeight,
           position: m.position,

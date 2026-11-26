@@ -13,6 +13,8 @@ public struct SuggestedTransfer: Sendable, Hashable, Identifiable {
   public var id: String { "\(fromMemberId.rawValue)-\(toMemberId.rawValue)-\(amount.amount)" }
   public let fromMemberId: Member.ID
   public let toMemberId: Member.ID
+  public let fromHousehold: HouseholdTransferRef?
+  public let toHousehold: HouseholdTransferRef?
   public let amount: Money
   public let paymentMethods: [PaymentMethod]
   public let purpose: String?
@@ -21,6 +23,8 @@ public struct SuggestedTransfer: Sendable, Hashable, Identifiable {
   public init(
     fromMemberId: Member.ID,
     toMemberId: Member.ID,
+    fromHousehold: HouseholdTransferRef? = nil,
+    toHousehold: HouseholdTransferRef? = nil,
     amount: Money,
     paymentMethods: [PaymentMethod] = [],
     purpose: String? = nil,
@@ -28,6 +32,8 @@ public struct SuggestedTransfer: Sendable, Hashable, Identifiable {
   ) {
     self.fromMemberId = fromMemberId
     self.toMemberId = toMemberId
+    self.fromHousehold = fromHousehold
+    self.toHousehold = toHousehold
     self.amount = amount
     self.paymentMethods = paymentMethods
     self.purpose = purpose
@@ -39,6 +45,7 @@ public struct GroupBalances: Sendable, Hashable {
   public let currency: String
   public let minimized: Bool
   public let balances: [Balance]
+  public let households: [HouseholdBalance]
   public let transfers: [SuggestedTransfer]
   public let fund: FundSummary?
 
@@ -46,12 +53,14 @@ public struct GroupBalances: Sendable, Hashable {
     currency: String = "VND",
     minimized: Bool = true,
     balances: [Balance],
+    households: [HouseholdBalance] = [],
     transfers: [SuggestedTransfer],
     fund: FundSummary? = nil
   ) {
     self.currency = currency
     self.minimized = minimized
     self.balances = balances
+    self.households = households
     self.transfers = transfers
     self.fund = fund
   }

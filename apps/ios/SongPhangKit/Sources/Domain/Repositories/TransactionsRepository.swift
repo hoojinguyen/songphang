@@ -17,8 +17,13 @@ public protocol TransactionsRepository: Sendable {
     groupId: ExpenseGroup.ID,
     items: [SplitSpec.ItemEntry],
     extras: [SplitSpec.ItemsExtra],
+    extrasAllocation: ExtrasAllocation?,
     targetTotal: Money?
   ) async throws(AppError) -> ItemsPreview
+  func previewExtras(
+    groupId: ExpenseGroup.ID,
+    input: PreviewExtrasInput
+  ) async throws(AppError) -> PreviewExtrasResult
   func create(
     groupId: ExpenseGroup.ID,
     draft: TransactionDraft,
@@ -83,8 +88,29 @@ extension TransactionsRepository {
   public func previewItems(
     groupId: ExpenseGroup.ID,
     items: [SplitSpec.ItemEntry],
+    extras: [SplitSpec.ItemsExtra],
+    targetTotal: Money?
+  ) async throws(AppError) -> ItemsPreview {
+    try await previewItems(
+      groupId: groupId,
+      items: items,
+      extras: extras,
+      extrasAllocation: nil,
+      targetTotal: targetTotal
+    )
+  }
+
+  public func previewItems(
+    groupId: ExpenseGroup.ID,
+    items: [SplitSpec.ItemEntry],
     extras: [SplitSpec.ItemsExtra]
   ) async throws(AppError) -> ItemsPreview {
-    try await previewItems(groupId: groupId, items: items, extras: extras, targetTotal: nil)
+    try await previewItems(
+      groupId: groupId,
+      items: items,
+      extras: extras,
+      extrasAllocation: nil,
+      targetTotal: nil
+    )
   }
 }

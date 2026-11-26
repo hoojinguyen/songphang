@@ -42,6 +42,8 @@ enum OverviewMapping {
         groupId: ExpenseGroup.ID(gb.groupId),
         groupName: gb.groupName,
         myBalance: Money(Int64(gb.myBalance)),
+        myIndividualBalance: gb.myIndividualBalance.map { Money(Int64($0)) },
+        householdName: gb.householdName,
         role: Role(code: gb.role.rawValue),
         archivedAt: gb.archivedAt,
         memberCount: gb.memberCount,
@@ -56,12 +58,28 @@ enum OverviewMapping {
       )
     }
 
+    let dueRecurringActions: [OverviewRecurringDueAction] = (dto.dueRecurringActions ?? []).map {
+      action in
+      OverviewRecurringDueAction(
+        id: RecurringExpense.ID(action.id),
+        groupId: ExpenseGroup.ID(action.groupId),
+        groupName: action.groupName,
+        description: action.description,
+        dueDate: action.dueDate,
+        suggestedAmount: action.suggestedAmount.map { Money(Int64($0)) },
+        payerMemberId: Member.ID(action.payerMemberId),
+        payerName: action.payerName
+      )
+    }
+
     return OverviewSummary(
       totalOwedToMe: Money(Int64(dto.totalOwedToMe)),
       totalIOwe: Money(Int64(dto.totalIOwe)),
       netBalance: Money(Int64(dto.netBalance)),
       pendingActions: pendingActions,
-      groupBalances: groupBalances
+      groupBalances: groupBalances,
+      dueRecurringCount: dto.dueRecurringCount ?? dueRecurringActions.count,
+      dueRecurringActions: dueRecurringActions
     )
   }
 
@@ -121,6 +139,8 @@ enum OverviewMapping {
     let groupId: String
     let groupName: String
     let myBalance: Int64
+    let myIndividualBalance: Int64?
+    let householdName: String?
     let role: String
     let archivedAt: String?
     let memberCount: Int
@@ -131,6 +151,8 @@ enum OverviewMapping {
         groupId: ExpenseGroup.ID(groupId),
         groupName: groupName,
         myBalance: Money(myBalance),
+        myIndividualBalance: myIndividualBalance.map(Money.init),
+        householdName: householdName,
         role: Role(code: role),
         archivedAt: archivedAt.flatMap(ISO8601Support.parse),
         memberCount: memberCount,
@@ -146,20 +168,49 @@ enum OverviewMapping {
     }
   }
 
+  struct RawRecurringDueAction: Codable, Sendable {
+    let id: String
+    let groupId: String
+    let groupName: String
+    let description: String
+    let dueDate: String
+    let suggestedAmount: Int64?
+    let payerMemberId: String
+    let payerName: String
+
+    func toDomain() -> OverviewRecurringDueAction {
+      OverviewRecurringDueAction(
+        id: RecurringExpense.ID(id),
+        groupId: ExpenseGroup.ID(groupId),
+        groupName: groupName,
+        description: description,
+        dueDate: dueDate,
+        suggestedAmount: suggestedAmount.map(Money.init),
+        payerMemberId: Member.ID(payerMemberId),
+        payerName: payerName
+      )
+    }
+  }
+
   struct RawOverviewSummary: Codable, Sendable {
     let totalOwedToMe: Int64
     let totalIOwe: Int64
     let netBalance: Int64
     let pendingActions: [RawPendingAction]
     let groupBalances: [RawGroupBalance]
+    let dueRecurringCount: Int?
+    let dueRecurringActions: [RawRecurringDueAction]?
 
     func toDomain() -> OverviewSummary {
-      OverviewSummary(
+      let actions = (dueRecurringActions ?? []).map { $0.toDomain() }
+      return OverviewSummary(
         totalOwedToMe: Money(totalOwedToMe),
         totalIOwe: Money(totalIOwe),
         netBalance: Money(netBalance),
         pendingActions: pendingActions.map { $0.toDomain() },
-        groupBalances: groupBalances.map { $0.toDomain() }
+        groupBalances: groupBalances.map { $0.toDomain() },
+        dueRecurringCount: dueRecurringCount ?? actions.count,
+        dueRecurringActions: actions
       )
     }
   }
@@ -191,6 +242,8 @@ enum OverviewMapping {
           groupId: gb.groupId.rawValue,
           groupName: gb.groupName,
           myBalance: gb.myBalance.amount,
+          myIndividualBalance: gb.myIndividualBalance?.amount,
+          householdName: gb.householdName,
           role: gb.role.code,
           archivedAt: gb.archivedAt.map { formatISO($0) },
           memberCount: gb.memberCount,
@@ -202,6 +255,19 @@ enum OverviewMapping {
               color: p.color.code
             )
           }
+        )
+      },
+      dueRecurringCount: summary.dueRecurringCount,
+      dueRecurringActions: summary.dueRecurringActions.map { action in
+        RawRecurringDueAction(
+          id: action.id.rawValue,
+          groupId: action.groupId.rawValue,
+          groupName: action.groupName,
+          description: action.description,
+          dueDate: action.dueDate,
+          suggestedAmount: action.suggestedAmount?.amount,
+          payerMemberId: action.payerMemberId.rawValue,
+          payerName: action.payerName
         )
       }
     )

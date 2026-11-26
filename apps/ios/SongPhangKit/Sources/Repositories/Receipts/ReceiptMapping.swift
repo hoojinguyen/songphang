@@ -77,6 +77,7 @@ enum ReceiptMapping {
     switch kind {
     case .tax: return .tax
     case .service: return .service
+    case .shipping: return .shipping
     case .discount: return .discount
     case .other, .unknown: return .other
     }

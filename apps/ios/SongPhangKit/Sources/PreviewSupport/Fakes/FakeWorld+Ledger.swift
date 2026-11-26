@@ -102,6 +102,120 @@
       return tx
     }
 
+    public func previewExtras(
+      groupId _: ExpenseGroup.ID,
+      input: PreviewExtrasInput
+    ) async throws(AppError) -> PreviewExtrasResult {
+      try await simulateNetwork()
+      if input.extras.isEmpty {
+        var resolvedShares: [MemberAmount]?
+        if let split = input.split,
+          let payerId = input.payerMemberId ?? input.payers?.first?.memberId
+        {
+          let draft = TransactionDraft.split(
+            TransactionDraft.SplitPayload(
+              isIncome: false,
+              description: "preview",
+              amount: input.baseAmount,
+              occurredAt: "2026-11-26T00:00:00.000Z",
+              payers: [MemberAmount(memberId: payerId, amount: input.baseAmount)],
+              split: split
+            )
+          )
+          resolvedShares = scriptedShares(for: draft)
+        }
+        return PreviewExtrasResult(
+          baseAmount: input.baseAmount,
+          resolvedExtras: [],
+          netExtras: .zero,
+          computedAmount: input.baseAmount,
+          shares: resolvedShares,
+          issues: [],
+          warnings: []
+        )
+      }
+
+      if input.baseAmount == Money(346_000),
+        input.extras.count == 1,
+        let first = input.extras.first,
+        first.kind == .tax,
+        first.ratePercent == "8"
+      {
+        let resolvedExtra = SplitSpec.ItemsExtra(
+          kind: .tax,
+          label: first.label,
+          amount: Money(27_680),
+          ratePercent: "8"
+        )
+        let shares: [MemberAmount]? = {
+          guard let split = input.split,
+            case .exact(_, let entries, _, _, _) = split,
+            entries.count == 2
+          else { return nil }
+          if input.extrasAllocation == .proportional {
+            return [
+              MemberAmount(memberId: entries[0].memberId, amount: Money(181_440)),
+              MemberAmount(memberId: entries[1].memberId, amount: Money(192_240)),
+            ]
+          }
+          return [
+            MemberAmount(memberId: entries[0].memberId, amount: Money(181_840)),
+            MemberAmount(memberId: entries[1].memberId, amount: Money(191_840)),
+          ]
+        }()
+        return PreviewExtrasResult(
+          baseAmount: Money(346_000),
+          resolvedExtras: [resolvedExtra],
+          netExtras: Money(27_680),
+          computedAmount: Money(373_680),
+          shares: shares,
+          issues: [],
+          warnings: []
+        )
+      }
+
+      if input.baseAmount == Money(220_000),
+        input.extras.count == 1,
+        let first = input.extras.first,
+        first.kind == .discount,
+        first.amount == Money(50_000)
+      {
+        let resolvedExtra = SplitSpec.ItemsExtra(
+          kind: .discount,
+          label: first.label,
+          amount: Money(50_000),
+          ratePercent: first.ratePercent
+        )
+        let shares: [MemberAmount]? = {
+          guard let split = input.split,
+            case .exact(_, let entries, _, _, _) = split,
+            entries.count == 2
+          else { return nil }
+          if input.extrasAllocation == .proportional {
+            return [
+              MemberAmount(memberId: entries[0].memberId, amount: Money(15_455)),
+              MemberAmount(memberId: entries[1].memberId, amount: Money(154_545)),
+            ]
+          }
+          return [
+            MemberAmount(memberId: entries[0].memberId, amount: .zero),
+            MemberAmount(memberId: entries[1].memberId, amount: Money(170_000)),
+          ]
+        }()
+        return PreviewExtrasResult(
+          baseAmount: Money(220_000),
+          resolvedExtras: [resolvedExtra],
+          netExtras: Money(-50_000),
+          computedAmount: Money(170_000),
+          shares: shares,
+          issues: [],
+          warnings: []
+        )
+      }
+
+      throw .api(code: "FAKE_UNSCRIPTED", status: 422)
+    }
+
     public func previewTransaction(
       groupId _: ExpenseGroup.ID,
       draft: TransactionDraft
@@ -451,7 +565,7 @@
 
         if !payload.isIncome,
           payload.amount == Money(180_000),
-          case .equal(let ids) = payload.split,
+          case .equal(let ids, _, _) = payload.split,
           ids.count == 3
         {
           return ids.map { MemberAmount(memberId: $0, amount: Money(60_000)) }
@@ -468,7 +582,7 @@
         }
 
         if !payload.isIncome, payload.amount == Money(50_000),
-          case .equal(let ids) = payload.split, ids.count == 4
+          case .equal(let ids, _, _) = payload.split, ids.count == 4
         {
           return ids.map { MemberAmount(memberId: $0, amount: Money(12_500)) }
         }

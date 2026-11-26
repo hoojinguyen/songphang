@@ -208,18 +208,18 @@ public enum ActivitySentenceFormatter {
 
     func formatSplit(_ split: SplitSpec) -> String {
       switch split {
-      case .equal(let ids):
+      case .equal(let ids, _, _):
         return ids.map(memberName).joined(separator: " · ")
-      case .exact(_, let entries, _):
+      case .exact(_, let entries, _, _, _):
         return entries.map { "\(memberName($0.memberId)) \(MoneyFormat.amount($0.amount))" }
           .joined(separator: " · ")
-      case .shares(let entries):
+      case .shares(let entries, _, _):
         return entries.map { "\(memberName($0.memberId)) \($0.weight)" }
           .joined(separator: " · ")
-      case .percent(let entries):
+      case .percent(let entries, _, _):
         return entries.map { "\(memberName($0.memberId)) \($0.percent)" }
           .joined(separator: " · ")
-      case .items(let items, let extras):
+      case .items(let items, let extras, _):
         var parts = items.map { item in
           let membersStr = item.memberIds.map(memberName).joined(separator: ", ")
           let amountStr = MoneyFormat.amount(item.amount)

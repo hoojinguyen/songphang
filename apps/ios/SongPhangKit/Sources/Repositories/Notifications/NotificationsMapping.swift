@@ -20,6 +20,8 @@ enum NotificationsMapping {
     let toName: String?
     let decision: String?
     let state: String?
+    let recurringExpenseId: String?
+    let dueDate: String?
   }
 
   static func mapNotification(_ dto: Components.Schemas.NotificationDto) -> AppNotification {
@@ -125,6 +127,29 @@ enum NotificationsMapping {
     case "budget_state":
       let st = raw?.state ?? "near"
       payload = .budgetState(actorName: actor, groupName: group, state: st)
+      target = .stats(groupId: gId)
+
+    case "recurring_posted":
+      let amount = Money(raw?.amount ?? 0)
+      let share = raw?.share.map(Money.init)
+      payload = .recurringPosted(
+        groupName: group,
+        transactionId: txId,
+        description: desc,
+        amount: amount,
+        share: share
+      )
+      target = txId.isEmpty ? .group(groupId: gId) : .transaction(groupId: gId, transactionId: txId)
+
+    case "recurring_due":
+      let recurringId = raw?.recurringExpenseId ?? ""
+      let dueDate = raw?.dueDate ?? ""
+      payload = .recurringDue(
+        groupName: group,
+        recurringExpenseId: recurringId,
+        description: desc,
+        dueDate: dueDate
+      )
       target = .stats(groupId: gId)
 
     default:

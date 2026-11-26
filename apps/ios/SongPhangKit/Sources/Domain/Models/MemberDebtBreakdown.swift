@@ -112,14 +112,17 @@ public struct MemberBreakdownsResult: Sendable, Hashable {
   public let hasClosedCycles: Bool
   public let resolvedFocus: MemberBreakdownsResolvedFocus
   public let breakdowns: [MemberDebtBreakdown]
+  public let householdBreakdowns: [HouseholdDebtBreakdown]
 
   public init(
     hasClosedCycles: Bool,
     resolvedFocus: MemberBreakdownsResolvedFocus,
-    breakdowns: [MemberDebtBreakdown]
+    breakdowns: [MemberDebtBreakdown],
+    householdBreakdowns: [HouseholdDebtBreakdown] = []
   ) {
     self.hasClosedCycles = hasClosedCycles
     self.resolvedFocus = resolvedFocus
     self.breakdowns = breakdowns
+    self.householdBreakdowns = householdBreakdowns
   }
 }

@@ -114,7 +114,7 @@ struct TransactionSummaryView: View {
         if transaction.type != .transfer, !transaction.shares.isEmpty {
           let splitText: String = {
             switch transaction.split {
-            case .exact(_, let entries, _):
+            case .exact(_, let entries, _, _, _):
               let parts = entries.map { entry in
                 "\(memberName(for: entry.memberId)) \(MoneyFormat.compact(entry.amount))"
               }.joined(separator: " · ")
@@ -172,7 +172,7 @@ struct TransactionSummaryView: View {
         .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
       }
 
-      if case .items(let items, let extras) = transaction.split {
+      if case .items(let items, let extras, _) = transaction.split {
         VStack(spacing: 8) {
           ForEach(Array(items.enumerated()), id: \.offset) { _, item in
             HStack {
