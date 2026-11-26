@@ -3,7 +3,7 @@ import type { BalancesResponse, MemberDto } from "@songphang/contract";
 import { useEffect, useId, useRef } from "react";
 import { useMemberBreakdowns } from "../../lib/member-breakdowns";
 import { formatMoney, formatSignedAmount } from "../../lib/money";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
 import { LoadError } from "../ui/LoadError";
 import { MemberShape } from "../ui/MemberShape";
@@ -181,8 +181,10 @@ export function MemberBreakdownSheet({
 													</p>
 													{line.memberShare > 0 && (
 														<p className="mt-0.5 text-muted">
-															{vi.ledger.myShare}:{" "}
-															{formatMoney(line.memberShare)}
+															{t(vi.breakdown.memberShare, {
+																name: breakdown.memberName,
+															})}
+															: {formatMoney(line.memberShare)}
 														</p>
 													)}
 												</div>

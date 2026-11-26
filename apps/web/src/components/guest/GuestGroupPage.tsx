@@ -30,6 +30,19 @@ export function GuestGroupPage({ token }: { token: string }) {
 		...(selectedCycleId ? { cycleId: selectedCycleId } : {}),
 	});
 
+	if (guestQuery.error?.status === 404 && selectedCycleId !== undefined) {
+		return (
+			<main className="mx-auto grid min-h-dvh max-w-[460px] content-center px-5 text-center">
+				<LoadError
+					onRetry={() => {
+						setSelectedCycleId(undefined);
+					}}
+					isRetrying={guestQuery.isFetching}
+				/>
+			</main>
+		);
+	}
+
 	if (guestQuery.error?.status === 404) {
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[460px] content-center px-5 text-center">
@@ -56,7 +69,7 @@ export function GuestGroupPage({ token }: { token: string }) {
 		);
 	}
 
-	if (guestQuery.isError || !guestQuery.data) {
+	if (guestQuery.isError && !guestQuery.data) {
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[460px] content-center px-5">
 				<LoadError
@@ -421,6 +434,12 @@ export function GuestGroupPage({ token }: { token: string }) {
 							);
 						})}
 					</div>
+				)}
+
+				{guestQuery.isFetchNextPageError && (
+					<p role="alert" className="text-center text-xs font-bold text-debt">
+						{vi.common.saveError}
+					</p>
 				)}
 
 				{guestQuery.hasNextPage && (

@@ -63,7 +63,7 @@ export default function BalancesPage() {
 
 	useEffect(() => {
 		if (
-			balances.data?.transfers.length === 0 &&
+			(balances.data?.transfers.length === 0 || shareCardOpen) &&
 			transactions.hasNextPage &&
 			!transactions.isFetchingNextPage &&
 			!transactions.isFetchNextPageError
@@ -71,6 +71,7 @@ export default function BalancesPage() {
 			void transactions.fetchNextPage();
 	}, [
 		balances.data,
+		shareCardOpen,
 		transactions.hasNextPage,
 		transactions.isFetchingNextPage,
 		transactions.isFetchNextPageError,
@@ -529,6 +530,7 @@ export default function BalancesPage() {
 				balances={balances.data}
 				members={members.data}
 				transactions={loadedTransactions}
+				hasMoreTransactions={transactions.hasNextPage}
 				cycles={cycles.data?.cycles ?? []}
 				currentPeriod={cycles.data?.currentPeriod}
 				onClose={() => setShareCardOpen(false)}

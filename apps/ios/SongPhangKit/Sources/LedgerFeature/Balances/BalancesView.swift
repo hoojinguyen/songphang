@@ -242,6 +242,7 @@ public struct BalancesView: View {
         members: data.members,
         isLoading: model.isLoadingVault,
         isLoadingMore: model.isLoadingMoreVault,
+        errorMessage: model.vaultError,
         loadAttachment: loadAttachment,
         onSelectFilter: { next in
           Task { await model.selectVaultFilter(next) }
@@ -860,7 +861,7 @@ private struct OwnSettlementCardView: View {
             action: onSettle
           )
         }
-        if let onInspectBreakdown {
+        if fromMember.kind == .person, let onInspectBreakdown {
           Button(L10n.tr("breakdown.viewAction")) {
             onInspectBreakdown(fromMember.id)
           }
@@ -998,7 +999,7 @@ private struct SettlementCardView: View {
             )
           }
         }
-        if let onInspectBreakdown {
+        if fromMember.kind == .person, let onInspectBreakdown {
           Button(L10n.tr("breakdown.viewAction")) {
             onInspectBreakdown(fromMember.id)
           }
@@ -1132,7 +1133,7 @@ private struct OtherSettlementsSection: View {
                 onCancel: { onResolvePending(pending, fromMember.name, .cancel) }
               )
             }
-            if let onInspectBreakdown {
+            if fromMember.kind == .person, let onInspectBreakdown {
               Button(L10n.tr("breakdown.viewAction")) {
                 onInspectBreakdown(fromMember.id)
               }
@@ -1323,7 +1324,7 @@ private struct BalanceBarsSection: View {
             .frame(height: 14)
             .background(Tokens.sunken, in: Capsule())
           }
-          if let onSelectMember {
+          if member.kind == .person, let onSelectMember {
             Button {
               onSelectMember(member.id)
             } label: {

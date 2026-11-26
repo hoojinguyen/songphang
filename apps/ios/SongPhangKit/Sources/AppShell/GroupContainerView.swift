@@ -66,6 +66,7 @@ public struct GroupContainerView: View {
   @State private var balancesModel: BalancesModel
   @State private var statsModel: StatsModel
   @State private var fundModel: FundModel
+  @State private var guestLinkSheetModel: GuestLinkSheetModel
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -155,6 +156,15 @@ public struct GroupContainerView: View {
       }
     )
     self._fundModel = State(initialValue: fund)
+
+    let guestLinkSheet = GuestLinkSheetModel(
+      groupId: groupId,
+      guestLinksRepository: dependencies.guestLinks,
+      onUnauthorized: {
+        Task { await sessionModel.signOut() }
+      }
+    )
+    self._guestLinkSheetModel = State(initialValue: guestLinkSheet)
   }
 
   private var currentGroup: ExpenseGroup? {
@@ -275,15 +285,7 @@ public struct GroupContainerView: View {
     #endif
     .sheet(isPresented: $isGuestLinkSheetOpen) {
       GuestLinkSheetView(
-        model: GuestLinkSheetModel(
-          groupId: groupId,
-          guestLinksRepository: dependencies.guestLinks,
-          onUnauthorized: {
-            isGuestLinkSheetOpen = false
-            onPopToRoot(nil)
-            Task { await sessionModel.signOut() }
-          }
-        ),
+        model: guestLinkSheetModel,
         isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
         isArchived: balancesModel.state.value?.group.isArchived ?? false,
         onDismiss: { isGuestLinkSheetOpen = false }

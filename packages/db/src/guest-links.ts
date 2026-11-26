@@ -130,6 +130,7 @@ export async function findGuestAttachment(
 			and(
 				eq(attachments.groupId, groupId),
 				eq(attachments.id, attachmentId),
+				eq(attachments.purpose, "expense"),
 				isNotNull(attachments.transactionId),
 				countedTransaction("transactions"),
 				inArray(transactions.type, ["expense", "income"]),

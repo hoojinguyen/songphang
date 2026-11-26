@@ -114,6 +114,9 @@ export const transactions = pgTable(
 				table.id.desc(),
 			)
 			.where(sql`${table.deletedAt} is null`),
+		index("transactions_cycle_id_idx")
+			.on(table.cycleId)
+			.where(sql`${table.cycleId} is not null`),
 	],
 );
 

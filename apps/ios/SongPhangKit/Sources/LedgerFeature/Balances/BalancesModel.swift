@@ -64,6 +64,7 @@ public final class BalancesModel {
   public private(set) var vaultFilter: SettlementVaultFilter = .all
   public private(set) var isLoadingVault = false
   public private(set) var isLoadingMoreVault = false
+  public private(set) var vaultError: String?
   public private(set) var isClosingCycle = false
   public private(set) var isReopeningCycle = false
   public var cycleErrorMessage: String?
@@ -106,6 +107,8 @@ public final class BalancesModel {
     let existingCycles = state.value?.cyclesOverview
     let existingVault = state.value?.vault
     let existingBreakdowns = state.value?.breakdowns
+    let existingPending = state.value?.pendingRequests ?? []
+    vaultError = nil
     if let cachedGroup = await groupsRepository.lastKnownGroup(id: groupId),
       let cachedMembers = await membersRepository.lastKnownMembers(groupId: groupId),
       let cachedBalances = await balancesRepository.lastKnownBalances(groupId: groupId),
@@ -131,10 +134,18 @@ public final class BalancesModel {
       async let fetchedMembers = membersRepository.members(groupId: groupId)
       async let fetchedBalances = balancesRepository.balances(groupId: groupId)
       async let fetchedPage = transactionsRepository.page(groupId: groupId, cursor: nil)
-      async let fetchedPending = fetchPendingRequests()
-      async let fetchedCycles = fetchCyclesOverview()
-      async let fetchedVault = fetchVaultPage(filter: vaultFilter, cursor: nil)
-      async let fetchedBreakdowns = fetchBreakdowns()
+      async let fetchedPending = fetchOptional(fallback: existingPending) {
+        try await fetchPendingRequests()
+      }
+      async let fetchedCycles = fetchOptional(fallback: existingCycles) {
+        try await fetchCyclesOverview()
+      }
+      async let fetchedVault = fetchOptional(fallback: existingVault) {
+        try await fetchVaultPage(filter: vaultFilter, cursor: nil)
+      }
+      async let fetchedBreakdowns = fetchOptional(fallback: existingBreakdowns) {
+        try await fetchBreakdowns()
+      }
 
       let (
         group,
@@ -266,7 +277,8 @@ public final class BalancesModel {
 
   public func selectVaultFilter(_ next: SettlementVaultFilter) async {
     vaultFilter = next
-    guard case .loaded(var current) = state else { return }
+    vaultError = nil
+    guard case .loaded = state else { return }
     isLoadingVault = true
     defer { isLoadingVault = false }
     do throws(AppError) {
@@ -276,13 +288,14 @@ public final class BalancesModel {
         cycleId: nil,
         cursor: nil
       )
-      if vaultFilter == next {
-        current.vault = page
-        state = .loaded(current)
-      }
+      guard vaultFilter == next, case .loaded(var latest) = state else { return }
+      latest.vault = page
+      state = .loaded(latest)
     } catch {
       if error == .unauthorized {
         onUnauthorized()
+      } else {
+        vaultError = L10n.tr("common.saveError")
       }
     }
   }
@@ -383,6 +396,20 @@ public final class BalancesModel {
           await load()
         }
       }
+    }
+  }
+
+  private func fetchOptional<T: Sendable>(
+    fallback: T,
+    _ work: () async throws -> T
+  ) async throws(AppError) -> T {
+    do {
+      return try await work()
+    } catch let error as AppError {
+      if error == .unauthorized { throw error }
+      return fallback
+    } catch {
+      return fallback
     }
   }
 

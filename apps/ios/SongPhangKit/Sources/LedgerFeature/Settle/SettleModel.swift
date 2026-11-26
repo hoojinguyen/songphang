@@ -180,7 +180,7 @@ public final class SettleModel {
     } catch let imgError as ReceiptImageError {
       proofError =
         imgError == .tooLarge
-        ? L10n.tr("receipts.tooLarge")
+        ? L10n.tr("receipts.fileTooLarge")
         : L10n.tr("receipts.notAnImage")
     } catch let appError as AppError {
       switch appError {

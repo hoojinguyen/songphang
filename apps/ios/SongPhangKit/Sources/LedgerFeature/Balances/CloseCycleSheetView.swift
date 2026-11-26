@@ -53,8 +53,12 @@ struct CloseCycleSheetView: View {
             .frame(minHeight: 48)
             .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .onChange(of: title) { _, newValue in
-              if newValue.count > 80 {
-                title = String(newValue.prefix(80))
+              if newValue.utf16.count > 80 {
+                var clamped = newValue
+                while clamped.utf16.count > 80, !clamped.isEmpty {
+                  clamped.removeLast()
+                }
+                title = clamped
               }
             }
           }

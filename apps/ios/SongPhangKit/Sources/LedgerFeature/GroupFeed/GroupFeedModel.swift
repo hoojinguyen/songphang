@@ -229,16 +229,17 @@ public final class GroupFeedModel {
         cycles?.cycles.isEmpty == false,
         filter.cycleId == nil
       {
-        filter.cycleId = .current
-        let scopedFilter = filter
+        var scopedFilter = filter
+        scopedFilter.cycleId = .current
         p = try await transactionsRepository.page(
           groupId: groupId,
           filter: scopedFilter,
           cursor: nil
         )
-        guard listGeneration == generation, filter == scopedFilter else {
+        guard listGeneration == generation, filter == requestedFilter else {
           return
         }
+        filter = scopedFilter
       }
       state = .loaded(
         ScreenData(

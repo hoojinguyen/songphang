@@ -17,6 +17,7 @@ struct SettlementCyclesSectionView: View {
   private let onReopenLatest: ((SettlementCycle.ID) -> Void)?
 
   @State private var expandedCycleId: SettlementCycle.ID?
+  @State private var isDefaultLatestCollapsed = false
   @State private var cyclePendingReopen: SettlementCycle?
 
   init(
@@ -107,12 +108,23 @@ struct SettlementCyclesSectionView: View {
   }
 
   private func cycleCard(_ cycle: SettlementCycle, isLatest: Bool) -> some View {
-    let isExpanded = expandedCycleId == cycle.id || (expandedCycleId == nil && isLatest)
+    let isExpanded =
+      expandedCycleId == cycle.id || (expandedCycleId == nil && isLatest && !isDefaultLatestCollapsed)
     return SPCard(padding: 16) {
       VStack(alignment: .leading, spacing: 12) {
         Button {
           withAnimation(.easeInOut(duration: 0.16)) {
-            expandedCycleId = (expandedCycleId == cycle.id) ? nil : cycle.id
+            if isLatest {
+              if isExpanded {
+                expandedCycleId = nil
+                isDefaultLatestCollapsed = true
+              } else {
+                expandedCycleId = cycle.id
+                isDefaultLatestCollapsed = false
+              }
+            } else {
+              expandedCycleId = (expandedCycleId == cycle.id) ? nil : cycle.id
+            }
           }
         } label: {
           HStack(alignment: .top, spacing: 10) {

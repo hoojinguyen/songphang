@@ -1233,6 +1233,17 @@
         }
       }
     },
+    "pay.hideDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn thông tin"
+          }
+        }
+      }
+    },
     "pay.purpose": {
       "extractionState": "manual",
       "localizations": {
@@ -8532,7 +8543,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chi tiêu trong đợt"
+            "value": "Chi / thu trong đợt"
           }
         }
       }

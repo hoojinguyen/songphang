@@ -66,6 +66,7 @@ public struct GuestLinkSheetView: View {
         titleVisibility: .visible
       ) {
         Button(L10n.tr("guestLink.revokeAction"), role: .destructive) {
+          copiedLink = false
           Task { await model.revoke() }
         }
       }
@@ -137,7 +138,7 @@ public struct GuestLinkSheetView: View {
               variant: .surface,
               size: .md,
               isFullWidth: true,
-              isDisabled: isOffline,
+              isOfflineBlocked: isOffline,
               isPending: model.isPerformingAction
             ) {
               copiedLink = false
@@ -150,7 +151,7 @@ public struct GuestLinkSheetView: View {
             variant: .surface,
             size: .md,
             isFullWidth: true,
-            isDisabled: isOffline,
+            isOfflineBlocked: isOffline,
             isPending: model.isPerformingAction
           ) {
             isConfirmingRevoke = true
@@ -165,9 +166,10 @@ public struct GuestLinkSheetView: View {
         variant: .accent,
         size: .lg,
         isFullWidth: true,
-        isDisabled: isOffline,
+        isOfflineBlocked: isOffline,
         isPending: model.isPerformingAction
       ) {
+        copiedLink = false
         Task { await model.enableOrRotate(rotate: false) }
       }
     } else {

@@ -791,7 +791,7 @@ function drawReceiverFooterSection({
 			: receiver.wallets[0]
 				? `${receiver.memberName}: ${receiver.wallets[0].kind === "momo" ? "MoMo" : "ZaloPay"} ${receiver.wallets[0].phone}`
 				: receiver.memberName;
-		ctx.fillText(summary, PAD + CARD_PAD, fy + 12);
+		ctx.fillText(clipText(ctx, summary, INNER_WIDTH), PAD + CARD_PAD, fy + 12);
 		fy += 22;
 	}
 	return y + footerHeight + 12;

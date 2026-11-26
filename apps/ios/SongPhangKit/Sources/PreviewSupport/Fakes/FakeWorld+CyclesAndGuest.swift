@@ -205,17 +205,37 @@
       groupId: ExpenseGroup.ID,
       filter: SettlementVaultFilter,
       cycleId: TransactionCycleFilter?,
-      cursor _: String?,
+      cursor: String?,
       limit: Int
     ) async throws(AppError) -> SettlementVaultPage {
       try await simulateNetwork()
       guard groupsById[groupId] != nil else {
         throw .api(code: "NOT_FOUND", status: 404)
       }
+      let cycles = settlementCyclesByGroup[groupId] ?? []
+      let latestClosedAt = cycles.first?.closedAt
+      let targetCycle: SettlementCycle? = {
+        guard case .cycle(let id) = cycleId else { return nil }
+        return cycles.first(where: { $0.id == id })
+      }()
+      let matchesRequestCycle: (SettlementRequest) -> Bool = { req in
+        guard let cycleId else { return true }
+        switch cycleId {
+        case .current:
+          return req.status == .pending
+            || latestClosedAt == nil
+            || req.createdAt >= latestClosedAt!
+        case .cycle:
+          guard let targetCycle else { return false }
+          return req.status != .pending
+            && req.createdAt >= targetCycle.startedAt
+            && req.createdAt <= targetCycle.closedAt
+        }
+      }
       let transfers = (transactionsByGroup[groupId] ?? []).filter {
         $0.type == .transfer && $0.deletedAt == nil
       }
-      let requests = settlementRequestsByGroup[groupId] ?? []
+      let requests = (settlementRequestsByGroup[groupId] ?? []).filter(matchesRequestCycle)
 
       var allItems: [SettlementVaultItem] = []
       var confirmedTotal = Money.zero
@@ -326,15 +346,18 @@
         }
       }
 
+      let startIndex = cursor.flatMap(Int.init) ?? 0
+      let pageItems = Array(filtered.dropFirst(startIndex).prefix(limit))
+      let nextOffset = startIndex + pageItems.count
       return SettlementVaultPage(
-        items: Array(filtered.prefix(limit)),
+        items: pageItems,
         summary: SettlementVaultSummary(
           pendingCount: pendingCount,
           confirmedCount: confirmedCount,
           confirmedTotalAmount: confirmedTotal,
           proofCount: proofCount
         ),
-        nextCursor: nil
+        nextCursor: nextOffset < filtered.count ? String(nextOffset) : nil
       )
     }
 
@@ -532,7 +555,7 @@
     public func fetchGuestGroup(
       token: String,
       cycleId: TransactionCycleFilter?,
-      cursor _: String?,
+      cursor: String?,
       limit: Int
     ) async throws(AppError) -> GuestGroupSnapshot {
       try await simulateNetwork()
@@ -574,7 +597,9 @@
         case .cycle(let id): return tx.cycleId == id
         }
       }
-      let guestTxs = Array(allTxs.prefix(limit)).map { tx in
+      let startIndex = cursor.flatMap(Int.init) ?? 0
+      let pageTxs = Array(allTxs.dropFirst(startIndex).prefix(limit))
+      let guestTxs = pageTxs.map { tx in
         GuestTransaction(
           id: tx.id,
           type: tx.type,
@@ -590,9 +615,10 @@
           paymentChannel: tx.paymentChannel,
           paymentNote: tx.paymentNote,
           cycleId: tx.cycleId,
-          attachments: tx.attachments
+          attachments: tx.type == .transfer ? [] : tx.attachments
         )
       }
+      let nextOffset = startIndex + guestTxs.count
       return GuestGroupSnapshot(
         group: GuestGroupInfo(
           id: group.id,
@@ -629,7 +655,10 @@
         fund: balances.fund,
         resolvedFocus: breakdownResult.resolvedFocus,
         breakdowns: breakdownResult.breakdowns,
-        transactions: Page(items: guestTxs, nextCursor: nil)
+        transactions: Page(
+          items: guestTxs,
+          nextCursor: nextOffset < allTxs.count ? String(nextOffset) : nil
+        )
       )
     }
 
@@ -649,7 +678,7 @@
       let isCountedExpenseAttachment = txs.contains { tx in
         tx.deletedAt == nil
           && (tx.type == .expense || tx.type == .income)
-          && tx.approval.status != .rejected
+          && (tx.approval.status == .none || tx.approval.status == .approved)
           && tx.attachments.contains(where: { $0.id == attachmentId })
       }
       guard isCountedExpenseAttachment else {

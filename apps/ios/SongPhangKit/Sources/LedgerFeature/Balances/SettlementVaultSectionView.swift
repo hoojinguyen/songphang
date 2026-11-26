@@ -13,6 +13,7 @@ struct SettlementVaultSectionView: View {
   private let members: [Member]
   private let isLoading: Bool
   private let isLoadingMore: Bool
+  private let errorMessage: String?
   private let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
   private let onSelectFilter: (SettlementVaultFilter) -> Void
   private let onLoadMore: () -> Void
@@ -24,6 +25,7 @@ struct SettlementVaultSectionView: View {
     members: [Member],
     isLoading: Bool = false,
     isLoadingMore: Bool = false,
+    errorMessage: String? = nil,
     loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)? = nil,
     onSelectFilter: @escaping (SettlementVaultFilter) -> Void,
     onLoadMore: @escaping () -> Void = {},
@@ -34,6 +36,7 @@ struct SettlementVaultSectionView: View {
     self.members = members
     self.isLoading = isLoading
     self.isLoadingMore = isLoadingMore
+    self.errorMessage = errorMessage
     self.loadAttachment = loadAttachment
     self.onSelectFilter = onSelectFilter
     self.onLoadMore = onLoadMore
@@ -48,7 +51,13 @@ struct SettlementVaultSectionView: View {
 
       filterChips
 
-      if isLoading && page == nil {
+      if let errorMessage {
+        Text(errorMessage)
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.debt)
+      }
+
+      if isLoading {
         LoadingSkeleton(rowCount: 3, rowHeight: 84)
       } else if let items = page?.items, !items.isEmpty {
         LazyVStack(spacing: 12) {
@@ -146,6 +155,7 @@ struct SettlementVaultSectionView: View {
               )
           }
           .buttonStyle(.plain)
+          .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
       }
     }

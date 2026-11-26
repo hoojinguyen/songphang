@@ -74,7 +74,7 @@ export function CycleFilterChip({
 				<div className="grid gap-3">
 					<div className="flex items-center justify-between gap-2">
 						<h2 id={titleId} className="text-base font-black">
-							{vi.cycles.currentPeriod}
+							{vi.cycles.selectPeriod}
 						</h2>
 						<button
 							type="button"

@@ -60,6 +60,7 @@ public struct ChannelPillPicker: View {
           }
           .buttonStyle(.plain)
           .disabled(isDisabled)
+          .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
       }
     }

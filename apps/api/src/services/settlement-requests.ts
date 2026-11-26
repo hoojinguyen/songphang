@@ -147,7 +147,11 @@ export async function createSettlementRequest(
 			input.groupId,
 			input.request.proofAttachmentId,
 		);
-		if (attachment === null || attachment.transactionId !== null) {
+		if (
+			attachment === null ||
+			attachment.transactionId !== null ||
+			attachment.purpose !== "transfer_proof"
+		) {
 			throw new AppError(400, "VALIDATION_FAILED", "Invalid proof attachment");
 		}
 		const boundRequest = await findSettlementRequestByProofAttachmentId(
@@ -233,6 +237,7 @@ export async function resolveSettlement(
 						now,
 						enqueue: deps.enqueue,
 						pushEnabled: Boolean(deps.config.pushProvider),
+						allowedSettlementRequestId: row.id,
 						request: {
 							type: "transfer",
 							fromMemberId: row.fromMemberId,

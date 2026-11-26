@@ -36,9 +36,9 @@ public struct RootView: View {
     case account
   }
 
-  private struct GuestSharePresentation: Identifiable, Hashable {
-    var id: String { token }
-    let token: String
+  private struct GuestSharePresentation: Identifiable {
+    var id: String { model.token }
+    let model: GuestGroupModel
   }
 
   private let dependencies: AppDependencies
@@ -496,10 +496,7 @@ public struct RootView: View {
     }
     .fullScreenCover(item: $activeGuestShare) { item in
       GuestGroupView(
-        model: GuestGroupModel(
-          token: item.token,
-          guestLinksRepository: dependencies.guestLinks
-        ),
+        model: item.model,
         onClose: { activeGuestShare = nil }
       )
     }
@@ -612,7 +609,12 @@ public struct RootView: View {
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
         if let tokenIdx = args.firstIndex(of: "--guest-token"), tokenIdx + 1 < args.count {
-          activeGuestShare = GuestSharePresentation(token: args[tokenIdx + 1])
+          activeGuestShare = GuestSharePresentation(
+            model: GuestGroupModel(
+              token: args[tokenIdx + 1],
+              guestLinksRepository: dependencies.guestLinks
+            )
+          )
         }
         guard let world = dependencies.world else { return }
         if args.contains("--unverified-user") {
@@ -731,7 +733,12 @@ public struct RootView: View {
 
   private func routeValidated(_ route: Route) {
     if case .guestShare(let token) = route {
-      activeGuestShare = GuestSharePresentation(token: token)
+      activeGuestShare = GuestSharePresentation(
+        model: GuestGroupModel(
+          token: token,
+          guestLinksRepository: dependencies.guestLinks
+        )
+      )
       return
     }
     if let immediate = pendingInviteState.receiveValidated(route, isSignedIn: isSignedIn) {

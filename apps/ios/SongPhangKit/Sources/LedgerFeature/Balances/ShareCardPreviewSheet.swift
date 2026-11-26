@@ -22,6 +22,7 @@ public struct ShareCardPreviewSheet: View {
   @State private var caption = ""
   @State private var guestLink: GuestLink?
   @State private var exportedImage: UIImage?
+  @State private var transferablePNG: ShareCardPNG?
   @State private var copiedImage = false
   @State private var savedToPhotos = false
   @State private var saveErrorMessage: String?
@@ -200,7 +201,7 @@ public struct ShareCardPreviewSheet: View {
           .foregroundStyle(Tokens.debt)
       }
 
-      if let pngItem = makeTransferablePNG() {
+      if let pngItem = transferablePNG {
         ShareLink(
           item: pngItem,
           preview: SharePreview(data.group.name, image: Image(uiImage: pngItem.image))
@@ -219,7 +220,8 @@ public struct ShareCardPreviewSheet: View {
           savedToPhotos ? L10n.tr("split.done") : L10n.tr("shareCard.downloadPng"),
           variant: .surface,
           size: .md,
-          isFullWidth: true
+          isFullWidth: true,
+          isDisabled: savedToPhotos
         ) {
           Task { await savePNGToPhotos() }
         }
@@ -250,9 +252,16 @@ public struct ShareCardPreviewSheet: View {
       } else {
         nil
       }
-    let expenseTxs = data.transactions.filter {
-      $0.type == .expense && $0.deletedAt == nil
-        && (focusCycle == nil ? true : $0.cycleId == focusCycle?.id)
+    let resolvedFocus = data.breakdowns?.resolvedFocus
+    let expenseTxs = data.transactions.filter { tx in
+      guard tx.type == .expense && tx.deletedAt == nil else { return false }
+      if let focusCycle {
+        return tx.cycleId == focusCycle.id
+      }
+      if resolvedFocus?.kind == .current || data.cyclesOverview?.cycles.isEmpty == false {
+        return tx.cycleId == nil
+      }
+      return true
     }
     let periodLabel =
       data.breakdowns?.resolvedFocus.label ?? L10n.tr("cycles.currentPeriod")
@@ -317,10 +326,11 @@ public struct ShareCardPreviewSheet: View {
         []
       }
 
-    let recentExpenses: [ShareCardContent.ExpenseRow] = expenseTxs.prefix(15).map { tx in
+    let recentExpenses: [ShareCardContent.ExpenseRow] = expenseTxs.map { tx in
       let payerName =
         tx.payers.first.flatMap { membersById[$0.memberId]?.name } ?? ""
       return ShareCardContent.ExpenseRow(
+        id: tx.id.rawValue,
         title: tx.description,
         payerName: payerName,
         amount: tx.amount
@@ -422,7 +432,13 @@ public struct ShareCardPreviewSheet: View {
     copiedImage = false
     savedToPhotos = false
     saveErrorMessage = nil
-    exportedImage = renderImage()
+    let image = renderImage()
+    exportedImage = image
+    if let image, let pngData = image.pngData() {
+      transferablePNG = ShareCardPNG(image: image, data: pngData)
+    } else {
+      transferablePNG = nil
+    }
   }
 
   @MainActor
@@ -434,8 +450,9 @@ public struct ShareCardPreviewSheet: View {
   }
 
   private func savePNGToPhotos() async {
+    guard !savedToPhotos else { return }
     saveErrorMessage = nil
-    guard let png = makeTransferablePNG() else { return }
+    guard let png = transferablePNG ?? makeTransferablePNG() else { return }
     let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
     guard status == .authorized || status == .limited else {
       saveErrorMessage = L10n.tr("common.saveError")

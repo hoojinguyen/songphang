@@ -402,6 +402,7 @@ export async function createTransactionIn(
 		now: Date;
 		enqueue?: EnqueueFn;
 		pushEnabled?: boolean;
+		allowedSettlementRequestId?: string;
 	},
 ) {
 	const shares = await calculateShares(executor, input.groupId, input.request);
@@ -413,6 +414,12 @@ export async function createTransactionIn(
 		input.groupId,
 		attachmentIds,
 		null,
+		{
+			transactionType: request.type,
+			...(input.allowedSettlementRequestId
+				? { allowedSettlementRequestId: input.allowedSettlementRequestId }
+				: {}),
+		},
 	);
 	const [group, owner, actor] = await Promise.all([
 		findGroup(executor, input.groupId),

@@ -16,7 +16,7 @@ export type VaultCursor = {
 
 const VAULT_PAGE_ROW = z.object({
 	isPending: z.boolean(),
-	sortAt: z.coerce.date(),
+	sortAt: z.string(),
 	kind: z.enum(["transfer", "request"]),
 	id: z.uuid(),
 });
@@ -209,7 +209,11 @@ export async function listSettlementVaultKeys(
 			`;
 
 	const rows = await executor.execute(sql`
-		select entries."isPending", entries."sortAt", entries."kind", entries."id"
+		select
+			entries."isPending",
+			to_char((entries."sortAt" at time zone 'UTC'), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "sortAt",
+			entries."kind",
+			entries."id"
 		from (${unionSql}) as entries
 		${cursorFilter}
 		order by entries."isPending" desc, entries."sortAt" desc, entries."kind" asc, entries."id" desc

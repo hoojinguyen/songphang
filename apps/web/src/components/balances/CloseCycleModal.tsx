@@ -126,7 +126,6 @@ export function CloseCycleModal({
 								{ title: title.trim(), key },
 								{
 									onSuccess: () => onClose(),
-									onError: () => setKey(crypto.randomUUID()),
 								},
 							);
 						}}

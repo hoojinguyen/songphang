@@ -49,6 +49,7 @@ export function ShareCardModal({
 	balances,
 	members,
 	transactions,
+	hasMoreTransactions = false,
 	cycles,
 	currentPeriod,
 	onClose,
@@ -60,6 +61,7 @@ export function ShareCardModal({
 	balances: BalancesResponse;
 	members: MemberDto[];
 	transactions: TransactionListItemDto[];
+	hasMoreTransactions?: boolean;
 	cycles: SettlementCycleDto[];
 	currentPeriod: CurrentPeriodSummaryDto | undefined;
 	onClose: () => void;
@@ -98,12 +100,15 @@ export function ShareCardModal({
 	const memberName = (id: string) =>
 		members.find((m) => m.id === id)?.name ?? vi.activity.someone;
 
-	const breakdowns: MemberDebtBreakdownDto[] =
-		breakdownsQuery.data?.breakdowns ?? [];
+	const breakdowns: MemberDebtBreakdownDto[] = useMemo(
+		() => breakdownsQuery.data?.breakdowns ?? [],
+		[breakdownsQuery.data?.breakdowns],
+	);
 	const cycleLabel =
 		breakdownsQuery.data?.resolvedFocus.label ?? vi.cycles.currentPeriod;
 
 	const focusedExpenses = useMemo(() => {
+		if (hasMoreTransactions) return [];
 		const focus = breakdownsQuery.data?.resolvedFocus;
 		const matching = transactions.filter((tx) => {
 			if (tx.type !== "expense") return false;
@@ -117,7 +122,7 @@ export function ShareCardModal({
 			occurredAt: tx.occurredAt,
 			amount: tx.amount,
 		}));
-	}, [breakdownsQuery.data?.resolvedFocus, transactions]);
+	}, [breakdownsQuery.data?.resolvedFocus, hasMoreTransactions, transactions]);
 
 	const totalSpendAmount = useMemo(() => {
 		const focus = breakdownsQuery.data?.resolvedFocus;
@@ -321,6 +326,7 @@ export function ShareCardModal({
 							<input
 								type="checkbox"
 								checked={includeExpenses}
+								disabled={hasMoreTransactions}
 								onChange={(event) => setIncludeExpenses(event.target.checked)}
 								className="size-5 accent-ink"
 							/>

@@ -866,6 +866,7 @@ export const vi = {
 		titleLabel: "Tên đợt",
 		defaultTitle: "Đợt {number}",
 		currentPeriod: "Đợt hiện tại",
+		selectPeriod: "Chọn đợt",
 		allPeriods: "Tất cả các đợt",
 		closeTitle: "Chốt đợt chi tiêu này",
 		carryOverNote:
@@ -883,11 +884,12 @@ export const vi = {
 		viewAction: "Xem giải trình khoản nợ",
 		title: "Giải trình khoản nợ",
 		carryOver: "Số dư từ đợt trước",
-		periodExpenses: "Chi tiêu trong đợt",
+		periodExpenses: "Chi / thu trong đợt",
 		periodTransfers: "Đã chuyển / nhận trong đợt",
 		postCycleDelta: "Phát sinh sau đợt này",
 		currentBalance: "Số dư hiện tại",
 		transferAllocation: "Phân bổ thanh toán",
+		memberShare: "Phần của {name}",
 	},
 	guestLink: {
 		title: "Link khách",

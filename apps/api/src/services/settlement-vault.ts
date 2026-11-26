@@ -45,14 +45,14 @@ function decodeVaultCursor(cursor: string | undefined): VaultCursor | null {
 
 function encodeVaultCursor(entry: {
 	isPending: boolean;
-	sortAt: Date;
+	sortAt: string;
 	kind: "transfer" | "request";
 	id: string;
 }): string {
 	return Buffer.from(
 		JSON.stringify({
 			isPending: entry.isPending,
-			sortAt: entry.sortAt.toISOString(),
+			sortAt: entry.sortAt,
 			kind: entry.kind,
 			id: entry.id,
 		}),

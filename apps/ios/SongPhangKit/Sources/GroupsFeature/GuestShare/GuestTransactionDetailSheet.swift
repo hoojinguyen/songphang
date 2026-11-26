@@ -149,14 +149,16 @@ struct GuestTransactionDetailSheet: View {
         if !extras.isEmpty {
           Divider().overlay(Tokens.borderSubtle)
           ForEach(Array(extras.enumerated()), id: \.offset) { _, extra in
+            let title = extra.label.isEmpty ? localizedExtraKind(extra.kind) : extra.label
+            let displayedAmount = extra.kind == .discount ? Money(-extra.amount.amount) : extra.amount
             HStack {
-              Text(extra.label)
+              Text(title)
                 .font(Typography.caption)
                 .foregroundStyle(Tokens.muted)
               Spacer()
               MoneyText(
-                extra.amount,
-                style: .full,
+                displayedAmount,
+                style: .signed,
                 font: Typography.captionBold,
                 color: Tokens.ink
               )
@@ -164,6 +166,16 @@ struct GuestTransactionDetailSheet: View {
           }
         }
       }
+    }
+  }
+
+  private func localizedExtraKind(_ kind: ReceiptExtraKind) -> String {
+    switch kind {
+    case .tax: return L10n.tr("receipts.extrasKinds.tax")
+    case .service: return L10n.tr("receipts.extrasKinds.service")
+    case .discount: return L10n.tr("receipts.extrasKinds.discount")
+    case .other: return L10n.tr("receipts.extrasKinds.other")
+    case .unknown(let raw): return raw
     }
   }
 

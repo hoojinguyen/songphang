@@ -46,12 +46,13 @@ public struct ShareCardContent: Sendable, Equatable {
   }
 
   public struct ExpenseRow: Sendable, Equatable, Identifiable {
-    public var id: String { title + "-\(amount.amount)-\(payerName)" }
+    public let id: String
     public let title: String
     public let payerName: String
     public let amount: Money
 
-    public init(title: String, payerName: String, amount: Money) {
+    public init(id: String = UUID().uuidString, title: String, payerName: String, amount: Money) {
+      self.id = id
       self.title = title
       self.payerName = payerName
       self.amount = amount

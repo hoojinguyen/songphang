@@ -41,11 +41,13 @@ export function GuestLinkModal({
 		dialog.setAttribute("closedby", "any");
 		if (open && !dialog.open) {
 			setConfirmRotate(false);
+			enableMutation.reset();
+			revokeMutation.reset();
 			dialog.showModal();
 		} else if (!open && dialog.open) {
 			dialog.close();
 		}
-	}, [open]);
+	}, [open, enableMutation, revokeMutation]);
 
 	const linkData = guestLink.data;
 	const busy = enableMutation.isPending || revokeMutation.isPending;
@@ -130,6 +132,7 @@ export function GuestLinkModal({
 											className="flex-1 text-xs"
 											disabled={busy}
 											onClick={() => {
+												revokeMutation.reset();
 												enableMutation.mutate(
 													{ rotate: true },
 													{
@@ -156,7 +159,10 @@ export function GuestLinkModal({
 							variant="surface"
 							className="bg-debt-soft text-ink"
 							disabled={busy}
-							onClick={() => revokeMutation.mutate()}
+							onClick={() => {
+								enableMutation.reset();
+								revokeMutation.mutate();
+							}}
 						>
 							{vi.guestLink.revokeAction}
 						</Button>
@@ -171,7 +177,10 @@ export function GuestLinkModal({
 							<Button
 								variant="accent"
 								disabled={busy}
-								onClick={() => enableMutation.mutate({})}
+								onClick={() => {
+									revokeMutation.reset();
+									enableMutation.mutate({});
+								}}
 							>
 								{vi.guestLink.enableAction}
 							</Button>

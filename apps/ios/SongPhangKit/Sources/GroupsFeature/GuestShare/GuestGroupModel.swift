@@ -51,7 +51,6 @@ public final class GuestGroupModel {
 
   public func selectCycle(_ cycle: TransactionCycleFilter) async {
     guard !isSwitchingCycle else { return }
-    selectedCycleId = cycle
     isSwitchingCycle = true
     defer { isSwitchingCycle = false }
     do throws(AppError) {
@@ -78,15 +77,16 @@ public final class GuestGroupModel {
       case .loaded(let current) = state,
       let cursor = current.transactions.nextCursor
     else { return }
+    let requestedCycle = selectedCycleId
     isLoadingMore = true
     defer { isLoadingMore = false }
     do throws(AppError) {
       let next = try await guestLinksRepository.fetchGuestGroup(
         token: token,
-        cycleId: selectedCycleId,
+        cycleId: requestedCycle,
         cursor: cursor
       )
-      guard case .loaded(let latest) = state else { return }
+      guard requestedCycle == selectedCycleId, case .loaded(let latest) = state else { return }
       let mergedPage = Page(
         items: latest.transactions.items + next.transactions.items,
         nextCursor: next.transactions.nextCursor
@@ -106,8 +106,14 @@ public final class GuestGroupModel {
           transactions: mergedPage
         )
       )
+      refreshError = nil
     } catch {
-      refreshError = error
+      if case .api(_, 404) = error {
+        isNotFound = true
+        state = .failed(error)
+      } else {
+        refreshError = error
+      }
     }
   }
 

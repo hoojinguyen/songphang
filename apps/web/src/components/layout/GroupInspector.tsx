@@ -228,22 +228,35 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 									? t(vi.balances.youPayMember, { name: to.name })
 									: t(vi.balances.memberPaysYou, { name: from.name }));
 
+							const displayedMember = iPay ? to : from;
+							const canInspectDisplayed =
+								displayedMember.kind === "person" && fundCaption === null;
+
 							return (
 								<div
 									key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
 									className="flex flex-col gap-2 rounded-[22px] bg-surface p-3.5"
 								>
 									<div className="flex items-center justify-between gap-2">
-										<button
-											type="button"
-											onClick={() => setInspectedMemberId(from.id)}
-											className="flex min-w-0 items-center gap-2 text-left hover:underline"
-										>
-											<MemberShape {...(iPay ? to : from)} size={24} />
-											<span className="truncate text-xs font-bold text-ink">
-												{caption}
-											</span>
-										</button>
+										{canInspectDisplayed ? (
+											<button
+												type="button"
+												onClick={() => setInspectedMemberId(displayedMember.id)}
+												className="flex min-w-0 items-center gap-2 text-left hover:underline"
+											>
+												<MemberShape {...displayedMember} size={24} />
+												<span className="truncate text-xs font-bold text-ink">
+													{caption}
+												</span>
+											</button>
+										) : (
+											<div className="flex min-w-0 items-center gap-2 text-left">
+												<MemberShape {...displayedMember} size={24} />
+												<span className="truncate text-xs font-bold text-ink">
+													{caption}
+												</span>
+											</div>
+										)}
 										{fundCaption === null && (
 											<span className="shrink-0 tabular-nums text-xs font-black text-ink">
 												{formatMoney(transfer.amount)}

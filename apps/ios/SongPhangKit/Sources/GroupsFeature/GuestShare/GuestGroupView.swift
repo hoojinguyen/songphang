@@ -121,6 +121,20 @@ public struct GuestGroupView: View {
       .font(Typography.pageTitle)
       .foregroundStyle(Tokens.ink)
 
+    if model.refreshError != nil {
+      SPCard(padding: 12) {
+        HStack(spacing: 12) {
+          Text(L10n.tr("common.saveError"))
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.debt)
+          Spacer()
+          SPButton(L10n.tr("common.retry"), variant: .surface, size: .md) {
+            Task { await model.load() }
+          }
+        }
+      }
+    }
+
     if snapshot.group.archivedAt != nil {
       Text(L10n.tr("groups.archivedBanner"))
         .font(Typography.captionBold)
@@ -254,7 +268,7 @@ public struct GuestGroupView: View {
         }
 
         if !transfer.paymentMethods.isEmpty {
-          Button(isExpanded ? L10n.tr("attachments.closePhoto") : L10n.tr("pay.qrHint")) {
+          Button(isExpanded ? L10n.tr("pay.hideDetails") : L10n.tr("pay.qrHint")) {
             expandedTransferId = isExpanded ? nil : transfer.id
           }
           .font(Typography.captionBold)

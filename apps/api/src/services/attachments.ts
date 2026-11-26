@@ -13,6 +13,7 @@ import {
 	findAttachment,
 	findAttachmentsByIds,
 	findSettlementRequestByProofAttachmentId,
+	findSettlementRequestsByProofAttachmentIds,
 	findTransactionRow,
 	insertActivity,
 	insertAttachment,
@@ -45,6 +46,10 @@ export async function validateTransactionAttachmentIds(
 	groupId: string,
 	attachmentIds: string[],
 	currentTransactionId: string | null,
+	options?: {
+		transactionType?: "expense" | "income" | "transfer";
+		allowedSettlementRequestId?: string;
+	},
 ): Promise<void> {
 	if (attachmentIds.length === 0) return;
 	const rows = await findAttachmentsByIds(executor, groupId, attachmentIds);
@@ -62,6 +67,32 @@ export async function validateTransactionAttachmentIds(
 				"Attachment already belongs to another transaction",
 			);
 		}
+		if (options?.transactionType !== "transfer" && row.purpose !== "expense") {
+			throw new AppError(
+				400,
+				"VALIDATION_FAILED",
+				"Transfer proof cannot be attached to an expense or income",
+			);
+		}
+	}
+	const boundRequests = await findSettlementRequestsByProofAttachmentIds(
+		executor,
+		groupId,
+		attachmentIds,
+	);
+	for (const boundRequest of boundRequests) {
+		if (boundRequest.id === options?.allowedSettlementRequestId) continue;
+		if (
+			currentTransactionId !== null &&
+			boundRequest.transactionId === currentTransactionId
+		) {
+			continue;
+		}
+		throw new AppError(
+			400,
+			"VALIDATION_FAILED",
+			"Attachment already belongs to a settlement request",
+		);
 	}
 }
 
@@ -112,6 +143,7 @@ export async function uploadAttachment(
 				contentType: input.contentType,
 				byteSize: input.bytes.byteLength,
 				sha256,
+				purpose,
 				uploadedBy: input.userId,
 				createdAt,
 			});

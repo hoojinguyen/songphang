@@ -271,7 +271,7 @@ public struct MembersView: View {
       inviteCardSection(invite: invite)
     }
 
-    if data.group.role.canWrite, let onOpenGuestLink {
+    if isEmailVerified && data.group.role.canWrite, let onOpenGuestLink {
       SPButton(
         L10n.tr("guestLink.fullTitle"),
         variant: .surface,

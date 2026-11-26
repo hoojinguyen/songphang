@@ -14,7 +14,7 @@ public enum QRCodeMatrixRenderer {
     filter.correctionLevel = "M"
     guard let code = filter.outputImage else { return nil }
 
-    let quietZone = code.extent.insetBy(dx: -2, dy: -2)
+    let quietZone = code.extent.insetBy(dx: -4, dy: -4)
     let background = CIImage(color: CIColor(red: 1, green: 1, blue: 1))
       .cropped(to: quietZone)
     let image =

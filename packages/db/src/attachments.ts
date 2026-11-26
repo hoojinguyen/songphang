@@ -35,6 +35,7 @@ export async function insertAttachment(
 		contentType: string;
 		byteSize: number;
 		sha256: string;
+		purpose: "expense" | "transfer_proof";
 		uploadedBy: string;
 		createdAt: Date;
 	},

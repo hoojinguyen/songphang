@@ -239,7 +239,7 @@ export default function MembersPage() {
 				<LeaveGroupButton groupId={groupId} name={group.data.name} />
 			)}
 
-			{group.data.role !== "viewer" && (
+			{me.data.emailVerified && group.data.role !== "viewer" && (
 				<>
 					<InviteCard groupId={groupId} />
 					<section className="grid gap-3 rounded-[30px] bg-surface p-5">

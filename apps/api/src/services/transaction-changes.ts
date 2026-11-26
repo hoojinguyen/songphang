@@ -171,6 +171,7 @@ export async function editTransaction(
 				input.groupId,
 				nextAttachmentIds,
 				input.id,
+				{ transactionType: input.request.type },
 			);
 		}
 		const shares = await calculateShares(

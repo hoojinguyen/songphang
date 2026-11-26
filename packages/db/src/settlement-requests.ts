@@ -54,6 +54,7 @@ export async function findSettlementRequestByProofAttachmentId(
 		.select({
 			id: settlementRequests.id,
 			status: settlementRequests.status,
+			transactionId: settlementRequests.transactionId,
 		})
 		.from(settlementRequests)
 		.where(
@@ -64,6 +65,28 @@ export async function findSettlementRequestByProofAttachmentId(
 		)
 		.limit(1);
 	return row ?? null;
+}
+
+export async function findSettlementRequestsByProofAttachmentIds(
+	executor: DbExecutor,
+	groupId: string,
+	proofAttachmentIds: string[],
+) {
+	if (proofAttachmentIds.length === 0) return [];
+	return executor
+		.select({
+			id: settlementRequests.id,
+			status: settlementRequests.status,
+			proofAttachmentId: settlementRequests.proofAttachmentId,
+			transactionId: settlementRequests.transactionId,
+		})
+		.from(settlementRequests)
+		.where(
+			and(
+				eq(settlementRequests.groupId, groupId),
+				inArray(settlementRequests.proofAttachmentId, proofAttachmentIds),
+			),
+		);
 }
 export async function findSettlementRequest(
 	executor: DbExecutor,

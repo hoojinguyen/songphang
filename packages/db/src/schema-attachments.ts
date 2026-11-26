@@ -27,6 +27,7 @@ export const attachments = pgTable(
 		contentType: text("content_type").notNull(),
 		byteSize: integer("byte_size").notNull(),
 		sha256: text("sha256").notNull(),
+		purpose: text("purpose").notNull().default("expense"),
 		uploadedBy: uuid("uploaded_by").references(() => users.id, {
 			onDelete: "set null",
 		}),
@@ -42,6 +43,10 @@ export const attachments = pgTable(
 		check(
 			"attachments_byte_size_check",
 			sql`${table.byteSize} between 1 and 5242880`,
+		),
+		check(
+			"attachments_purpose_check",
+			sql`${table.purpose} in ('expense', 'transfer_proof')`,
 		),
 		index("attachments_group_index").on(table.groupId),
 		index("attachments_transaction_index").on(table.transactionId),

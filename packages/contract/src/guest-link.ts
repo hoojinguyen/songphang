@@ -95,6 +95,10 @@ export const GuestTransactionDto = z
 		cycleId: z.uuid().nullable(),
 		attachments: z.array(AttachmentDto).max(3),
 	})
+	.refine((tx) => tx.type !== "transfer" || tx.attachments.length === 0, {
+		message: "Transfer rows in guest view must not expose attachments",
+		path: ["attachments"],
+	})
 	.openapi("GuestTransactionDto");
 export type GuestTransactionDto = z.infer<typeof GuestTransactionDto>;
 

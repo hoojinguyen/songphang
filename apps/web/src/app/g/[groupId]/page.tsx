@@ -52,10 +52,14 @@ function GroupScreen() {
 	const budget = useBudget(groupId);
 	const cycles = useSettlementCycles(groupId);
 	const hasClosedCycles = (cycles.data?.cycles.length ?? 0) > 0;
+	const knownCycleIds = new Set(cycles.data?.cycles.map((cycle) => cycle.id));
+	const requestedCycleId = filters.cycleId ?? "current";
 	const selectedCycleId: "current" | string | undefined = hasClosedCycles
 		? rawCycleParam === "all"
 			? undefined
-			: (filters.cycleId ?? "current")
+			: requestedCycleId === "current" || knownCycleIds.has(requestedCycleId)
+				? requestedCycleId
+				: "current"
 		: undefined;
 	const effectiveFilters = useMemo(
 		() => ({

@@ -7,17 +7,14 @@ import {
 	GuestToken,
 	MemberColorCode,
 	PaymentChannel,
-	type SettlementCyclesResponse,
 	SplitInput,
 	TransactionCategory,
 } from "@songphang/contract";
 import { groupTransferPurpose, transferPurpose } from "@songphang/core";
 import {
 	type AttachmentRow,
-	type DbExecutor,
 	findGroupByGuestToken,
 	findGuestAttachment,
-	findSettlementCycle,
 	fundCashAndContributions,
 	insertActivity,
 	listAttachmentsForTransactions,
@@ -58,36 +55,6 @@ function toGuestLinkDto(
 		url: row.active && row.token ? `${webOrigin}/share/${row.token}` : null,
 		createdAt: row.createdAt ? row.createdAt.toISOString() : null,
 	};
-}
-
-async function resolveGuestSelectedCycleId(
-	executor: DbExecutor,
-	input: {
-		groupId: string;
-		requestedCycleId: GuestGroupViewQuery["cycleId"];
-		cyclesPayload: SettlementCyclesResponse;
-	},
-): Promise<"current" | string> {
-	if (input.requestedCycleId === undefined) {
-		if (
-			input.cyclesPayload.currentPeriod.expenseCount === 0 &&
-			input.cyclesPayload.cycles.length > 0
-		) {
-			return input.cyclesPayload.cycles[0]?.id ?? "current";
-		}
-		return "current";
-	}
-	if (input.requestedCycleId !== "current") {
-		const cycle = await findSettlementCycle(
-			executor,
-			input.groupId,
-			input.requestedCycleId,
-		);
-		if (cycle === null) {
-			throw new AppError(404, "NOT_FOUND", "Resource not found");
-		}
-	}
-	return input.requestedCycleId;
 }
 
 function mapGuestTransfers(input: {
@@ -152,7 +119,11 @@ function mapGuestTransaction(input: {
 			row.type === "transfer"
 				? []
 				: input.attachmentRows
-						.filter((attachment) => attachment.transactionId === row.id)
+						.filter(
+							(attachment) =>
+								attachment.transactionId === row.id &&
+								attachment.purpose === "expense",
+						)
 						.slice(0, 3)
 						.map(toAttachmentDto),
 	};
@@ -290,33 +261,34 @@ export async function getGuestGroupView(
 			if (group === null) {
 				throw new AppError(404, "NOT_FOUND", "Resource not found");
 			}
-			const cyclesPayload = await getSettlementCyclesIn(executor, group.id);
-			const selectedCycleId = await resolveGuestSelectedCycleId(executor, {
-				groupId: group.id,
-				requestedCycleId: input.query.cycleId,
-				cyclesPayload,
-			});
+			const [cyclesPayload, breakdownPayload] = await Promise.all([
+				getSettlementCyclesIn(executor, group.id),
+				computeMemberBreakdownsIn(executor, {
+					groupId: group.id,
+					cycleId: input.query.cycleId ?? "auto",
+				}),
+			]);
+			const selectedCycleId =
+				breakdownPayload.resolvedFocus.kind === "cycle" &&
+				breakdownPayload.resolvedFocus.cycleId
+					? breakdownPayload.resolvedFocus.cycleId
+					: "current";
 
-			const [members, methods, fund, settlements, breakdownPayload, txRows] =
-				await Promise.all([
-					listGroupMembers(executor, group.id),
-					listPaymentMethodsByGroup(executor, group.id),
-					fundCashAndContributions(executor, group.id),
-					suggestGroupTransfers(executor, {
-						groupId: group.id,
-						minimizeDebts: group.minimizeDebts,
-					}),
-					computeMemberBreakdownsIn(executor, {
-						groupId: group.id,
-						cycleId: input.query.cycleId ?? "auto",
-					}),
-					listGuestTransactionRows(executor, {
-						groupId: group.id,
-						cycleFilter: selectedCycleId,
-						cursor,
-						limit: input.query.limit + 1,
-					}),
-				]);
+			const [members, methods, fund, settlements, txRows] = await Promise.all([
+				listGroupMembers(executor, group.id),
+				listPaymentMethodsByGroup(executor, group.id),
+				fundCashAndContributions(executor, group.id),
+				suggestGroupTransfers(executor, {
+					groupId: group.id,
+					minimizeDebts: group.minimizeDebts,
+				}),
+				listGuestTransactionRows(executor, {
+					groupId: group.id,
+					cycleFilter: selectedCycleId,
+					cursor,
+					limit: input.query.limit + 1,
+				}),
+			]);
 
 			const memberById = new Map(members.map((member) => [member.id, member]));
 			const peopleIds = new Set(

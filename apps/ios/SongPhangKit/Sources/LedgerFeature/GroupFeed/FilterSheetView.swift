@@ -91,7 +91,8 @@ struct FilterSheetView: View {
                 : spendingOnly,
               type: transactionType,
               from: fromStr,
-              to: toStr
+              to: toStr,
+              cycleId: initialFilter.cycleId
             )
             onApply(next)
             onDismiss()
