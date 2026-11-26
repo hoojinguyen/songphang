@@ -3911,6 +3911,211 @@
 				],
 				"type": "object"
 			},
+			"PreviewExtrasRequest": {
+				"properties": {
+					"baseAmount": {
+						"maximum": 999999999999,
+						"minimum": 0,
+						"type": "integer"
+					},
+					"extras": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 0,
+									"type": "integer"
+								},
+								"kind": {
+									"enum": [
+										"tax",
+										"service",
+										"shipping",
+										"discount",
+										"other"
+									],
+									"type": "string"
+								},
+								"label": {
+									"maxLength": 40,
+									"type": "string"
+								},
+								"ratePercent": {
+									"pattern": "^\\d{1,2}(\\.\\d{1,2})?$",
+									"type": "string"
+								}
+							},
+							"required": [
+								"kind",
+								"label"
+							],
+							"type": "object"
+						},
+						"maxItems": 6,
+						"type": "array"
+					},
+					"extrasAllocation": {
+						"enum": [
+							"equal",
+							"proportional"
+						],
+						"type": "string"
+					},
+					"payerMemberId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"payers": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 1,
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId"
+							],
+							"type": "object"
+						},
+						"maxItems": 100,
+						"minItems": 1,
+						"type": "array"
+					},
+					"split": {
+						"$ref": "#/components/schemas/SplitInput"
+					},
+					"transactionId": {
+						"format": "uuid",
+						"type": "string"
+					}
+				},
+				"required": [
+					"baseAmount",
+					"extras"
+				],
+				"type": "object"
+			},
+			"PreviewExtrasResponse": {
+				"properties": {
+					"baseAmount": {
+						"maximum": 999999999999,
+						"minimum": 0,
+						"type": "integer"
+					},
+					"computedAmount": {
+						"type": "integer"
+					},
+					"issues": {
+						"items": {
+							"properties": {
+								"code": {
+									"enum": [
+										"INVALID_TOTAL",
+										"SPLIT_TOTAL_MISMATCH",
+										"ITEM_UNASSIGNED"
+									],
+									"type": "string"
+								},
+								"itemIndex": {
+									"minimum": 0,
+									"type": "integer"
+								}
+							},
+							"required": [
+								"code"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"netExtras": {
+						"type": "integer"
+					},
+					"resolvedExtras": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 0,
+									"type": "integer"
+								},
+								"kind": {
+									"enum": [
+										"tax",
+										"service",
+										"shipping",
+										"discount",
+										"other"
+									],
+									"type": "string"
+								},
+								"label": {
+									"maxLength": 40,
+									"type": "string"
+								},
+								"ratePercent": {
+									"pattern": "^\\d{1,2}(\\.\\d{1,2})?$",
+									"type": "string"
+								}
+							},
+							"required": [
+								"kind",
+								"label",
+								"amount"
+							],
+							"type": "object"
+						},
+						"maxItems": 6,
+						"type": "array"
+					},
+					"shares": {
+						"items": {
+							"properties": {
+								"amount": {
+									"minimum": 0,
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId",
+								"amount"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"warnings": {
+						"default": [],
+						"items": {
+							"enum": [
+								"FUND_OVERDRAWN",
+								"BUDGET_NEAR",
+								"BUDGET_OVER"
+							],
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"baseAmount",
+					"resolvedExtras",
+					"netExtras",
+					"computedAmount",
+					"issues"
+				],
+				"type": "object"
+			},
 			"PreviewItemsRequest": {
 				"properties": {
 					"extras": {
@@ -3925,6 +4130,7 @@
 									"enum": [
 										"tax",
 										"service",
+										"shipping",
 										"discount",
 										"other"
 									],
@@ -3932,6 +4138,10 @@
 								},
 								"label": {
 									"maxLength": 40,
+									"type": "string"
+								},
+								"ratePercent": {
+									"pattern": "^\\d{1,2}(\\.\\d{1,2})?$",
 									"type": "string"
 								}
 							},
@@ -3944,6 +4154,13 @@
 						},
 						"maxItems": 6,
 						"type": "array"
+					},
+					"extrasAllocation": {
+						"enum": [
+							"equal",
+							"proportional"
+						],
+						"type": "string"
 					},
 					"items": {
 						"items": {
@@ -5122,6 +5339,50 @@
 				"oneOf": [
 					{
 						"properties": {
+							"extras": {
+								"items": {
+									"properties": {
+										"amount": {
+											"maximum": 999999999999,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"kind": {
+											"enum": [
+												"tax",
+												"service",
+												"shipping",
+												"discount",
+												"other"
+											],
+											"type": "string"
+										},
+										"label": {
+											"maxLength": 40,
+											"type": "string"
+										},
+										"ratePercent": {
+											"pattern": "^\\d{1,2}(\\.\\d{1,2})?$",
+											"type": "string"
+										}
+									},
+									"required": [
+										"kind",
+										"label",
+										"amount"
+									],
+									"type": "object"
+								},
+								"maxItems": 6,
+								"type": "array"
+							},
+							"extrasAllocation": {
+								"enum": [
+									"equal",
+									"proportional"
+								],
+								"type": "string"
+							},
 							"members": {
 								"items": {
 									"format": "uuid",
@@ -5167,6 +5428,50 @@
 								},
 								"maxItems": 100,
 								"type": "array"
+							},
+							"extras": {
+								"items": {
+									"properties": {
+										"amount": {
+											"maximum": 999999999999,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"kind": {
+											"enum": [
+												"tax",
+												"service",
+												"shipping",
+												"discount",
+												"other"
+											],
+											"type": "string"
+										},
+										"label": {
+											"maxLength": 40,
+											"type": "string"
+										},
+										"ratePercent": {
+											"pattern": "^\\d{1,2}(\\.\\d{1,2})?$",
+											"type": "string"
+										}
+									},
+									"required": [
+										"kind",
+										"label",
+										"amount"
+									],
+									"type": "object"
+								},
+								"maxItems": 6,
+								"type": "array"
+							},
+							"extrasAllocation": {
+								"enum": [
+									"equal",
+									"proportional"
+								],
+								"type": "string"
 							},
 							"members": {
 								"items": {
@@ -5224,6 +5529,50 @@
 								"minItems": 1,
 								"type": "array"
 							},
+							"extras": {
+								"items": {
+									"properties": {
+										"amount": {
+											"maximum": 999999999999,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"kind": {
+											"enum": [
+												"tax",
+												"service",
+												"shipping",
+												"discount",
+												"other"
+											],
+											"type": "string"
+										},
+										"label": {
+											"maxLength": 40,
+											"type": "string"
+										},
+										"ratePercent": {
+											"pattern": "^\\d{1,2}(\\.\\d{1,2})?$",
+											"type": "string"
+										}
+									},
+									"required": [
+										"kind",
+										"label",
+										"amount"
+									],
+									"type": "object"
+								},
+								"maxItems": 6,
+								"type": "array"
+							},
+							"extrasAllocation": {
+								"enum": [
+									"equal",
+									"proportional"
+								],
+								"type": "string"
+							},
 							"method": {
 								"enum": [
 									"shares"
@@ -5261,6 +5610,50 @@
 								"minItems": 1,
 								"type": "array"
 							},
+							"extras": {
+								"items": {
+									"properties": {
+										"amount": {
+											"maximum": 999999999999,
+											"minimum": 0,
+											"type": "integer"
+										},
+										"kind": {
+											"enum": [
+												"tax",
+												"service",
+												"shipping",
+												"discount",
+												"other"
+											],
+											"type": "string"
+										},
+										"label": {
+											"maxLength": 40,
+											"type": "string"
+										},
+										"ratePercent": {
+											"pattern": "^\\d{1,2}(\\.\\d{1,2})?$",
+											"type": "string"
+										}
+									},
+									"required": [
+										"kind",
+										"label",
+										"amount"
+									],
+									"type": "object"
+								},
+								"maxItems": 6,
+								"type": "array"
+							},
+							"extrasAllocation": {
+								"enum": [
+									"equal",
+									"proportional"
+								],
+								"type": "string"
+							},
 							"method": {
 								"enum": [
 									"percent"
@@ -5288,6 +5681,7 @@
 											"enum": [
 												"tax",
 												"service",
+												"shipping",
 												"discount",
 												"other"
 											],
@@ -5295,6 +5689,10 @@
 										},
 										"label": {
 											"maxLength": 40,
+											"type": "string"
+										},
+										"ratePercent": {
+											"pattern": "^\\d{1,2}(\\.\\d{1,2})?$",
 											"type": "string"
 										}
 									},
@@ -5307,6 +5705,13 @@
 								},
 								"maxItems": 6,
 								"type": "array"
+							},
+							"extrasAllocation": {
+								"enum": [
+									"equal",
+									"proportional"
+								],
+								"type": "string"
 							},
 							"items": {
 								"items": {
@@ -9650,6 +10055,43 @@
 							}
 						},
 						"description": "Transaction created"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/transactions/extras/preview": {
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/PreviewExtrasRequest"
+							}
+						}
+					},
+					"required": true
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/PreviewExtrasResponse"
+								}
+							}
+						},
+						"description": "Manual extras calculation and shares preview"
 					}
 				}
 			}

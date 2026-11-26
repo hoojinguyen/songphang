@@ -707,6 +707,7 @@ export const vi = {
 		extrasKinds: {
 			tax: "Thuế",
 			service: "Phí dịch vụ",
+			shipping: "Phí giao hàng",
 			discount: "Giảm giá",
 			other: "Khác",
 		},

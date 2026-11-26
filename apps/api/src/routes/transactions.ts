@@ -4,6 +4,8 @@ import {
 	IdempotencyKeyHeader,
 	ParseRequest,
 	ParseResponse,
+	PreviewExtrasRequest,
+	PreviewExtrasResponse,
 	PreviewItemsRequest,
 	PreviewItemsResponse,
 	PreviewTransactionRequest,
@@ -24,6 +26,7 @@ import { parseSentence } from "../services/quick-entry.js";
 import {
 	createTransaction,
 	listTransactions,
+	previewExtras,
 	previewItemsSplit,
 	previewTransaction,
 } from "../services/transactions.js";
@@ -93,6 +96,23 @@ const previewItemsRoute = createRoute({
 		200: {
 			description: "Items split calculation",
 			content: { "application/json": { schema: PreviewItemsResponse } },
+		},
+	},
+});
+const previewExtrasRoute = createRoute({
+	method: "post",
+	path: "/api/v1/groups/{groupId}/transactions/extras/preview",
+	request: {
+		params,
+		body: {
+			required: true,
+			content: { "application/json": { schema: PreviewExtrasRequest } },
+		},
+	},
+	responses: {
+		200: {
+			description: "Manual extras calculation and shares preview",
+			content: { "application/json": { schema: PreviewExtrasResponse } },
 		},
 	},
 });
@@ -178,6 +198,17 @@ export function registerTransactionRoutes(
 			await previewItemsSplit(
 				deps,
 				context.var.groupAccess.groupId,
+				context.req.valid("json"),
+			),
+			200,
+		),
+	);
+	app.openapi({ ...previewExtrasRoute, middleware: write }, async (context) =>
+		context.json(
+			await previewExtras(
+				deps,
+				context.var.groupAccess.groupId,
+				context.var.user.id,
 				context.req.valid("json"),
 			),
 			200,

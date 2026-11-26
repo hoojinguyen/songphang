@@ -21,14 +21,14 @@ export type ItemExtraEntry = {
 	kind: ItemExtraKind;
 	label: string;
 	amount: number;
-	ratePercent?: string;
+	ratePercent?: string | undefined;
 };
 
 export type ItemsSplitInput = {
 	method: "items";
 	items: readonly ItemSplitEntry[];
 	extras: readonly ItemExtraEntry[];
-	extrasAllocation?: ExtrasAllocation;
+	extrasAllocation?: ExtrasAllocation | undefined;
 };
 
 const RATE_PERCENT_PATTERN = /^\d{1,2}(\.\d{1,2})?$/;

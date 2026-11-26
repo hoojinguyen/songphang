@@ -15,28 +15,28 @@ export type SplitInput =
 	| {
 			method: "equal";
 			members: readonly string[];
-			extras?: readonly ItemExtraEntry[];
-			extrasAllocation?: ExtrasAllocation;
+			extras?: readonly ItemExtraEntry[] | undefined;
+			extrasAllocation?: ExtrasAllocation | undefined;
 	  }
 	| {
 			method: "exact";
 			members: readonly string[];
 			entries: readonly Share[];
 			remainder: "none" | "equal_among_blank" | "equal_among_all";
-			extras?: readonly ItemExtraEntry[];
-			extrasAllocation?: ExtrasAllocation;
+			extras?: readonly ItemExtraEntry[] | undefined;
+			extrasAllocation?: ExtrasAllocation | undefined;
 	  }
 	| {
 			method: "shares";
 			entries: readonly { memberId: string; weight: string }[];
-			extras?: readonly ItemExtraEntry[];
-			extrasAllocation?: ExtrasAllocation;
+			extras?: readonly ItemExtraEntry[] | undefined;
+			extrasAllocation?: ExtrasAllocation | undefined;
 	  }
 	| {
 			method: "percent";
 			entries: readonly { memberId: string; percent: string }[];
-			extras?: readonly ItemExtraEntry[];
-			extrasAllocation?: ExtrasAllocation;
+			extras?: readonly ItemExtraEntry[] | undefined;
+			extrasAllocation?: ExtrasAllocation | undefined;
 	  }
 	| ItemsSplitInput;
 

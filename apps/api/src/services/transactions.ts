@@ -1,21 +1,30 @@
 import { z } from "@hono/zod-openapi";
 import {
 	type CreateTransactionRequest,
+	type ExtrasPreviewIssue,
 	type ItemsPreviewIssue,
+	type ItemsSplitExtra,
+	type PreviewExtrasRequest,
+	PreviewExtrasResponse,
 	type PreviewItemsRequest,
 	PreviewItemsResponse,
 	type PreviewTransactionRequest,
 	PreviewTransactionResponse,
+	type ShareDto,
+	type SplitInput,
 	TransactionDto,
 	TransactionListItemDto,
 	TransactionResponse,
 	type TransactionsQuery,
 	TransactionsResponse,
+	type TransactionWarning,
 } from "@songphang/contract";
 import {
 	approvalStatusFor,
 	computeItemShares,
 	computeItemsNetTotal,
+	computePercentExtraAmount,
+	computeShares,
 	foldVietnamese,
 	localDateRangeToUtc,
 	nextEditApprovalStatusFor,
@@ -673,6 +682,9 @@ export async function previewItemsSplit(
 					method: "items",
 					items: request.items,
 					extras: request.extras,
+					...(request.extrasAllocation === undefined
+						? {}
+						: { extrasAllocation: request.extrasAllocation }),
 				},
 				members.map((m) => m.id),
 			);
@@ -696,6 +708,309 @@ export async function previewItemsSplit(
 				shares: result.shares,
 				issues: [],
 				...target,
+			});
+		},
+		{ isolationLevel: "repeatable read", accessMode: "read only" },
+	);
+}
+
+function splitParticipantIds(split: SplitInput): string[] {
+	if (split.method === "equal" || split.method === "exact") {
+		return [...split.members];
+	}
+	if (split.method === "items") {
+		return [...new Set(split.items.flatMap((item) => item.memberIds))];
+	}
+	return split.entries.map((entry) => entry.memberId);
+}
+
+function resolvePreviewPayers(
+	request: PreviewExtrasRequest,
+	computedAmount: number,
+): Array<{ memberId: string; amount: number }> | null {
+	if (request.payers !== undefined && request.payers.length > 0) {
+		return request.payers.map((payer) => ({
+			memberId: payer.memberId,
+			amount: payer.amount ?? computedAmount,
+		}));
+	}
+	if (request.payerMemberId !== undefined) {
+		return [{ memberId: request.payerMemberId, amount: computedAmount }];
+	}
+	return null;
+}
+
+function resolvePreviewExtrasList(
+	baseAmount: number,
+	extras: PreviewExtrasRequest["extras"],
+): { resolvedExtras: ItemsSplitExtra[]; netExtras: number } {
+	const resolvedExtras: ItemsSplitExtra[] = extras.map((extra) =>
+		extra.ratePercent !== undefined
+			? {
+					kind: extra.kind,
+					label: extra.label,
+					amount: computePercentExtraAmount(baseAmount, extra.ratePercent),
+					ratePercent: extra.ratePercent,
+				}
+			: {
+					kind: extra.kind,
+					label: extra.label,
+					amount: extra.amount ?? 0,
+				},
+	);
+	let netExtras = 0;
+	for (const extra of resolvedExtras) {
+		netExtras += extra.kind === "discount" ? -extra.amount : extra.amount;
+	}
+	return { resolvedExtras, netExtras };
+}
+
+function validatePreviewMembers(
+	members: Array<{ id: string; kind: string }>,
+	payerIds: string[],
+	splitIds: string[],
+): void {
+	const allIds = [...payerIds, ...splitIds];
+	if (allIds.some((id) => !members.some((member) => member.id === id))) {
+		throw new AppError(
+			400,
+			"MEMBER_NOT_IN_GROUP",
+			"Member does not belong to group",
+		);
+	}
+	if (
+		splitIds.some(
+			(id) => members.find((member) => member.id === id)?.kind === "fund",
+		)
+	) {
+		throw new AppError(
+			422,
+			"FUND_CANNOT_SHARE",
+			"Fund member cannot bear a share",
+		);
+	}
+}
+
+function computePreviewExtrasSplit(input: {
+	baseAmount: number;
+	computedAmount: number;
+	request: PreviewExtrasRequest;
+	resolvedExtras: ItemsSplitExtra[];
+	memberIds: string[];
+}): {
+	shares?: Array<z.infer<typeof ShareDto>>;
+	normalizedSplit?: SplitInput;
+	issues: ExtrasPreviewIssue[];
+} {
+	const issues: ExtrasPreviewIssue[] = [];
+	if (
+		input.baseAmount < 1 ||
+		input.computedAmount < 1 ||
+		input.computedAmount > MAX_TRANSACTION_AMOUNT
+	) {
+		issues.push({ code: "INVALID_TOTAL" });
+	}
+	if (!input.request.split) return { issues };
+
+	const allocation =
+		input.request.extrasAllocation ?? input.request.split.extrasAllocation;
+	const normalizedSplit: SplitInput = {
+		...input.request.split,
+		extras: input.resolvedExtras,
+		...(allocation === undefined ? {} : { extrasAllocation: allocation }),
+	};
+	if (normalizedSplit.method === "items") {
+		const unassignedIndex = normalizedSplit.items.findIndex(
+			(item) => item.memberIds.length === 0,
+		);
+		if (unassignedIndex >= 0) {
+			issues.push({ code: "ITEM_UNASSIGNED", itemIndex: unassignedIndex });
+		}
+	}
+	if (
+		input.baseAmount < 1 ||
+		input.computedAmount < 1 ||
+		input.computedAmount > MAX_TRANSACTION_AMOUNT
+	) {
+		return { normalizedSplit, issues };
+	}
+
+	const splitResult = computeShares(
+		input.computedAmount,
+		normalizedSplit,
+		input.memberIds,
+	);
+	if (splitResult.ok) {
+		return { shares: splitResult.shares, normalizedSplit, issues };
+	}
+	if (splitResult.code === "ITEM_UNASSIGNED") {
+		if (!issues.some((issue) => issue.code === "ITEM_UNASSIGNED")) {
+			issues.push({
+				code: "ITEM_UNASSIGNED",
+				itemIndex: splitResult.itemIndex,
+			});
+		}
+		return { normalizedSplit, issues };
+	}
+	issues.push({ code: "SPLIT_TOTAL_MISMATCH" });
+	return { normalizedSplit, issues };
+}
+
+async function computePreviewExtrasWarnings(
+	executor: DbExecutor,
+	input: {
+		groupId: string;
+		userId: string;
+		computedAmount: number;
+		request: PreviewExtrasRequest;
+		normalizedSplit: SplitInput | undefined;
+		members: Array<{ id: string }>;
+		now: Date;
+	},
+): Promise<TransactionWarning[]> {
+	const resolvedPayers = resolvePreviewPayers(
+		input.request,
+		input.computedAmount,
+	);
+	if (
+		resolvedPayers === null ||
+		resolvedPayers.reduce((sum, payer) => sum + payer.amount, 0) !==
+			input.computedAmount
+	) {
+		return [];
+	}
+
+	let replacing: ReplacedTransaction | undefined;
+	if (input.request.transactionId !== undefined) {
+		const existing = await findTransactionRow(
+			executor,
+			input.groupId,
+			input.request.transactionId,
+		);
+		if (existing === null || existing.deletedAt !== null) {
+			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		}
+		if (
+			existing.type === "expense" ||
+			existing.type === "income" ||
+			existing.type === "transfer"
+		) {
+			const existingPayers = await listTransactionPayers(
+				executor,
+				input.groupId,
+				[existing.id],
+			);
+			replacing = {
+				type: existing.type,
+				amount: existing.amount,
+				occurredAt: existing.occurredAt,
+				payers: existingPayers,
+				counted:
+					existing.approvalStatus === "none" ||
+					existing.approvalStatus === "approved",
+			};
+		}
+	}
+
+	const [group, owner] = await Promise.all([
+		findGroup(executor, input.groupId),
+		findGroupOwner(executor, input.groupId),
+	]);
+	const actorIsOwner = owner !== null && owner.userId === input.userId;
+	const threshold = group?.approvalThreshold ?? null;
+	const prospectiveStatus = replacing
+		? nextEditApprovalStatusFor({
+				type: replacing.type,
+				amount: input.computedAmount,
+				threshold,
+				actorIsOwner,
+			})
+		: approvalStatusFor({
+				type: "expense",
+				amount: input.computedAmount,
+				threshold,
+				actorIsOwner,
+			});
+	const fallbackSplit: SplitInput = input.normalizedSplit ?? {
+		method: "equal",
+		members: [resolvedPayers[0]?.memberId ?? input.members[0]?.id ?? ""],
+	};
+	return transactionWarnings(executor, {
+		groupId: input.groupId,
+		request: {
+			type: "expense",
+			description: "preview",
+			amount: input.computedAmount,
+			occurredAt: input.now.toISOString(),
+			payers: resolvedPayers,
+			split: fallbackSplit,
+			category: null,
+			categoryId: null,
+		},
+		applied: false,
+		now: input.now,
+		counted: prospectiveStatus !== "pending",
+		...(replacing ? { replacing } : {}),
+	});
+}
+
+export async function previewExtras(
+	deps: AppDeps,
+	groupId: string,
+	userId: string,
+	request: PreviewExtrasRequest,
+): Promise<PreviewExtrasResponse> {
+	return deps.db.transaction(
+		async (executor) => {
+			const members = await listGroupMembers(executor, groupId);
+			const baseAmount =
+				request.split?.method === "items"
+					? request.split.items.reduce((sum, item) => sum + item.amount, 0)
+					: request.baseAmount;
+			const { resolvedExtras, netExtras } = resolvePreviewExtrasList(
+				baseAmount,
+				request.extras,
+			);
+			const computedAmount = baseAmount + netExtras;
+
+			const splitIds = request.split ? splitParticipantIds(request.split) : [];
+			const payerIds = [
+				...(request.payers?.map((payer) => payer.memberId) ?? []),
+				...(request.payerMemberId ? [request.payerMemberId] : []),
+			];
+			validatePreviewMembers(members, payerIds, splitIds);
+
+			const { shares, normalizedSplit, issues } = computePreviewExtrasSplit({
+				baseAmount,
+				computedAmount,
+				request,
+				resolvedExtras,
+				memberIds: members.map((member) => member.id),
+			});
+
+			const warnings =
+				issues.length === 0 &&
+				computedAmount >= 1 &&
+				computedAmount <= MAX_TRANSACTION_AMOUNT
+					? await computePreviewExtrasWarnings(executor, {
+							groupId,
+							userId,
+							computedAmount,
+							request,
+							normalizedSplit,
+							members,
+							now: deps.now(),
+						})
+					: [];
+
+			return PreviewExtrasResponse.parse({
+				baseAmount,
+				resolvedExtras,
+				netExtras,
+				computedAmount,
+				...(shares === undefined ? {} : { shares }),
+				issues,
+				warnings,
 			});
 		},
 		{ isolationLevel: "repeatable read", accessMode: "read only" },

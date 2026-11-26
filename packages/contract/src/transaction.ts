@@ -1,8 +1,27 @@
 import { z } from "@hono/zod-openapi";
-import { isValidCalendarDate, isWithinFiveYears } from "@songphang/core";
+import {
+	isValidCalendarDate,
+	isWithinFiveYears,
+	parseHundredths,
+} from "@songphang/core";
 import { AttachmentDto } from "./attachment.ts";
 import { PaymentChannel } from "./payment.ts";
 export const MoneyAmount = z.int().min(1).max(999_999_999_999);
+export const NonnegativeMoneyAmount = z.int().min(0).max(999_999_999_999);
+export const ExtrasAllocation = z.enum(["equal", "proportional"]);
+export type ExtrasAllocation = z.infer<typeof ExtrasAllocation>;
+export const RatePercent = z
+	.string()
+	.regex(/^\d{1,2}(\.\d{1,2})?$/)
+	.refine((value) => parseHundredths(value) >= 1n);
+export const ItemsSplitExtra = z.object({
+	kind: z.enum(["tax", "service", "shipping", "discount", "other"]),
+	label: z.string().trim().max(40),
+	amount: NonnegativeMoneyAmount,
+	ratePercent: RatePercent.optional(),
+});
+export type ItemsSplitExtra = z.infer<typeof ItemsSplitExtra>;
+const SplitExtras = z.array(ItemsSplitExtra).max(6);
 export const CalendarDate = z
 	.string()
 	.regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -25,9 +44,11 @@ const MemberIds = z
 export const EqualSplitInput = z.object({
 	method: z.literal("equal"),
 	members: MemberIds,
+	extras: SplitExtras.optional(),
+	extrasAllocation: ExtrasAllocation.optional(),
 });
 export type EqualSplitInput = z.infer<typeof EqualSplitInput>;
-const ExactSplitInput = z
+export const ExactSplitInput = z
 	.object({
 		method: z.literal("exact"),
 		members: MemberIds,
@@ -35,6 +56,8 @@ const ExactSplitInput = z
 			.array(z.object({ memberId: z.uuid(), amount: MoneyAmount }))
 			.max(100),
 		remainder: z.enum(["none", "equal_among_blank", "equal_among_all"]),
+		extras: SplitExtras.optional(),
+		extrasAllocation: ExtrasAllocation.optional(),
 	})
 	.refine(
 		(split) =>
@@ -44,7 +67,7 @@ const ExactSplitInput = z
 			(split.remainder !== "none" ||
 				split.entries.length === split.members.length),
 	);
-const SharesSplitInput = z
+export const SharesSplitInput = z
 	.object({
 		method: z.literal("shares"),
 		entries: z
@@ -56,13 +79,15 @@ const SharesSplitInput = z
 			)
 			.min(1)
 			.max(100),
+		extras: SplitExtras.optional(),
+		extrasAllocation: ExtrasAllocation.optional(),
 	})
 	.refine(
 		(split) =>
 			new Set(split.entries.map((e) => e.memberId)).size ===
 			split.entries.length,
 	);
-const PercentSplitInput = z
+export const PercentSplitInput = z
 	.object({
 		method: z.literal("percent"),
 		entries: z
@@ -74,13 +99,14 @@ const PercentSplitInput = z
 			)
 			.min(1)
 			.max(100),
+		extras: SplitExtras.optional(),
+		extrasAllocation: ExtrasAllocation.optional(),
 	})
 	.refine(
 		(split) =>
 			new Set(split.entries.map((e) => e.memberId)).size ===
 			split.entries.length,
 	);
-export const NonnegativeMoneyAmount = z.int().min(0).max(999_999_999_999);
 export const ItemsSplitItem = z.object({
 	name: z.string().trim().min(1).max(80),
 	amount: NonnegativeMoneyAmount,
@@ -90,16 +116,11 @@ export const ItemsSplitItem = z.object({
 		.refine((ids) => new Set(ids).size === ids.length),
 });
 export type ItemsSplitItem = z.infer<typeof ItemsSplitItem>;
-export const ItemsSplitExtra = z.object({
-	kind: z.enum(["tax", "service", "discount", "other"]),
-	label: z.string().trim().max(40),
-	amount: NonnegativeMoneyAmount,
-});
-export type ItemsSplitExtra = z.infer<typeof ItemsSplitExtra>;
 export const ItemsSplitInput = z.object({
 	method: z.literal("items"),
 	items: z.array(ItemsSplitItem).min(1).max(60),
 	extras: z.array(ItemsSplitExtra).max(6),
+	extrasAllocation: ExtrasAllocation.optional(),
 });
 export type ItemsSplitInput = z.infer<typeof ItemsSplitInput>;
 export const SplitInput = z
@@ -144,7 +165,12 @@ export const SplitTransactionRequest = z
 	.refine(
 		(request) =>
 			!(request.category !== null && request.categoryId !== null) &&
-			!(request.type === "income" && request.split.method === "items"),
+			!(request.type === "income" && request.split.method === "items") &&
+			!(
+				request.type === "income" &&
+				request.split.method !== "items" &&
+				(request.split.extras?.length ?? 0) > 0
+			),
 	)
 	.openapi("SplitTransactionRequest");
 export type SplitTransactionRequest = z.infer<typeof SplitTransactionRequest>;
@@ -282,11 +308,61 @@ export const PreviewItemsRequest = z
 	.object({
 		items: ItemsSplitInput.shape.items,
 		extras: ItemsSplitInput.shape.extras,
+		extrasAllocation: ExtrasAllocation.optional(),
 		// The printed receipt total; when sent, the response carries the extra that would reach it.
 		targetTotal: NonnegativeMoneyAmount.optional(),
 	})
 	.openapi("PreviewItemsRequest");
 export type PreviewItemsRequest = z.infer<typeof PreviewItemsRequest>;
+export const PreviewExtrasItem = z.object({
+	kind: ItemsSplitExtra.shape.kind,
+	label: z.string().trim().max(40),
+	amount: NonnegativeMoneyAmount.optional(),
+	ratePercent: RatePercent.optional(),
+});
+export type PreviewExtrasItem = z.infer<typeof PreviewExtrasItem>;
+export const PreviewExtrasPayer = z.object({
+	memberId: z.uuid(),
+	amount: MoneyAmount.optional(),
+});
+export const PreviewExtrasRequest = z
+	.object({
+		baseAmount: NonnegativeMoneyAmount,
+		extras: z.array(PreviewExtrasItem).max(6),
+		extrasAllocation: ExtrasAllocation.optional(),
+		payers: z
+			.array(PreviewExtrasPayer)
+			.min(1)
+			.max(100)
+			.refine(
+				(payers) =>
+					new Set(payers.map((p) => p.memberId)).size === payers.length &&
+					(payers.length === 1 || payers.every((p) => p.amount !== undefined)),
+			)
+			.optional(),
+		payerMemberId: z.uuid().optional(),
+		split: SplitInput.optional(),
+		transactionId: z.uuid().optional(),
+	})
+	.openapi("PreviewExtrasRequest");
+export type PreviewExtrasRequest = z.infer<typeof PreviewExtrasRequest>;
+export const ExtrasPreviewIssue = z.object({
+	code: z.enum(["INVALID_TOTAL", "SPLIT_TOTAL_MISMATCH", "ITEM_UNASSIGNED"]),
+	itemIndex: z.int().nonnegative().optional(),
+});
+export type ExtrasPreviewIssue = z.infer<typeof ExtrasPreviewIssue>;
+export const PreviewExtrasResponse = z
+	.object({
+		baseAmount: NonnegativeMoneyAmount,
+		resolvedExtras: z.array(ItemsSplitExtra).max(6),
+		netExtras: z.int(),
+		computedAmount: z.int(),
+		shares: z.array(ShareDto).optional(),
+		issues: z.array(ExtrasPreviewIssue),
+		warnings: z.array(TransactionWarning).default([]),
+	})
+	.openapi("PreviewExtrasResponse");
+export type PreviewExtrasResponse = z.infer<typeof PreviewExtrasResponse>;
 export const ItemsPreviewIssue = z.object({
 	code: z.enum(["ITEM_UNASSIGNED", "INVALID_TOTAL"]),
 	itemIndex: z.int().nonnegative().optional(),
@@ -356,7 +432,13 @@ export const UpdateSplitTransactionRequest = z
 				request.category !== undefined &&
 				request.categoryId !== null &&
 				request.categoryId !== undefined
-			) && !(request.type === "income" && request.split.method === "items"),
+			) &&
+			!(request.type === "income" && request.split.method === "items") &&
+			!(
+				request.type === "income" &&
+				request.split.method !== "items" &&
+				(request.split.extras?.length ?? 0) > 0
+			),
 	)
 	.openapi("UpdateSplitTransactionRequest");
 
