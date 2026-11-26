@@ -243,6 +243,10 @@ public struct PayView: View {
           amount: pending.amount,
           fromName: model.fromMember.name,
           toName: model.toMember.name,
+          channel: pending.channel,
+          note: pending.note,
+          proofAttachmentId: pending.proofAttachmentId,
+          loadAttachment: model.loadAttachment,
           canResolve: model.canResolve,
           canCancel: model.canCancel,
           isDisabled: !model.isEmailVerified || isOffline,
@@ -270,13 +274,32 @@ public struct PayView: View {
           }
         )
       } else {
+        if model.mayCreate && model.isEmailVerified {
+          TransferProofInputSection(
+            channel: $model.channel,
+            note: $model.note,
+            attachments: model.proofAttachment.map { [$0] } ?? [],
+            maxAttachments: 1,
+            isDisabled: isOffline || model.isSubmitting || model.submitted,
+            isUploading: model.isUploadingProof,
+            errorMessage: model.proofError,
+            loadContent: model.loadAttachment,
+            onUploadData: { data in
+              await model.uploadProofImage(rawData: data)
+            },
+            onRemoveAttachment: { _ in
+              model.removeProofAttachment()
+            }
+          )
+        }
+
         if model.canEdit, let onRecordDirectly {
           Button(L10n.tr("pay.recordDirect"), action: onRecordDirectly)
             .font(Typography.subheadlineBold)
             .foregroundStyle(Tokens.ink)
             .underline()
             .frame(minHeight: 44)
-            .disabled(isOffline)
+            .disabled(isOffline || model.isUploadingProof)
         }
 
         if let errorMessage = model.errorMessage {
@@ -300,7 +323,7 @@ public struct PayView: View {
               variant: .primary,
               size: .lg,
               isFullWidth: true,
-              isDisabled: model.submitted,
+              isDisabled: model.submitted || model.isUploadingProof,
               isOfflineBlocked: isOffline,
               isPending: model.isSubmitting
             ) {

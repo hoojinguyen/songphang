@@ -87,6 +87,8 @@ const fields = [
 	"payers",
 	"shares",
 	"split",
+	"paymentChannel",
+	"paymentNote",
 ] as const;
 function resolveCategoryForEdit(
 	request: UpdateTransactionRequest,
@@ -169,6 +171,7 @@ export async function editTransaction(
 				input.groupId,
 				nextAttachmentIds,
 				input.id,
+				{ transactionType: input.request.type },
 			);
 		}
 		const shares = await calculateShares(
@@ -179,16 +182,32 @@ export async function editTransaction(
 		const normalized = normalizeTransaction(input.request);
 		const { category: resolvedCategory, categoryId: resolvedCategoryId } =
 			resolveCategoryForEdit(input.request, before);
+		const resolvedPaymentChannel =
+			input.request.type === "transfer"
+				? input.request.paymentChannel === undefined
+					? (before.paymentChannel ?? null)
+					: input.request.paymentChannel
+				: null;
+		const resolvedPaymentNote =
+			input.request.type === "transfer"
+				? input.request.paymentNote === undefined
+					? (before.paymentNote ?? null)
+					: input.request.paymentNote
+				: null;
 		if (resolvedCategoryId !== null && resolvedCategoryId !== before.categoryId)
 			await assertLiveCategory(executor, input.groupId, resolvedCategoryId);
 		const next = {
 			...normalized,
 			category: resolvedCategory,
 			categoryId: resolvedCategoryId,
+			paymentChannel: resolvedPaymentChannel,
+			paymentNote: resolvedPaymentNote,
 			shares,
 		};
 		const altered = fields.filter(
-			(field) => JSON.stringify(before[field]) !== JSON.stringify(next[field]),
+			(field) =>
+				JSON.stringify(before[field] ?? null) !==
+				JSON.stringify(next[field] ?? null),
 		);
 		const beforeAttachmentIds = before.attachments.map((a) => a.id);
 		const attachmentsChanged =
@@ -231,6 +250,8 @@ export async function editTransaction(
 				occurredAt: new Date(normalized.occurredAt),
 				category: resolvedCategory,
 				categoryId: resolvedCategoryId,
+				paymentChannel: resolvedPaymentChannel,
+				paymentNote: resolvedPaymentNote,
 				splitMethod: normalized.split.method,
 				splitInput: normalized.split,
 				approvalStatus: nextApprovalStatus,

@@ -21,7 +21,10 @@ enum BalanceMapping {
             PendingSettlement(
               id: $0.id,
               amount: Money(Int64($0.amount)),
-              createdByMe: $0.createdByMe
+              createdByMe: $0.createdByMe,
+              channel: LiveSettlementVaultMapping.mapPaymentChannel($0.channel),
+              note: $0.note,
+              proofAttachmentId: $0.proofAttachmentId.map(Attachment.ID.init)
             )
           }
         )
@@ -54,7 +57,8 @@ enum BalanceMapping {
           name: bank.bankShortName,
           accountNumber: bank.accountNumber,
           accountName: bank.accountName,
-          qrPayload: bank.qrPayload
+          qrPayload: bank.qrPayload,
+          accountQrPayload: bank.accountQrPayload
         )
       )
     case .case2(let wallet):
@@ -71,6 +75,7 @@ enum BalanceMapping {
     let accountNumber: String?
     let accountName: String?
     let qrPayload: String?
+    let accountQrPayload: String?
     let phone: String?
 
     init(method: PaymentMethod) {
@@ -82,6 +87,7 @@ enum BalanceMapping {
         self.accountNumber = bank.accountNumber
         self.accountName = bank.accountName
         self.qrPayload = bank.qrPayload
+        self.accountQrPayload = bank.accountQrPayload
         self.phone = nil
       case .momo(let phone):
         self.kind = "momo"
@@ -90,6 +96,7 @@ enum BalanceMapping {
         self.accountNumber = nil
         self.accountName = nil
         self.qrPayload = nil
+        self.accountQrPayload = nil
         self.phone = phone
       case .zalopay(let phone):
         self.kind = "zalopay"
@@ -98,6 +105,7 @@ enum BalanceMapping {
         self.accountNumber = nil
         self.accountName = nil
         self.qrPayload = nil
+        self.accountQrPayload = nil
         self.phone = phone
       }
     }
@@ -114,7 +122,8 @@ enum BalanceMapping {
             name: bankShortName,
             accountNumber: accountNumber,
             accountName: accountName,
-            qrPayload: qrPayload
+            qrPayload: qrPayload,
+            accountQrPayload: accountQrPayload
           )
         )
       case "momo":
@@ -133,6 +142,9 @@ enum BalanceMapping {
     let id: String
     let amount: Int64
     let createdByMe: Bool
+    let channel: String?
+    let note: String?
+    let proofAttachmentId: String?
   }
 
   struct RawFundContribution: Codable, Sendable {
@@ -211,7 +223,10 @@ enum BalanceMapping {
               PendingSettlement(
                 id: $0.id,
                 amount: Money($0.amount),
-                createdByMe: $0.createdByMe
+                createdByMe: $0.createdByMe,
+                channel: $0.channel.map(PaymentChannel.init(code:)),
+                note: $0.note,
+                proofAttachmentId: $0.proofAttachmentId.map(Attachment.ID.init)
               )
             }
           )
@@ -246,7 +261,10 @@ enum BalanceMapping {
             RawPendingSettlement(
               id: $0.id,
               amount: $0.amount.amount,
-              createdByMe: $0.createdByMe
+              createdByMe: $0.createdByMe,
+              channel: $0.channel?.code,
+              note: $0.note,
+              proofAttachmentId: $0.proofAttachmentId?.rawValue
             )
           }
         )

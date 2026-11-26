@@ -1,9 +1,10 @@
 import { z } from "@hono/zod-openapi";
 import { FundSummary } from "./fund.ts";
-import { PaymentMethodDto } from "./payment.ts";
+import { PaymentChannel, PaymentMethodDto } from "./payment.ts";
 export const PayTo = z.discriminatedUnion("kind", [
 	PaymentMethodDto.options[0].extend({
 		qrPayload: z.string().min(1).max(512).nullable(),
+		accountQrPayload: z.string().min(1).max(512).nullable().optional(),
 	}),
 	PaymentMethodDto.options[1],
 	PaymentMethodDto.options[2],
@@ -25,6 +26,9 @@ export const BalancesResponse = z
 						id: z.uuid(),
 						amount: z.int().positive(),
 						createdByMe: z.boolean(),
+						channel: PaymentChannel.nullable().optional(),
+						note: z.string().nullable().optional(),
+						proofAttachmentId: z.uuid().nullable().optional(),
 					})
 					.nullable(),
 			}),

@@ -57,6 +57,8 @@ public struct GroupContainerView: View {
   @State private var isCloneSheetPresented = false
   @State private var isArchiveConfirmPresented = false
   @State private var isReceiptCaptureOpen = false
+  @State private var isGuestLinkSheetOpen = false
+  @State private var isShareCardSheetOpen = false
   @State private var isArchiving = false
   @State private var paymentSheet: PaymentSheet?
 
@@ -64,6 +66,7 @@ public struct GroupContainerView: View {
   @State private var balancesModel: BalancesModel
   @State private var statsModel: StatsModel
   @State private var fundModel: FundModel
+  @State private var guestLinkSheetModel: GuestLinkSheetModel
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -104,6 +107,8 @@ public struct GroupContainerView: View {
       budgetRepository: dependencies.budget,
       transactionsRepository: dependencies.transactions,
       eventsRepository: dependencies.groupEvents,
+      attachmentsRepository: dependencies.attachments,
+      settlementCyclesRepository: dependencies.settlementCycles,
       initialFilter: initialFilter
     )
     self._feedModel = State(initialValue: feed)
@@ -116,6 +121,8 @@ public struct GroupContainerView: View {
       transactionsRepository: dependencies.transactions,
       settlementRequests: dependencies.settlementRequests,
       remindersRepository: dependencies.reminders,
+      settlementCyclesRepository: dependencies.settlementCycles,
+      eventsRepository: dependencies.groupEvents,
       onUnauthorized: {
         onPopToRoot(nil)
         Task { await sessionModel.signOut() }
@@ -149,6 +156,15 @@ public struct GroupContainerView: View {
       }
     )
     self._fundModel = State(initialValue: fund)
+
+    let guestLinkSheet = GuestLinkSheetModel(
+      groupId: groupId,
+      guestLinksRepository: dependencies.guestLinks,
+      onUnauthorized: {
+        Task { await sessionModel.signOut() }
+      }
+    )
+    self._guestLinkSheetModel = State(initialValue: guestLinkSheet)
   }
 
   private var currentGroup: ExpenseGroup? {
@@ -256,6 +272,36 @@ public struct GroupContainerView: View {
       feedModel.markDeleted(id)
       deletedTransactionId = nil
     }
+    #if DEBUG
+      .task {
+        if ProcessInfo.processInfo.arguments.contains("--open-share-card") {
+          while balancesModel.state.value == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+          }
+          isShareCardSheetOpen = true
+        }
+      }
+    #endif
+    .sheet(isPresented: $isGuestLinkSheetOpen) {
+      GuestLinkSheetView(
+        model: guestLinkSheetModel,
+        isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
+        isArchived: balancesModel.state.value?.group.isArchived ?? false,
+        onDismiss: { isGuestLinkSheetOpen = false }
+      )
+    }
+    .sheet(isPresented: $isShareCardSheetOpen) {
+      if let balancesData = balancesModel.state.value {
+        ShareCardPreviewSheet(
+          data: balancesData,
+          loadGuestLink: {
+            try? await dependencies.guestLinks.status(groupId: groupId)
+          },
+          onDismiss: { isShareCardSheetOpen = false }
+        )
+      }
+    }
     .sheet(item: $paymentSheet) { selection in
       let role = balancesModel.state.value?.group.role ?? .editor
       let myMemberId = balancesModel.state.value?.group.myMemberId
@@ -270,6 +316,18 @@ public struct GroupContainerView: View {
         role: role,
         isEmailVerified: isVerified,
         repository: dependencies.settlementRequests,
+        uploadProof: { data, filename, contentType async throws(AppError) in
+          try await dependencies.attachments.upload(
+            groupId: groupId,
+            data: data,
+            filename: filename,
+            contentType: contentType,
+            purpose: .transferProof
+          )
+        },
+        loadAttachment: { attachmentId in
+          try await dependencies.attachments.content(groupId: groupId, attachmentId: attachmentId)
+        },
         onReload: { await balancesModel.load() },
         onUnauthorized: {
           paymentSheet = nil
@@ -537,7 +595,25 @@ public struct GroupContainerView: View {
           ? nil
           : {
             onNavigate(.groupMembers(groupId: groupId))
+          },
+        loadAttachment: { attachmentId in
+          try await dependencies.attachments.content(groupId: groupId, attachmentId: attachmentId)
+        },
+        onOpenShareCard: {
+          isShareCardSheetOpen = true
+        },
+        onOpenGuestLink: {
+          isGuestLinkSheetOpen = true
+        },
+        onOpenTransaction: { txId in
+          onNavigate(.transactionDetail(groupId: groupId, transactionId: txId))
+        },
+        onViewCycleExpenses: { cycleId in
+          withAnimation(.easeInOut(duration: 0.18)) {
+            selectedSegment = .expenses
           }
+          Task { await feedModel.selectCycle(.cycle(cycleId)) }
+        }
       )
 
     case .fundAndStats:

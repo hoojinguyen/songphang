@@ -7,6 +7,7 @@ import { formatVietnamDateTime } from "@songphang/core";
 import { formatAmount, formatCompactAmount } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
 import { PhotoRow } from "../expense-form/PhotoRow";
+import { paymentChannelLabel } from "../pay/TransferProofFields";
 import { ShareShapes } from "../quick-entry/ShareShapes";
 import { CATEGORY_COLORS } from "../settings/CategoryRow";
 
@@ -96,7 +97,17 @@ export function TransactionSummary({
 											})}
 					</span>
 				)}
+				{transaction.type === "transfer" && transaction.paymentChannel && (
+					<span className="rounded-[14px] bg-sunken px-3 py-[6px] text-ink">
+						{paymentChannelLabel(transaction.paymentChannel)}
+					</span>
+				)}
 			</div>
+			{transaction.type === "transfer" && transaction.paymentNote && (
+				<p className="rounded-[18px] bg-sunken px-3.5 py-2.5 text-sm font-semibold text-ink">
+					{`“${transaction.paymentNote}”`}
+				</p>
+			)}
 			{categoryLabel && (
 				<div>
 					<span className="inline-flex min-h-9 items-center gap-2 rounded-[18px] bg-sunken px-3 text-[13px] font-bold text-ink">

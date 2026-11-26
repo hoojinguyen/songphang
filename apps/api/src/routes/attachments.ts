@@ -1,5 +1,5 @@
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import { AttachmentResponse } from "@songphang/contract";
+import { AttachmentResponse, UploadAttachmentQuery } from "@songphang/contract";
 import { sniffImageType } from "@songphang/storage";
 import type { AppDeps, AppEnv } from "../app.js";
 import { requireGroupRole } from "../auth/group-access.js";
@@ -33,7 +33,18 @@ export function registerAttachmentRoutes(
 			path: "/api/v1/groups/{groupId}/attachments",
 			middleware: [
 				requireUser(deps),
-				requireGroupRole(deps, "editor"),
+				requireGroupRole(deps, "viewer"),
+				async (context, next) => {
+					const purpose = context.req.query("purpose") ?? "expense";
+					const access = context.var.groupAccess;
+					if (
+						access.role === "viewer" &&
+						(purpose !== "transfer_proof" || access.memberId === null)
+					) {
+						throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+					}
+					await next();
+				},
 				requireVerifiedEmail(deps),
 				requireSameOrigin(deps.config),
 				requireWriteLimit(deps),
@@ -42,6 +53,7 @@ export function registerAttachmentRoutes(
 			],
 			request: {
 				params,
+				query: UploadAttachmentQuery,
 				body: {
 					required: true,
 					description: "Single receipt image file under part name 'file'",
@@ -83,6 +95,7 @@ export function registerAttachmentRoutes(
 				userId: context.var.user.id,
 				bytes,
 				contentType,
+				purpose: context.req.valid("query").purpose ?? "expense",
 			});
 			return context.json(result, 201);
 		},
@@ -129,7 +142,7 @@ export function registerAttachmentRoutes(
 			path: "/api/v1/groups/{groupId}/attachments/{id}",
 			middleware: [
 				requireUser(deps),
-				requireGroupRole(deps, "editor"),
+				requireGroupRole(deps, "viewer"),
 				requireVerifiedEmail(deps),
 				requireSameOrigin(deps.config),
 				requireWriteLimit(deps),

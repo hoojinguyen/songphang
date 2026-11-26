@@ -314,3 +314,33 @@ Hand-writing a queue, accepting model-computed money and sending persistent data
 **Decision.** Define WCAG-verified Light and Dark semantic color tokens across `apps/web/src/app/globals.css` and `apps/ios/SongPhangKit/Sources/DesignSystem/Tokens/Tokens.swift` (including explicit `placeholder`, `credit`, `debt`, `warning`, `surfaceElevated`, and `borderSubtle`). Persist appearance mode (`system` | `light` | `dark`) per device only (`@AppStorage("appearanceMode")` on iOS; `localStorage` plus a static synchronous `/theme-init.js` script setting `data-theme` on `<html>` on Web — never `dangerouslySetInnerHTML`, respecting `AGENTS.md` §9). Bundle static `Be Vietnam Pro` `.ttf` weights (`400`–`900`, SIL OFL 1.1) in `apps/ios/SongPhangKit/Sources/DesignSystem/Resources/Fonts/` and register them via `CTFontManagerRegisterFontsForURL` with Dynamic Type scaling and tabular digits (`monospacedDigit()` / `tabular-nums`).
 
 **Considered.** Storing theme preference in PostgreSQL `users` (unnecessary migration and cross-device surprise); keeping iOS on the system font (diverges from Sòng Phẳng's typography identity); inline `dangerouslySetInnerHTML` boot script (violates `AGENTS.md` §9).
+
+## ADR-036 — Cumulative settlement cycles via nullable `transactions.cycle_id` assignment and direct past-row editability
+
+**Status:** approved by the project owner on 2026-11-26; implemented in Wave 5.5B on `phase-5-5b`.
+
+**Context.** Recurring clubs (`G4 Badminton 2026`) collect expenses in batches (`Chốt đợt`) while members pay on different schedules and late-remembered or backdated expenses may still be entered or corrected later.
+
+**Decision.** Add `settlement_cycles` (storing an immutable closeout `snapshot`, `expense_count`, and `total_expense_amount` labeled `Số liệu tại thời điểm chốt`) and a nullable `transactions.cycle_id` foreign key (`ON DELETE SET NULL`). Closing a cycle atomically stamps `cycle_id` only onto counted non-deleted rows (`approval_status IN ('none', 'approved')`), leaving `pending` approvals and newly entered expenses in `Đợt hiện tại` (`cycle_id IS NULL`) regardless of `occurred_at`. Ledger balance queries (`packages/db/src/balances.ts`) remain strictly cumulative across all cycles with zero synthetic balance-resetting entries, `owner`/`editor` may still edit or soft-delete transactions inside closed cycles in place (`PATCH` preserves `cycle_id`), and `owner` may reopen the latest cycle (`DELETE /settlement-cycles/{cycleId}`).
+
+**Considered.** Timestamp-range slicing (causes backdated expenses entered later to vanish silently into already-closed cycles); locking closed-cycle transactions against edits (blocks fixing misassigned participants in earlier batches once a newer cycle closes); synthetic zeroing transfers at closeout (erases unpaid carry-over debt).
+
+## ADR-037 — Opt-in revocable guest read-only links and server-authoritative member debt breakdowns
+
+**Status:** approved by the project owner on 2026-11-26; implemented in Wave 5.5B on `phase-5-5b`.
+
+**Context.** Non-app group members viewing a group link posted to Zalo need transparent proof of *which* prior carry-over and current-period expenses produced their exact balance plus an immediate VietQR code, without exposing bank screenshots or leaving the group public after collection ends.
+
+**Decision.** Add an off-by-default 256-bit `groups.guest_token` managed via `GET/POST/DELETE /groups/{groupId}/guest-link` (never logged to `activity` or server logs; `DELETE` remains allowed when a group is archived) driving unauthenticated IP-rate-limited `GET /guest-links/{token}` and `/guest-links/{token}/attachments/{attachmentId}` (`Cache-Control: private, no-store`, `robots: noindex`). Guest attachment streaming serves only counted `expense`/`income` receipt photos and rejects `transfer` banking proofs (`404`). Both `/share/{token}` and authenticated `Thanh toán` read server-computed `GET /balances/breakdowns` (`cycleId=auto` defaults to the latest closed cycle plus post-closeout transfers whenever `Đợt hiện tại` has zero counted expenses, preserving exact `carryOverBalance + sum(lines.delta) + postCycleDelta === netBalance`).
+
+**Considered.** Requiring account creation to view breakdowns (adds friction for one-off sports guests); sharing raw `transfer_proof` banking screenshots publicly (exposes personal transfer receipts); omitting `auto` cycle fallback (leaves `/share/{token}` empty immediately after closing a batch).
+
+## ADR-038 — Zero-dependency client-side `3x` share card rendering (`ImageRenderer` on iOS, 2D `<canvas>` on Web)
+
+**Status:** approved by the project owner on 2026-11-26; implemented in Wave 5.5B on `phase-5-5b`.
+
+**Context.** Phone screenshots of 12–20+ member groups clip rows, hide receiver payment details, and cannot render crisp Light/Dark cards across both platforms without adding heavy server headless-browser dependencies.
+
+**Decision.** Render `390pt`-wide, dynamic-height `3x` (`1170px` wide) PNG cards directly on-device from authoritative server DTOs (`BalancesResponse`, `MemberBreakdownsResponse`, `SettlementCyclesResponse`, `GuestLinkResponse`) in Light and Dark themes with exact integer VND tabular numerals and zero emoji: SwiftUI `ImageRenderer` (`scale = 3.0`) on iOS and pure HTML5 2D `<canvas>` (awaiting `document.fonts.ready` for `Be Vietnam Pro` and reusing installed `qrcode`) on Web, backed by server-built dynamic (`010212`) and static (`010211`, `accountQrPayload`) VietQR payloads in `@songphang/core`.
+
+**Considered.** Puppeteer/Chromium image rendering on the API (heavy runtime footprint and server CPU load); `html2canvas` on Web (extra dependency and cross-browser font/SVG rendering quirks); client-side VietQR construction (violates `apps/ios/AGENTS.md` §5 and Phase 5.5 anti-goals).

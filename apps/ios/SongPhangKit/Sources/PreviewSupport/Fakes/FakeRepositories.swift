@@ -440,6 +440,29 @@
     public func balances(groupId: ExpenseGroup.ID) async throws(AppError) -> GroupBalances {
       try await world.fetchBalances(groupId: groupId)
     }
+
+    public func breakdowns(
+      groupId: ExpenseGroup.ID,
+      cycleId: BreakdownCycleSelection
+    ) async throws(AppError) -> MemberBreakdownsResult {
+      try await world.fetchBreakdowns(groupId: groupId, cycleId: cycleId)
+    }
+
+    public func settlementVault(
+      groupId: ExpenseGroup.ID,
+      filter: SettlementVaultFilter,
+      cycleId: TransactionCycleFilter?,
+      cursor: String?,
+      limit: Int
+    ) async throws(AppError) -> SettlementVaultPage {
+      try await world.fetchSettlementVault(
+        groupId: groupId,
+        filter: filter,
+        cycleId: cycleId,
+        cursor: cursor,
+        limit: limit
+      )
+    }
   }
 
   public nonisolated struct FakeActivityRepository: ActivityRepository {
@@ -625,13 +648,15 @@
       groupId: ExpenseGroup.ID,
       data: Data,
       filename: String,
-      contentType: String
+      contentType: String,
+      purpose: AttachmentUploadPurpose
     ) async throws(AppError) -> Attachment {
       try await world.uploadAttachment(
         groupId: groupId,
         data: data,
         filename: filename,
-        contentType: contentType
+        contentType: contentType,
+        purpose: purpose
       )
     }
 

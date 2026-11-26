@@ -10,6 +10,7 @@ export function OwnSettlementCard({
 	myMemberId,
 	role,
 	verified,
+	onInspectMember,
 }: {
 	groupId: string;
 	transfer: BalancesResponse["transfers"][number];
@@ -17,6 +18,7 @@ export function OwnSettlementCard({
 	myMemberId: string | null;
 	role: "owner" | "editor" | "viewer";
 	verified: boolean;
+	onInspectMember?: (memberId: string) => void;
 }) {
 	const from = members.find((member) => member.id === transfer.fromMemberId);
 	const to = members.find((member) => member.id === transfer.toMemberId);
@@ -28,7 +30,18 @@ export function OwnSettlementCard({
 		<section className="grid justify-items-center gap-3 rounded-[40px] bg-surface p-5">
 			<MemberShape {...to} size={84} />
 			<p className="text-[13px]">{caption}</p>
-			<p className="text-[40px] font-black">{formatAmount(transfer.amount)}</p>
+			<p className="tabular-nums text-[40px] font-black">
+				{formatAmount(transfer.amount)}
+			</p>
+			{onInspectMember && from.kind === "person" && (
+				<button
+					type="button"
+					onClick={() => onInspectMember(from.id)}
+					className="inline-flex min-h-11 items-center text-xs font-bold text-muted underline hover:text-ink"
+				>
+					{vi.breakdown.viewAction}
+				</button>
+			)}
 			<TransferAction
 				groupId={groupId}
 				transfer={transfer}

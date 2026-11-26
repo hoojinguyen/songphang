@@ -24,7 +24,7 @@ export function GET() {
 				details: [
 					{
 						appIDs: [parsed.data],
-						components: [{ "/": "/join/*" }],
+						components: [{ "/": "/join/*" }, { "/": "/share/*" }],
 					},
 				],
 			},

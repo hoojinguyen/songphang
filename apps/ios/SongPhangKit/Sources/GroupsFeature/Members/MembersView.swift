@@ -17,6 +17,7 @@ public struct MembersView: View {
   private let onEditPaymentDetails: ((Member) -> Void)?
   private let onOpenFund: ((ExpenseGroup.ID) -> Void)?
   private let onCreateFund: (() -> Void)?
+  private let onOpenGuestLink: ((ExpenseGroup.ID) -> Void)?
   private let onLeftGroup: () -> Void
 
   @State private var editingNames: [Member.ID: String] = [:]
@@ -34,6 +35,7 @@ public struct MembersView: View {
     onEditPaymentDetails: ((Member) -> Void)? = nil,
     onOpenFund: ((ExpenseGroup.ID) -> Void)? = nil,
     onCreateFund: (() -> Void)? = nil,
+    onOpenGuestLink: ((ExpenseGroup.ID) -> Void)? = nil,
     onLeftGroup: @escaping () -> Void
   ) {
     self.model = model
@@ -44,6 +46,7 @@ public struct MembersView: View {
     self.onEditPaymentDetails = onEditPaymentDetails
     self.onOpenFund = onOpenFund
     self.onCreateFund = onCreateFund
+    self.onOpenGuestLink = onOpenGuestLink
     self.onLeftGroup = onLeftGroup
   }
 
@@ -266,6 +269,17 @@ public struct MembersView: View {
 
     if data.group.role.canWrite, let invite = data.invite {
       inviteCardSection(invite: invite)
+    }
+
+    if isEmailVerified && data.group.role.canWrite, let onOpenGuestLink {
+      SPButton(
+        L10n.tr("guestLink.fullTitle"),
+        variant: .surface,
+        size: .md,
+        isFullWidth: true
+      ) {
+        onOpenGuestLink(model.groupId)
+      }
     }
 
     HStack(spacing: 12) {

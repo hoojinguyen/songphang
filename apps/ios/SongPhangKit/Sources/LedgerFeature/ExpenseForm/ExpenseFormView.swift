@@ -248,6 +248,45 @@ public struct ExpenseFormView: View {
               onFrom: { model.setTransferFrom($0) },
               onTo: { model.transferTo = $0 }
             )
+
+            VStack(alignment: .leading, spacing: 12) {
+              VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.tr("settlementProof.channelLabel"))
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.ink)
+                ChannelPillPicker(
+                  selection: $model.paymentChannel,
+                  isDisabled: model.isSubmitting
+                )
+              }
+
+              VStack(alignment: .leading, spacing: 6) {
+                Text(L10n.tr("settlementProof.noteLabel"))
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.ink)
+                let notePlaceholder = L10n.tr("settlementProof.notePlaceholder")
+                TextField(
+                  notePlaceholder,
+                  text: Binding(
+                    get: { model.paymentNote ?? "" },
+                    set: { next in
+                      let clamped = next.clampedToUTF16Length(120)
+                      model.paymentNote = clamped.isEmpty ? nil : clamped
+                    }
+                  ),
+                  prompt: Text(notePlaceholder).foregroundStyle(Tokens.placeholder)
+                )
+                .font(Typography.subheadline)
+                .foregroundStyle(Tokens.ink)
+                .disabled(model.isSubmitting)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Tokens.bg, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+              }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
           } else {
             CategoryPickerView(
               categories: data.categories,

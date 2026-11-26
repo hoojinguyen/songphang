@@ -44,6 +44,9 @@ export const TRANSACTION_COLUMNS = {
 	approvalDecidedByName: approver.name,
 	approvalDecidedAt: transactions.approvalDecidedAt,
 	approvalNote: transactions.approvalNote,
+	paymentChannel: transactions.paymentChannel,
+	paymentNote: transactions.paymentNote,
+	cycleId: transactions.cycleId,
 	createdAt: transactions.createdAt,
 	updatedAt: transactions.updatedAt,
 	deletedAt: transactions.deletedAt,
@@ -61,6 +64,7 @@ export type TransactionFilters = {
 	type?: "expense" | "transfer" | "income";
 	start?: Date;
 	endExclusive?: Date;
+	cycleFilter?: "current" | string;
 };
 export function listTransactionRows(
 	executor: DbExecutor,
@@ -140,6 +144,11 @@ export function listTransactionRows(
 							transactions.occurredAt,
 							sql`to_timestamp(${filters.endExclusive.getTime() / 1000})`,
 						),
+				filters?.cycleFilter === undefined
+					? undefined
+					: filters.cycleFilter === "current"
+						? isNull(transactions.cycleId)
+						: eq(transactions.cycleId, filters.cycleFilter),
 				cursor === null
 					? undefined
 					: or(

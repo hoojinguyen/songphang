@@ -10,19 +10,22 @@ public struct BankPayment: Sendable, Hashable {
   public let accountNumber: String
   public let accountName: String
   public let qrPayload: String?
+  public let accountQrPayload: String?
 
   public init(
     bin: String,
     name: String,
     accountNumber: String,
     accountName: String,
-    qrPayload: String? = nil
+    qrPayload: String? = nil,
+    accountQrPayload: String? = nil
   ) {
     self.bin = bin
     self.name = name
     self.accountNumber = accountNumber
     self.accountName = accountName
     self.qrPayload = qrPayload
+    self.accountQrPayload = accountQrPayload
   }
 }
 
@@ -30,11 +33,24 @@ public struct PendingSettlement: Sendable, Hashable {
   public let id: String
   public let amount: Money
   public let createdByMe: Bool
+  public let channel: PaymentChannel?
+  public let note: String?
+  public let proofAttachmentId: Attachment.ID?
 
-  public init(id: String, amount: Money, createdByMe: Bool) {
+  public init(
+    id: String,
+    amount: Money,
+    createdByMe: Bool,
+    channel: PaymentChannel? = nil,
+    note: String? = nil,
+    proofAttachmentId: Attachment.ID? = nil
+  ) {
     self.id = id
     self.amount = amount
     self.createdByMe = createdByMe
+    self.channel = channel
+    self.note = note
+    self.proofAttachmentId = proofAttachmentId
   }
 }
 
@@ -72,9 +88,14 @@ public struct SettlementRequest: Sendable, Hashable, Identifiable {
   public let toMemberId: Member.ID
   public let amount: Money
   public let status: SettlementRequestStatus
+  public let channel: PaymentChannel?
+  public let note: String?
+  public let proofAttachment: Attachment?
   public let transactionId: LedgerTransaction.ID?
   public let createdByUserId: User.ID?
   public let createdByName: String?
+  public let resolvedByUserId: User.ID?
+  public let resolvedByName: String?
   public let createdAt: String
   public let resolvedAt: String?
 
@@ -84,9 +105,14 @@ public struct SettlementRequest: Sendable, Hashable, Identifiable {
     toMemberId: Member.ID,
     amount: Money,
     status: SettlementRequestStatus,
+    channel: PaymentChannel? = nil,
+    note: String? = nil,
+    proofAttachment: Attachment? = nil,
     transactionId: LedgerTransaction.ID? = nil,
     createdByUserId: User.ID? = nil,
     createdByName: String? = nil,
+    resolvedByUserId: User.ID? = nil,
+    resolvedByName: String? = nil,
     createdAt: String,
     resolvedAt: String? = nil
   ) {
@@ -95,9 +121,14 @@ public struct SettlementRequest: Sendable, Hashable, Identifiable {
     self.toMemberId = toMemberId
     self.amount = amount
     self.status = status
+    self.channel = channel
+    self.note = note
+    self.proofAttachment = proofAttachment
     self.transactionId = transactionId
     self.createdByUserId = createdByUserId
     self.createdByName = createdByName
+    self.resolvedByUserId = resolvedByUserId
+    self.resolvedByName = resolvedByName
     self.createdAt = createdAt
     self.resolvedAt = resolvedAt
   }

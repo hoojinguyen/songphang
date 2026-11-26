@@ -1,6 +1,6 @@
 import DesignSystem
 public import Domain
-import Foundation
+public import Foundation
 public import Observation
 
 @Observable
@@ -19,8 +19,21 @@ public final class PayModel {
   public private(set) var submitted = false
   public private(set) var notice: String?
   public private(set) var error: AppError?
+  public var channel: PaymentChannel?
+  public var note: String = "" {
+    didSet {
+      if note.count > 120 {
+        note = String(note.prefix(120))
+      }
+    }
+  }
+  public private(set) var proofAttachment: Attachment?
+  public private(set) var isUploadingProof = false
+  public private(set) var proofError: String?
 
   private let repository: any SettlementRequestsRepository
+  private let uploadProof: (@Sendable (Data, String, String) async throws(AppError) -> Attachment)?
+  public let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
   private let idempotencyKey = UUID().uuidString
   private let onReload: () async -> Void
   private let onUnauthorized: () -> Void
@@ -34,6 +47,8 @@ public final class PayModel {
     role: Role,
     isEmailVerified: Bool,
     repository: any SettlementRequestsRepository,
+    uploadProof: (@Sendable (Data, String, String) async throws(AppError) -> Attachment)? = nil,
+    loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)? = nil,
     onReload: @escaping () async -> Void = {},
     onUnauthorized: @escaping () -> Void = {}
   ) {
@@ -45,8 +60,20 @@ public final class PayModel {
     self.role = role
     self.isEmailVerified = isEmailVerified
     self.repository = repository
+    self.uploadProof = uploadProof
+    self.loadAttachment = loadAttachment
     self.onReload = onReload
     self.onUnauthorized = onUnauthorized
+    self.channel = Self.defaultChannel(for: transfer.paymentMethods)
+  }
+
+  private static func defaultChannel(for methods: [PaymentMethod]) -> PaymentChannel? {
+    guard let first = methods.first else { return nil }
+    switch first {
+    case .bank: return .bank
+    case .momo: return .momo
+    case .zalopay: return .zalopay
+    }
   }
 
   public var payAmount: Money {
@@ -85,8 +112,42 @@ public final class PayModel {
     return L10n.tr("common.saveError")
   }
 
+  func uploadProofImage(rawData: Data) async {
+    guard let uploadProof, !isUploadingProof, !isSubmitting else { return }
+    proofError = nil
+    isUploadingProof = true
+    defer { isUploadingProof = false }
+    do {
+      let prepared = try await ReceiptImageProcessor.prepareJPEG(from: rawData)
+      proofAttachment = try await uploadProof(prepared, "chung-tu.jpg", "image/jpeg")
+    } catch let imgError as ReceiptImageError {
+      proofError =
+        imgError == .tooLarge
+        ? L10n.tr("receipts.fileTooLarge")
+        : L10n.tr("receipts.notAnImage")
+    } catch let appError as AppError {
+      switch appError {
+      case .unauthorized:
+        onUnauthorized()
+      case .rateLimited:
+        proofError = L10n.tr("attachments.rateLimited")
+      case .api("STORAGE_QUOTA_EXCEEDED", _):
+        proofError = L10n.tr("attachments.quotaExceeded")
+      default:
+        proofError = L10n.tr("common.saveError")
+      }
+    } catch {
+      proofError = L10n.tr("common.saveError")
+    }
+  }
+
+  func removeProofAttachment() {
+    proofAttachment = nil
+    proofError = nil
+  }
+
   func submitReport(onDone: () -> Void) async {
-    guard isEmailVerified, !isSubmitting, !submitted else { return }
+    guard isEmailVerified, !isSubmitting, !submitted, !isUploadingProof else { return }
     isSubmitting = true
     error = nil
     notice = nil
@@ -99,10 +160,14 @@ public final class PayModel {
       purpose: transfer.purpose,
       pendingSettlement: transfer.pendingSettlement
     )
+    let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
     do {
       try await repository.request(
         groupId: groupId,
         transfer: cappedTransfer,
+        channel: channel,
+        note: trimmedNote.isEmpty ? nil : trimmedNote,
+        proofAttachmentId: proofAttachment?.id,
         idempotencyKey: idempotencyKey
       )
       submitted = true

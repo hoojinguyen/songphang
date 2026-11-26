@@ -242,6 +242,20 @@ public final class LiveTransactionsRepository: TransactionsRepository, Sendable 
         json["category"] = NSNull()
         json["categoryId"] = NSNull()
         request.httpBody = try JSONSerialization.data(withJSONObject: json)
+      } else if case .transfer(let payload) = draft,
+        payload.paymentChannel == nil
+          || payload.paymentNote?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+      {
+        guard var json = try JSONSerialization.jsonObject(with: encodedBody) as? [String: Any]
+        else { throw AppError.unexpected }
+        if payload.paymentChannel == nil {
+          json["paymentChannel"] = NSNull()
+        }
+        let trimmedNote = payload.paymentNote?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedNote?.isEmpty != false {
+          json["paymentNote"] = NSNull()
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: json)
       } else {
         request.httpBody = encodedBody
       }

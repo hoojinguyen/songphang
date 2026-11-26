@@ -36,6 +36,11 @@ public struct RootView: View {
     case account
   }
 
+  private struct GuestSharePresentation: Identifiable {
+    var id: String { model.token }
+    let model: GuestGroupModel
+  }
+
   private let dependencies: AppDependencies
   @Environment(\.scenePhase) private var scenePhase
   @State private var sessionModel: SessionModel
@@ -53,6 +58,7 @@ public struct RootView: View {
   @State private var accountPath: [Route] = []
   @State private var pendingInviteState = PendingInviteState()
   @State private var pendingPushTap: PushTapPayload?
+  @State private var activeGuestShare: GuestSharePresentation?
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
   #if DEBUG
@@ -488,6 +494,12 @@ public struct RootView: View {
       guard let url = activity.webpageURL else { return }
       _ = handleIncomingURL(url)
     }
+    .fullScreenCover(item: $activeGuestShare) { item in
+      GuestGroupView(
+        model: item.model,
+        onClose: { activeGuestShare = nil }
+      )
+    }
     .task {
       for await generation in dependencies.makeSessionInvalidations() {
         if await sessionModel.handleSessionInvalidation(atGeneration: generation) {
@@ -596,6 +608,14 @@ public struct RootView: View {
       hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
+        if let tokenIdx = args.firstIndex(of: "--guest-token"), tokenIdx + 1 < args.count {
+          activeGuestShare = GuestSharePresentation(
+            model: GuestGroupModel(
+              token: args[tokenIdx + 1],
+              guestLinksRepository: dependencies.guestLinks
+            )
+          )
+        }
         guard let world = dependencies.world else { return }
         if args.contains("--unverified-user") {
           await world.setCurrentUser(PreviewSamples.unverifiedUser)
@@ -670,6 +690,13 @@ public struct RootView: View {
           try? await Task.sleep(for: .milliseconds(400))
           await world.emitEvent(.removed)
         }
+        if args.contains("--with-closed-cycle") {
+          _ = try? await world.closeSettlementCycle(
+            groupId: TripScenario.groupId,
+            title: "Đợt 1 · Đà Lạt",
+            idempotencyKey: IdempotencyKey()
+          )
+        }
       #endif
     }
     .preferredColorScheme((AppearanceMode(rawValue: appearanceModeRaw) ?? .system).colorScheme)
@@ -705,6 +732,15 @@ public struct RootView: View {
   }
 
   private func routeValidated(_ route: Route) {
+    if case .guestShare(let token) = route {
+      activeGuestShare = GuestSharePresentation(
+        model: GuestGroupModel(
+          token: token,
+          guestLinksRepository: dependencies.guestLinks
+        )
+      )
+      return
+    }
     if let immediate = pendingInviteState.receiveValidated(route, isSignedIn: isSignedIn) {
       if isSignedIn {
         navigate(to: immediate)

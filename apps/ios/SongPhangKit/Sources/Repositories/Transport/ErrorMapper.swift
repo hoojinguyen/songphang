@@ -92,12 +92,18 @@ struct ErrorMapper: Sendable {
       if code == "GROUP_ARCHIVED" {
         return .groupArchived
       }
+      if code == "CYCLE_NOT_LATEST" {
+        return .cycleNotLatest
+      }
       if code == nil || code == "VERSION_CONFLICT" || code == "CONFLICT" {
         return .conflict
       }
       if let code {
         return .api(code: code, status: 409)
       }
+    }
+    if statusCode == 422, code == "CYCLE_EMPTY" {
+      return .cycleEmpty
     }
     if statusCode == 429 || code == "RATE_LIMITED" {
       return .rateLimited

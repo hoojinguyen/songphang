@@ -66,6 +66,7 @@ struct FeedTransactionRowView: View {
   let categories: [GroupCategory]
   let myMemberId: Member.ID?
   let canEdit: Bool
+  var loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)? = nil
   let onTap: () -> Void
 
   var body: some View {
@@ -402,14 +403,37 @@ struct FeedTransactionRowView: View {
         }
       }
 
-      Text(text)
-        .font(Typography.captionBold)
-        .foregroundStyle(Tokens.ink)
-        .lineLimit(1)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(text)
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.ink)
+          .lineLimit(1)
+
+        if transaction.type == .transfer,
+          transaction.paymentChannel != nil || (transaction.paymentNote?.isEmpty == false)
+        {
+          let channelPart = transaction.paymentChannel?.localizedTitle
+          let notePart = transaction.paymentNote.flatMap { $0.isEmpty ? nil : "“\($0)”" }
+          let subtitle = [channelPart, notePart].compactMap { $0 }.joined(separator: " · ")
+          Text(subtitle)
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
+            .lineLimit(1)
+        }
+      }
 
       Spacer(minLength: 8)
 
       HStack(spacing: 6) {
+        if transaction.type == .transfer,
+          transaction.firstAttachmentId != nil || transaction.attachmentCount > 0
+        {
+          ProofBadgeView(
+            attachmentId: transaction.firstAttachmentId,
+            size: 28,
+            loadContent: loadAttachment
+          )
+        }
         if transaction.approval.status == .pending {
           Text(L10n.tr("approval.pendingTag"))
             .font(Typography.captionBold)

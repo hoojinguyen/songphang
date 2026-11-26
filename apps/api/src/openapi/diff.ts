@@ -312,14 +312,20 @@ function compareNode(
 	if (sameJson(oldValue, newValue)) return;
 
 	if (
-		/\.requestBody\.content\..+\.schema\./.test(path) &&
 		Array.isArray(oldValue) &&
 		Array.isArray(newValue) &&
 		oldValue.length === newValue.length &&
 		/\.(allOf|oneOf|anyOf)$/.test(path)
 	) {
-		for (const [index, oldItem] of oldValue.entries()) {
-			compareNode(`${path}.${index}`, oldItem, newValue[index], changes, ctx);
+		const isUnion = /\.(oneOf|anyOf)$/.test(path);
+		const oldItems = isUnion
+			? [...oldValue].sort(compareSchemaBranches)
+			: oldValue;
+		const newItems = isUnion
+			? [...newValue].sort(compareSchemaBranches)
+			: newValue;
+		for (const [index, oldItem] of oldItems.entries()) {
+			compareNode(`${path}.${index}`, oldItem, newItems[index], changes, ctx);
 		}
 		return;
 	}

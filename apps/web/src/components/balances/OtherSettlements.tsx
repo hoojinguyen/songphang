@@ -11,6 +11,7 @@ export function OtherSettlements({
 	role,
 	verified,
 	onRemindNotice,
+	onInspectMember,
 }: {
 	groupId: string;
 	transfers: BalancesResponse["transfers"];
@@ -19,6 +20,7 @@ export function OtherSettlements({
 	role: "owner" | "editor" | "viewer";
 	verified: boolean;
 	onRemindNotice?: (message: string) => void;
+	onInspectMember?: (memberId: string) => void;
 }) {
 	if (transfers.length === 0) return null;
 	return (
@@ -35,15 +37,26 @@ export function OtherSettlements({
 						className="flex flex-wrap items-center gap-2"
 					>
 						<MemberShape {...from} size={28} />
-						<p className="min-w-0 flex-1 text-xs">
-							{fundCaption ??
-								t(vi.balances.memberPaysMember, {
-									from: from.name,
-									to: to.name,
-								})}
-						</p>
+						<div className="min-w-0 flex-1">
+							<p className="text-xs">
+								{fundCaption ??
+									t(vi.balances.memberPaysMember, {
+										from: from.name,
+										to: to.name,
+									})}
+							</p>
+							{onInspectMember && from.kind === "person" && (
+								<button
+									type="button"
+									onClick={() => onInspectMember(from.id)}
+									className="text-[11px] font-bold text-muted underline hover:text-ink"
+								>
+									{vi.breakdown.viewAction}
+								</button>
+							)}
+						</div>
 						{!fundCaption && (
-							<span className="text-sm font-extrabold">
+							<span className="tabular-nums text-sm font-extrabold">
 								{formatMoney(transfer.amount)}
 							</span>
 						)}

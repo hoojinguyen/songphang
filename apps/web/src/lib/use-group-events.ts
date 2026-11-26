@@ -22,6 +22,7 @@ const Resources = z.object({
 				"budget",
 				"receiptScans",
 				"comments",
+				"settlementCycles",
 			]),
 		)
 		.max(10),
@@ -61,14 +62,45 @@ export function useGroupEvents(groupId: string) {
 								: ["group", groupId, resource],
 						exact: resource === "group",
 					});
-					if (resource === "settlementRequests")
+					if (resource === "settlementRequests") {
 						void client.invalidateQueries({
 							queryKey: ["group", groupId, "balances"],
 						});
-					if (resource === "transactions")
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "settlement-vault"],
+						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "breakdowns"],
+						});
+					}
+					if (resource === "transactions") {
 						void client.invalidateQueries({
 							queryKey: ["group", groupId, "stats"],
 						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "settlement-vault"],
+						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "breakdowns"],
+						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "settlementCycles"],
+						});
+					}
+					if (resource === "settlementCycles") {
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "transactions"],
+						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "balances"],
+						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "breakdowns"],
+						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "settlement-vault"],
+						});
+					}
 				}
 				void client.invalidateQueries({
 					queryKey: ["group", groupId, "invite"],

@@ -5,7 +5,8 @@ public protocol AttachmentsRepository: Sendable {
     groupId: ExpenseGroup.ID,
     data: Data,
     filename: String,
-    contentType: String
+    contentType: String,
+    purpose: AttachmentUploadPurpose
   ) async throws(AppError) -> Attachment
 
   func content(
@@ -17,4 +18,21 @@ public protocol AttachmentsRepository: Sendable {
     groupId: ExpenseGroup.ID,
     attachmentId: Attachment.ID
   ) async throws(AppError)
+}
+
+extension AttachmentsRepository {
+  public func upload(
+    groupId: ExpenseGroup.ID,
+    data: Data,
+    filename: String,
+    contentType: String
+  ) async throws(AppError) -> Attachment {
+    try await upload(
+      groupId: groupId,
+      data: data,
+      filename: filename,
+      contentType: contentType,
+      purpose: .expense
+    )
+  }
 }

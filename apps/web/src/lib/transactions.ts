@@ -33,6 +33,7 @@ export type TransactionFilters = {
 	type?: "expense" | "transfer" | "income" | undefined;
 	from?: string | undefined;
 	to?: string | undefined;
+	cycleId?: "current" | string | undefined;
 };
 
 export function hasActiveFilters(filters: TransactionFilters): boolean {
@@ -72,6 +73,13 @@ export function readTransactionFilters(params: {
 		from = undefined;
 		to = undefined;
 	}
+	const rawCycleId = params.get("cycleId");
+	const cycleId =
+		rawCycleId === "current"
+			? "current"
+			: CalendarUuid.safeParse(rawCycleId).success
+				? (rawCycleId ?? undefined)
+				: undefined;
 	return {
 		...(q ? { q } : {}),
 		...(memberParsed.success ? { memberId: memberParsed.data } : {}),
@@ -85,6 +93,7 @@ export function readTransactionFilters(params: {
 			: {}),
 		...(from ? { from } : {}),
 		...(to ? { to } : {}),
+		...(cycleId ? { cycleId } : {}),
 	};
 }
 
@@ -99,6 +108,7 @@ export function buildFilterQueryString(filters: TransactionFilters): string {
 	if (filters.type) params.set("type", filters.type);
 	if (filters.from) params.set("from", filters.from);
 	if (filters.to) params.set("to", filters.to);
+	if (filters.cycleId) params.set("cycleId", filters.cycleId);
 	return params.toString();
 }
 
@@ -132,6 +142,7 @@ export function useTransactions(
 			if (filters.type) params.set("type", filters.type);
 			if (filters.from) params.set("from", filters.from);
 			if (filters.to) params.set("to", filters.to);
+			if (filters.cycleId) params.set("cycleId", filters.cycleId);
 			return apiFetch(
 				`/groups/${encodeURIComponent(groupId)}/transactions?${params.toString()}`,
 				TransactionsResponse,
@@ -177,6 +188,15 @@ export function useCreateTransaction(groupId: string) {
 					queryKey: ["group", groupId, "transactions"],
 				}),
 				client.invalidateQueries({ queryKey: ["group", groupId, "balances"] }),
+				client.invalidateQueries({
+					queryKey: ["group", groupId, "breakdowns"],
+				}),
+				client.invalidateQueries({
+					queryKey: ["group", groupId, "settlement-vault"],
+				}),
+				client.invalidateQueries({
+					queryKey: ["group", groupId, "settlementCycles"],
+				}),
 				client.invalidateQueries({ queryKey: ["group", groupId, "budget"] }),
 				client.invalidateQueries({ queryKey: ["group", groupId, "stats"] }),
 				client.invalidateQueries({ queryKey: ["groups"] }),

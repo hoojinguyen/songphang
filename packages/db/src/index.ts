@@ -22,8 +22,10 @@ export * from "./fund.js";
 export * from "./google-accounts.js";
 export * from "./group-users.js";
 export * from "./groups.js";
+export * from "./guest-links.js";
 export * from "./idempotency.js";
 export * from "./invites.js";
+export * from "./member-breakdowns.js";
 export * from "./members.js";
 export { runMigrations } from "./migrate.js";
 export * from "./notifications.js";
@@ -47,6 +49,7 @@ export {
 	chatLinks,
 } from "./schema-chat.js";
 export { comments } from "./schema-comments.js";
+export { settlementCycles } from "./schema-cycles.js";
 export { transactionDisputes } from "./schema-disputes.js";
 export { groups, groupUsers, members } from "./schema-groups.js";
 export {
@@ -77,7 +80,9 @@ export {
 	insertSession,
 	listUserSessions,
 } from "./sessions.js";
+export * from "./settlement-cycles.js";
 export * from "./settlement-requests.js";
+export * from "./settlement-vault.js";
 export * from "./stats.js";
 export * from "./transaction-changes.js";
 export * from "./transactions.js";

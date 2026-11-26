@@ -247,10 +247,14 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var warnings: [TransactionWarning]
   public var attachments: [Attachment]
   public var attachmentCount: Int
+  public var firstAttachmentId: Attachment.ID?
   public var approval: TransactionApproval
   public var dispute: TransactionDispute?
   public var commentCount: Int
   public var myDelta: Money?
+  public var paymentChannel: PaymentChannel?
+  public var paymentNote: String?
+  public var cycleId: SettlementCycle.ID?
 
   public init(
     id: ID,
@@ -273,10 +277,14 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     warnings: [TransactionWarning] = [],
     attachments: [Attachment] = [],
     attachmentCount: Int? = nil,
+    firstAttachmentId: Attachment.ID? = nil,
     approval: TransactionApproval = .init(),
     dispute: TransactionDispute? = nil,
     commentCount: Int = 0,
-    myDelta: Money? = nil
+    myDelta: Money? = nil,
+    paymentChannel: PaymentChannel? = nil,
+    paymentNote: String? = nil,
+    cycleId: SettlementCycle.ID? = nil
   ) {
     self.id = id
     self.type = type
@@ -298,9 +306,13 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.warnings = warnings
     self.attachments = attachments
     self.attachmentCount = attachmentCount ?? attachments.count
+    self.firstAttachmentId = firstAttachmentId ?? attachments.first?.id
     self.approval = approval
     self.dispute = dispute
     self.commentCount = commentCount
     self.myDelta = myDelta
+    self.paymentChannel = paymentChannel
+    self.paymentNote = paymentNote
+    self.cycleId = cycleId
   }
 }

@@ -218,6 +218,13 @@
 				],
 				"type": "object"
 			},
+			"AttachmentUploadPurpose": {
+				"enum": [
+					"expense",
+					"transfer_proof"
+				],
+				"type": "string"
+			},
 			"BalancesResponse": {
 				"properties": {
 					"balances": {
@@ -275,6 +282,14 @@
 													"accountNumber": {
 														"pattern": "^[A-Za-z0-9]{4,19}$",
 														"type": "string"
+													},
+													"accountQrPayload": {
+														"maxLength": 512,
+														"minLength": 1,
+														"type": [
+															"string",
+															"null"
+														]
 													},
 													"bankBin": {
 														"pattern": "^\\d{6}$",
@@ -359,12 +374,28 @@
 											"exclusiveMinimum": 0,
 											"type": "integer"
 										},
+										"channel": {
+											"$ref": "#/components/schemas/PaymentChannel"
+										},
 										"createdByMe": {
 											"type": "boolean"
 										},
 										"id": {
 											"format": "uuid",
 											"type": "string"
+										},
+										"note": {
+											"type": [
+												"string",
+												"null"
+											]
+										},
+										"proofAttachmentId": {
+											"format": "uuid",
+											"type": [
+												"string",
+												"null"
+											]
 										}
 									},
 									"required": [
@@ -845,6 +876,14 @@
 				],
 				"type": "object"
 			},
+			"CreateGuestLinkRequest": {
+				"properties": {
+					"rotate": {
+						"type": "boolean"
+					}
+				},
+				"type": "object"
+			},
 			"CreateMemberRequest": {
 				"properties": {
 					"name": {
@@ -870,6 +909,16 @@
 				],
 				"type": "object"
 			},
+			"CreateSettlementCycleRequest": {
+				"properties": {
+					"title": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
 			"CreateTransactionRequest": {
 				"discriminator": {
 					"mapping": {
@@ -887,6 +936,33 @@
 						"$ref": "#/components/schemas/TransferRequest"
 					}
 				]
+			},
+			"CurrentPeriodSummaryDto": {
+				"properties": {
+					"countedTransactionCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"expenseCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"startedAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"totalExpenseAmount": {
+						"minimum": 0,
+						"type": "integer"
+					}
+				},
+				"required": [
+					"startedAt",
+					"expenseCount",
+					"totalExpenseAmount",
+					"countedTransactionCount"
+				],
+				"type": "object"
 			},
 			"DeleteAccountRequest": {
 				"properties": {
@@ -950,7 +1026,9 @@
 					"CHAT_IDENTITY_TAKEN",
 					"APPROVAL_NOT_PENDING",
 					"APPLE_REVOCATION_FAILED",
-					"GROUP_ARCHIVED"
+					"GROUP_ARCHIVED",
+					"CYCLE_EMPTY",
+					"CYCLE_NOT_LATEST"
 				],
 				"type": "string"
 			},
@@ -1383,6 +1461,522 @@
 				],
 				"type": "object"
 			},
+			"GuestGroupViewResponse": {
+				"properties": {
+					"balances": {
+						"items": {
+							"properties": {
+								"balance": {
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId",
+								"balance"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"breakdowns": {
+						"items": {
+							"$ref": "#/components/schemas/MemberDebtBreakdownDto"
+						},
+						"type": "array"
+					},
+					"currentPeriod": {
+						"$ref": "#/components/schemas/CurrentPeriodSummaryDto"
+					},
+					"cycles": {
+						"items": {
+							"$ref": "#/components/schemas/SettlementCycleDto"
+						},
+						"type": "array"
+					},
+					"fund": {
+						"$ref": "#/components/schemas/FundSummary"
+					},
+					"group": {
+						"properties": {
+							"archivedAt": {
+								"format": "date-time",
+								"type": [
+									"string",
+									"null"
+								]
+							},
+							"currency": {
+								"enum": [
+									"VND"
+								],
+								"type": "string"
+							},
+							"id": {
+								"format": "uuid",
+								"type": "string"
+							},
+							"minimized": {
+								"type": "boolean"
+							},
+							"name": {
+								"maxLength": 80,
+								"minLength": 1,
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name",
+							"currency",
+							"minimized",
+							"archivedAt"
+						],
+						"type": "object"
+					},
+					"members": {
+						"items": {
+							"$ref": "#/components/schemas/GuestMemberDto"
+						},
+						"type": "array"
+					},
+					"resolvedFocus": {
+						"$ref": "#/components/schemas/MemberBreakdownsResolvedFocus"
+					},
+					"selectedCycleId": {
+						"anyOf": [
+							{
+								"enum": [
+									"current"
+								],
+								"type": "string"
+							},
+							{
+								"format": "uuid",
+								"type": "string"
+							}
+						]
+					},
+					"transactions": {
+						"properties": {
+							"items": {
+								"items": {
+									"$ref": "#/components/schemas/GuestTransactionDto"
+								},
+								"type": "array"
+							},
+							"nextCursor": {
+								"type": [
+									"string",
+									"null"
+								]
+							}
+						},
+						"required": [
+							"items",
+							"nextCursor"
+						],
+						"type": "object"
+					},
+					"transfers": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 1,
+									"type": "integer"
+								},
+								"fromMemberId": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"payTo": {
+									"items": {
+										"oneOf": [
+											{
+												"properties": {
+													"accountName": {
+														"maxLength": 50,
+														"minLength": 1,
+														"type": "string"
+													},
+													"accountNumber": {
+														"pattern": "^[A-Za-z0-9]{4,19}$",
+														"type": "string"
+													},
+													"accountQrPayload": {
+														"maxLength": 512,
+														"minLength": 1,
+														"type": [
+															"string",
+															"null"
+														]
+													},
+													"bankBin": {
+														"pattern": "^\\d{6}$",
+														"type": "string"
+													},
+													"bankShortName": {
+														"maxLength": 100,
+														"minLength": 1,
+														"type": "string"
+													},
+													"kind": {
+														"enum": [
+															"bank"
+														],
+														"type": "string"
+													},
+													"qrPayload": {
+														"maxLength": 512,
+														"minLength": 1,
+														"type": [
+															"string",
+															"null"
+														]
+													}
+												},
+												"required": [
+													"kind",
+													"bankBin",
+													"bankShortName",
+													"accountNumber",
+													"accountName",
+													"qrPayload"
+												],
+												"type": "object"
+											},
+											{
+												"properties": {
+													"kind": {
+														"enum": [
+															"momo"
+														],
+														"type": "string"
+													},
+													"phone": {
+														"pattern": "^0\\d{9}$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"kind",
+													"phone"
+												],
+												"type": "object"
+											},
+											{
+												"properties": {
+													"kind": {
+														"enum": [
+															"zalopay"
+														],
+														"type": "string"
+													},
+													"phone": {
+														"pattern": "^0\\d{9}$",
+														"type": "string"
+													}
+												},
+												"required": [
+													"kind",
+													"phone"
+												],
+												"type": "object"
+											}
+										]
+									},
+									"maxItems": 3,
+									"type": "array"
+								},
+								"purpose": {
+									"maxLength": 25,
+									"minLength": 1,
+									"type": "string"
+								},
+								"toMemberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"fromMemberId",
+								"toMemberId",
+								"amount",
+								"purpose",
+								"payTo"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"group",
+					"members",
+					"cycles",
+					"selectedCycleId",
+					"currentPeriod",
+					"balances",
+					"transfers",
+					"resolvedFocus",
+					"breakdowns",
+					"transactions"
+				],
+				"type": "object"
+			},
+			"GuestLinkDto": {
+				"properties": {
+					"active": {
+						"type": "boolean"
+					},
+					"createdAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"url": {
+						"format": "uri",
+						"type": [
+							"string",
+							"null"
+						]
+					}
+				},
+				"required": [
+					"active",
+					"url",
+					"createdAt"
+				],
+				"type": "object"
+			},
+			"GuestLinkResponse": {
+				"properties": {
+					"guestLink": {
+						"$ref": "#/components/schemas/GuestLinkDto"
+					}
+				},
+				"required": [
+					"guestLink"
+				],
+				"type": "object"
+			},
+			"GuestMemberDto": {
+				"properties": {
+					"active": {
+						"type": "boolean"
+					},
+					"color": {
+						"enum": [
+							"mint",
+							"sky",
+							"coral",
+							"lilac",
+							"sun"
+						],
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"kind": {
+						"enum": [
+							"person",
+							"fund"
+						],
+						"type": "string"
+					},
+					"name": {
+						"maxLength": 50,
+						"minLength": 1,
+						"type": "string"
+					},
+					"shape": {
+						"enum": [
+							"circle",
+							"diamond",
+							"squircle",
+							"leaf",
+							"fund"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"name",
+					"kind",
+					"active",
+					"shape",
+					"color"
+				],
+				"type": "object"
+			},
+			"GuestTransactionDto": {
+				"properties": {
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": "integer"
+					},
+					"attachments": {
+						"items": {
+							"$ref": "#/components/schemas/AttachmentDto"
+						},
+						"maxItems": 3,
+						"type": "array"
+					},
+					"category": {
+						"enum": [
+							"food",
+							"transport",
+							"lodging",
+							"shopping",
+							"entertainment",
+							"bills",
+							"other",
+							null
+						],
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"categoryColor": {
+						"enum": [
+							"mint",
+							"sky",
+							"coral",
+							"lilac",
+							null
+						],
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"categoryId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"categoryName": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"currency": {
+						"enum": [
+							"VND"
+						],
+						"type": "string"
+					},
+					"cycleId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"description": {
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"occurredAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"payers": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 1,
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId",
+								"amount"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"paymentChannel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"paymentNote": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"shares": {
+						"items": {
+							"properties": {
+								"amount": {
+									"minimum": 0,
+									"type": "integer"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId",
+								"amount"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"split": {
+						"$ref": "#/components/schemas/SplitInput"
+					},
+					"type": {
+						"enum": [
+							"expense",
+							"income",
+							"transfer"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"type",
+					"description",
+					"amount",
+					"currency",
+					"occurredAt",
+					"category",
+					"categoryId",
+					"payers",
+					"shares",
+					"split",
+					"cycleId",
+					"attachments"
+				],
+				"type": "object"
+			},
 			"HealthResponse": {
 				"properties": {
 					"db": {
@@ -1637,6 +2231,179 @@
 				},
 				"required": [
 					"user"
+				],
+				"type": "object"
+			},
+			"MemberBreakdownLineDto": {
+				"properties": {
+					"delta": {
+						"type": "integer"
+					},
+					"description": {
+						"type": "string"
+					},
+					"isPostCloseoutTransfer": {
+						"type": "boolean"
+					},
+					"memberPaid": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"memberShare": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"occurredAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"payerSummary": {
+						"type": "string"
+					},
+					"totalAmount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": "integer"
+					},
+					"transactionId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"type": {
+						"enum": [
+							"expense",
+							"income",
+							"transfer"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"transactionId",
+					"type",
+					"description",
+					"occurredAt",
+					"totalAmount",
+					"payerSummary",
+					"memberPaid",
+					"memberShare",
+					"delta",
+					"isPostCloseoutTransfer"
+				],
+				"type": "object"
+			},
+			"MemberBreakdownsResolvedFocus": {
+				"properties": {
+					"cycleId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"kind": {
+						"enum": [
+							"all",
+							"current",
+							"cycle"
+						],
+						"type": "string"
+					},
+					"label": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"kind",
+					"cycleId",
+					"label"
+				],
+				"type": "object"
+			},
+			"MemberBreakdownsResponse": {
+				"properties": {
+					"breakdowns": {
+						"items": {
+							"$ref": "#/components/schemas/MemberDebtBreakdownDto"
+						},
+						"type": "array"
+					},
+					"hasClosedCycles": {
+						"type": "boolean"
+					},
+					"resolvedFocus": {
+						"$ref": "#/components/schemas/MemberBreakdownsResolvedFocus"
+					}
+				},
+				"required": [
+					"hasClosedCycles",
+					"resolvedFocus",
+					"breakdowns"
+				],
+				"type": "object"
+			},
+			"MemberDebtBreakdownDto": {
+				"properties": {
+					"carryOverBalance": {
+						"type": "integer"
+					},
+					"color": {
+						"enum": [
+							"mint",
+							"sky",
+							"coral",
+							"lilac"
+						],
+						"type": "string"
+					},
+					"focusExpenseDelta": {
+						"type": "integer"
+					},
+					"focusTransferDelta": {
+						"type": "integer"
+					},
+					"lines": {
+						"items": {
+							"$ref": "#/components/schemas/MemberBreakdownLineDto"
+						},
+						"type": "array"
+					},
+					"memberId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"memberName": {
+						"maxLength": 50,
+						"minLength": 1,
+						"type": "string"
+					},
+					"netBalance": {
+						"type": "integer"
+					},
+					"postCycleDelta": {
+						"type": "integer"
+					},
+					"shape": {
+						"enum": [
+							"circle",
+							"diamond",
+							"squircle",
+							"leaf"
+						],
+						"type": "string"
+					}
+				},
+				"required": [
+					"memberId",
+					"memberName",
+					"shape",
+					"color",
+					"carryOverBalance",
+					"focusExpenseDelta",
+					"focusTransferDelta",
+					"postCycleDelta",
+					"netBalance",
+					"lines"
 				],
 				"type": "object"
 			},
@@ -3004,6 +3771,19 @@
 				],
 				"type": "object"
 			},
+			"PaymentChannel": {
+				"enum": [
+					"bank",
+					"momo",
+					"zalopay",
+					"cash",
+					null
+				],
+				"type": [
+					"string",
+					"null"
+				]
+			},
 			"PersonalTransactionDto": {
 				"properties": {
 					"amount": {
@@ -3788,12 +4568,210 @@
 				],
 				"type": "object"
 			},
+			"SettlementCycleDto": {
+				"properties": {
+					"closedAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"closedBy": {
+						"properties": {
+							"id": {
+								"format": "uuid",
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"type": [
+							"object",
+							"null"
+						]
+					},
+					"cycleNumber": {
+						"minimum": 1,
+						"type": "integer"
+					},
+					"expenseCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"snapshot": {
+						"$ref": "#/components/schemas/SettlementCycleSnapshot"
+					},
+					"startedAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"title": {
+						"maxLength": 80,
+						"minLength": 1,
+						"type": "string"
+					},
+					"totalExpenseAmount": {
+						"minimum": 0,
+						"type": "integer"
+					}
+				},
+				"required": [
+					"id",
+					"cycleNumber",
+					"title",
+					"startedAt",
+					"closedAt",
+					"closedBy",
+					"expenseCount",
+					"totalExpenseAmount",
+					"snapshot"
+				],
+				"type": "object"
+			},
+			"SettlementCycleResponse": {
+				"properties": {
+					"cycle": {
+						"$ref": "#/components/schemas/SettlementCycleDto"
+					}
+				},
+				"required": [
+					"cycle"
+				],
+				"type": "object"
+			},
+			"SettlementCycleSnapshot": {
+				"properties": {
+					"balances": {
+						"items": {
+							"properties": {
+								"balance": {
+									"type": "integer"
+								},
+								"color": {
+									"enum": [
+										"mint",
+										"sky",
+										"coral",
+										"lilac"
+									],
+									"type": "string"
+								},
+								"memberId": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"name": {
+									"maxLength": 50,
+									"minLength": 1,
+									"type": "string"
+								},
+								"shape": {
+									"enum": [
+										"circle",
+										"diamond",
+										"squircle",
+										"leaf"
+									],
+									"type": "string"
+								}
+							},
+							"required": [
+								"memberId",
+								"name",
+								"shape",
+								"color",
+								"balance"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"fundBalance": {
+						"type": [
+							"integer",
+							"null"
+						]
+					},
+					"transfers": {
+						"items": {
+							"properties": {
+								"amount": {
+									"maximum": 999999999999,
+									"minimum": 1,
+									"type": "integer"
+								},
+								"fromMemberId": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"fromName": {
+									"maxLength": 50,
+									"minLength": 1,
+									"type": "string"
+								},
+								"toMemberId": {
+									"format": "uuid",
+									"type": "string"
+								},
+								"toName": {
+									"maxLength": 50,
+									"minLength": 1,
+									"type": "string"
+								}
+							},
+							"required": [
+								"fromMemberId",
+								"fromName",
+								"toMemberId",
+								"toName",
+								"amount"
+							],
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"balances",
+					"transfers",
+					"fundBalance"
+				],
+				"type": "object"
+			},
+			"SettlementCyclesResponse": {
+				"properties": {
+					"currentPeriod": {
+						"$ref": "#/components/schemas/CurrentPeriodSummaryDto"
+					},
+					"cycles": {
+						"items": {
+							"$ref": "#/components/schemas/SettlementCycleDto"
+						},
+						"type": "array"
+					}
+				},
+				"required": [
+					"cycles",
+					"currentPeriod"
+				],
+				"type": "object"
+			},
 			"SettlementRequestDto": {
 				"properties": {
 					"amount": {
 						"maximum": 999999999999,
 						"minimum": 1,
 						"type": "integer"
+					},
+					"channel": {
+						"$ref": "#/components/schemas/PaymentChannel"
 					},
 					"createdAt": {
 						"format": "date-time",
@@ -3827,10 +4805,46 @@
 						"format": "uuid",
 						"type": "string"
 					},
+					"note": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"proofAttachment": {
+						"anyOf": [
+							{
+								"$ref": "#/components/schemas/AttachmentDto"
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
 					"resolvedAt": {
 						"format": "date-time",
 						"type": [
 							"string",
+							"null"
+						]
+					},
+					"resolvedBy": {
+						"properties": {
+							"id": {
+								"format": "uuid",
+								"type": "string"
+							},
+							"name": {
+								"maxLength": 80,
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"type": [
+							"object",
 							"null"
 						]
 					},
@@ -3865,6 +4879,217 @@
 					"createdBy",
 					"createdAt",
 					"resolvedAt"
+				],
+				"type": "object"
+			},
+			"SettlementVaultFilter": {
+				"default": "all",
+				"enum": [
+					"all",
+					"pending",
+					"confirmed",
+					"with_proof"
+				],
+				"type": "string"
+			},
+			"SettlementVaultItemDto": {
+				"properties": {
+					"amount": {
+						"maximum": 999999999999,
+						"minimum": 1,
+						"type": "integer"
+					},
+					"attachments": {
+						"items": {
+							"$ref": "#/components/schemas/AttachmentDto"
+						},
+						"maxItems": 3,
+						"type": "array"
+					},
+					"channel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"createdBy": {
+						"properties": {
+							"id": {
+								"format": "uuid",
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"type": [
+							"object",
+							"null"
+						]
+					},
+					"cycleId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"description": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"fromMemberId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"id": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"kind": {
+						"enum": [
+							"transfer",
+							"request"
+						],
+						"type": "string"
+					},
+					"note": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"occurredAt": {
+						"format": "date-time",
+						"type": "string"
+					},
+					"resolvedAt": {
+						"format": "date-time",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"resolvedBy": {
+						"properties": {
+							"id": {
+								"format": "uuid",
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"id",
+							"name"
+						],
+						"type": [
+							"object",
+							"null"
+						]
+					},
+					"settlementRequestId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"status": {
+						"enum": [
+							"pending",
+							"confirmed",
+							"rejected",
+							"cancelled"
+						],
+						"type": "string"
+					},
+					"toMemberId": {
+						"format": "uuid",
+						"type": "string"
+					},
+					"transactionId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					}
+				},
+				"required": [
+					"id",
+					"kind",
+					"status",
+					"transactionId",
+					"settlementRequestId",
+					"fromMemberId",
+					"toMemberId",
+					"amount",
+					"channel",
+					"note",
+					"description",
+					"attachments",
+					"createdBy",
+					"resolvedBy",
+					"occurredAt",
+					"resolvedAt",
+					"cycleId"
+				],
+				"type": "object"
+			},
+			"SettlementVaultResponse": {
+				"properties": {
+					"items": {
+						"items": {
+							"$ref": "#/components/schemas/SettlementVaultItemDto"
+						},
+						"type": "array"
+					},
+					"nextCursor": {
+						"type": [
+							"string",
+							"null"
+						]
+					},
+					"summary": {
+						"$ref": "#/components/schemas/SettlementVaultSummaryDto"
+					}
+				},
+				"required": [
+					"items",
+					"summary",
+					"nextCursor"
+				],
+				"type": "object"
+			},
+			"SettlementVaultSummaryDto": {
+				"properties": {
+					"confirmedCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"confirmedTotalAmount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"pendingCount": {
+						"minimum": 0,
+						"type": "integer"
+					},
+					"proofCount": {
+						"minimum": 0,
+						"type": "integer"
+					}
+				},
+				"required": [
+					"pendingCount",
+					"confirmedCount",
+					"confirmedTotalAmount",
+					"proofCount"
 				],
 				"type": "object"
 			},
@@ -4614,6 +5839,13 @@
 						],
 						"type": "string"
 					},
+					"cycleId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"deletedAt": {
 						"format": "date-time",
 						"type": [
@@ -4665,6 +5897,15 @@
 						"maxItems": 100,
 						"minItems": 1,
 						"type": "array"
+					},
+					"paymentChannel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"paymentNote": {
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"shares": {
 						"items": {
@@ -4820,6 +6061,13 @@
 						],
 						"type": "string"
 					},
+					"cycleId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"deletedAt": {
 						"format": "date-time",
 						"type": [
@@ -4834,6 +6082,13 @@
 					},
 					"dispute": {
 						"$ref": "#/components/schemas/TransactionDisputeDto"
+					},
+					"firstAttachmentId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"id": {
 						"format": "uuid",
@@ -4871,6 +6126,15 @@
 						"maxItems": 100,
 						"minItems": 1,
 						"type": "array"
+					},
+					"paymentChannel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"paymentNote": {
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"shares": {
 						"items": {
@@ -5037,6 +6301,17 @@
 					"occurredAt": {
 						"format": "date-time",
 						"type": "string"
+					},
+					"paymentChannel": {
+						"$ref": "#/components/schemas/PaymentChannel"
+					},
+					"paymentNote": {
+						"maxLength": 120,
+						"minLength": 1,
+						"type": [
+							"string",
+							"null"
+						]
 					},
 					"toMemberId": {
 						"format": "uuid",
@@ -6175,6 +7450,25 @@
 							"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
 							"type": "string"
 						}
+					},
+					{
+						"in": "query",
+						"name": "cycleId",
+						"required": false,
+						"schema": {
+							"anyOf": [
+								{
+									"enum": [
+										"current"
+									],
+									"type": "string"
+								},
+								{
+									"format": "uuid",
+									"type": "string"
+								}
+							]
+						}
 					}
 				],
 				"responses": {
@@ -6228,6 +7522,14 @@
 						"schema": {
 							"format": "uuid",
 							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "purpose",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/AttachmentUploadPurpose"
 						}
 					}
 				],
@@ -6366,6 +7668,59 @@
 							}
 						},
 						"description": "Balances and settlements"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/balances/breakdowns": {
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cycleId",
+						"required": false,
+						"schema": {
+							"anyOf": [
+								{
+									"enum": [
+										"auto"
+									],
+									"type": "string"
+								},
+								{
+									"enum": [
+										"current"
+									],
+									"type": "string"
+								},
+								{
+									"format": "uuid",
+									"type": "string"
+								}
+							],
+							"default": "auto"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/MemberBreakdownsResponse"
+								}
+							}
+						},
+						"description": "Server-computed per-member debt breakdowns"
 					}
 				}
 			}
@@ -6878,6 +8233,93 @@
 							}
 						},
 						"description": "Fund created"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/guest-link": {
+			"delete": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GuestLinkResponse"
+								}
+							}
+						},
+						"description": "Guest read-only link revoked"
+					}
+				}
+			},
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GuestLinkResponse"
+								}
+							}
+						},
+						"description": "Guest read-only link status"
+					}
+				}
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateGuestLinkRequest"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GuestLinkResponse"
+								}
+							}
+						},
+						"description": "Guest read-only link enabled or rotated"
 					}
 				}
 			}
@@ -7477,6 +8919,108 @@
 				}
 			}
 		},
+		"/api/v1/groups/{groupId}/settlement-cycles": {
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SettlementCyclesResponse"
+								}
+							}
+						},
+						"description": "Closed settlement cycles and current period summary"
+					}
+				}
+			},
+			"post": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "header",
+						"name": "idempotency-key",
+						"required": true,
+						"schema": {
+							"maxLength": 128,
+							"minLength": 8,
+							"pattern": "^[A-Za-z0-9_-]+$",
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/CreateSettlementCycleRequest"
+							}
+						}
+					},
+					"required": false
+				},
+				"responses": {
+					"201": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SettlementCycleResponse"
+								}
+							}
+						},
+						"description": "Settlement cycle closed"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/settlement-cycles/{cycleId}": {
+			"delete": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "cycleId",
+						"required": true,
+						"schema": {
+							"maxLength": 100,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"204": {
+						"description": "Latest settlement cycle reopened"
+					}
+				}
+			}
+		},
 		"/api/v1/groups/{groupId}/settlement-requests": {
 			"get": {
 				"parameters": [
@@ -7589,7 +9133,19 @@
 										"minimum": 1,
 										"type": "integer"
 									},
+									"channel": {
+										"$ref": "#/components/schemas/PaymentChannel"
+									},
 									"fromMemberId": {
+										"format": "uuid",
+										"type": "string"
+									},
+									"note": {
+										"maxLength": 120,
+										"minLength": 1,
+										"type": "string"
+									},
+									"proofAttachmentId": {
 										"format": "uuid",
 										"type": "string"
 									},
@@ -7763,6 +9319,80 @@
 							}
 						},
 						"description": "Payment report resolved"
+					}
+				}
+			}
+		},
+		"/api/v1/groups/{groupId}/settlement-vault": {
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "groupId",
+						"required": true,
+						"schema": {
+							"format": "uuid",
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "filter",
+						"required": false,
+						"schema": {
+							"$ref": "#/components/schemas/SettlementVaultFilter"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cycleId",
+						"required": false,
+						"schema": {
+							"anyOf": [
+								{
+									"enum": [
+										"current"
+									],
+									"type": "string"
+								},
+								{
+									"format": "uuid",
+									"type": "string"
+								}
+							]
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"maxLength": 512,
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"default": 50,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/SettlementVaultResponse"
+								}
+							}
+						},
+						"description": "Unified settlement history and proof vault"
 					}
 				}
 			}
@@ -7942,6 +9572,25 @@
 						"schema": {
 							"pattern": "^\\d{4}-\\d{2}-\\d{2}$",
 							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cycleId",
+						"required": false,
+						"schema": {
+							"anyOf": [
+								{
+									"enum": [
+										"current"
+									],
+									"type": "string"
+								},
+								{
+									"format": "uuid",
+									"type": "string"
+								}
+							]
 						}
 					}
 				],
@@ -8756,6 +10405,121 @@
 							}
 						},
 						"description": "Role changed"
+					}
+				}
+			}
+		},
+		"/api/v1/guest-links/{token}": {
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "token",
+						"required": true,
+						"schema": {
+							"maxLength": 128,
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "cycleId",
+						"required": false,
+						"schema": {
+							"anyOf": [
+								{
+									"enum": [
+										"current"
+									],
+									"type": "string"
+								},
+								{
+									"format": "uuid",
+									"type": "string"
+								}
+							]
+						}
+					},
+					{
+						"in": "query",
+						"name": "cursor",
+						"required": false,
+						"schema": {
+							"maxLength": 512,
+							"type": "string"
+						}
+					},
+					{
+						"in": "query",
+						"name": "limit",
+						"required": false,
+						"schema": {
+							"default": 50,
+							"maximum": 100,
+							"minimum": 1,
+							"type": "integer"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/GuestGroupViewResponse"
+								}
+							}
+						},
+						"description": "Public read-only guest group view"
+					}
+				}
+			}
+		},
+		"/api/v1/guest-links/{token}/attachments/{attachmentId}": {
+			"get": {
+				"parameters": [
+					{
+						"in": "path",
+						"name": "token",
+						"required": true,
+						"schema": {
+							"maxLength": 128,
+							"type": "string"
+						}
+					},
+					{
+						"in": "path",
+						"name": "attachmentId",
+						"required": true,
+						"schema": {
+							"maxLength": 100,
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"content": {
+							"image/jpeg": {
+								"schema": {
+									"format": "binary",
+									"type": "string"
+								}
+							},
+							"image/png": {
+								"schema": {
+									"format": "binary",
+									"type": "string"
+								}
+							},
+							"image/webp": {
+								"schema": {
+									"format": "binary",
+									"type": "string"
+								}
+							}
+						},
+						"description": "Expense or income receipt image for active guest link"
 					}
 				}
 			}

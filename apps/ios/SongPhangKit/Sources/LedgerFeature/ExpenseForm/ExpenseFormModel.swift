@@ -1,4 +1,4 @@
-import DesignSystem
+public import DesignSystem
 public import Domain
 public import Foundation
 public import Observation
@@ -40,6 +40,8 @@ public final class ExpenseFormModel {
   public var payerAmounts: [Member.ID: String] = [:]
   public var transferFrom: Member.ID?
   public var transferTo: Member.ID?
+  public var paymentChannel: PaymentChannel?
+  public var paymentNote: String?
   public var occurredAtDate: Date = Date()
   public var attachments: [Attachment] = []
   public private(set) var isUploadingAttachment = false
@@ -227,6 +229,8 @@ public final class ExpenseFormModel {
       payerAmounts = pMap
       transferFrom = tx.payers.first?.memberId ?? defaultMyId
       transferTo = tx.shares.first?.memberId
+      paymentChannel = tx.paymentChannel
+      paymentNote = tx.paymentNote
       attachments = tx.attachments
       splitState = SplitEditorState(
         members: people,
@@ -464,6 +468,7 @@ public final class ExpenseFormModel {
         return nil
       }
       let trimmed = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
+      let trimmedNote = paymentNote?.trimmingCharacters(in: .whitespacesAndNewlines)
       return .transfer(
         TransactionDraft.TransferPayload(
           amount: amt,
@@ -471,7 +476,9 @@ public final class ExpenseFormModel {
           fromMemberId: from,
           toMemberId: to,
           description: trimmed.isEmpty ? nil : trimmed,
-          attachmentIds: attachmentIdList
+          attachmentIds: attachmentIdList,
+          paymentChannel: paymentChannel,
+          paymentNote: (trimmedNote?.isEmpty == false) ? trimmedNote : nil
         )
       )
     }

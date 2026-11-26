@@ -70,6 +70,7 @@ export const GroupEventResource = z.enum([
 	"budget",
 	"receiptScans",
 	"comments",
+	"settlementCycles",
 ]);
 export type GroupEventResource = z.infer<typeof GroupEventResource>;
 

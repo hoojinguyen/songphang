@@ -87,11 +87,7 @@ public struct SPTextField: View {
       .onTapGesture { focus.wrappedValue = true }
       .onChange(of: text) { _, newValue in
         if let maxLength, newValue.utf16.count > maxLength {
-          var clamped = String(newValue.prefix(maxLength))
-          while clamped.utf16.count > maxLength, !clamped.isEmpty {
-            clamped.removeLast()
-          }
-          text = clamped
+          text = newValue.clampedToUTF16Length(maxLength)
         }
       }
       .accessibilityLabel(label)
@@ -106,5 +102,23 @@ public struct SPTextField: View {
           .foregroundStyle(Tokens.muted)
       }
     }
+  }
+}
+
+extension String {
+  public func clampedToUTF16Length(_ maxLength: Int) -> String {
+    guard maxLength > 0, utf16.count > maxLength else {
+      return maxLength <= 0 ? "" : self
+    }
+    var count = 0
+    var endIndex = startIndex
+    for index in indices {
+      let nextIndex = self.index(after: index)
+      let scalarCount = self[index..<nextIndex].utf16.count
+      if count + scalarCount > maxLength { break }
+      count += scalarCount
+      endIndex = nextIndex
+    }
+    return String(self[..<endIndex])
   }
 }

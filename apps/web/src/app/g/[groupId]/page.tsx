@@ -4,6 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useMemo, useState } from "react";
 import { BalanceBlock } from "../../../components/feed/BalanceBlock";
 import { BudgetBanner } from "../../../components/feed/BudgetBanner";
+import { CycleFilterChip } from "../../../components/feed/CycleFilterChip";
 import { EmptyStream } from "../../../components/feed/EmptyStream";
 import { EntryBar } from "../../../components/feed/EntryBar";
 import { ExpenseStream } from "../../../components/feed/ExpenseStream";
@@ -19,6 +20,7 @@ import { useCategories } from "../../../lib/categories";
 import { useGroup } from "../../../lib/groups";
 import { useMembers } from "../../../lib/members";
 import { useMe } from "../../../lib/session";
+import { useSettlementCycles } from "../../../lib/settlement-cycles";
 import {
 	buildFilterQueryString,
 	hasActiveFilters,
@@ -27,7 +29,7 @@ import {
 	useTransactions,
 } from "../../../lib/transactions";
 import { useSessionGuard } from "../../../lib/use-session-guard";
-import { vi } from "../../../messages/vi";
+import { t, vi } from "../../../messages/vi";
 
 function GroupScreen() {
 	const { groupId } = useParams<{ groupId: string }>();
@@ -38,6 +40,7 @@ function GroupScreen() {
 		() => readTransactionFilters(new URLSearchParams(paramsKey)),
 		[paramsKey],
 	);
+	const rawCycleParam = searchParams.get("cycleId");
 	const filtersActive = hasActiveFilters(filters);
 	const [atTop, setAtTop] = useState(true);
 	const [sheetOpen, setSheetOpen] = useState(false);
@@ -47,7 +50,25 @@ function GroupScreen() {
 	const categories = useCategories(groupId);
 	const balances = useBalances(groupId);
 	const budget = useBudget(groupId);
-	const transactions = useTransactions(groupId, filters);
+	const cycles = useSettlementCycles(groupId);
+	const hasClosedCycles = (cycles.data?.cycles.length ?? 0) > 0;
+	const knownCycleIds = new Set(cycles.data?.cycles.map((cycle) => cycle.id));
+	const requestedCycleId = filters.cycleId ?? "current";
+	const selectedCycleId: "current" | string | undefined = hasClosedCycles
+		? rawCycleParam === "all"
+			? undefined
+			: requestedCycleId === "current" || knownCycleIds.has(requestedCycleId)
+				? requestedCycleId
+				: "current"
+		: undefined;
+	const effectiveFilters = useMemo(
+		() => ({
+			...filters,
+			cycleId: selectedCycleId,
+		}),
+		[filters, selectedCycleId],
+	);
+	const transactions = useTransactions(groupId, effectiveFilters);
 	const error =
 		group.error ??
 		members.error ??
@@ -59,10 +80,43 @@ function GroupScreen() {
 
 	const applyFilters = useCallback(
 		(next: TransactionFilters) => {
-			const qs = buildFilterQueryString(next);
-			router.replace(`/g/${encodeURIComponent(groupId)}${qs ? `?${qs}` : ""}`);
+			const qs = buildFilterQueryString({
+				...next,
+				...(rawCycleParam === "all"
+					? {}
+					: next.cycleId
+						? {}
+						: selectedCycleId && selectedCycleId !== "current"
+							? { cycleId: selectedCycleId }
+							: {}),
+			});
+			const finalQs =
+				rawCycleParam === "all" && !next.cycleId
+					? qs
+						? `${qs}&cycleId=all`
+						: "cycleId=all"
+					: qs;
+			router.replace(
+				`/g/${encodeURIComponent(groupId)}${finalQs ? `?${finalQs}` : ""}`,
+			);
 		},
-		[groupId, router],
+		[groupId, router, rawCycleParam, selectedCycleId],
+	);
+	const handleCycleSelect = useCallback(
+		(nextCycleId: "current" | string | undefined) => {
+			const baseQs = buildFilterQueryString({ ...filters, cycleId: undefined });
+			const cyclePart =
+				nextCycleId === undefined
+					? "cycleId=all"
+					: nextCycleId === "current"
+						? ""
+						: `cycleId=${encodeURIComponent(nextCycleId)}`;
+			const combined = [baseQs, cyclePart].filter(Boolean).join("&");
+			router.replace(
+				`/g/${encodeURIComponent(groupId)}${combined ? `?${combined}` : ""}`,
+			);
+		},
+		[filters, groupId, router],
 	);
 	const handleSearchChange = useCallback(
 		(q: string) => {
@@ -130,6 +184,11 @@ function GroupScreen() {
 		);
 	const hasTransactions =
 		(transactions.data.pages[0]?.transactions.length ?? 0) > 0;
+	const closedCycles = cycles.data?.cycles ?? [];
+	const selectedClosedCycle =
+		selectedCycleId && selectedCycleId !== "current"
+			? closedCycles.find((cycle) => cycle.id === selectedCycleId)
+			: undefined;
 	const balance =
 		balances.data.balances.find(
 			(balance) => balance.memberId === group.data.myMemberId,
@@ -154,13 +213,36 @@ function GroupScreen() {
 					{vi.feed.inviteLink}
 				</Link>
 			)}
-			{(hasTransactions || filtersActive) && (atTop || filtersActive) && (
-				<StreamSearchBar
-					value={filters.q ?? ""}
-					onSearchChange={handleSearchChange}
-					onOpenFilters={() => setSheetOpen(true)}
-					hasFilters={filtersActive}
+			{(hasTransactions || filtersActive || hasClosedCycles) &&
+				(atTop || filtersActive) && (
+					<StreamSearchBar
+						value={filters.q ?? ""}
+						onSearchChange={handleSearchChange}
+						onOpenFilters={() => setSheetOpen(true)}
+						hasFilters={filtersActive}
+					/>
+				)}
+			{cycles.data && closedCycles.length > 0 && (
+				<CycleFilterChip
+					cycles={closedCycles}
+					currentPeriod={cycles.data.currentPeriod}
+					selectedCycleId={selectedCycleId}
+					onSelect={handleCycleSelect}
 				/>
+			)}
+			{selectedClosedCycle && (
+				<div className="flex items-center justify-between gap-2 rounded-[18px] bg-surface px-3.5 py-2 text-xs font-bold text-ink">
+					<span className="truncate">
+						{t(vi.cycles.viewingBanner, { title: selectedClosedCycle.title })}
+					</span>
+					<button
+						type="button"
+						onClick={() => handleCycleSelect("current")}
+						className="min-h-11 shrink-0 text-xs font-extrabold underline"
+					>
+						{vi.cycles.backToCurrent}
+					</button>
+				</div>
 			)}
 			<BudgetBanner groupId={groupId} budget={budget.data} />
 			{filtersActive && (
@@ -186,6 +268,19 @@ function GroupScreen() {
 					<p className="text-sm font-semibold text-muted">
 						{vi.filter.noResult}
 					</p>
+				</div>
+			) : hasClosedCycles && selectedCycleId === "current" ? (
+				<div className="my-auto grid justify-items-center gap-3 py-12 text-center">
+					<p className="text-sm font-semibold text-muted">
+						{vi.cycles.emptyPeriodError}
+					</p>
+					<button
+						type="button"
+						onClick={() => handleCycleSelect(undefined)}
+						className="min-h-11 rounded-pill bg-surface px-4 text-xs font-bold text-ink"
+					>
+						{vi.cycles.allPeriods}
+					</button>
 				</div>
 			) : (
 				<EmptyStream

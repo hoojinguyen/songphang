@@ -1233,6 +1233,28 @@
         }
       }
     },
+    "pay.hideDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn thông tin"
+          }
+        }
+      }
+    },
+    "pay.showDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem thông tin"
+          }
+        }
+      }
+    },
     "pay.purpose": {
       "extractionState": "manual",
       "localizations": {
@@ -8093,6 +8115,798 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tóm tắt số dư"
+          }
+        }
+      }
+    },
+    "balances.subTabs.toPay": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần thanh toán"
+          }
+        }
+      }
+    },
+    "balances.subTabs.vault": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sổ thanh toán"
+          }
+        }
+      }
+    },
+    "balances.subTabs.cycles": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đợt đã chốt"
+          }
+        }
+      }
+    },
+    "settlementProof.channelLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kênh thanh toán (tuỳ chọn)"
+          }
+        }
+      }
+    },
+    "settlementProof.channelBank": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngân hàng"
+          }
+        }
+      }
+    },
+    "settlementProof.channelMomo": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MoMo"
+          }
+        }
+      }
+    },
+    "settlementProof.channelZalopay": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZaloPay"
+          }
+        }
+      }
+    },
+    "settlementProof.channelCash": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiền mặt"
+          }
+        }
+      }
+    },
+    "settlementProof.photoLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ảnh chứng từ (tuỳ chọn)"
+          }
+        }
+      }
+    },
+    "settlementProof.attachPhoto": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đính kèm ảnh chuyển khoản"
+          }
+        }
+      }
+    },
+    "settlementProof.removePhoto": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xoá ảnh chứng từ"
+          }
+        }
+      }
+    },
+    "settlementProof.noteLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chú ngắn (tuỳ chọn)"
+          }
+        }
+      }
+    },
+    "settlementProof.notePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VD: Chuyển khoản VCB tối thứ 3"
+          }
+        }
+      }
+    },
+    "settlementProof.hasProof": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có chứng từ"
+          }
+        }
+      }
+    },
+    "settlementProof.viewProof": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem ảnh chứng từ"
+          }
+        }
+      }
+    },
+    "vault.statusPending": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chờ xác nhận"
+          }
+        }
+      }
+    },
+    "vault.statusConfirmed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã thanh toán"
+          }
+        }
+      }
+    },
+    "vault.statusRejected": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Từ chối"
+          }
+        }
+      }
+    },
+    "vault.statusCancelled": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã huỷ"
+          }
+        }
+      }
+    },
+    "vault.filterAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả"
+          }
+        }
+      }
+    },
+    "vault.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có lịch sử thanh toán nào"
+          }
+        }
+      }
+    },
+    "vault.confirmedTotal": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng đã thanh toán"
+          }
+        }
+      }
+    },
+    "cycles.closeAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chốt đợt"
+          }
+        }
+      }
+    },
+    "cycles.titleLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên đợt"
+          }
+        }
+      }
+    },
+    "cycles.defaultTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đợt {number}"
+          }
+        }
+      }
+    },
+    "cycles.currentPeriod": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đợt hiện tại"
+          }
+        }
+      }
+    },
+    "cycles.selectPeriod": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn đợt"
+          }
+        }
+      }
+    },
+    "cycles.allPeriods": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả các đợt"
+          }
+        }
+      }
+    },
+    "cycles.closeTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chốt đợt chi tiêu này"
+          }
+        }
+      }
+    },
+    "cycles.carryOverNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư chưa thanh toán vẫn được giữ nguyên và cộng dồn sang đợt tiếp theo."
+          }
+        }
+      }
+    },
+    "cycles.emptyPeriodError": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có giao dịch mới để chốt đợt."
+          }
+        }
+      }
+    },
+    "cycles.frozenSnapshotLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số liệu tại thời điểm chốt"
+          }
+        }
+      }
+    },
+    "cycles.viewExpensesAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem các khoản chi đợt này"
+          }
+        }
+      }
+    },
+    "cycles.reopenAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở lại đợt này"
+          }
+        }
+      }
+    },
+    "cycles.reopenConfirmBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở lại đợt vừa chốt? Các giao dịch trong đợt sẽ quay về Đợt hiện tại."
+          }
+        }
+      }
+    },
+    "cycles.viewingBanner": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang xem {title}"
+          }
+        }
+      }
+    },
+    "cycles.backToCurrent": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Về đợt hiện tại"
+          }
+        }
+      }
+    },
+    "breakdown.viewAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem giải trình khoản nợ"
+          }
+        }
+      }
+    },
+    "breakdown.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giải trình khoản nợ"
+          }
+        }
+      }
+    },
+    "breakdown.carryOver": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư từ đợt trước"
+          }
+        }
+      }
+    },
+    "breakdown.periodExpenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi / thu trong đợt"
+          }
+        }
+      }
+    },
+    "breakdown.periodTransfers": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã chuyển / nhận trong đợt"
+          }
+        }
+      }
+    },
+    "breakdown.postCycleDelta": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phát sinh sau đợt này"
+          }
+        }
+      }
+    },
+    "breakdown.currentBalance": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư hiện tại"
+          }
+        }
+      }
+    },
+    "breakdown.transferAllocation": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phân bổ thanh toán"
+          }
+        }
+      }
+    },
+    "breakdown.memberShare": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phần của {name}"
+          }
+        }
+      }
+    },
+    "guestLink.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link khách"
+          }
+        }
+      }
+    },
+    "guestLink.fullTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link khách chỉ xem"
+          }
+        }
+      }
+    },
+    "guestLink.enableAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật link khách chỉ xem"
+          }
+        }
+      }
+    },
+    "guestLink.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Người có link xem được bảng kê chi tiêu, giải trình khoản nợ và mã VietQR mà không cần đăng nhập."
+          }
+        }
+      }
+    },
+    "guestLink.copyAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép link khách"
+          }
+        }
+      }
+    },
+    "guestLink.copied": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã sao chép link khách"
+          }
+        }
+      }
+    },
+    "guestLink.rotateAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi link mới"
+          }
+        }
+      }
+    },
+    "guestLink.revokeAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thu hồi link"
+          }
+        }
+      }
+    },
+    "guestLink.readonlyBadge": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chế độ khách chỉ xem"
+          }
+        }
+      }
+    },
+    "guestLink.invalidOrRevoked": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết xem chung không tồn tại hoặc đã được thu hồi."
+          }
+        }
+      }
+    },
+    "shareCard.openAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xuất ảnh / Nhắc nợ"
+          }
+        }
+      }
+    },
+    "shareCard.modeSummary": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng kết nhóm"
+          }
+        }
+      }
+    },
+    "shareCard.modeReminder": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhắc nợ khéo"
+          }
+        }
+      }
+    },
+    "shareCard.themeLight": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nền sáng"
+          }
+        }
+      }
+    },
+    "shareCard.themeDark": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nền tối"
+          }
+        }
+      }
+    },
+    "shareCard.includeExpenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kèm tóm tắt các khoản chi"
+          }
+        }
+      }
+    },
+    "shareCard.targetLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đối tượng nhắc"
+          }
+        }
+      }
+    },
+    "shareCard.targetAll": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tất cả người chưa chuyển"
+          }
+        }
+      }
+    },
+    "shareCard.captionLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lời nhắn trên thẻ"
+          }
+        }
+      }
+    },
+    "shareCard.preset1": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi nhẹ bảng tổng kết đợt này, rảnh tay chuyển khoản giúp mình nhé."
+          }
+        }
+      }
+    },
+    "shareCard.preset2": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhắc nhẹ khoản chi chung của nhóm, kiểm tra chi tiết bên dưới nhé."
+          }
+        }
+      }
+    },
+    "shareCard.preset3": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Còn vài khoản đợt này chưa tất toán, tiện tay chuyển giúp nhé."
+          }
+        }
+      }
+    },
+    "shareCard.shareImage": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chia sẻ ảnh"
+          }
+        }
+      }
+    },
+    "shareCard.downloadPng": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tải ảnh PNG"
+          }
+        }
+      }
+    },
+    "shareCard.copyImage": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sao chép ảnh"
+          }
+        }
+      }
+    },
+    "shareCard.copiedImage": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã sao chép ảnh"
           }
         }
       }

@@ -13,6 +13,9 @@ public protocol SettlementRequestsRepository: Sendable {
   func request(
     groupId: ExpenseGroup.ID,
     transfer: SuggestedTransfer,
+    channel: PaymentChannel?,
+    note: String?,
+    proofAttachmentId: Attachment.ID?,
     idempotencyKey: String
   ) async throws(AppError)
 
@@ -21,4 +24,21 @@ public protocol SettlementRequestsRepository: Sendable {
     requestId: String,
     decision: SettlementDecision
   ) async throws(AppError)
+}
+
+extension SettlementRequestsRepository {
+  public func request(
+    groupId: ExpenseGroup.ID,
+    transfer: SuggestedTransfer,
+    idempotencyKey: String
+  ) async throws(AppError) {
+    try await request(
+      groupId: groupId,
+      transfer: transfer,
+      channel: nil,
+      note: nil,
+      proofAttachmentId: nil,
+      idempotencyKey: idempotencyKey
+    )
+  }
 }

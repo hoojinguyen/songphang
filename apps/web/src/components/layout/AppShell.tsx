@@ -91,6 +91,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 		return <>{children}</>;
 	}
 
+	if (pathname.startsWith("/share/")) {
+		return <SnackbarProvider>{children}</SnackbarProvider>;
+	}
+
 	const groupMatch = pathname.match(/^\/g\/([^/]+)/);
 	const rawGroupId = groupMatch?.[1];
 	const currentGroupId = rawGroupId ? decodeURIComponent(rawGroupId) : null;

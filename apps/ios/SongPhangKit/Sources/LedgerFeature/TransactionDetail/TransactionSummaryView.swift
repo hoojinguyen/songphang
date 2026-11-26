@@ -96,6 +96,21 @@ struct TransactionSummaryView: View {
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
           )
 
+        if transaction.type == .transfer,
+          transaction.paymentChannel != nil || (transaction.paymentNote?.isEmpty == false)
+        {
+          HStack(spacing: 8) {
+            if let channel = transaction.paymentChannel {
+              PaymentChannelBadge(channel)
+            }
+            if let note = transaction.paymentNote, !note.isEmpty {
+              Text("“\(note)”")
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+            }
+          }
+        }
+
         if transaction.type != .transfer, !transaction.shares.isEmpty {
           let splitText: String = {
             switch transaction.split {

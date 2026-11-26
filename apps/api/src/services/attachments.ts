@@ -4,6 +4,7 @@ import {
 	type AttachmentContentType,
 	AttachmentDto,
 	AttachmentResponse,
+	type AttachmentUploadPurpose,
 } from "@songphang/contract";
 import type { DbExecutor } from "@songphang/db";
 import {
@@ -11,6 +12,8 @@ import {
 	deleteAttachmentRow,
 	findAttachment,
 	findAttachmentsByIds,
+	findSettlementRequestByProofAttachmentId,
+	findSettlementRequestsByProofAttachmentIds,
 	findTransactionRow,
 	insertActivity,
 	insertAttachment,
@@ -43,6 +46,10 @@ export async function validateTransactionAttachmentIds(
 	groupId: string,
 	attachmentIds: string[],
 	currentTransactionId: string | null,
+	options?: {
+		transactionType?: "expense" | "income" | "transfer";
+		allowedSettlementRequestId?: string;
+	},
 ): Promise<void> {
 	if (attachmentIds.length === 0) return;
 	const rows = await findAttachmentsByIds(executor, groupId, attachmentIds);
@@ -60,6 +67,32 @@ export async function validateTransactionAttachmentIds(
 				"Attachment already belongs to another transaction",
 			);
 		}
+		if (options?.transactionType !== "transfer" && row.purpose !== "expense") {
+			throw new AppError(
+				400,
+				"VALIDATION_FAILED",
+				"Transfer proof cannot be attached to an expense or income",
+			);
+		}
+	}
+	const boundRequests = await findSettlementRequestsByProofAttachmentIds(
+		executor,
+		groupId,
+		attachmentIds,
+	);
+	for (const boundRequest of boundRequests) {
+		if (boundRequest.id === options?.allowedSettlementRequestId) continue;
+		if (
+			currentTransactionId !== null &&
+			boundRequest.transactionId === currentTransactionId
+		) {
+			continue;
+		}
+		throw new AppError(
+			400,
+			"VALIDATION_FAILED",
+			"Attachment already belongs to a settlement request",
+		);
 	}
 }
 
@@ -70,20 +103,28 @@ export async function uploadAttachment(
 		userId: string;
 		bytes: Uint8Array;
 		contentType: AttachmentContentType;
+		purpose?: AttachmentUploadPurpose;
 	},
 ) {
 	const id = uuidv7();
 	const storageKey = `${input.groupId}/${id}`;
 	const sha256 = createHash("sha256").update(input.bytes).digest("hex");
 	const createdAt = deps.now();
+	const purpose = input.purpose ?? "expense";
 
 	const row = await deps.db.transaction(async (executor) => {
 		const lockedGroup = await lockGroup(executor, input.groupId);
-		await getGroupAccess(executor, {
+		const access = await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.userId,
-			minimumRole: "editor",
+			minimumRole: "viewer",
 		});
+		if (
+			access.role === "viewer" &&
+			(purpose !== "transfer_proof" || access.memberId === null)
+		) {
+			throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+		}
 		assertGroupRowNotArchived(lockedGroup);
 		const used = await sumGroupAttachmentBytes(executor, input.groupId);
 		if (used + input.bytes.byteLength > GROUP_QUOTA_BYTES) {
@@ -102,6 +143,7 @@ export async function uploadAttachment(
 				contentType: input.contentType,
 				byteSize: input.bytes.byteLength,
 				sha256,
+				purpose,
 				uploadedBy: input.userId,
 				createdAt,
 			});
@@ -148,10 +190,10 @@ export async function deleteAttachment(
 	}
 	const row = await deps.db.transaction(async (executor) => {
 		const lockedGroup = await lockGroup(executor, input.groupId);
-		await getGroupAccess(executor, {
+		const access = await getGroupAccess(executor, {
 			groupId: input.groupId,
 			userId: input.userId,
-			minimumRole: "editor",
+			minimumRole: "viewer",
 		});
 		assertGroupRowNotArchived(lockedGroup);
 		const existing = await findAttachment(
@@ -161,6 +203,26 @@ export async function deleteAttachment(
 		);
 		if (existing === null) {
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		}
+		if (access.role === "viewer") {
+			if (
+				existing.uploadedBy !== input.userId ||
+				existing.transactionId !== null
+			) {
+				throw new AppError(403, "FORBIDDEN", "Insufficient group role");
+			}
+			const linkedRequest = await findSettlementRequestByProofAttachmentId(
+				executor,
+				input.groupId,
+				existing.id,
+			);
+			if (linkedRequest?.status === "pending") {
+				throw new AppError(
+					409,
+					"REQUEST_ALREADY_PENDING",
+					"Attachment is bound to a pending settlement request",
+				);
+			}
 		}
 		if (existing.transactionId !== null) {
 			await lockTransaction(executor, input.groupId, existing.transactionId);

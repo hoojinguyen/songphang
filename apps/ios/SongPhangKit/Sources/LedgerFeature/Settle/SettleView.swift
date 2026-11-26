@@ -90,7 +90,7 @@ public struct SettleView: View {
       variant: .accent,
       size: .lg,
       isFullWidth: true,
-      isDisabled: !currentAmount.isPositive,
+      isDisabled: !currentAmount.isPositive || model.isUploadingProof,
       isPending: model.isSubmitting
     ) {
       Task { await model.submit(reduceMotion: reduceMotion) }
@@ -203,6 +203,27 @@ public struct SettleView: View {
           Tokens.phraseSplit,
           in: RoundedRectangle(cornerRadius: 22, style: .continuous)
         )
+    }
+
+    if isEmailVerified {
+      TransferProofInputSection(
+        channel: $model.channel,
+        note: $model.note,
+        attachments: model.attachments,
+        maxAttachments: 3,
+        isDisabled: model.isSubmitting,
+        isUploading: model.isUploadingProof,
+        errorMessage: model.proofError,
+        loadContent: { id in
+          try await model.loadAttachment(id: id)
+        },
+        onUploadData: { rawData in
+          await model.uploadProofImage(rawData: rawData)
+        },
+        onRemoveAttachment: { id in
+          model.removeProofAttachment(id: id)
+        }
+      )
     }
 
     if let submitError = model.submitError {

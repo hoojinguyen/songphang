@@ -18,10 +18,19 @@
     public func request(
       groupId: ExpenseGroup.ID,
       transfer: SuggestedTransfer,
+      channel: PaymentChannel?,
+      note: String?,
+      proofAttachmentId: Attachment.ID?,
       idempotencyKey: String
     ) async throws(AppError) {
       try await world.createSettlementRequest(
-        groupId: groupId, transfer: transfer, idempotencyKey: idempotencyKey)
+        groupId: groupId,
+        transfer: transfer,
+        channel: channel,
+        note: note,
+        proofAttachmentId: proofAttachmentId,
+        idempotencyKey: idempotencyKey
+      )
     }
 
     public func resolve(

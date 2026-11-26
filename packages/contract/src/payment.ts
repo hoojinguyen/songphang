@@ -3,6 +3,11 @@ import { BANKS, findBank } from "@songphang/core";
 
 export { BANKS };
 
+export const PaymentChannel = z
+	.enum(["bank", "momo", "zalopay", "cash"])
+	.openapi("PaymentChannel");
+export type PaymentChannel = z.infer<typeof PaymentChannel>;
+
 const BankBin = z
 	.string()
 	.regex(/^\d{6}$/)

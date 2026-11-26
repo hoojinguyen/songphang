@@ -1,14 +1,20 @@
 "use client";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { AllSettled } from "../../../../components/balances/AllSettled";
 import { BalanceBars } from "../../../../components/balances/BalanceBars";
+import { CloseCycleModal } from "../../../../components/balances/CloseCycleModal";
+import { MemberBreakdownSheet } from "../../../../components/balances/MemberBreakdownSheet";
 import { OtherSettlements } from "../../../../components/balances/OtherSettlements";
 import { OwnSettlementCard } from "../../../../components/balances/OwnSettlementCard";
 import { PendingRequestRow } from "../../../../components/balances/PendingRequestRow";
 import { SettlementCard } from "../../../../components/balances/SettlementCard";
+import { SettlementCyclesView } from "../../../../components/balances/SettlementCyclesView";
+import { SettlementVaultView } from "../../../../components/balances/SettlementVaultView";
+import { ShareCardModal } from "../../../../components/balances/ShareCardModal";
 import { FundBlock } from "../../../../components/fund/FundBlock";
+import { GuestLinkModal } from "../../../../components/guest/GuestLinkModal";
 import { GroupNavHeader } from "../../../../components/layout/GroupNavHeader";
 import { Button } from "../../../../components/ui/Button";
 import { LoadError } from "../../../../components/ui/LoadError";
@@ -16,31 +22,48 @@ import { useSnackbar } from "../../../../components/ui/Snackbar";
 import { useBalances } from "../../../../lib/balances";
 import { useGroup } from "../../../../lib/groups";
 import { useMembers } from "../../../../lib/members";
+import { formatMoney } from "../../../../lib/money";
 import { canRemindTransfer, useSendReminder } from "../../../../lib/reminders";
 import { useMe } from "../../../../lib/session";
+import { useSettlementCycles } from "../../../../lib/settlement-cycles";
 import { usePendingSettlementRequests } from "../../../../lib/settlement-requests";
 import { useTransactions } from "../../../../lib/transactions";
 import { useSessionGuard } from "../../../../lib/use-session-guard";
 import { t, vi } from "../../../../messages/vi";
+
+type BalancesSubTab = "toPay" | "vault" | "cycles";
+
 export default function BalancesPage() {
 	const { groupId } = useParams<{ groupId: string }>();
+	const router = useRouter();
+	const [subTab, setSubTab] = useState<BalancesSubTab>("toPay");
+	const [inspectedMemberId, setInspectedMemberId] = useState<string | null>(
+		null,
+	);
+	const [closeCycleOpen, setCloseCycleOpen] = useState(false);
+	const [guestLinkOpen, setGuestLinkOpen] = useState(false);
+	const [shareCardOpen, setShareCardOpen] = useState(false);
+
 	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
 	const balances = useBalances(groupId);
 	const transactions = useTransactions(groupId);
 	const pendingRequests = usePendingSettlementRequests(groupId);
+	const cycles = useSettlementCycles(groupId);
 	const sendAllReminders = useSendReminder(groupId);
 	const showNotice = useSnackbar();
+
 	const error =
 		group.error ??
 		members.error ??
 		balances.error ??
 		transactions.error ??
 		me.error;
+
 	useEffect(() => {
 		if (
-			balances.data?.transfers.length === 0 &&
+			(balances.data?.transfers.length === 0 || shareCardOpen) &&
 			transactions.hasNextPage &&
 			!transactions.isFetchingNextPage &&
 			!transactions.isFetchNextPageError
@@ -48,12 +71,15 @@ export default function BalancesPage() {
 			void transactions.fetchNextPage();
 	}, [
 		balances.data,
+		shareCardOpen,
 		transactions.hasNextPage,
 		transactions.isFetchingNextPage,
 		transactions.isFetchNextPageError,
 		transactions.fetchNextPage,
 	]);
+
 	useSessionGuard(error);
+
 	if (error?.status === 404)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-4 px-5 text-center">
@@ -107,6 +133,7 @@ export default function BalancesPage() {
 				/>
 			</main>
 		);
+
 	const hasTransactions =
 		(transactions.data.pages[0]?.transactions.length ?? 0) > 0;
 	const transfers = balances.data.transfers.toSorted(
@@ -131,6 +158,11 @@ export default function BalancesPage() {
 	const unmatchedPending = (pendingRequests.data ?? []).filter(
 		(request) => request.status === "pending" && !matchedIds.has(request.id),
 	);
+	const pendingCount = (pendingRequests.data ?? []).filter(
+		(request) => request.status === "pending",
+	).length;
+	const closedCyclesCount = cycles.data?.cycles.length ?? 0;
+
 	const remindableCount = transfers.filter((transfer) => {
 		const from = members.data.find((m) => m.id === transfer.fromMemberId);
 		const to = members.data.find((m) => m.id === transfer.toMemberId);
@@ -144,6 +176,7 @@ export default function BalancesPage() {
 			verified: me.data.emailVerified,
 		});
 	}).length;
+
 	const handleRemindAll = async () => {
 		try {
 			const res = await sendAllReminders.mutateAsync({ all: true });
@@ -157,145 +190,351 @@ export default function BalancesPage() {
 		}
 	};
 
+	const myBalance =
+		balances.data.balances.find(
+			(balance) => balance.memberId === group.data.myMemberId,
+		)?.balance ?? 0;
+	const heroTone =
+		myBalance > 0
+			? "bg-accent text-on-accent"
+			: myBalance < 0
+				? "bg-debt-soft text-ink"
+				: "bg-surface text-ink";
+	const heroLabel =
+		myBalance > 0
+			? vi.feed.owedToYou
+			: myBalance < 0
+				? vi.feed.youOwe
+				: vi.feed.settled;
+
+	const isArchived = group.data.archivedAt !== null;
+	const canCloseCycle =
+		!isArchived &&
+		group.data.role !== "viewer" &&
+		me.data.emailVerified &&
+		cycles.data !== undefined;
+	const canTriggerClose =
+		(cycles.data?.currentPeriod.countedTransactionCount ?? 0) > 0;
+	const canShareCard =
+		transfers.length > 0 ||
+		balances.data.balances.some((balance) => balance.balance !== 0);
+	const loadedTransactions = transactions.data.pages.flatMap(
+		(page) => page.transactions,
+	);
+
+	const subTabs: Array<{
+		id: BalancesSubTab;
+		label: string;
+		badge?: number;
+	}> = [
+		{ id: "toPay", label: vi.balances.subTabs.toPay },
+		{
+			id: "vault",
+			label: vi.balances.subTabs.vault,
+			...(pendingCount > 0 ? { badge: pendingCount } : {}),
+		},
+		{
+			id: "cycles",
+			label: vi.balances.subTabs.cycles,
+			...(closedCyclesCount > 0 ? { badge: closedCyclesCount } : {}),
+		},
+	];
+
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-5 px-5 pb-24 pt-6">
 			<GroupNavHeader groupId={groupId} />
-			{balances.data.fund && (
-				<FundBlock
+
+			<nav
+				aria-label={vi.groupSegments.payments}
+				className="flex gap-1.5 rounded-[20px] bg-sunken p-1"
+			>
+				{subTabs.map((tab) => {
+					const active = subTab === tab.id;
+					return (
+						<button
+							key={tab.id}
+							type="button"
+							aria-pressed={active}
+							onClick={() => setSubTab(tab.id)}
+							className={`flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[16px] px-2 text-xs font-extrabold transition-colors ${
+								active ? "bg-surface text-ink shadow-sm" : "text-muted"
+							}`}
+						>
+							<span className="truncate">{tab.label}</span>
+							{tab.badge !== undefined && (
+								<span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-black text-on-accent">
+									{tab.badge}
+								</span>
+							)}
+						</button>
+					);
+				})}
+			</nav>
+
+			{subTab === "vault" ? (
+				<SettlementVaultView groupId={groupId} members={members.data} />
+			) : subTab === "cycles" ? (
+				<SettlementCyclesView
 					groupId={groupId}
-					fund={balances.data.fund}
-					members={members.data}
-				/>
-			)}
-			{!hasTransactions ? (
-				<div className="my-auto py-12">
-					<h2 className="text-[34px] font-black">{vi.balances.emptyTitle}</h2>
-					<p className="mt-3 text-sm text-muted">{vi.balances.emptyHint}</p>
-				</div>
-			) : transfers.length === 0 ? (
-				<AllSettled
-					recorded={transactions.data.pages
-						.flatMap((page) => page.transactions)
-						.filter((transaction) => transaction.type === "transfer")}
-					groupId={groupId}
-					members={members.data}
-					myMemberId={group.data.myMemberId}
+					role={group.data.role}
+					isArchived={isArchived}
+					cyclesData={cycles.data}
+					isPending={cycles.isPending}
+					isError={cycles.isError}
+					isFetching={cycles.isFetching}
+					onRetry={() => {
+						void cycles.refetch();
+					}}
+					onViewCycleExpenses={(cycleId) =>
+						router.push(
+							`/g/${encodeURIComponent(groupId)}?cycleId=${encodeURIComponent(cycleId)}`,
+						)
+					}
 				/>
 			) : (
 				<>
-					<div>
-						<h2 className="text-[34px] font-black">
-							{t(
-								own.length > 0
-									? vi.balances.youPayHeadline
-									: vi.balances.headline,
-								{
-									count: String(own.length > 0 ? own.length : transfers.length),
-								},
-							)}
-						</h2>
-						<p className="mt-2 text-sm text-muted">
-							{own.length > 0
-								? vi.balances.youPayHint
-								: balances.data.minimized
-									? vi.balances.collectHint
-									: vi.balances.pairwiseHint}
-						</p>
-						{remindableCount >= 2 && (
-							<Button
-								variant="surface"
-								disabled={sendAllReminders.isPending}
-								onClick={() => {
-									void handleRemindAll();
-								}}
-								className="mt-3"
-							>
-								{vi.reminders.remindAll}
-							</Button>
-						)}
-					</div>
-					{own.length > 0 ? (
-						<>
-							{own.map((transfer) => (
-								<OwnSettlementCard
-									key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
-									groupId={groupId}
-									transfer={transfer}
-									members={members.data}
-									myMemberId={group.data.myMemberId}
-									role={group.data.role}
-									verified={me.data.emailVerified}
-								/>
-							))}
-							<OtherSettlements
-								groupId={groupId}
-								transfers={transfers.filter(
-									(transfer) => transfer.fromMemberId !== group.data.myMemberId,
-								)}
-								members={members.data}
-								myMemberId={group.data.myMemberId}
-								role={group.data.role}
-								verified={me.data.emailVerified}
-								onRemindNotice={(text) => showNotice({ text })}
-							/>
-						</>
-					) : (
-						transfers.map((transfer) => (
-							<SettlementCard
-								key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
-								groupId={groupId}
-								transfer={transfer}
-								members={members.data}
-								myMemberId={group.data.myMemberId}
-								role={group.data.role}
-								verified={me.data.emailVerified}
-								onRemindNotice={(text) => showNotice({ text })}
-							/>
-						))
+					{group.data.myMemberId !== null && (
+						<section className={`rounded-[30px] p-5 ${heroTone}`}>
+							<p className="text-xs font-bold opacity-80">{heroLabel}</p>
+							<p className="mt-1 tabular-nums text-[36px] font-black leading-tight tracking-tight">
+								{formatMoney(Math.abs(myBalance))}
+							</p>
+						</section>
 					)}
 
-					<BalanceBars
-						balances={balances.data.balances}
-						members={members.data}
-					/>
+					{(canShareCard || canCloseCycle || group.data.role !== "viewer") && (
+						<div className="grid gap-1.5">
+							<div className="flex flex-wrap gap-2">
+								{canShareCard && (
+									<Button
+										variant="surface"
+										allowOffline
+										onClick={() => setShareCardOpen(true)}
+										className="flex-1 text-xs"
+									>
+										{vi.shareCard.openAction}
+									</Button>
+								)}
+								{group.data.role !== "viewer" && (
+									<Button
+										variant="surface"
+										allowOffline
+										onClick={() => setGuestLinkOpen(true)}
+										className="flex-1 text-xs"
+									>
+										{vi.guestLink.title}
+									</Button>
+								)}
+								{canCloseCycle && (
+									<Button
+										variant="surface"
+										disabled={!canTriggerClose}
+										onClick={() => setCloseCycleOpen(true)}
+										className="flex-1 text-xs"
+									>
+										{vi.cycles.closeAction}
+									</Button>
+								)}
+							</div>
+							{canCloseCycle && !canTriggerClose && (
+								<p className="text-center text-xs font-semibold text-muted">
+									{vi.cycles.emptyPeriodError}
+								</p>
+							)}
+						</div>
+					)}
+
+					{balances.data.fund && (
+						<FundBlock
+							groupId={groupId}
+							fund={balances.data.fund}
+							members={members.data}
+						/>
+					)}
+
+					{!hasTransactions ? (
+						<div className="my-auto py-12">
+							<h2 className="text-[34px] font-black">
+								{vi.balances.emptyTitle}
+							</h2>
+							<p className="mt-3 text-sm text-muted">{vi.balances.emptyHint}</p>
+						</div>
+					) : transfers.length === 0 ? (
+						<AllSettled
+							recorded={transactions.data.pages
+								.flatMap((page) => page.transactions)
+								.filter((transaction) => transaction.type === "transfer")}
+							groupId={groupId}
+							members={members.data}
+							myMemberId={group.data.myMemberId}
+						/>
+					) : (
+						<>
+							<div>
+								<h2 className="text-[34px] font-black">
+									{t(
+										own.length > 0
+											? vi.balances.youPayHeadline
+											: vi.balances.headline,
+										{
+											count: String(
+												own.length > 0 ? own.length : transfers.length,
+											),
+										},
+									)}
+								</h2>
+								<p className="mt-2 text-sm text-muted">
+									{own.length > 0
+										? vi.balances.youPayHint
+										: balances.data.minimized
+											? vi.balances.collectHint
+											: vi.balances.pairwiseHint}
+								</p>
+								{remindableCount >= 2 && (
+									<Button
+										variant="surface"
+										disabled={sendAllReminders.isPending}
+										onClick={() => {
+											void handleRemindAll();
+										}}
+										className="mt-3"
+									>
+										{vi.reminders.remindAll}
+									</Button>
+								)}
+							</div>
+							{own.length > 0 ? (
+								<>
+									{own.map((transfer) => (
+										<OwnSettlementCard
+											key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
+											groupId={groupId}
+											transfer={transfer}
+											members={members.data}
+											myMemberId={group.data.myMemberId}
+											role={group.data.role}
+											verified={me.data.emailVerified}
+											onInspectMember={setInspectedMemberId}
+										/>
+									))}
+									<OtherSettlements
+										groupId={groupId}
+										transfers={transfers.filter(
+											(transfer) =>
+												transfer.fromMemberId !== group.data.myMemberId,
+										)}
+										members={members.data}
+										myMemberId={group.data.myMemberId}
+										role={group.data.role}
+										verified={me.data.emailVerified}
+										onRemindNotice={(text) => showNotice({ text })}
+										onInspectMember={setInspectedMemberId}
+									/>
+								</>
+							) : (
+								transfers.map((transfer) => (
+									<SettlementCard
+										key={`${transfer.fromMemberId}-${transfer.toMemberId}`}
+										groupId={groupId}
+										transfer={transfer}
+										members={members.data}
+										myMemberId={group.data.myMemberId}
+										role={group.data.role}
+										verified={me.data.emailVerified}
+										onRemindNotice={(text) => showNotice({ text })}
+										onInspectMember={setInspectedMemberId}
+									/>
+								))
+							)}
+
+							<BalanceBars
+								balances={balances.data.balances}
+								members={members.data}
+								onInspectMember={setInspectedMemberId}
+							/>
+						</>
+					)}
+					{unmatchedPending.length > 0 && (
+						<section className="grid gap-3 rounded-[30px] bg-surface p-5">
+							{unmatchedPending.map((request) => {
+								const from = members.data.find(
+									(member) => member.id === request.fromMemberId,
+								);
+								const to = members.data.find(
+									(member) => member.id === request.toMemberId,
+								);
+								if (!from || !to) return null;
+								const canResolve =
+									group.data.role === "owner" ||
+									group.data.myMemberId === to.id ||
+									(group.data.role === "editor" && !to.claimed);
+								const canCancel =
+									request.createdBy?.id === me.data.id ||
+									group.data.myMemberId === from.id;
+								return (
+									<PendingRequestRow
+										key={request.id}
+										groupId={groupId}
+										request={{
+											id: request.id,
+											amount: request.amount,
+											createdByMe: request.createdBy?.id === me.data.id,
+											channel: request.channel ?? null,
+											note: request.note ?? null,
+											proofAttachmentId: request.proofAttachment?.id ?? null,
+										}}
+										fromName={from.name}
+										toName={to.name}
+										canResolve={canResolve}
+										canCancel={canCancel}
+										verified={me.data.emailVerified}
+									/>
+								);
+							})}
+						</section>
+					)}
 				</>
 			)}
-			{unmatchedPending.length > 0 && (
-				<section className="grid gap-3 rounded-[30px] bg-surface p-5">
-					{unmatchedPending.map((request) => {
-						const from = members.data.find(
-							(member) => member.id === request.fromMemberId,
-						);
-						const to = members.data.find(
-							(member) => member.id === request.toMemberId,
-						);
-						if (!from || !to) return null;
-						const canResolve =
-							group.data.role === "owner" ||
-							group.data.myMemberId === to.id ||
-							(group.data.role === "editor" && !to.claimed);
-						const canCancel =
-							request.createdBy?.id === me.data.id ||
-							group.data.myMemberId === from.id;
-						return (
-							<PendingRequestRow
-								key={request.id}
-								groupId={groupId}
-								request={{
-									id: request.id,
-									amount: request.amount,
-									createdByMe: request.createdBy?.id === me.data.id,
-								}}
-								fromName={from.name}
-								toName={to.name}
-								canResolve={canResolve}
-								canCancel={canCancel}
-								verified={me.data.emailVerified}
-							/>
-						);
-					})}
-				</section>
+
+			<MemberBreakdownSheet
+				open={inspectedMemberId !== null}
+				memberId={inspectedMemberId}
+				groupId={groupId}
+				transfers={transfers}
+				members={members.data}
+				onClose={() => setInspectedMemberId(null)}
+			/>
+
+			{cycles.data && (
+				<CloseCycleModal
+					open={closeCycleOpen}
+					groupId={groupId}
+					nextCycleNumber={(cycles.data.cycles[0]?.cycleNumber ?? 0) + 1}
+					currentPeriod={cycles.data.currentPeriod}
+					onClose={() => setCloseCycleOpen(false)}
+				/>
 			)}
+			{group.data.role !== "viewer" && (
+				<GuestLinkModal
+					open={guestLinkOpen}
+					groupId={groupId}
+					isArchived={isArchived}
+					onClose={() => setGuestLinkOpen(false)}
+				/>
+			)}
+			<ShareCardModal
+				open={shareCardOpen}
+				groupId={groupId}
+				groupName={group.data.name}
+				role={group.data.role}
+				balances={balances.data}
+				members={members.data}
+				transactions={loadedTransactions}
+				hasMoreTransactions={transactions.hasNextPage}
+				cycles={cycles.data?.cycles ?? []}
+				currentPeriod={cycles.data?.currentPeriod}
+				onClose={() => setShareCardOpen(false)}
+			/>
 		</main>
 	);
 }

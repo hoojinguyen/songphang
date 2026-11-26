@@ -1,7 +1,12 @@
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
+import { attachments } from "./schema-attachments.js";
 import { settlementRequests } from "./schema-settlements.js";
+
+const resolverUser = alias(users, "settlement_resolver");
+
 export function listSettlementRequests(
 	executor: DbExecutor,
 	input: {
@@ -12,9 +17,19 @@ export function listSettlementRequests(
 	},
 ) {
 	return executor
-		.select({ request: settlementRequests, creatorName: users.name })
+		.select({
+			request: settlementRequests,
+			creatorName: users.name,
+			resolverName: resolverUser.name,
+			proofAttachment: attachments,
+		})
 		.from(settlementRequests)
 		.leftJoin(users, eq(users.id, settlementRequests.createdBy))
+		.leftJoin(resolverUser, eq(resolverUser.id, settlementRequests.resolvedBy))
+		.leftJoin(
+			attachments,
+			eq(attachments.id, settlementRequests.proofAttachmentId),
+		)
 		.where(
 			and(
 				eq(settlementRequests.groupId, input.groupId),
@@ -28,6 +43,50 @@ export function listSettlementRequests(
 		)
 		.orderBy(desc(settlementRequests.id))
 		.limit(input.limit);
+}
+
+export async function findSettlementRequestByProofAttachmentId(
+	executor: DbExecutor,
+	groupId: string,
+	proofAttachmentId: string,
+) {
+	const [row] = await executor
+		.select({
+			id: settlementRequests.id,
+			status: settlementRequests.status,
+			transactionId: settlementRequests.transactionId,
+		})
+		.from(settlementRequests)
+		.where(
+			and(
+				eq(settlementRequests.groupId, groupId),
+				eq(settlementRequests.proofAttachmentId, proofAttachmentId),
+			),
+		)
+		.limit(1);
+	return row ?? null;
+}
+
+export async function findSettlementRequestsByProofAttachmentIds(
+	executor: DbExecutor,
+	groupId: string,
+	proofAttachmentIds: string[],
+) {
+	if (proofAttachmentIds.length === 0) return [];
+	return executor
+		.select({
+			id: settlementRequests.id,
+			status: settlementRequests.status,
+			proofAttachmentId: settlementRequests.proofAttachmentId,
+			transactionId: settlementRequests.transactionId,
+		})
+		.from(settlementRequests)
+		.where(
+			and(
+				eq(settlementRequests.groupId, groupId),
+				inArray(settlementRequests.proofAttachmentId, proofAttachmentIds),
+			),
+		);
 }
 export async function findSettlementRequest(
 	executor: DbExecutor,
