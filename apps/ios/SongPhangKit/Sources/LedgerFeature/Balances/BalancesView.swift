@@ -1,5 +1,6 @@
 import DesignSystem
 public import Domain
+public import Foundation
 public import SwiftUI
 
 #if DEBUG
@@ -17,6 +18,14 @@ public struct BalancesView: View {
   private let onOpenSettle: (SuggestedTransfer) -> Void
   private let onOpenFund: ((ExpenseGroup.ID) -> Void)?
   private let onCreateFund: (() -> Void)?
+  private let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
+  private let onOpenShareCard: (() -> Void)?
+  private let onOpenGuestLink: (() -> Void)?
+  private let onOpenTransaction: ((LedgerTransaction.ID) -> Void)?
+  private let onViewCycleExpenses: ((SettlementCycle.ID) -> Void)?
+
+  @State private var isCloseCycleSheetOpen = false
+  @State private var selectedBreakdownMemberId: Member.ID?
 
   public init(
     model: BalancesModel,
@@ -28,7 +37,12 @@ public struct BalancesView: View {
     onOpenPay: ((SuggestedTransfer, Member, Member) -> Void)? = nil,
     onOpenSettle: @escaping (SuggestedTransfer) -> Void,
     onOpenFund: ((ExpenseGroup.ID) -> Void)? = nil,
-    onCreateFund: (() -> Void)? = nil
+    onCreateFund: (() -> Void)? = nil,
+    loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)? = nil,
+    onOpenShareCard: (() -> Void)? = nil,
+    onOpenGuestLink: (() -> Void)? = nil,
+    onOpenTransaction: ((LedgerTransaction.ID) -> Void)? = nil,
+    onViewCycleExpenses: ((SettlementCycle.ID) -> Void)? = nil
   ) {
     self.model = model
     self.showHeader = showHeader
@@ -40,6 +54,11 @@ public struct BalancesView: View {
     self.onOpenSettle = onOpenSettle
     self.onOpenFund = onOpenFund
     self.onCreateFund = onCreateFund
+    self.loadAttachment = loadAttachment
+    self.onOpenShareCard = onOpenShareCard
+    self.onOpenGuestLink = onOpenGuestLink
+    self.onOpenTransaction = onOpenTransaction
+    self.onViewCycleExpenses = onViewCycleExpenses
   }
 
   public var body: some View {
@@ -82,8 +101,66 @@ public struct BalancesView: View {
         if model.state.value == nil {
           await model.load()
         }
+        #if DEBUG
+          let args = ProcessInfo.processInfo.arguments
+          if args.contains("--balances-subtab-vault") {
+            model.selectedSubTab = .vault
+          } else if args.contains("--balances-subtab-cycles") {
+            model.selectedSubTab = .cycles
+          }
+          if args.contains("--open-breakdown"),
+            let firstDebtor = model.state.value?.balances.transfers.first?.fromMemberId
+              ?? model.state.value?.breakdowns?.breakdowns.first?.memberId
+          {
+            selectedBreakdownMemberId = firstDebtor
+          }
+        #endif
         if ProcessInfo.processInfo.arguments.contains("--scroll-bars") {
           proxy.scrollTo("balance-bars", anchor: .bottom)
+        }
+      }
+      .task {
+        await model.listenForEvents(onRemoved: onBackToGroups)
+      }
+      .sheet(isPresented: $isCloseCycleSheetOpen) {
+        if let data = model.state.value, let overview = data.cyclesOverview {
+          CloseCycleSheetView(
+            currentPeriod: overview.currentPeriod,
+            nextCycleNumber: (overview.cycles.first?.cycleNumber ?? 0) + 1,
+            isClosing: model.isClosingCycle,
+            errorMessage: model.cycleErrorMessage,
+            onConfirm: { title in
+              let closed = await model.closeCycle(title: title)
+              if closed {
+                isCloseCycleSheetOpen = false
+                model.selectedSubTab = .cycles
+              }
+            },
+            onDismiss: { isCloseCycleSheetOpen = false }
+          )
+        }
+      }
+      .sheet(
+        item: Binding<MemberDebtBreakdown?>(
+          get: {
+            guard let memberId = selectedBreakdownMemberId else { return nil }
+            return model.state.value?.breakdowns?.breakdowns.first { $0.memberId == memberId }
+          },
+          set: { next in
+            selectedBreakdownMemberId = next?.memberId
+          }
+        )
+      ) { breakdown in
+        if let data = model.state.value, let result = data.breakdowns {
+          MemberBreakdownSheetView(
+            breakdown: breakdown,
+            focusLabel: result.resolvedFocus.label,
+            memberTransfers: data.balances.transfers.filter {
+              $0.fromMemberId == breakdown.memberId
+            },
+            members: data.members,
+            onDismiss: { selectedBreakdownMemberId = nil }
+          )
         }
       }
     }
@@ -142,6 +219,136 @@ public struct BalancesView: View {
         action: onCreateFund
       )
     }
+
+    subTabBar(data: data)
+
+    switch model.selectedSubTab {
+    case .toPay:
+      toPayTabContent(
+        data: data,
+        hasTransactions: hasTransactions,
+        myMemberId: myMemberId,
+        sortedTransfers: sortedTransfers,
+        ownTransfers: ownTransfers,
+        otherTransfers: otherTransfers,
+        unmatchedPending: unmatchedPending,
+        isOffline: isOffline,
+        canWrite: canWrite
+      )
+    case .vault:
+      SettlementVaultSectionView(
+        page: data.vault,
+        selectedFilter: model.vaultFilter,
+        members: data.members,
+        isLoading: model.isLoadingVault,
+        isLoadingMore: model.isLoadingMoreVault,
+        loadAttachment: loadAttachment,
+        onSelectFilter: { next in
+          Task { await model.selectVaultFilter(next) }
+        },
+        onLoadMore: {
+          Task { await model.loadMoreVaultIfNeeded() }
+        },
+        onOpenTransaction: onOpenTransaction
+      )
+    case .cycles:
+      SettlementCyclesSectionView(
+        overview: data.cyclesOverview,
+        isOwner: data.group.role.isOwner,
+        isArchived: data.group.isArchived,
+        isOffline: isOffline,
+        isReopening: model.isReopeningCycle,
+        errorMessage: model.cycleErrorMessage,
+        onViewCycleExpenses: onViewCycleExpenses,
+        onReopenLatest: { cycleId in
+          Task { await model.reopenLatestCycle(cycleId) }
+        }
+      )
+    }
+  }
+
+  @ViewBuilder
+  private func subTabBar(data: BalancesViewData) -> some View {
+    let pendingCount = data.vault?.summary.pendingCount ?? 0
+    let cycleCount = data.cyclesOverview?.cycles.count ?? 0
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: 8) {
+        subTabPill(
+          title: L10n.tr("balances.subTabs.toPay"),
+          badge: nil,
+          isSelected: model.selectedSubTab == .toPay
+        ) {
+          model.selectedSubTab = .toPay
+        }
+        subTabPill(
+          title: L10n.tr("balances.subTabs.vault"),
+          badge: pendingCount > 0 ? pendingCount : nil,
+          isSelected: model.selectedSubTab == .vault
+        ) {
+          model.selectedSubTab = .vault
+        }
+        subTabPill(
+          title: L10n.tr("balances.subTabs.cycles"),
+          badge: cycleCount > 0 ? cycleCount : nil,
+          isSelected: model.selectedSubTab == .cycles
+        ) {
+          model.selectedSubTab = .cycles
+        }
+      }
+    }
+  }
+
+  private func subTabPill(
+    title: String,
+    badge: Int?,
+    isSelected: Bool,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      HStack(spacing: 6) {
+        Text(title)
+          .font(Typography.captionBold)
+          .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
+        if let badge {
+          Text("\(badge)")
+            .font(Typography.captionBold)
+            .foregroundStyle(isSelected ? Tokens.ink : Tokens.surface)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(isSelected ? Tokens.accent : Tokens.ink, in: Capsule())
+        }
+      }
+      .padding(.horizontal, 14)
+      .frame(minHeight: 40)
+      .background(isSelected ? Tokens.ink : Tokens.surface, in: Capsule())
+    }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  private func toPayTabContent(
+    data: BalancesViewData,
+    hasTransactions: Bool,
+    myMemberId: Member.ID?,
+    sortedTransfers: [SuggestedTransfer],
+    ownTransfers: [SuggestedTransfer],
+    otherTransfers: [SuggestedTransfer],
+    unmatchedPending: [SettlementRequest],
+    isOffline: Bool,
+    canWrite: Bool
+  ) -> some View {
+    if let myMemberId,
+      let myBalance = data.balances.balances.first(where: { $0.memberId == myMemberId })
+    {
+      personalNetHeroCard(
+        balance: myBalance.balance,
+        canViewBreakdown: data.breakdowns?.breakdowns.contains(where: { $0.memberId == myMemberId })
+          == true,
+        onViewBreakdown: { selectedBreakdownMemberId = myMemberId }
+      )
+    }
+
+    quickActionBar(data: data, isOffline: isOffline)
 
     if !hasTransactions {
       VStack(alignment: .leading, spacing: 12) {
@@ -213,6 +420,10 @@ public struct BalancesView: View {
         }
       }
 
+      let hasBreakdowns = data.breakdowns != nil
+      let inspectBreakdown: ((Member.ID) -> Void)? =
+        hasBreakdowns ? { memberId in selectedBreakdownMemberId = memberId } : nil
+
       if !ownTransfers.isEmpty {
         ForEach(ownTransfers) { transfer in
           OwnSettlementCardView(
@@ -225,6 +436,7 @@ public struct BalancesView: View {
               && (onOpenPay != nil ? model.hasCurrentPaymentDetails : canWrite),
             opensPay: onOpenPay != nil,
             isResolvingSettlement: model.isResolvingSettlement,
+            loadAttachment: loadAttachment,
             onSettle: { openTransfer(transfer, members: data.members) },
             onResolvePending: { pending, fromName, decision in
               Task {
@@ -235,7 +447,8 @@ public struct BalancesView: View {
                   decision: decision
                 )
               }
-            }
+            },
+            onInspectBreakdown: inspectBreakdown
           )
         }
         if !otherTransfers.isEmpty {
@@ -251,6 +464,7 @@ public struct BalancesView: View {
             isResolvingSettlement: model.isResolvingSettlement,
             hasCurrentPaymentDetails: model.hasCurrentPaymentDetails,
             isSendingReminder: model.isSendingReminder,
+            loadAttachment: loadAttachment,
             onSettle: { openTransfer($0, members: data.members) },
             onResolvePending: { pending, fromName, decision in
               Task {
@@ -264,7 +478,8 @@ public struct BalancesView: View {
             },
             onRemind: { from, to in
               Task { await model.sendReminder(fromMember: from, toMember: to) }
-            }
+            },
+            onInspectBreakdown: inspectBreakdown
           )
         }
       } else {
@@ -281,6 +496,7 @@ public struct BalancesView: View {
             isResolvingSettlement: model.isResolvingSettlement,
             hasCurrentPaymentDetails: model.hasCurrentPaymentDetails,
             isSendingReminder: model.isSendingReminder,
+            loadAttachment: loadAttachment,
             onSettle: { openTransfer(transfer, members: data.members) },
             onResolvePending: { pending, fromName, decision in
               Task {
@@ -294,14 +510,16 @@ public struct BalancesView: View {
             },
             onRemind: { from, to in
               Task { await model.sendReminder(fromMember: from, toMember: to) }
-            }
+            },
+            onInspectBreakdown: inspectBreakdown
           )
         }
       }
 
       BalanceBarsSection(
         balances: data.balances.balances,
-        members: data.members
+        members: data.members,
+        onSelectMember: inspectBreakdown
       )
       .id("balance-bars")
     }
@@ -313,6 +531,102 @@ public struct BalancesView: View {
         isOffline: isOffline
       )
     }
+  }
+
+  private func personalNetHeroCard(
+    balance: Money,
+    canViewBreakdown: Bool,
+    onViewBreakdown: @escaping () -> Void
+  ) -> some View {
+    let statusLabel: String =
+      if balance.isPositive {
+        L10n.tr("feed.owedToYou")
+      } else if balance.isNegative {
+        L10n.tr("feed.youOwe")
+      } else {
+        L10n.tr("feed.settled")
+      }
+    let tint =
+      balance.isPositive ? Tokens.credit : (balance.isNegative ? Tokens.debt : Tokens.ink)
+    return SPCard(padding: 16) {
+      HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(statusLabel)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.muted)
+          MoneyText(
+            balance.magnitude,
+            style: .full,
+            font: Typography.sectionTitle,
+            color: tint
+          )
+        }
+        Spacer(minLength: 8)
+        if canViewBreakdown {
+          Button(L10n.tr("breakdown.viewAction"), action: onViewBreakdown)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 36)
+            .background(Tokens.sunken, in: Capsule())
+            .buttonStyle(.plain)
+        }
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func quickActionBar(data: BalancesViewData, isOffline: Bool) -> some View {
+    let canClose =
+      isEmailVerified && data.group.role.canWrite && !data.group.isArchived
+      && data.cyclesOverview != nil
+    let closeDisabled =
+      isOffline || (data.cyclesOverview?.currentPeriod.countedTransactionCount ?? 0) == 0
+    let hasGuest = data.group.role.canWrite && onOpenGuestLink != nil
+    if onOpenShareCard != nil || hasGuest || canClose {
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+          if let onOpenShareCard {
+            quickActionChip(title: L10n.tr("shareCard.openAction"), icon: "square.and.arrow.up") {
+              onOpenShareCard()
+            }
+          }
+          if hasGuest, let onOpenGuestLink {
+            quickActionChip(title: L10n.tr("guestLink.title"), icon: "link") {
+              onOpenGuestLink()
+            }
+          }
+          if canClose {
+            quickActionChip(
+              title: L10n.tr("cycles.closeAction"),
+              icon: "lock.rectangle",
+              isDisabled: closeDisabled
+            ) {
+              model.cycleErrorMessage = nil
+              isCloseCycleSheetOpen = true
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private func quickActionChip(
+    title: String,
+    icon: String,
+    isDisabled: Bool = false,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      Label(title, systemImage: icon)
+        .font(Typography.captionBold)
+        .foregroundStyle(isDisabled ? Tokens.muted : Tokens.ink)
+        .padding(.horizontal, 12)
+        .frame(minHeight: 40)
+        .background(Tokens.surface, in: Capsule())
+    }
+    .buttonStyle(.plain)
+    .disabled(isDisabled)
   }
 
   private var noticeMessage: String? {
@@ -367,6 +681,10 @@ public struct BalancesView: View {
             amount: request.amount,
             fromName: from.name,
             toName: to.name,
+            channel: request.channel,
+            note: request.note,
+            proofAttachmentId: request.proofAttachment?.id,
+            loadAttachment: loadAttachment,
             canResolve: canResolve,
             canCancel: canCancel,
             isDisabled: !isEmailVerified || isOffline,
@@ -479,8 +797,10 @@ private struct OwnSettlementCardView: View {
   let canOpenAction: Bool
   let opensPay: Bool
   let isResolvingSettlement: Bool
+  let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
   let onSettle: () -> Void
   let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
+  let onInspectBreakdown: ((Member.ID) -> Void)?
 
   var body: some View {
     if let fromMember = members.first(where: { $0.id == transfer.fromMemberId }),
@@ -514,6 +834,10 @@ private struct OwnSettlementCardView: View {
             amount: pending.amount,
             fromName: fromMember.name,
             toName: toMember.name,
+            channel: pending.channel,
+            note: pending.note,
+            proofAttachmentId: pending.proofAttachmentId,
+            loadAttachment: loadAttachment,
             canResolve: canResolvePending(toMember: toMember, group: group),
             canCancel: canCancelPending(pending: pending, fromMember: fromMember, group: group),
             isDisabled: !isEmailVerified || isOffline,
@@ -536,6 +860,14 @@ private struct OwnSettlementCardView: View {
             action: onSettle
           )
         }
+        if let onInspectBreakdown {
+          Button(L10n.tr("breakdown.viewAction")) {
+            onInspectBreakdown(fromMember.id)
+          }
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.muted)
+          .buttonStyle(.plain)
+        }
       }
       .frame(maxWidth: .infinity)
       .padding(20)
@@ -555,9 +887,11 @@ private struct SettlementCardView: View {
   let isResolvingSettlement: Bool
   let hasCurrentPaymentDetails: Bool
   let isSendingReminder: Bool
+  let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
   let onSettle: () -> Void
   let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
   let onRemind: (Member, Member) -> Void
+  let onInspectBreakdown: ((Member.ID) -> Void)?
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
@@ -602,6 +936,10 @@ private struct SettlementCardView: View {
             amount: pending.amount,
             fromName: fromMember.name,
             toName: toMember.name,
+            channel: pending.channel,
+            note: pending.note,
+            proofAttachmentId: pending.proofAttachmentId,
+            loadAttachment: loadAttachment,
             canResolve: canResolvePending(toMember: toMember, group: group),
             canCancel: canCancelPending(pending: pending, fromMember: fromMember, group: group),
             isDisabled: !isEmailVerified || isOffline,
@@ -660,6 +998,14 @@ private struct SettlementCardView: View {
             )
           }
         }
+        if let onInspectBreakdown {
+          Button(L10n.tr("breakdown.viewAction")) {
+            onInspectBreakdown(fromMember.id)
+          }
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.muted)
+          .buttonStyle(.plain)
+        }
       }
       .padding(20)
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -679,9 +1025,11 @@ private struct OtherSettlementsSection: View {
   let isResolvingSettlement: Bool
   let hasCurrentPaymentDetails: Bool
   let isSendingReminder: Bool
+  let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
   let onSettle: (SuggestedTransfer) -> Void
   let onResolvePending: (PendingSettlement, String, SettlementDecision) -> Void
   let onRemind: (Member, Member) -> Void
+  let onInspectBreakdown: ((Member.ID) -> Void)?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -770,6 +1118,10 @@ private struct OtherSettlementsSection: View {
                 amount: pending.amount,
                 fromName: fromMember.name,
                 toName: toMember.name,
+                channel: pending.channel,
+                note: pending.note,
+                proofAttachmentId: pending.proofAttachmentId,
+                loadAttachment: loadAttachment,
                 canResolve: canResolvePending(toMember: toMember, group: group),
                 canCancel: canCancelPending(
                   pending: pending, fromMember: fromMember, group: group),
@@ -779,6 +1131,14 @@ private struct OtherSettlementsSection: View {
                 onReject: { onResolvePending(pending, fromMember.name, .reject) },
                 onCancel: { onResolvePending(pending, fromMember.name, .cancel) }
               )
+            }
+            if let onInspectBreakdown {
+              Button(L10n.tr("breakdown.viewAction")) {
+                onInspectBreakdown(fromMember.id)
+              }
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+              .buttonStyle(.plain)
             }
           }
         }
@@ -904,6 +1264,7 @@ private struct AllSettledSection: View {
 private struct BalanceBarsSection: View {
   let balances: [Balance]
   let members: [Member]
+  var onSelectMember: ((Member.ID) -> Void)? = nil
 
   var body: some View {
     let largest = max(
@@ -921,7 +1282,7 @@ private struct BalanceBarsSection: View {
         if let member = members.first(where: { $0.id == item.memberId }),
           member.active || !item.balance.isZero
         {
-          VStack(alignment: .leading, spacing: 4) {
+          let row = VStack(alignment: .leading, spacing: 4) {
             HStack {
               HStack(spacing: 4) {
                 Text(member.name)
@@ -961,6 +1322,16 @@ private struct BalanceBarsSection: View {
             }
             .frame(height: 14)
             .background(Tokens.sunken, in: Capsule())
+          }
+          if let onSelectMember {
+            Button {
+              onSelectMember(member.id)
+            } label: {
+              row
+            }
+            .buttonStyle(.plain)
+          } else {
+            row
           }
         }
       }

@@ -28,6 +28,7 @@ public final class SettleModel {
   private let membersRepository: any MembersRepository
   private let balancesRepository: any BalancesRepository
   private let transactionsRepository: any TransactionsRepository
+  public let attachmentsRepository: (any AttachmentsRepository)?
   private let onSaved: () -> Void
   private var capturedOccurredAt: String?
 
@@ -53,6 +54,26 @@ public final class SettleModel {
       }
     }
   }
+  public var channel: PaymentChannel? = nil {
+    didSet {
+      if channel != oldValue {
+        resetIntent()
+      }
+    }
+  }
+  public var note: String = "" {
+    didSet {
+      if note.count > 120 {
+        note = String(note.prefix(120))
+      }
+      if note != oldValue {
+        resetIntent()
+      }
+    }
+  }
+  public private(set) var attachments: [Attachment] = []
+  public private(set) var isUploadingProof = false
+  public private(set) var proofError: String?
   public private(set) var isSubmitting = false
   public private(set) var submitError: AppError?
   public var isRecorded = false
@@ -73,6 +94,7 @@ public final class SettleModel {
     membersRepository: any MembersRepository,
     balancesRepository: any BalancesRepository,
     transactionsRepository: any TransactionsRepository,
+    attachmentsRepository: (any AttachmentsRepository)? = nil,
     onSaved: @escaping () -> Void
   ) {
     self.groupId = groupId
@@ -85,6 +107,7 @@ public final class SettleModel {
     self.membersRepository = membersRepository
     self.balancesRepository = balancesRepository
     self.transactionsRepository = transactionsRepository
+    self.attachmentsRepository = attachmentsRepository
     self.onSaved = onSaved
   }
 
@@ -136,6 +159,55 @@ public final class SettleModel {
     }
   }
 
+  public func uploadProofImage(rawData: Data) async {
+    guard let attachmentsRepository, !isUploadingProof, !isSubmitting, attachments.count < 3 else {
+      return
+    }
+    proofError = nil
+    isUploadingProof = true
+    defer { isUploadingProof = false }
+    do {
+      let prepared = try await ReceiptImageProcessor.prepareJPEG(from: rawData)
+      let uploaded = try await attachmentsRepository.upload(
+        groupId: groupId,
+        data: prepared,
+        filename: "chung-tu.jpg",
+        contentType: "image/jpeg",
+        purpose: .expense
+      )
+      attachments.append(uploaded)
+      resetIntent()
+    } catch let imgError as ReceiptImageError {
+      proofError =
+        imgError == .tooLarge
+        ? L10n.tr("receipts.tooLarge")
+        : L10n.tr("receipts.notAnImage")
+    } catch let appError as AppError {
+      switch appError {
+      case .rateLimited:
+        proofError = L10n.tr("attachments.rateLimited")
+      case .api("STORAGE_QUOTA_EXCEEDED", _):
+        proofError = L10n.tr("attachments.quotaExceeded")
+      default:
+        proofError = L10n.tr("common.saveError")
+      }
+    } catch {
+      proofError = L10n.tr("common.saveError")
+    }
+  }
+
+  public func removeProofAttachment(id: Attachment.ID) {
+    guard !isSubmitting else { return }
+    attachments.removeAll { $0.id == id }
+    proofError = nil
+    resetIntent()
+  }
+
+  public func loadAttachment(id: Attachment.ID) async throws -> Data {
+    guard let attachmentsRepository else { return Data() }
+    return try await attachmentsRepository.content(groupId: groupId, attachmentId: id)
+  }
+
   public func submit(reduceMotion: Bool = false) async {
     guard let amt = amount, amt.isPositive, !isSubmitting else { return }
     isSubmitting = true
@@ -159,12 +231,16 @@ public final class SettleModel {
       occurredAt = formatted
     }
 
+    let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
     let draft = TransactionDraft.transfer(
       TransactionDraft.TransferPayload(
         amount: amt,
         occurredAt: occurredAt,
         fromMemberId: fromMemberId,
-        toMemberId: toMemberId
+        toMemberId: toMemberId,
+        attachmentIds: attachments.isEmpty ? nil : attachments.map(\.id),
+        paymentChannel: channel,
+        paymentNote: trimmedNote.isEmpty ? nil : trimmedNote
       )
     )
 

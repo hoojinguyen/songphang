@@ -37,6 +37,7 @@ public struct RouteDestination: View {
   @State private var editingPaymentMember: Member?
   @State private var isCreatingFund = false
   @State private var isReceiptCaptureOpen = false
+  @State private var isGuestLinkSheetOpen = false
   @State private var registerModel: RegisterModel?
   @State private var forgotPasswordModel: ForgotPasswordModel?
   @State private var accountModel: AccountModel?
@@ -82,6 +83,8 @@ public struct RouteDestination: View {
 
     let args = ProcessInfo.processInfo.arguments
     switch route {
+    case .guestShare:
+      break
     case .register:
       self._registerModel = State(
         initialValue: RegisterModel(
@@ -187,6 +190,8 @@ public struct RouteDestination: View {
           budgetRepository: dependencies.budget,
           transactionsRepository: dependencies.transactions,
           eventsRepository: dependencies.groupEvents,
+          attachmentsRepository: dependencies.attachments,
+          settlementCyclesRepository: dependencies.settlementCycles,
           initialFilter: initialFilter,
           initialHasNewItemsPill: args.contains("--new-items-pill"),
           initialDeletedTransactionId: deletedId
@@ -217,6 +222,8 @@ public struct RouteDestination: View {
           transactionsRepository: dependencies.transactions,
           settlementRequests: dependencies.settlementRequests,
           remindersRepository: dependencies.reminders,
+          settlementCyclesRepository: dependencies.settlementCycles,
+          eventsRepository: dependencies.groupEvents,
           onUnauthorized: {
             onPopToRoot(nil)
             Task { await sessionModel.signOut() }
@@ -364,6 +371,7 @@ public struct RouteDestination: View {
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
+          attachmentsRepository: dependencies.attachments,
           onSaved: onPop
         )
       )
@@ -431,6 +439,14 @@ public struct RouteDestination: View {
           onBackToGroups: { onPopToRoot(nil) }
         )
       }
+    case .guestShare(let token):
+      GuestGroupView(
+        model: GuestGroupModel(
+          token: token,
+          guestLinksRepository: dependencies.guestLinks
+        ),
+        onClose: onPop
+      )
     case .groupMembers(let groupId):
       if let membersModel {
         let people = (membersModel.state.value?.members ?? []).filter {
@@ -445,8 +461,24 @@ public struct RouteDestination: View {
           onEditPaymentDetails: { member in editingPaymentMember = member },
           onOpenFund: { id in onNavigate(.groupFund(groupId: id)) },
           onCreateFund: { isCreatingFund = true },
+          onOpenGuestLink: { _ in isGuestLinkSheetOpen = true },
           onLeftGroup: { onPopToRoot(nil) }
         )
+        .sheet(isPresented: $isGuestLinkSheetOpen) {
+          GuestLinkSheetView(
+            model: GuestLinkSheetModel(
+              groupId: groupId,
+              guestLinksRepository: dependencies.guestLinks,
+              onUnauthorized: {
+                isGuestLinkSheetOpen = false
+                onPopToRoot(nil)
+                Task { await sessionModel.signOut() }
+              }
+            ),
+            isOffline: membersModel.refreshError == .offline,
+            onDismiss: { isGuestLinkSheetOpen = false }
+          )
+        }
         .sheet(isPresented: $isCreatingFund) {
           createFundSheet(
             groupId: groupId,

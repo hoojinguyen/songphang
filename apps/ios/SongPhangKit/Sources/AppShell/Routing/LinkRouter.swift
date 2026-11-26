@@ -44,14 +44,20 @@ public struct LinkRouter: Sendable, Hashable {
     guard !rawPath.contains("..") else { return nil }
     let segments = rawPath.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
 
-    guard segments.count == 2, segments[0] == "join" else {
+    guard segments.count == 2 else {
       return nil
     }
     let token = segments[1]
-    guard Self.isValidInviteToken(token) else {
+    switch segments[0] {
+    case "join":
+      guard Self.isValidInviteToken(token) else { return nil }
+      return .joinGroup(token: token)
+    case "share":
+      guard Self.isValidGuestToken(token) else { return nil }
+      return .guestShare(token: token)
+    default:
       return nil
     }
-    return .joinGroup(token: token)
   }
 
   public enum PushDestination: Hashable, Sendable {
@@ -130,7 +136,16 @@ public struct LinkRouter: Sendable, Hashable {
 
   private static func isValidInviteToken(_ token: String) -> Bool {
     guard !token.isEmpty, token.count <= 128 else { return false }
-    return token.unicodeScalars.allSatisfy { scalar in
+    return isBase64URLString(token)
+  }
+
+  private static func isValidGuestToken(_ token: String) -> Bool {
+    guard token.count >= 32, token.count <= 64 else { return false }
+    return isBase64URLString(token)
+  }
+
+  private static func isBase64URLString(_ token: String) -> Bool {
+    token.unicodeScalars.allSatisfy { scalar in
       (scalar >= "A" && scalar <= "Z")
         || (scalar >= "a" && scalar <= "z")
         || (scalar >= "0" && scalar <= "9")

@@ -31,6 +31,9 @@
     public func createSettlementRequest(
       groupId: ExpenseGroup.ID,
       transfer: SuggestedTransfer,
+      channel: PaymentChannel?,
+      note: String?,
+      proofAttachmentId: Attachment.ID?,
       idempotencyKey: String
     ) async throws(AppError) {
       try await simulateNetwork()
@@ -46,6 +49,10 @@
       }) {
         throw .api(code: "REQUEST_ALREADY_PENDING", status: 409)
       }
+      let proofAttachment = proofAttachmentId.flatMap { attachmentsByGroup[groupId]?[$0] }
+      if proofAttachmentId != nil && proofAttachment == nil {
+        throw .api(code: "VALIDATION_FAILED", status: 400)
+      }
       seenIdempotencyKeys.insert(key)
       let reqId = UUID().uuidString
       let req = SettlementRequest(
@@ -54,6 +61,9 @@
         toMemberId: transfer.toMemberId,
         amount: transfer.amount,
         status: .pending,
+        channel: channel,
+        note: note,
+        proofAttachment: proofAttachment,
         createdByUserId: currentUser?.id,
         createdByName: currentUser?.name,
         createdAt: "2026-11-22T10:00:00.000Z"
@@ -75,7 +85,10 @@
               pendingSettlement: PendingSettlement(
                 id: reqId,
                 amount: transfer.amount,
-                createdByMe: true
+                createdByMe: true,
+                channel: channel,
+                note: note,
+                proofAttachmentId: proofAttachmentId
               )
             )
           }
@@ -135,7 +148,9 @@
           version: 1,
           updatedBy: TripScenario.actorMinh,
           createdBy: TripScenario.actorMinh,
-          attachments: []
+          attachments: current.proofAttachment.map { [$0] } ?? [],
+          paymentChannel: current.channel,
+          paymentNote: current.note
         )
         var txList = transactionsByGroup[groupId] ?? []
         txList.insert(tx, at: 0)
@@ -172,9 +187,14 @@
         toMemberId: current.toMemberId,
         amount: current.amount,
         status: nextStatus,
+        channel: current.channel,
+        note: current.note,
+        proofAttachment: current.proofAttachment,
         transactionId: assignedTxId,
         createdByUserId: current.createdByUserId,
         createdByName: current.createdByName,
+        resolvedByUserId: currentUser?.id,
+        resolvedByName: currentUser?.name,
         createdAt: current.createdAt,
         resolvedAt: "2026-11-22T10:05:00.000Z"
       )

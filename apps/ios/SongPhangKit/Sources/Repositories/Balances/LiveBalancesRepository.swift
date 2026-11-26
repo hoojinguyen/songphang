@@ -49,4 +49,62 @@ public final class LiveBalancesRepository: BalancesRepository, Sendable {
       throw environment.errorMapper.mapTransportError(error)
     }
   }
+
+  public func breakdowns(
+    groupId: ExpenseGroup.ID,
+    cycleId: BreakdownCycleSelection
+  ) async throws(AppError) -> MemberBreakdownsResult {
+    do {
+      let output = try await environment.client
+        .get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_balances_sol_breakdowns(
+          .init(
+            path: .init(groupId: groupId.rawValue),
+            query: .init(cycleId: LiveMemberBreakdownsMapping.encodeQuery(cycleId))
+          )
+        )
+      switch output {
+      case .ok(let ok):
+        return LiveMemberBreakdownsMapping.mapResult(try ok.body.json)
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
+
+  public func settlementVault(
+    groupId: ExpenseGroup.ID,
+    filter: SettlementVaultFilter,
+    cycleId: TransactionCycleFilter?,
+    cursor: String?,
+    limit: Int
+  ) async throws(AppError) -> SettlementVaultPage {
+    do {
+      let output = try await environment.client
+        .get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_settlement_hyphen_vault(
+          .init(
+            path: .init(groupId: groupId.rawValue),
+            query: .init(
+              filter: LiveSettlementVaultMapping.encodeFilter(filter),
+              cycleId: LiveSettlementVaultMapping.encodeCycleQuery(cycleId),
+              cursor: cursor,
+              limit: limit
+            )
+          )
+        )
+      switch output {
+      case .ok(let ok):
+        return LiveSettlementVaultMapping.mapPage(try ok.body.json)
+      case .undocumented(let status, let payload):
+        throw await environment.errorMapper.mapUndocumented(statusCode: status, payload: payload)
+      }
+    } catch let error as AppError {
+      throw error
+    } catch {
+      throw environment.errorMapper.mapTransportError(error)
+    }
+  }
 }

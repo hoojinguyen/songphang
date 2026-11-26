@@ -58,31 +58,36 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
       .Input.Query.statusPayload?,
     cursor: String?
   ) async throws(AppError) -> (requests: [SettlementRequest], nextCursor: String?) {
+    let baseURL = environment.configuration.apiBaseURL
+      .appendingPathComponent("groups")
+      .appendingPathComponent(groupId.rawValue)
+      .appendingPathComponent("settlement-requests")
+    var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+    var queryItems: [URLQueryItem] = []
+    if let queryStatus {
+      queryItems.append(URLQueryItem(name: "status", value: queryStatus.rawValue))
+    }
+    if let cursor, !cursor.isEmpty {
+      queryItems.append(URLQueryItem(name: "cursor", value: cursor))
+    }
+    if !queryItems.isEmpty {
+      components?.queryItems = queryItems
+    }
+    var request = URLRequest(url: components?.url ?? baseURL)
+    request.httpMethod = "GET"
+
     do {
-      return try await ResponseBodyCapture.withCapture {
-        let output = try await environment.client
-          .get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_settlement_hyphen_requests(
-            .init(
-              path: .init(groupId: groupId.rawValue),
-              query: .init(status: queryStatus, cursor: cursor)
-            )
-          )
-        switch output {
-        case .ok(let ok):
-          let json = try ok.body.json
-          let requests = json.requests.map(Self.mapRequest)
-          let nextCursor = json.nextCursor
-          return (requests: requests, nextCursor: nextCursor)
-        case .undocumented(let statusCode, let payload):
-          throw await environment.errorMapper.mapUndocumented(
-            statusCode: statusCode,
-            payload: payload
-          )
-        }
-      } fallback: { data in
-        let raw = try JSONDecoder().decode(RawSettlementRequestsResponse.self, from: data)
-        return (requests: raw.requests.map { $0.toDomain() }, nextCursor: raw.nextCursor)
+      let (data, http, snapshot) = try await environment.performAuthorizedDataRequest(request)
+      guard (200..<300).contains(http.statusCode) else {
+        let code = (try? JSONDecoder().decode(APIErrorPayload.self, from: data))?.error.code
+        throw await environment.errorMapper.mapStatus(
+          statusCode: http.statusCode,
+          code: code,
+          sessionGeneration: snapshot.token != nil ? snapshot.generation : nil
+        )
       }
+      let raw = try JSONDecoder().decode(RawSettlementRequestsResponse.self, from: data)
+      return (requests: raw.requests.map { $0.toDomain() }, nextCursor: raw.nextCursor)
     } catch let error as AppError {
       throw error
     } catch {
@@ -93,9 +98,13 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
   public func request(
     groupId: ExpenseGroup.ID,
     transfer: SuggestedTransfer,
+    channel: PaymentChannel?,
+    note: String?,
+    proofAttachmentId: Attachment.ID?,
     idempotencyKey: String
   ) async throws(AppError) {
     do {
+      let trimmedNote = note?.trimmingCharacters(in: .whitespacesAndNewlines)
       let output = try await environment.client
         .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_settlement_hyphen_requests(
           .init(
@@ -104,7 +113,10 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
             body: .json(
               .init(
                 amount: Int(transfer.amount.amount),
+                channel: LiveSettlementVaultMapping.encodePaymentChannel(channel),
                 fromMemberId: transfer.fromMemberId.rawValue,
+                note: (trimmedNote?.isEmpty == false) ? trimmedNote : nil,
+                proofAttachmentId: proofAttachmentId?.rawValue,
                 toMemberId: transfer.toMemberId.rawValue
               )
             )
@@ -175,23 +187,6 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
     Date.ISO8601FormatStyle(includingFractionalSeconds: true).format(date)
   }
 
-  private static func mapRequest(_ dto: Components.Schemas.SettlementRequestDto)
-    -> SettlementRequest
-  {
-    SettlementRequest(
-      id: dto.id,
-      fromMemberId: Member.ID(dto.fromMemberId),
-      toMemberId: Member.ID(dto.toMemberId),
-      amount: Money(Int64(dto.amount)),
-      status: SettlementRequestStatus(code: dto.status.rawValue),
-      transactionId: dto.transactionId.map(LedgerTransaction.ID.init),
-      createdByUserId: dto.createdBy.map { User.ID($0.id) },
-      createdByName: dto.createdBy?.name,
-      createdAt: formatISO(dto.createdAt),
-      resolvedAt: dto.resolvedAt.map(formatISO)
-    )
-  }
-
   private struct RawSettlementRequest: Codable, Sendable {
     struct RawCreator: Codable, Sendable {
       let id: String
@@ -203,8 +198,12 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
     let toMemberId: String
     let amount: Int64
     let status: String
+    let channel: String?
+    let note: String?
+    let proofAttachment: ReceiptMapping.RawAttachment?
     let transactionId: String?
     let createdBy: RawCreator?
+    let resolvedBy: RawCreator?
     let createdAt: String
     let resolvedAt: String?
 
@@ -215,9 +214,14 @@ public struct LiveSettlementRequestsRepository: SettlementRequestsRepository {
         toMemberId: Member.ID(toMemberId),
         amount: Money(amount),
         status: SettlementRequestStatus(code: status),
+        channel: channel.map(PaymentChannel.init(code:)),
+        note: note,
+        proofAttachment: proofAttachment?.toDomain(),
         transactionId: transactionId.map(LedgerTransaction.ID.init),
         createdByUserId: createdBy.map { User.ID($0.id) },
         createdByName: createdBy?.name,
+        resolvedByUserId: resolvedBy.map { User.ID($0.id) },
+        resolvedByName: resolvedBy?.name,
         createdAt: createdAt,
         resolvedAt: resolvedAt
       )

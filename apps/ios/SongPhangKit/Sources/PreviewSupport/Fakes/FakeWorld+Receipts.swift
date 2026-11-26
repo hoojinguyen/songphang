@@ -39,13 +39,18 @@
       groupId: ExpenseGroup.ID,
       data: Data,
       filename _: String,
-      contentType: String
+      contentType: String,
+      purpose: AttachmentUploadPurpose = .expense
     ) async throws(AppError) -> Attachment {
       try await simulateNetwork()
       guard let group = groupsById[groupId] else {
         throw .api(code: "NOT_FOUND", status: 404)
       }
-      guard group.role.canWrite else {
+      let isAllowed =
+        purpose == .transferProof
+        ? (group.role.canWrite || group.myMemberId != nil)
+        : group.role.canWrite
+      guard isAllowed else {
         throw .api(code: "FORBIDDEN", status: 403)
       }
       let id = Attachment.ID(UUID().uuidString.lowercased())

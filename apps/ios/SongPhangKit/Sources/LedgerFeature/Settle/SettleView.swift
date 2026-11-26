@@ -205,6 +205,27 @@ public struct SettleView: View {
         )
     }
 
+    if isEmailVerified {
+      TransferProofInputSection(
+        channel: $model.channel,
+        note: $model.note,
+        attachments: model.attachments,
+        maxAttachments: 3,
+        isDisabled: model.isSubmitting,
+        isUploading: model.isUploadingProof,
+        errorMessage: model.proofError,
+        loadContent: { id in
+          try await model.loadAttachment(id: id)
+        },
+        onUploadData: { rawData in
+          await model.uploadProofImage(rawData: rawData)
+        },
+        onRemoveAttachment: { id in
+          model.removeProofAttachment(id: id)
+        }
+      )
+    }
+
     if let submitError = model.submitError {
       Text(
         submitError == .api(code: "FORBIDDEN", status: 403)

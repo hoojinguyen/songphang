@@ -4,6 +4,8 @@ public enum AppError: Error, Sendable, Equatable {
   case upgradeRequired
   case conflict
   case groupArchived
+  case cycleEmpty
+  case cycleNotLatest
   case rateLimited
   case reminderTooSoon(nextAt: String)
   case api(code: String, status: Int)

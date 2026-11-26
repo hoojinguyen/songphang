@@ -178,6 +178,19 @@ enum TransactionMapping {
     }
   }
 
+  static func encodeCycleFilter(
+    _ cycleId: TransactionCycleFilter?
+  )
+    -> Operations.get_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_transactions.Input
+    .Query.cycleIdPayload?
+  {
+    guard let cycleId else { return nil }
+    switch cycleId {
+    case .current: return .init(value1: .current)
+    case .cycle(let id): return .init(value2: id.rawValue)
+    }
+  }
+
   static func makeQuery(
     filter: TransactionFilter?,
     cursor: String?
@@ -198,7 +211,8 @@ enum TransactionMapping {
       spendingOnly: (filter.spendingOnly && filter.type != .transfer) ? ._true : nil,
       _type: encodeFilterType(filter.type),
       from: filter.from,
-      to: filter.to
+      to: filter.to,
+      cycleId: encodeCycleFilter(filter.cycleId)
     )
   }
 
@@ -272,10 +286,14 @@ enum TransactionMapping {
       updatedAt: formatISO(dto.updatedAt),
       deletedAt: dto.deletedAt.map(formatISO),
       attachmentCount: dto.attachmentCount,
+      firstAttachmentId: dto.firstAttachmentId.map(Attachment.ID.init),
       approval: mapApproval(dto.approval),
       dispute: mapDispute(dto.dispute),
       commentCount: dto.commentCount,
-      myDelta: dto.myDelta.map { Money(Int64($0)) }
+      myDelta: dto.myDelta.map { Money(Int64($0)) },
+      paymentChannel: LiveSettlementVaultMapping.mapPaymentChannel(dto.paymentChannel),
+      paymentNote: dto.paymentNote,
+      cycleId: dto.cycleId.map(SettlementCycle.ID.init)
     )
   }
 
@@ -283,7 +301,8 @@ enum TransactionMapping {
     _ dto: Components.Schemas.TransactionDto,
     warnings: [TransactionWarning] = []
   ) -> LedgerTransaction {
-    LedgerTransaction(
+    let attachments = dto.attachments.map(ReceiptMapping.mapAttachment)
+    return LedgerTransaction(
       id: LedgerTransaction.ID(dto.id),
       type: TransactionType(code: dto._type.rawValue),
       description: dto.description,
@@ -310,12 +329,16 @@ enum TransactionMapping {
       updatedAt: formatISO(dto.updatedAt),
       deletedAt: dto.deletedAt.map(formatISO),
       warnings: warnings,
-      attachments: dto.attachments.map(ReceiptMapping.mapAttachment),
-      attachmentCount: dto.attachments.count,
+      attachments: attachments,
+      attachmentCount: attachments.count,
+      firstAttachmentId: attachments.first?.id,
       approval: mapApproval(dto.approval),
       dispute: mapDispute(dto.dispute),
       commentCount: dto.commentCount,
-      myDelta: dto.myDelta.map { Money(Int64($0)) }
+      myDelta: dto.myDelta.map { Money(Int64($0)) },
+      paymentChannel: LiveSettlementVaultMapping.mapPaymentChannel(dto.paymentChannel),
+      paymentNote: dto.paymentNote,
+      cycleId: dto.cycleId.map(SettlementCycle.ID.init)
     )
   }
 
@@ -345,12 +368,15 @@ enum TransactionMapping {
       let splitReq = encodeSplitPayload(payload)
       return payload.isIncome ? .income(splitReq) : .expense(splitReq)
     case .transfer(let payload):
+      let trimmedNote = payload.paymentNote?.trimmingCharacters(in: .whitespacesAndNewlines)
       let transferReq = Components.Schemas.TransferRequest(
         amount: Int(payload.amount.amount),
         attachmentIds: payload.attachmentIds?.map(\.rawValue),
         description: payload.description,
         fromMemberId: payload.fromMemberId.rawValue,
         occurredAt: parseISO(payload.occurredAt),
+        paymentChannel: LiveSettlementVaultMapping.encodePaymentChannel(payload.paymentChannel),
+        paymentNote: (trimmedNote?.isEmpty == false) ? trimmedNote : nil,
         toMemberId: payload.toMemberId.rawValue,
         _type: .transfer
       )
@@ -386,12 +412,15 @@ enum TransactionMapping {
       let splitReq = encodeUpdateSplitPayload(payload)
       return payload.isIncome ? .income(splitReq) : .expense(splitReq)
     case .transfer(let payload):
+      let trimmedNote = payload.paymentNote?.trimmingCharacters(in: .whitespacesAndNewlines)
       let transferReq = Components.Schemas.TransferRequest(
         amount: Int(payload.amount.amount),
         attachmentIds: payload.attachmentIds?.map(\.rawValue),
         description: payload.description,
         fromMemberId: payload.fromMemberId.rawValue,
         occurredAt: parseISO(payload.occurredAt),
+        paymentChannel: LiveSettlementVaultMapping.encodePaymentChannel(payload.paymentChannel),
+        paymentNote: (trimmedNote?.isEmpty == false) ? trimmedNote : nil,
         toMemberId: payload.toMemberId.rawValue,
         _type: .transfer
       )
@@ -669,10 +698,14 @@ enum TransactionMapping {
     let deletedAt: String?
     let attachments: [ReceiptMapping.RawAttachment]?
     let attachmentCount: Int?
+    let firstAttachmentId: String?
     let approval: RawApproval?
     let dispute: RawDispute?
     let commentCount: Int?
     let myDelta: Int64?
+    let paymentChannel: String?
+    let paymentNote: String?
+    let cycleId: String?
 
     func toDomain() -> LedgerTransaction {
       let decodedAttachments = (attachments ?? []).map { $0.toDomain() }
@@ -700,10 +733,15 @@ enum TransactionMapping {
         deletedAt: deletedAt,
         attachments: decodedAttachments,
         attachmentCount: attachmentCount ?? decodedAttachments.count,
+        firstAttachmentId: firstAttachmentId.map(Attachment.ID.init)
+          ?? decodedAttachments.first?.id,
         approval: approval?.toDomain() ?? .init(),
         dispute: dispute?.toDomain(),
         commentCount: commentCount ?? 0,
-        myDelta: myDelta.map(Money.init)
+        myDelta: myDelta.map(Money.init),
+        paymentChannel: paymentChannel.map(PaymentChannel.init(code:)),
+        paymentNote: paymentNote,
+        cycleId: cycleId.map(SettlementCycle.ID.init)
       )
     }
 
@@ -732,10 +770,14 @@ enum TransactionMapping {
       self.attachments =
         tx.attachments.isEmpty ? nil : tx.attachments.map(ReceiptMapping.RawAttachment.init)
       self.attachmentCount = tx.attachmentCount
+      self.firstAttachmentId = tx.firstAttachmentId?.rawValue
       self.approval = RawApproval(approval: tx.approval)
       self.dispute = tx.dispute.map(RawDispute.init)
       self.commentCount = tx.commentCount
       self.myDelta = tx.myDelta?.amount
+      self.paymentChannel = tx.paymentChannel?.code
+      self.paymentNote = tx.paymentNote
+      self.cycleId = tx.cycleId?.rawValue
     }
   }
 
