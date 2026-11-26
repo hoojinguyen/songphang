@@ -55,3 +55,21 @@
 - **Options:** (1) Inline `settlementCycles` inside `schema.ts`; (2) Export `settlementCycles` from `packages/db/src/index.ts` and register `./src/schema-cycles.ts` in `packages/db/drizzle.config.ts`.
 - **Choice:** Option 2.
 - **Reason:** Matches all existing `schema-*.ts` modules cleanly without circular imports.
+
+### D6 — Feed transfer badge placement (`5.5B.2.1`, `apps/web/src/components/feed/LedgerPill.tsx`)
+- **Problem:** Plan `5.5B.2.1` listed `ExpenseRow.tsx`, whereas `ExpenseStream.tsx` routes `type === "expense"` to `ExpenseRow` and `type === "transfer" | "income"` to `LedgerPill`.
+- **Options:** (1) Duplicate transfer layout inside `ExpenseRow`; (2) Upgrade `LedgerPill.tsx` for `transfer` rows into a single-band card with a `28px` proof thumbnail (`firstAttachmentId`), `Có chứng từ` badge, channel/note subtitle, and single-line `tabular-nums` amount.
+- **Choice:** Option 2.
+- **Reason:** Matches existing codebase dispatch with zero redundant components.
+
+### D7 — Swift OpenAPI generator union workaround for `proofAttachment` (`5.5B.3.1`, `LiveSettlementRequestsRepository.swift`)
+- **Problem:** `swift-openapi-generator` skips `anyOf: [AttachmentDto, {type: null}]` on `SettlementRequestDto.proofAttachment` in generated types.
+- **Options:** (1) Drop `proofAttachment` on iOS; (2) Decode `RawSettlementRequestsResponse` via `performAuthorizedDataRequest` in `LiveSettlementRequestsRepository.fetchPage`.
+- **Choice:** Option 2.
+- **Reason:** Preserves additive OpenAPI 3.1 compatibility while giving iOS full `proofAttachment` parity.
+
+### D8 — Cycle-aware summary metrics on Share Cards (`5.5B.3.4`, `ShareCardPreviewSheet.swift`, `ShareCardModal.tsx`)
+- **Problem:** Immediately after `Chốt đợt`, `currentPeriod` has `0` open expenses while `resolvedFocus` resolves to the latest closed cycle.
+- **Options:** (1) Always display `currentPeriod.totalExpenseAmount`; (2) Use `focusCycle.totalExpenseAmount` / `expenseCount` when `resolvedFocus.kind == .cycle` and `currentPeriod` for `"current"` / `"all"` (zero client-side summing).
+- **Choice:** Option 2.
+- **Reason:** Displays accurate batch spend right after closeout while keeping server integers authoritative.
