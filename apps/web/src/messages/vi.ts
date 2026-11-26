@@ -76,6 +76,8 @@ export const vi = {
 		rejectedNotice: "Đã báo lại là chưa nhận.",
 		alreadyResolved: "Yêu cầu này đã được xử lý.",
 		partialNote: "Trả trước {amount} trên tổng nợ {total}.",
+		showDetails: "Xem thông tin",
+		hideDetails: "Ẩn thông tin",
 	},
 	payment: {
 		title: "Thông tin nhận tiền",

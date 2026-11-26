@@ -109,7 +109,8 @@ struct SettlementCyclesSectionView: View {
 
   private func cycleCard(_ cycle: SettlementCycle, isLatest: Bool) -> some View {
     let isExpanded =
-      expandedCycleId == cycle.id || (expandedCycleId == nil && isLatest && !isDefaultLatestCollapsed)
+      expandedCycleId == cycle.id
+      || (expandedCycleId == nil && isLatest && !isDefaultLatestCollapsed)
     return SPCard(padding: 16) {
       VStack(alignment: .leading, spacing: 12) {
         Button {

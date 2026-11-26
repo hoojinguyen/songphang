@@ -8405,6 +8405,17 @@
         }
       }
     },
+    "cycles.selectPeriod": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn đợt"
+          }
+        }
+      }
+    },
     "cycles.allPeriods": {
       "extractionState": "manual",
       "localizations": {
@@ -8599,6 +8610,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Phân bổ thanh toán"
+          }
+        }
+      }
+    },
+    "breakdown.memberShare": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phần của {name}"
           }
         }
       }

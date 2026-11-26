@@ -150,7 +150,10 @@ struct GuestTransactionDetailSheet: View {
           Divider().overlay(Tokens.borderSubtle)
           ForEach(Array(extras.enumerated()), id: \.offset) { _, extra in
             let title = extra.label.isEmpty ? extra.kind.localizedTitle : extra.label
-            let displayedAmount = extra.kind == .discount ? Money(-extra.amount.amount) : extra.amount
+            let displayedAmount =
+              extra.kind == .discount
+              ? Money(-extra.amount.amount)
+              : extra.amount
             HStack {
               Text(title)
                 .font(Typography.caption)
