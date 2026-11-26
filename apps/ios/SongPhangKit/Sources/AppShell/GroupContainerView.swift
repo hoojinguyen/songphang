@@ -65,6 +65,7 @@ public struct GroupContainerView: View {
   @State private var feedModel: GroupFeedModel
   @State private var balancesModel: BalancesModel
   @State private var statsModel: StatsModel
+  @State private var recurringExpensesModel: RecurringExpensesModel
   @State private var fundModel: FundModel
   @State private var guestLinkSheetModel: GuestLinkSheetModel
 
@@ -143,6 +144,16 @@ public struct GroupContainerView: View {
       }
     )
     self._statsModel = State(initialValue: stats)
+
+    let recurring = RecurringExpensesModel(
+      groupId: groupId,
+      repository: dependencies.recurringExpenses,
+      onUnauthorized: {
+        onPopToRoot(nil)
+        Task { await sessionModel.signOut() }
+      }
+    )
+    self._recurringExpensesModel = State(initialValue: recurring)
 
     let fund = FundModel(
       groupId: groupId,
@@ -647,10 +658,15 @@ public struct GroupContainerView: View {
         case .stats:
           StatsView(
             model: statsModel,
+            recurringExpensesModel: recurringExpensesModel,
+            isEmailVerified: currentUser?.emailVerified ?? true,
             showHeader: false,
             onBack: onBack,
             onOpenFilteredFeed: { filter in
               onNavigate(.groupFeed(groupId: groupId, initialFilter: filter))
+            },
+            onCompleteDueRecurring: { item in
+              onNavigate(.newTransactionForm(groupId: groupId, initialRecurringExpense: item))
             }
           )
         case .fund:

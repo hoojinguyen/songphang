@@ -132,6 +132,7 @@
       var activityByGroup: [ExpenseGroup.ID: [ActivityItem]] = [:]
       var categoriesByGroup: [ExpenseGroup.ID: [GroupCategory]] = [:]
       var budgetsByGroup: [ExpenseGroup.ID: GroupBudget] = [:]
+      var recurringExpensesByGroup: [ExpenseGroup.ID: [RecurringExpense]] = [:]
     }
 
     public init(
@@ -183,6 +184,7 @@
       self.activityByGroup = initial.activityByGroup
       self.categoriesByGroup = initial.categoriesByGroup
       self.budgetsByGroup = initial.budgetsByGroup
+      self.recurringExpensesByGroup = initial.recurringExpensesByGroup
     }
 
     public func setBehavior(_ newBehavior: FakeBehavior) {
@@ -214,6 +216,8 @@
       self.balancesByGroup = next.balancesByGroup
       self.activityByGroup = next.activityByGroup
       self.categoriesByGroup = next.categoriesByGroup
+      self.recurringExpensesByGroup = next.recurringExpensesByGroup
+      self.householdsByGroup.removeAll()
       self.seenIdempotencyKeys.removeAll()
       self.clonedGroupsByKey.removeAll()
       self.budgetsByGroup.removeAll()
@@ -259,6 +263,28 @@
         state.balancesByGroup[id] = TripScenario.balances(forStep: 4)
         state.activityByGroup[id] = TripScenario.activityItems
         state.categoriesByGroup[id] = FakeWorld.defaultTripCategories
+        state.recurringExpensesByGroup[id] = [
+          RecurringExpense(
+            id: RecurringExpense.ID("rec-water-bill"),
+            groupId: id,
+            mode: .variable,
+            active: true,
+            description: "Tiền nước",
+            amount: Money(140_000),
+            category: .bills,
+            payersTemplate: [RecurringPayerTemplateEntry(memberId: TripScenario.minhId)],
+            splitTemplate: .equal(members: [
+              TripScenario.minhId,
+              TripScenario.lanId,
+              TripScenario.hungId,
+              TripScenario.thuId,
+            ]),
+            frequency: .monthly,
+            dayOfMonth: 25,
+            nextDueDate: "2026-12-25",
+            pendingDueDate: "2026-11-25"
+          )
+        ]
       case .large:
         state.user = signedIn ? TripScenario.user : nil
         var group = LargeScenario.group

@@ -36,8 +36,14 @@ struct GuestTransactionDetailSheet: View {
                 .foregroundStyle(Tokens.ink)
             }
           }
-          if case .items(let items, let extras, _) = transaction.split {
-            itemsBreakdownCard(items: items, extras: extras)
+          if case .items(let items, let extras, let allocation) = transaction.split {
+            itemsBreakdownCard(items: items, extras: extras, allocation: allocation)
+          } else if !transaction.split.extras.isEmpty {
+            TransactionExtrasCardView(
+              totalAmount: transaction.amount,
+              extras: transaction.split.extras,
+              allocation: transaction.split.extrasAllocation
+            )
           }
           if !transaction.payers.isEmpty || !transaction.shares.isEmpty {
             payersAndSharesCard
@@ -115,7 +121,8 @@ struct GuestTransactionDetailSheet: View {
 
   private func itemsBreakdownCard(
     items: [SplitSpec.ItemEntry],
-    extras: [SplitSpec.ItemsExtra]
+    extras: [SplitSpec.ItemsExtra],
+    allocation: ExtrasAllocation?
   ) -> some View {
     SPCard(padding: 16) {
       VStack(alignment: .leading, spacing: 8) {
@@ -148,25 +155,12 @@ struct GuestTransactionDetailSheet: View {
 
         if !extras.isEmpty {
           Divider().overlay(Tokens.borderSubtle)
-          ForEach(Array(extras.enumerated()), id: \.offset) { _, extra in
-            let title = extra.label.isEmpty ? extra.kind.localizedTitle : extra.label
-            let displayedAmount =
-              extra.kind == .discount
-              ? Money(-extra.amount.amount)
-              : extra.amount
-            HStack {
-              Text(title)
-                .font(Typography.caption)
-                .foregroundStyle(Tokens.muted)
-              Spacer()
-              MoneyText(
-                displayedAmount,
-                style: .signed,
-                font: Typography.captionBold,
-                color: Tokens.ink
-              )
-            }
-          }
+          TransactionExtrasCardView(
+            totalAmount: transaction.amount,
+            extras: extras,
+            allocation: allocation,
+            showCardChrome: false
+          )
         }
       }
     }

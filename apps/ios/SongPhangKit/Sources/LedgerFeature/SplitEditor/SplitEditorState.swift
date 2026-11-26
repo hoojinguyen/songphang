@@ -194,7 +194,11 @@ public struct SplitEditorState: Sendable, Equatable {
       guard let payload = itemsDraft.buildPayload(),
         itemsDraft.unassignedCount == 0
       else { return nil }
-      return .items(items: payload.items, extras: payload.extras)
+      return .items(
+        items: payload.items,
+        extras: payload.extras,
+        extrasAllocation: itemsDraft.extrasAllocation
+      )
     }
   }
 

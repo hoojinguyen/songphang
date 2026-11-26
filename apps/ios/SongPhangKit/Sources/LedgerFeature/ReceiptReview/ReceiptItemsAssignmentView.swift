@@ -305,6 +305,31 @@ public struct ReceiptItemsAssignmentView: View {
           .accessibilityLabel(L10n.tr("receipts.removeExtra"))
         }
       }
+
+      if !draft.extras.isEmpty {
+        HStack(spacing: 6) {
+          ForEach(
+            [
+              (ExtrasAllocation.equal, L10n.tr("extras.allocEqual")),
+              (ExtrasAllocation.proportional, L10n.tr("extras.allocProportional")),
+            ],
+            id: \.0
+          ) { option, title in
+            let selected = draft.extrasAllocation == option
+            Button {
+              draft.extrasAllocation = option
+              onChange()
+            } label: {
+              Text(title)
+                .font(Typography.captionBold)
+                .foregroundStyle(selected ? Tokens.surface : Tokens.ink)
+                .frame(maxWidth: .infinity, minHeight: 36)
+                .background(selected ? Tokens.ink : Tokens.sunken, in: Capsule())
+            }
+            .buttonStyle(.plain)
+          }
+        }
+      }
     }
     .padding(14)
     .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))

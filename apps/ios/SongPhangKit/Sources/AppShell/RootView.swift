@@ -968,6 +968,13 @@ public struct RootView: View {
             },
             onOpenAccount: {
               selectedTab = .account
+            },
+            onOpenDueRecurring: { action in
+              selectedTab = .groups
+              groupsPath = [
+                .groupFeed(groupId: action.groupId),
+                .newTransactionForm(groupId: action.groupId, initialRecurringDueAction: action),
+              ]
             }
           )
           .toolbar {

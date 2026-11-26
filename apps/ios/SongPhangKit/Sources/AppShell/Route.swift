@@ -20,7 +20,9 @@ public enum Route: Hashable, Sendable {
     initialReading: QuickEntryReading? = nil,
     initialTransferFrom: Member.ID? = nil,
     initialTransferTo: Member.ID? = nil,
-    initialAttachmentId: Attachment.ID? = nil
+    initialAttachmentId: Attachment.ID? = nil,
+    initialRecurringExpense: RecurringExpense? = nil,
+    initialRecurringDueAction: OverviewRecurringDueAction? = nil
   )
   case editTransaction(groupId: ExpenseGroup.ID, transactionId: LedgerTransaction.ID)
   case transactionDetail(groupId: ExpenseGroup.ID, transactionId: LedgerTransaction.ID)

@@ -271,7 +271,9 @@ public struct RouteDestination: View {
       let initialReading,
       let initialTransferFrom,
       let initialTransferTo,
-      let initialAttachmentId
+      let initialAttachmentId,
+      let initialRecurringExpense,
+      let initialRecurringDueAction
     ):
       self._expenseFormModel = State(
         initialValue: ExpenseFormModel(
@@ -281,6 +283,8 @@ public struct RouteDestination: View {
           initialTransferFrom: initialTransferFrom,
           initialTransferTo: initialTransferTo,
           initialAttachmentId: initialAttachmentId,
+          initialRecurringExpense: initialRecurringExpense,
+          initialRecurringDueAction: initialRecurringDueAction,
           initialSplitEditorOpen: args.contains("--open-split-editor"),
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
@@ -288,6 +292,7 @@ public struct RouteDestination: View {
           transactionsRepository: dependencies.transactions,
           categoriesRepository: dependencies.categories,
           attachmentsRepository: dependencies.attachments,
+          recurringExpensesRepository: dependencies.recurringExpenses,
           onSaved: {
             onPop()
             onExpenseSaved()

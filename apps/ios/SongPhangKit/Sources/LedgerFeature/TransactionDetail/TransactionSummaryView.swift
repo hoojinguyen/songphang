@@ -172,7 +172,7 @@ struct TransactionSummaryView: View {
         .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
       }
 
-      if case .items(let items, let extras, _) = transaction.split {
+      if case .items(let items, let extras, let allocation) = transaction.split {
         VStack(spacing: 8) {
           ForEach(Array(items.enumerated()), id: \.offset) { _, item in
             HStack {
@@ -192,20 +192,25 @@ struct TransactionSummaryView: View {
             .padding(.vertical, 4)
           }
 
-          ForEach(Array(extras.enumerated()), id: \.offset) { _, extra in
-            HStack {
-              Text(extra.label)
-                .font(Typography.caption)
-                .foregroundStyle(Tokens.muted)
-              Spacer()
-              MoneyText(extra.amount, style: .full, font: Typography.captionBold, color: Tokens.ink)
-            }
-            .padding(.vertical, 2)
+          if !extras.isEmpty {
+            Divider().overlay(Tokens.borderSubtle)
+            TransactionExtrasCardView(
+              totalAmount: transaction.amount,
+              extras: extras,
+              allocation: allocation,
+              showCardChrome: false
+            )
           }
         }
         .padding(14)
         .background(Tokens.bg)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+      } else if !transaction.split.extras.isEmpty {
+        TransactionExtrasCardView(
+          totalAmount: transaction.amount,
+          extras: transaction.split.extras,
+          allocation: transaction.split.extrasAllocation
+        )
       }
 
       if transaction.type != .transfer, !transaction.shares.isEmpty {
