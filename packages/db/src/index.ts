@@ -23,6 +23,7 @@ export * from "./google-accounts.js";
 export * from "./group-users.js";
 export * from "./groups.js";
 export * from "./guest-links.js";
+export * from "./households.js";
 export * from "./idempotency.js";
 export * from "./invites.js";
 export * from "./member-breakdowns.js";
@@ -33,6 +34,7 @@ export * from "./overview.js";
 export * from "./payment-methods.js";
 export * from "./push-devices.js";
 export * from "./receipt-scans.js";
+export * from "./recurring-expenses.js";
 export * from "./reminders.js";
 export { sessions, users } from "./schema.js";
 export { authTokens, userIdentities } from "./schema-accounts.js";
@@ -52,6 +54,7 @@ export { comments } from "./schema-comments.js";
 export { settlementCycles } from "./schema-cycles.js";
 export { transactionDisputes } from "./schema-disputes.js";
 export { groups, groupUsers, members } from "./schema-groups.js";
+export { households } from "./schema-households.js";
 export {
 	jobCheckpoints,
 	notificationSettings,
@@ -61,6 +64,7 @@ export {
 export * from "./schema-payments.js";
 export { pushDevices } from "./schema-push.js";
 export { activityLog, idempotencyKeys } from "./schema-records.js";
+export { recurringExpenses } from "./schema-recurring.js";
 export { debtReminders } from "./schema-reminders.js";
 export { receiptScans } from "./schema-scans.js";
 export * from "./schema-settlements.js";

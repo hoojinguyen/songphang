@@ -9,6 +9,20 @@ export type PairDebt = {
 	creditorMemberId: string;
 	amount: number;
 };
+export type HouseholdGroup = {
+	id: string;
+	name: string;
+	representativeMemberId: string;
+	memberIds: readonly string[];
+};
+export type HouseholdBalanceSummary = {
+	id: string;
+	name: string;
+	representativeMemberId: string;
+	memberIds: string[];
+	netBalance: number;
+	memberBalances: MemberBalance[];
+};
 
 function validateMemberIds(ids: readonly string[]): void {
 	if (
@@ -20,9 +34,9 @@ function validateMemberIds(ids: readonly string[]): void {
 	}
 }
 
-export function suggestMinimizedSettlements(
+function validateZeroSumBalances(
 	balancesByPosition: readonly MemberBalance[],
-): Settlement[] {
+): void {
 	validateMemberIds(balancesByPosition.map(({ memberId }) => memberId));
 	if (
 		balancesByPosition.some(({ balance }) => !Number.isSafeInteger(balance))
@@ -37,6 +51,12 @@ export function suggestMinimizedSettlements(
 	) {
 		throw new RangeError("Balances must sum to zero");
 	}
+}
+
+export function suggestMinimizedSettlements(
+	balancesByPosition: readonly MemberBalance[],
+): Settlement[] {
+	validateZeroSumBalances(balancesByPosition);
 	const remaining = balancesByPosition.map((balance) => ({ ...balance }));
 	const settlements: Settlement[] = [];
 	while (true) {
@@ -109,4 +129,133 @@ export function netPairwiseDebts(
 		}
 	}
 	return settlements;
+}
+
+export function consolidateHouseholdBalances(
+	balancesByPosition: readonly MemberBalance[],
+	households: readonly HouseholdGroup[],
+): {
+	consolidated: MemberBalance[];
+	summaries: HouseholdBalanceSummary[];
+} {
+	validateZeroSumBalances(balancesByPosition);
+	const balanceByMember = new Map(
+		balancesByPosition.map((entry) => [entry.memberId, entry.balance]),
+	);
+	const positionByMember = new Map(
+		balancesByPosition.map((entry, index) => [entry.memberId, index]),
+	);
+	const assignedMembers = new Set<string>();
+	const representativeNetByMember = new Map<string, number>();
+	const summaries: HouseholdBalanceSummary[] = [];
+
+	for (const household of households) {
+		if (
+			household.memberIds.length < 2 ||
+			new Set(household.memberIds).size !== household.memberIds.length
+		) {
+			throw new RangeError("Household must have at least two distinct members");
+		}
+		if (!household.memberIds.includes(household.representativeMemberId)) {
+			throw new RangeError(
+				"Household representative must belong to the household",
+			);
+		}
+		for (const memberId of household.memberIds) {
+			if (!balanceByMember.has(memberId)) {
+				throw new RangeError("Household contains unknown member");
+			}
+			if (assignedMembers.has(memberId)) {
+				throw new RangeError("Member belongs to multiple households");
+			}
+			assignedMembers.add(memberId);
+		}
+
+		const orderedMemberIds = [...household.memberIds].sort(
+			(a, b) => (positionByMember.get(a) ?? 0) - (positionByMember.get(b) ?? 0),
+		);
+		const memberBalances = orderedMemberIds.map((memberId) => ({
+			memberId,
+			balance: balanceByMember.get(memberId) ?? 0,
+		}));
+		const netBig = memberBalances.reduce(
+			(sum, entry) => sum + BigInt(entry.balance),
+			0n,
+		);
+		if (
+			netBig < BigInt(Number.MIN_SAFE_INTEGER) ||
+			netBig > BigInt(Number.MAX_SAFE_INTEGER)
+		) {
+			throw new RangeError("Household net balance exceeds safe integer range");
+		}
+		const netBalance = Number(netBig);
+		representativeNetByMember.set(household.representativeMemberId, netBalance);
+		summaries.push({
+			id: household.id,
+			name: household.name,
+			representativeMemberId: household.representativeMemberId,
+			memberIds: orderedMemberIds,
+			netBalance,
+			memberBalances,
+		});
+	}
+
+	const consolidated = balancesByPosition.map((entry) => {
+		if (!assignedMembers.has(entry.memberId)) {
+			return { memberId: entry.memberId, balance: entry.balance };
+		}
+		const repNet = representativeNetByMember.get(entry.memberId);
+		return {
+			memberId: entry.memberId,
+			balance: repNet !== undefined ? repNet : 0,
+		};
+	});
+
+	return { consolidated, summaries };
+}
+
+export function suggestHouseholdSettlements(input: {
+	balancesByPosition: readonly MemberBalance[];
+	minimizeDebts: boolean;
+	pairDebts?: readonly PairDebt[];
+	households: readonly HouseholdGroup[];
+}): {
+	transfers: Settlement[];
+	summaries: HouseholdBalanceSummary[];
+} {
+	if (input.balancesByPosition.length === 0) {
+		return { transfers: [], summaries: [] };
+	}
+	const { consolidated, summaries } = consolidateHouseholdBalances(
+		input.balancesByPosition,
+		input.households,
+	);
+	if (input.minimizeDebts) {
+		return {
+			transfers: suggestMinimizedSettlements(consolidated),
+			summaries,
+		};
+	}
+
+	const representativeOf = new Map<string, string>();
+	for (const household of input.households) {
+		for (const memberId of household.memberIds) {
+			representativeOf.set(memberId, household.representativeMemberId);
+		}
+	}
+	const mappedDebts: PairDebt[] = (input.pairDebts ?? []).map((debt) => ({
+		debtorMemberId:
+			representativeOf.get(debt.debtorMemberId) ?? debt.debtorMemberId,
+		creditorMemberId:
+			representativeOf.get(debt.creditorMemberId) ?? debt.creditorMemberId,
+		amount: debt.amount,
+	}));
+
+	return {
+		transfers: netPairwiseDebts(
+			mappedDebts,
+			input.balancesByPosition.map((entry) => entry.memberId),
+		),
+		summaries,
+	};
 }

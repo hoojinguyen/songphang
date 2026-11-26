@@ -1,24 +1,45 @@
 import { allocateByWeights } from "./allocate.ts";
 import { parseHundredths } from "./decimal.ts";
-import { computeItemShares, type ItemsSplitInput } from "./split-items.ts";
+import {
+	allocateNetExtras,
+	computeItemShares,
+	type ExtrasAllocation,
+	type ItemExtraEntry,
+	type ItemsSplitInput,
+	sumNetExtras,
+	validateRatePercentExtras,
+} from "./split-items.ts";
+
 export type Share = { memberId: string; amount: number };
 export type SplitInput =
-	| { method: "equal"; members: readonly string[] }
+	| {
+			method: "equal";
+			members: readonly string[];
+			extras?: readonly ItemExtraEntry[];
+			extrasAllocation?: ExtrasAllocation;
+	  }
 	| {
 			method: "exact";
 			members: readonly string[];
 			entries: readonly Share[];
 			remainder: "none" | "equal_among_blank" | "equal_among_all";
+			extras?: readonly ItemExtraEntry[];
+			extrasAllocation?: ExtrasAllocation;
 	  }
 	| {
 			method: "shares";
 			entries: readonly { memberId: string; weight: string }[];
+			extras?: readonly ItemExtraEntry[];
+			extrasAllocation?: ExtrasAllocation;
 	  }
 	| {
 			method: "percent";
 			entries: readonly { memberId: string; percent: string }[];
+			extras?: readonly ItemExtraEntry[];
+			extrasAllocation?: ExtrasAllocation;
 	  }
 	| ItemsSplitInput;
+
 export type SplitResult =
 	| { ok: true; shares: Share[] }
 	| {
@@ -32,6 +53,7 @@ export type SplitResult =
 			code: "ITEM_UNASSIGNED";
 			itemIndex: number;
 	  };
+
 function validIds(ids: readonly string[]) {
 	if (
 		ids.length === 0 ||
@@ -40,13 +62,16 @@ function validIds(ids: readonly string[]) {
 	)
 		throw new RangeError("Member IDs must be nonempty and unique");
 }
+
 function validAmount(amount: number) {
 	if (!Number.isSafeInteger(amount) || amount < 0)
 		throw new RangeError("Amount must be a nonnegative safe integer");
 }
+
 function mismatch(expected: number, actual: number): SplitResult {
 	return { ok: false, code: "SPLIT_TOTAL_MISMATCH", expected, actual };
 }
+
 export function splitEqually(
 	amount: number,
 	memberIdsByPosition: readonly string[],
@@ -63,6 +88,7 @@ export function splitEqually(
 		amount: amounts[index] ?? 0,
 	}));
 }
+
 function exactShares(
 	amount: number,
 	split: Extract<SplitInput, { method: "exact" }>,
@@ -109,6 +135,38 @@ function exactShares(
 		})),
 	};
 }
+
+function computeBaseShares(
+	baseSubtotal: number,
+	split: Exclude<SplitInput, { method: "items" }>,
+	ids: readonly string[],
+): SplitResult {
+	if (split.method === "equal") {
+		return { ok: true, shares: splitEqually(baseSubtotal, ids) };
+	}
+	if (split.method === "exact") {
+		return exactShares(baseSubtotal, split, ids);
+	}
+	const weights = ids.map((id) => {
+		const entry = split.entries.find((entry) => entry.memberId === id);
+		if (!entry) throw new RangeError("Missing split entry");
+		return parseHundredths("weight" in entry ? entry.weight : entry.percent);
+	});
+	const sum = weights.reduce((total, weight) => total + weight, 0n);
+	if (split.method === "percent" && sum !== 10000n) {
+		return mismatch(100, Number(sum / 100n));
+	}
+	if (sum === 0n) return mismatch(baseSubtotal, 0);
+	const amounts = allocateByWeights(baseSubtotal, weights);
+	return {
+		ok: true,
+		shares: ids.map((memberId, index) => ({
+			memberId,
+			amount: amounts[index] ?? 0,
+		})),
+	};
+}
+
 export function computeShares(
 	amount: number,
 	split: SplitInput,
@@ -128,24 +186,34 @@ export function computeShares(
 	if (participants.some((id) => !memberIdsByPosition.includes(id)))
 		throw new RangeError("Unknown member ID");
 	const ids = memberIdsByPosition.filter((id) => participants.includes(id));
-	if (split.method === "equal")
-		return { ok: true, shares: splitEqually(amount, ids) };
-	if (split.method === "exact") return exactShares(amount, split, ids);
-	const weights = ids.map((id) => {
-		const entry = split.entries.find((entry) => entry.memberId === id);
-		if (!entry) throw new RangeError("Missing split entry");
-		return parseHundredths("weight" in entry ? entry.weight : entry.percent);
-	});
-	const sum = weights.reduce((total, weight) => total + weight, 0n);
-	if (split.method === "percent" && sum !== 10000n)
-		return mismatch(100, Number(sum / 100n));
-	if (sum === 0n) return mismatch(amount, 0);
-	const amounts = allocateByWeights(amount, weights);
+
+	const extras = split.extras ?? [];
+	const netExtras = sumNetExtras(extras);
+	const baseSubtotal = extras.length === 0 ? amount : amount - netExtras;
+	if (!Number.isSafeInteger(baseSubtotal) || baseSubtotal <= 0) {
+		return mismatch(amount, Math.max(0, netExtras));
+	}
+	const rateFailure = validateRatePercentExtras(baseSubtotal, extras);
+	if (rateFailure !== null) return rateFailure;
+
+	const baseResult = computeBaseShares(baseSubtotal, split, ids);
+	if (!baseResult.ok || netExtras === 0) {
+		return baseResult;
+	}
+
+	const allocation: ExtrasAllocation = split.extrasAllocation ?? "equal";
+	const allocated = allocateNetExtras(
+		baseResult.shares.map((share) => share.amount),
+		netExtras,
+		allocation,
+	);
+	if (!allocated.ok) return allocated;
+
 	return {
 		ok: true,
-		shares: ids.map((memberId, index) => ({
-			memberId,
-			amount: amounts[index] ?? 0,
+		shares: baseResult.shares.map((share, index) => ({
+			memberId: share.memberId,
+			amount: allocated.amounts[index] ?? 0,
 		})),
 	};
 }

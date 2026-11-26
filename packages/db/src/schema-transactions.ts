@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+	type AnyPgColumn,
 	bigint,
 	check,
 	index,
@@ -16,6 +17,7 @@ import { users } from "./schema.js";
 import { groupCategories } from "./schema-categories.js";
 import { settlementCycles } from "./schema-cycles.js";
 import { groups, members } from "./schema-groups.js";
+import { recurringExpenses } from "./schema-recurring.js";
 
 export const transactions = pgTable(
 	"transactions",
@@ -48,6 +50,10 @@ export const transactions = pgTable(
 		cycleId: uuid("cycle_id").references(() => settlementCycles.id, {
 			onDelete: "set null",
 		}),
+		recurringExpenseId: uuid("recurring_expense_id").references(
+			(): AnyPgColumn => recurringExpenses.id,
+			{ onDelete: "set null" },
+		),
 		createdBy: uuid("created_by").references(() => users.id, {
 			onDelete: "set null",
 		}),
@@ -117,6 +123,9 @@ export const transactions = pgTable(
 		index("transactions_cycle_id_idx")
 			.on(table.cycleId)
 			.where(sql`${table.cycleId} is not null`),
+		index("transactions_recurring_expense_idx")
+			.on(table.recurringExpenseId)
+			.where(sql`${table.recurringExpenseId} is not null`),
 	],
 );
 

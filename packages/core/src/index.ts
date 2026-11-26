@@ -42,10 +42,20 @@ export {
 	receiptAdjustment,
 } from "./receipt.ts";
 export {
+	computeNextDueDate,
+	hourInVietnam,
+	type RecurringSchedule,
+	todayInVietnam,
+} from "./recurring.ts";
+export {
+	consolidateHouseholdBalances,
+	type HouseholdBalanceSummary,
+	type HouseholdGroup,
 	type MemberBalance,
 	netPairwiseDebts,
 	type PairDebt,
 	type Settlement,
+	suggestHouseholdSettlements,
 	suggestMinimizedSettlements,
 } from "./settlements.ts";
 export {
@@ -56,8 +66,11 @@ export {
 	splitEqually,
 } from "./split.ts";
 export {
+	allocateNetExtras,
 	computeItemShares,
 	computeItemsNetTotal,
+	computePercentExtraAmount,
+	type ExtrasAllocation,
 	type ItemExtraEntry,
 	type ItemExtraKind,
 	type ItemSplitEntry,
