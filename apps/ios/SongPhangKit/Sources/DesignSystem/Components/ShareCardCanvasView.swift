@@ -7,6 +7,19 @@ public enum ShareCardMode: String, Sendable, Hashable, CaseIterable {
 }
 
 public struct ShareCardContent: Sendable, Equatable {
+  public struct HouseholdRow: Sendable, Equatable, Identifiable {
+    public var id: String { name + "-\(balance.amount)" }
+    public let name: String
+    public let representativeName: String
+    public let balance: Money
+
+    public init(name: String, representativeName: String, balance: Money) {
+      self.name = name
+      self.representativeName = representativeName
+      self.balance = balance
+    }
+  }
+
   public struct BalanceRow: Sendable, Equatable, Identifiable {
     public var id: String { name + "-\(balance.amount)" }
     public let name: String
@@ -88,6 +101,7 @@ public struct ShareCardContent: Sendable, Equatable {
   public let totalExpense: Money
   public let expenseCount: Int
   public let balances: [BalanceRow]
+  public let households: [HouseholdRow]
   public let transfers: [TransferRow]
   public let debtorAllocationTransfers: [TransferRow]
   public let isSingleTransferReminder: Bool
@@ -106,6 +120,7 @@ public struct ShareCardContent: Sendable, Equatable {
     totalExpense: Money,
     expenseCount: Int,
     balances: [BalanceRow],
+    households: [HouseholdRow] = [],
     transfers: [TransferRow],
     debtorAllocationTransfers: [TransferRow] = [],
     isSingleTransferReminder: Bool = false,
@@ -123,6 +138,7 @@ public struct ShareCardContent: Sendable, Equatable {
     self.totalExpense = totalExpense
     self.expenseCount = expenseCount
     self.balances = balances
+    self.households = households
     self.transfers = transfers
     self.debtorAllocationTransfers = debtorAllocationTransfers
     self.isSingleTransferReminder = isSingleTransferReminder
@@ -246,6 +262,41 @@ public struct ShareCardCanvasView: View {
               color: row.balance.isPositive
                 ? Tokens.credit
                 : (row.balance.isNegative ? Tokens.debt : Tokens.ink)
+            )
+          }
+        }
+      }
+      .padding(16)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    if !content.households.isEmpty {
+      VStack(alignment: .leading, spacing: 10) {
+        Text(L10n.tr("households.byHouseholdTitle"))
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.ink)
+
+        ForEach(content.households) { hh in
+          HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+              Text(hh.name)
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.ink)
+              if !hh.representativeName.isEmpty {
+                Text(L10n.t("households.representativeBadge", ["name": hh.representativeName]))
+                  .font(Typography.caption)
+                  .foregroundStyle(Tokens.muted)
+              }
+            }
+            Spacer()
+            MoneyText(
+              hh.balance,
+              style: .signed,
+              font: Typography.captionBold,
+              color: hh.balance.isPositive
+                ? Tokens.credit
+                : (hh.balance.isNegative ? Tokens.debt : Tokens.ink)
             )
           }
         }

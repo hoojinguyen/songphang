@@ -4,6 +4,7 @@ import SwiftUI
 
 struct GuestBreakdownSheet: View {
   let breakdown: MemberDebtBreakdown
+  var householdBreakdown: HouseholdDebtBreakdown? = nil
   let focusLabel: String
   let transfers: [GuestTransfer]
   let members: [GuestMember]
@@ -32,6 +33,47 @@ struct GuestBreakdownSheet: View {
                   ? Tokens.credit
                   : (breakdown.netBalance.isNegative ? Tokens.debt : Tokens.ink)
               )
+            }
+          }
+
+          if let householdBreakdown {
+            SPCard(padding: 16) {
+              VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                  Text(
+                    L10n.t(
+                      "households.summaryTitleTemplate",
+                      ["name": householdBreakdown.name]
+                    )
+                  )
+                  .font(Typography.subheadlineBold)
+                  .foregroundStyle(Tokens.ink)
+                  Spacer()
+                  MoneyText(
+                    householdBreakdown.netBalance,
+                    style: .signed,
+                    font: Typography.subheadlineBold,
+                    color: householdBreakdown.netBalance.isPositive
+                      ? Tokens.credit
+                      : (householdBreakdown.netBalance.isNegative ? Tokens.debt : Tokens.ink)
+                  )
+                }
+                summaryRow(L10n.tr("breakdown.carryOver"), householdBreakdown.carryOverBalance)
+                summaryRow(
+                  L10n.tr("breakdown.periodExpenses"),
+                  householdBreakdown.focusExpenseDelta
+                )
+                summaryRow(
+                  L10n.tr("breakdown.periodTransfers"),
+                  householdBreakdown.focusTransferDelta
+                )
+                if !householdBreakdown.postCycleDelta.isZero {
+                  summaryRow(
+                    L10n.tr("breakdown.postCycleDelta"),
+                    householdBreakdown.postCycleDelta
+                  )
+                }
+              }
             }
           }
 

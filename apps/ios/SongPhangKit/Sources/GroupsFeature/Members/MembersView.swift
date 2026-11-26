@@ -145,10 +145,17 @@ public struct MembersView: View {
 
     ForEach(people) { member in
       let memberRole = data.users.first(where: { $0.memberId == member.id })?.role
+      let memberHousehold = data.households.first(where: { $0.memberIds.contains(member.id) })
       let isExpanded = model.expandedMemberId == member.id
 
       VStack(alignment: .leading, spacing: 8) {
-        memberRow(member: member, role: memberRole, canExpand: true, isExpanded: isExpanded)
+        memberRow(
+          member: member,
+          role: memberRole,
+          household: memberHousehold,
+          canExpand: true,
+          isExpanded: isExpanded
+        )
 
         if canWrite && isExpanded {
           let memberBalance =
@@ -234,6 +241,13 @@ public struct MembersView: View {
         .foregroundStyle(Tokens.ink)
     }
 
+    HouseholdsSectionView(
+      model: model,
+      households: data.households,
+      members: data.members,
+      canWrite: canWrite && !data.group.isArchived
+    )
+
     HStack {
       Text(L10n.tr("notifications.muteGroup"))
         .font(Typography.bodyBold)
@@ -314,6 +328,7 @@ public struct MembersView: View {
   private func memberRow(
     member: Member,
     role: Role?,
+    household: Household?,
     canExpand: Bool,
     isExpanded: Bool
   ) -> some View {
@@ -344,6 +359,18 @@ public struct MembersView: View {
         Text(statusTag)
           .font(Typography.caption)
           .foregroundStyle(Tokens.muted)
+        if let household {
+          let label =
+            household.representativeMemberId == member.id
+            ? "\(household.name) · \(L10n.t("households.representativeBadge", ["name": member.name]))"
+            : household.name
+          Text(label)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Tokens.sunken, in: Capsule())
+        }
       }
       Spacer(minLength: 8)
       if let role {

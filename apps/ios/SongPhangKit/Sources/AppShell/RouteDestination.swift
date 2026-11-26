@@ -143,7 +143,8 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
-          invitesRepository: dependencies.invites
+          invitesRepository: dependencies.invites,
+          householdsRepository: dependencies.households
         )
       )
     case .groupFund(let groupId):

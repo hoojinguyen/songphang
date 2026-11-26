@@ -308,6 +308,22 @@ public struct OverviewView: View {
               Text(gb.groupName)
                 .font(Typography.screenHeaderTitle)
                 .foregroundStyle(Tokens.ink)
+
+              if let householdName = gb.householdName {
+                Text(householdName)
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.muted)
+              }
+              if let individual = gb.myIndividualBalance {
+                Text(
+                  L10n.t(
+                    "households.personalShareTemplate",
+                    ["amount": MoneyFormat.full(individual)]
+                  )
+                )
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+              }
             }
 
             Spacer(minLength: 8)

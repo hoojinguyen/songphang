@@ -350,6 +350,14 @@ public struct ShareCardPreviewSheet: View {
         membersById: membersById
       )
 
+    let householdRows: [ShareCardContent.HouseholdRow] = data.balances.households.map { hh in
+      ShareCardContent.HouseholdRow(
+        name: hh.name,
+        representativeName: membersById[hh.representativeMemberId]?.name ?? "",
+        balance: hh.netBalance
+      )
+    }
+
     return ShareCardContent(
       mode: mode,
       groupName: data.group.name,
@@ -358,6 +366,7 @@ public struct ShareCardPreviewSheet: View {
       totalExpense: totalExpense,
       expenseCount: expenseCount,
       balances: balanceRows,
+      households: householdRows,
       transfers: transferRows,
       debtorAllocationTransfers: debtorAllocationTransfers,
       isSingleTransferReminder: selectedTransfer != nil,
@@ -377,9 +386,21 @@ public struct ShareCardPreviewSheet: View {
     guard let from = membersById[transfer.fromMemberId],
       let to = membersById[transfer.toMemberId]
     else { return nil }
+    let fromLabel: String = {
+      if let hh = transfer.fromHousehold {
+        return "\(hh.name) (\(L10n.t("households.representativeBadge", ["name": from.name])))"
+      }
+      return from.name
+    }()
+    let toLabel: String = {
+      if let hh = transfer.toHousehold {
+        return "\(hh.name) (\(L10n.t("households.representativeBadge", ["name": to.name])))"
+      }
+      return to.name
+    }()
     return ShareCardContent.TransferRow(
-      fromName: from.name,
-      toName: to.name,
+      fromName: fromLabel,
+      toName: toLabel,
       amount: transfer.amount,
       purpose: transfer.purpose ?? "",
       paymentMethods: transfer.paymentMethods

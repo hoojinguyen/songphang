@@ -14,6 +14,7 @@ public final class PayModel {
   public let myMemberId: Member.ID?
   public let role: Role
   public let isEmailVerified: Bool
+  private let isFromHouseholdMember: Bool
 
   public private(set) var isSubmitting = false
   public private(set) var submitted = false
@@ -46,6 +47,7 @@ public final class PayModel {
     myMemberId: Member.ID?,
     role: Role,
     isEmailVerified: Bool,
+    isFromHouseholdMember: Bool = false,
     repository: any SettlementRequestsRepository,
     uploadProof: (@Sendable (Data, String, String) async throws(AppError) -> Attachment)? = nil,
     loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)? = nil,
@@ -59,6 +61,7 @@ public final class PayModel {
     self.myMemberId = myMemberId
     self.role = role
     self.isEmailVerified = isEmailVerified
+    self.isFromHouseholdMember = isFromHouseholdMember
     self.repository = repository
     self.uploadProof = uploadProof
     self.loadAttachment = loadAttachment
@@ -85,7 +88,7 @@ public final class PayModel {
   }
 
   public var mayCreate: Bool {
-    role.canWrite || myMemberId == fromMember.id
+    role.canWrite || myMemberId == fromMember.id || isFromHouseholdMember
   }
 
   public var canEdit: Bool {

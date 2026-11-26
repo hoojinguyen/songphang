@@ -326,6 +326,10 @@ public struct GroupContainerView: View {
         myMemberId: myMemberId,
         role: role,
         isEmailVerified: isVerified,
+        isFromHouseholdMember: {
+          guard let myMemberId else { return false }
+          return selection.transfer.fromHousehold?.memberIds.contains(myMemberId) == true
+        }(),
         repository: dependencies.settlementRequests,
         uploadProof: { data, filename, contentType async throws(AppError) in
           try await dependencies.attachments.upload(
