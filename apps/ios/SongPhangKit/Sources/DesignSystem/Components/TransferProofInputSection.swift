@@ -159,8 +159,8 @@ public struct TransferProofInputSection: View {
         .frame(minHeight: 44)
         .background(Tokens.bg, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .onChange(of: note) { _, newValue in
-          if newValue.count > 120 {
-            note = String(newValue.prefix(120))
+          if newValue.utf16.count > 120 {
+            note = newValue.clampedToUTF16Length(120)
           }
         }
       }

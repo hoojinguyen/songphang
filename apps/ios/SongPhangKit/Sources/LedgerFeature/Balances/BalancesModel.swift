@@ -73,6 +73,7 @@ public final class BalancesModel {
   public private(set) var isNotFound = false
   public private(set) var isResolvingSettlement = false
   public private(set) var settlementError: AppError?
+  public private(set) var pendingLoadError: String?
   public private(set) var settlementNotice: SettlementNotice?
   public private(set) var isSendingReminder = false
   public private(set) var reminderNotice: String?
@@ -187,11 +188,7 @@ public final class BalancesModel {
       )
       refreshError = nil
       hasCurrentPaymentDetails = (pendingResult.error == nil)
-      if let pendingError = pendingResult.error {
-        settlementError = pendingError
-      } else {
-        settlementError = nil
-      }
+      pendingLoadError = pendingResult.error != nil ? L10n.tr("common.loadError") : nil
     } catch let error as AppError {
       handleError(error)
     } catch {

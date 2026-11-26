@@ -183,6 +183,12 @@ public struct BalancesView: View {
       }
     }
 
+    if let pendingLoadError = model.pendingLoadError {
+      Text(pendingLoadError)
+        .font(Typography.captionBold)
+        .foregroundStyle(Tokens.debt)
+    }
+
     if let error = model.settlementError {
       Text(errorMessage(for: error))
         .font(Typography.captionBold)

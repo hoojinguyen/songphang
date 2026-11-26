@@ -34,6 +34,8 @@ public final class GuestLinkSheetModel {
     } catch {
       if error == .unauthorized {
         onUnauthorized()
+      } else if case .loaded = state {
+        actionError = L10n.tr("common.loadError")
       } else {
         state = .failed(error)
       }
