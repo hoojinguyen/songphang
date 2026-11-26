@@ -55,7 +55,8 @@
       - Auth matrix on `extras/preview`: `unauth: 401`, `viewer: 403`, `outsider: 404`.
       - `check-balances.ts` → `All groups balanced`.
 
-- [ ] **Task 5.5C.1.3 — `households` & `recurring-expenses` endpoints, `pg-boss` worker job, cross-surface household balances & `openapi.json`**
+- [x] **Task 5.5C.1.3 — `households` & `recurring-expenses` endpoints, `pg-boss` worker job, cross-surface household balances & `openapi.json`**
+  - Commit: `c0e317d` (`6340833` in `api-db` share worktree)
   - Approach:
     - Files to create/modify: `packages/contract/src/{household,recurring,error,jobs,member,group,balance,member-breakdown,guest-link,overview,transaction,index}.ts`, `packages/core/src/notification-text.ts`, `packages/db/src/{reminders,transactions}.ts`, `apps/api/src/services/{households,recurring-expenses,balances,member-breakdowns,guest-links,groups,members,fund,overview,settlement-requests,reminders,transactions,notify}.ts`, `apps/api/src/routes/{households,recurring-expenses}.ts`, `apps/api/src/app.ts`, `apps/worker/src/{main,jobs/process-recurring}.ts`, `packages/contract/openapi.json`.
     - Approach: Add additive contract schemas keeping `OverviewPendingAction` (2 branches) and `NotificationPayload` (12 branches) unchanged; wire `suggestHouseholdSettlements` into `suggestGroupTransfers` so all settlement surfaces share identical household routing; add households & recurring CRUD/skip + inline `S8` creation/completion + member/fund deactivation auto-pause + unarchive advancement + `process-recurring` hourly `pg-boss` job.
@@ -78,3 +79,49 @@
     - Security review across `2b556de..HEAD`: Zod schemas on all boundaries, `requireGroupRole` + `404` outsiders, Drizzle parameterized queries only, no secrets/internal error leaks/forbidden tokens, 0 emoji matches.
     - Manual checks: Stage `5.5C.2` (Web) and `5.5C.3` (iOS) will exercise end-to-end UI rendering on top of these APIs and strings.
     - Not verified: Real external APNs/SMTP providers (deferred to Server Step per `AGENTS.md` §1); Web & iOS UI consumer screens (owned by `web` and `ios` swarm workers).
+
+## Stage 5.5C.2 — Web Implementation (`apps/web/`)
+
+- [x] **Task 5.5C.2.1 — Manual-form `extras` on `S8` (`ExpenseForm` & `SplitEditor`) and breakdown display on `S20` & `/share/[token]`**
+  - Commit: `c2b121c` (`5d333e5` in `web` share worktree)
+  - Exercise results: `POST .../extras/preview` Three Koala `346.000 đ + VAT 8%` -> `373.680 đ` (`[181.840, 191.840]`), manual VND override `27.681 đ`, water-filling `20.000 / 200.000 - 50.000 đ` -> `[0, 170.000]`, verified live in Chrome on `S8` and `S20`.
+
+- [x] **Task 5.5C.2.2 — Recurring Expenses (`S8` inline toggle, `Quỹ & Thống kê` management, `Tổng quan` due prompts & notifications)**
+  - Commit: `b68788a` (`4931514` in `web` share worktree)
+  - Exercise results: Created variable template `Tiền điện tháng` in `Quỹ & Thống kê`, ran worker (`WORKER_RECURRING_RESULT:1`), opened due prompt from `Tổng quan` -> `S8` -> saved expense (`dueRecurringCount=0`), and skipped `Three Koala` fixed template via `Bỏ qua kỳ tới`.
+
+- [x] **Task 5.5C.2.3 — Household / Couple Debt Grouping (`S10`, `Thanh toán`, `Nhóm`, `GroupInspector`, `/share/[token]`, `ShareCard`) & Stage 5.5C.2 Web Gate**
+  - Commit: `f643fa3` (`29e4716` in `web` share worktree)
+  - Exercise results: Created `Nhà Minh & Lan` in `S10`, verified consolidated `350.000 đ` transfer + `MemberBreakdownSheet` + `ShareCardModal` Light/Dark + `/share/[token]` Dark + `GroupInspector` (`1280x900`); verified `Lan` (`linked viewer`) submits `Tôi đã chuyển` (`201`) while `Đã nhận` (`confirm`) returns `403` for `Lan` and `200` for `Minh`, leaving `0 đ` across `Tổng quan`, `Nhóm`, and `Thanh toán`; `pnpm check` & `pnpm build` passed; `check-balances.ts` -> `All groups balanced`.
+
+## Stage 5.5C.3 — iOS (`SongPhangKit`) Parity & System Extensions (`apps/ios/`)
+
+- [x] **Task 5.5C.3.1 — `Domain` / `Repositories` / `PreviewSupport` for Wave 5.5C + App Group `ExtensionSharedStore` & Shared Keychain Migration**
+  - Commit: `c9b722c` (`af67da3` in `ios` share worktree)
+- [x] **Task 5.5C.3.2 — Manual-form `extras` (`S8`, `S20`, `GuestTransactionDetailSheet`) and Recurring Expenses (`S8`, `StatsView`, `OverviewView`, `NotificationsView`)**
+  - Commit: `77b7e55` (`cf2b9e0` in `ios` share worktree)
+- [x] **Task 5.5C.3.3 — Household / Couple Debt Grouping (`MembersView`, `BalancesView`, `GroupListView`, `GuestGroupView`, `ShareCardCanvasView`)**
+  - Commit: `c894021` (`a5d2be2` in `ios` share worktree)
+- [x] **Task 5.5C.3.4 — `LinkRouter` `songphang://` routing, Quick Actions, `SongPhangShareExtension`, `SongPhangWidgetExtension` & Stage 5.5C.3 Gate**
+  - Commit: `515418e` (`8257c18` in `ios` share worktree)
+  - Exercise results: `pluginkit -m -v` registered `vn.songphang.app.share-extension` and `vn.songphang.app.widget-extension`; Simulator (`iPhone 17 Pro`) `--scripted --route-overview` populated `group.vn.songphang.app` `widget-snapshot.json` & `share-groups.json` with zero auth tokens; `ShareInbox` batch consumed automatically on launch into `S8`; `--signed-out` wiped `SharedState/`.
+
+## Stage 5.5C.4 — Parallel Audit, Standing Docs, ADRs & Handoff
+
+- [x] **Task 5.5C.4.1 — Record ADRs, run multi-angle `run_workflow` audit, execute full release gates & write owner manual-check guide**
+  - Recorded `ADR-039`, `ADR-040`, and `ADR-041` in `docs/04-adr.md`; added Wave `5.5C` to `docs/superpowers/plans/2026-11-15-common.md`.
+  - Ran 3-angle read-only `run_workflow` audit (`Security & Auth`, `Money & Architecture`, `Web/iOS Parity & Hygiene`) against `git diff main...HEAD`:
+    - `Security & Auth Audit`: `pass` (`0` findings).
+    - `Money & Architecture Audit`: fixed 3 `must_fix` findings (preserving `.proportional` fallback on legacy `.items` rows in `TransactionExtrasCardView`, `ItemsSplitDraft`, and Web `useSplitState`).
+    - `Web/iOS Parity & Hygiene Audit`: fixed 4 `must_fix` findings + 6 `should_fix` polish items (`ShareExtensionView` group name interpolation + `#if DEBUG` guard on dev fallback URLs, `ios.widget.galleryDescription` key, `Tokens.onAccent` / `Tokens.onInk` Dark mode contrast, `households.representativeBadge` Web/iOS parity, `.monospacedDigit()` / `tabular-nums`, `DD/MM/YYYY` formatting, and WidgetKit `.systemSmall` / `.systemMedium` parity).
+  - Post-fix integrated verification gates on `phase-5-5c`:
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output).
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 880 web keys verified, 0 missing, 0 differing.`
+    - `pnpm check`: exit `0` (`Checked 594 files in 159ms. No fixes applied. Found 9 warnings.` pre-existing `<img>` warnings only; 8 workspace typechecks + `contract:check` pass).
+    - `pnpm build`: exit `0`.
+    - Simulator Debug `xcodebuild`: `** BUILD SUCCEEDED **`.
+    - Simulator Release `xcodebuild` (`CODE_SIGNING_ALLOWED=NO`): `** BUILD SUCCEEDED **`, `PlugIns/` contains `SongPhangShareExtension.appex` and `SongPhangWidgetExtension.appex`, `otool -L` confirms `SongPhangWidgetExtension` links zero `Repositories`/`GeneratedAPI`, and `RELEASE_LEAK_MATCH_COUNT=0`.
+    - Disposable Postgres 17 (`songphang_phase55c_final_gate`) migration + seed + `check-balances.ts` -> `All groups balanced` (plus end-to-end API/Worker/Web exercises across Stages `5.5C.1` & `5.5C.2`).
+  - Not verified:
+    - Real external APNs, SMTP, OAuth, and AI provider execution (deferred to Server Step per `AGENTS.md` §1).
+    - Interactive iOS Home Screen WidgetKit gallery / Zalo live Share Sheet UI host interaction and physical-iPhone live API round-trip (deferred to owner physical iPhone manual check using `manual-checks.md`).

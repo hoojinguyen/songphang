@@ -51,3 +51,20 @@
    - Problem: Clarify exact schedule-field invariant for `quarterly` frequency alongside `weekly` (`dayOfWeek`), `monthly` (`dayOfMonth`), and `yearly` (`dayOfMonth` + `monthOfYear`).
    - Options: (a) Require `monthOfYear` for quarterly; (b) Use `dayOfMonth` (advancing +3 calendar months with month-end clamping in `packages/core/src/recurring.ts`) and forbid `dayOfWeek`/`monthOfYear`.
    - Choice: (b) Matches Spec §5.1 (`Hằng quý`, anchor on `occurredAt` day-of-month) cleanly with `packages/db` constraints.
+
+## Stage 5.5C.2–5.5C.4 Decisions
+
+6. **Preserve legacy `.items` proportional default across Web & iOS detail/edit views**
+   - Problem: `Money & Architecture Audit` caught that `useSplitState`, `ItemsSplitDraft`, and `TransactionExtrasCardView` defaulted omitted `extrasAllocation` to `"equal"`, which would mislabel or flip historical Phase 3 `.items` receipts when viewed/edited.
+   - Options: (a) Leave default `"equal"`; (b) Default `extrasAllocation` to `"proportional"` when `method === "items"` and `"equal"` for all manual non-`items` splits (`TransactionExtrasCardView` accepts `defaultAllocation`).
+   - Choice: (b) Preserves Phase 3 `ADR-023` receipts while honoring the owner's `"equal"` default for Wave 5.5C manual entries.
+
+7. **Guard `ShareExtensionView` localhost fallbacks under `#if DEBUG` and add `ios.widget.galleryDescription`**
+   - Problem: Release binary string scan detected `http://127.0.0.1:4000/api/v1` and `http://localhost:3000` fallbacks in `ShareExtensionView.swift`, and `SongPhangWidgets.swift` used template `"ios.widget.recentGroup"` (`"Nhóm gần nhất: {name}"`) for the widget gallery description.
+   - Options: (a) Keep unguarded fallbacks; (b) Wrap local dev URLs in `#if DEBUG` so `Release` builds produce `RELEASE_LEAK_MATCH_COUNT=0`, and add a non-template `ios.widget.galleryDescription` key in `Localizable.xcstrings`.
+   - Choice: (b) Enforces release hygiene and clean Vietnamese gallery copy.
+
+8. **Eagerly load group list on startup for `ShareGroupsSnapshot` (`RootView.task`)**
+   - Problem: Opening the app directly onto `Tổng quan` without visiting the `Nhóm` tab would leave `share-groups.json` empty for `SongPhangShareExtension`.
+   - Options: (a) Populate `share-groups.json` only after visiting `Nhóm`; (b) Eagerly load `groupListModel.load()` in `RootView.task` when signed in (with `ExtensionStateSync` falling back to `overview.groupBalances`).
+   - Choice: (b) Guarantees Zalo/Photos shares immediately see eligible groups on first use.

@@ -344,3 +344,33 @@ Hand-writing a queue, accepting model-computed money and sending persistent data
 **Decision.** Render `390pt`-wide, dynamic-height `3x` (`1170px` wide) PNG cards directly on-device from authoritative server DTOs (`BalancesResponse`, `MemberBreakdownsResponse`, `SettlementCyclesResponse`, `GuestLinkResponse`) in Light and Dark themes with exact integer VND tabular numerals and zero emoji: SwiftUI `ImageRenderer` (`scale = 3.0`) on iOS and pure HTML5 2D `<canvas>` (awaiting `document.fonts.ready` for `Be Vietnam Pro` and reusing installed `qrcode`) on Web, backed by server-built dynamic (`010212`) and static (`010211`, `accountQrPayload`) VietQR payloads in `@songphang/core`.
 
 **Considered.** Puppeteer/Chromium image rendering on the API (heavy runtime footprint and server CPU load); `html2canvas` on Web (extra dependency and cross-browser font/SVG rendering quirks); client-side VietQR construction (violates `apps/ios/AGENTS.md` §5 and Phase 5.5 anti-goals).
+
+## ADR-039 — Generalized `split_input.extras` with equal water-filling default and server percentage preview
+
+**Status:** approved by the project owner on 2026-11-26; implemented in Wave 5.5C on `phase-5-5c`.
+
+**Context.** Entering restaurant bills (`346.000 đ` + `Thuế GTGT 8% = 27.680 đ`) or delivery orders (`shipping`, `discount` vouchers) manually into a single transaction previously forced users to sum taxes in their head or bury fixed-VND extras inside `method: "items"` without percentage rates or equal allocation.
+
+**Decision.** Extend `SplitInput` across all five split methods (`equal`, `exact`, `shares`, `percent`, `items`) with optional `extras` (`tax`, `service`, `shipping`, `discount`, `other`, optional `ratePercent`) and `extrasAllocation` (`"equal"` | `"proportional"`). Manual entries default to `"equal"` (water-filling non-negative cap when an equal discount exceeds a low-spend participant's base share so shares never go negative and always sum to `amount`), while omitted `extrasAllocation` on legacy `items` rows evaluates as `"proportional"` (`ADR-023`) to preserve historical receipts. Clients send debounced `POST /groups/{groupId}/transactions/extras/preview` requests and perform zero percentage multiplication or rounding locally.
+
+**Considered.** Performing `%` arithmetic on Web/iOS clients (violates `AGENTS.md` §7 and `apps/ios/AGENTS.md` §5); switching legacy `items` rows to `"equal"` by default (mutates historical Phase 3 scan behavior); clamping negative shares without redistributing remaining discount (breaks `sum(shares) === amount`).
+
+## ADR-040 — Recurring expenses (`fixed` / `variable` on `pg-boss`) and household representative consolidation
+
+**Status:** approved by the project owner on 2026-11-26; implemented in Wave 5.5C on `phase-5-5c`.
+
+**Context.** Shared households and sports clubs repeat both fixed bills (`fixed` auto-post) and variable bills (`variable` due prompts), while couples/families need separate member identities on daily meals yet settle externally as one consolidated unit.
+
+**Decision.** Store recurring schedules in `recurring_expenses` executed hourly (`Asia/Ho_Chi_Minh`) by `pg-boss` (`process-recurring`) with single-catchup date advancement (`next_due_date > todayVN` so stalled dev containers or unarchived groups never flood duplicate bills), auto-pausing templates when a referenced member/fund is deactivated (`active = false`), and routing `variable` due prompts to `editor+` users consistent with `POST /transactions` RBAC. Store household groupings in `households` + `members.household_id` (`2..20` active-representative `person` members) and consolidate net balances and transfers exclusively in `@songphang/core` (`suggestHouseholdSettlements`) through `suggestGroupTransfers`, allowing any linked partner in `fromHousehold` to submit/cancel outgoing `settlement_requests` while restricting incoming `confirm`/`reject` to `representative_member_id` / `owner` (`ADR-022`).
+
+**Considered.** Back-posting every missed period on worker restart (floods ledger with stale bills); writing synthetic internal `transfer` transactions between partners (pollutes transaction history and breaks ungrouping); allowing `viewer` partners to confirm incoming bank transfers (weakens `ADR-022` receiver control).
+
+## ADR-041 — iOS App Group snapshot store, shared Keychain migration, and dual-delivery Share Extension handoff
+
+**Status:** approved by the project owner on 2026-11-26; implemented in Wave 5.5C on `phase-5-5c`.
+
+**Context.** Importing bill or transfer screenshots straight from Zalo/Photos (`SongPhangShareExtension`) and displaying Home Screen Widgets (`SongPhangWidgetExtension`) plus Quick Actions requires sharing session auth and read-only overview state safely without violating iOS memory limits (`120 MB` for extensions) or token-security rules.
+
+**Decision.** Share bearer tokens exclusively through a Keychain access group (`TokenStore` with one-time migration from legacy ungrouped entries and Simulator unsigned fallback), store non-secret summaries (`widget-snapshot.json`, `share-groups.json`, `ShareInbox/`) in `ExtensionSharedStore` (`group.vn.songphang.app`, `.completeFileProtectionUntilFirstUserAuthentication`, wiped immediately on sign-out), downsample shared photos with `ImageIO` (`<= 5 MiB`), and pair `songphang://share-import/{batchId}` (`LinkRouter.appActionRoute`) with automatic `RootView` `scenePhase == .active` `ShareInbox` pickup so host apps that suppress `extensionContext?.open` still land cleanly in Sòng Phẳng. `SongPhangWidgetExtension` links only `Domain` and `DesignSystem` and honors `"Ẩn số tiền trên Widget"`.
+
+**Considered.** Storing session tokens in `UserDefaults(suiteName:)` (violates `apps/ios/AGENTS.md` §7); background URLSession polling inside WidgetKit (drains battery and duplicates Repository logic); relying solely on `extensionContext?.open` from Share Extensions (drops imports when host apps like Zalo block URL opening).
