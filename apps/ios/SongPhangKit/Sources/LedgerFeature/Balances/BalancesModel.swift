@@ -134,9 +134,7 @@ public final class BalancesModel {
       async let fetchedMembers = membersRepository.members(groupId: groupId)
       async let fetchedBalances = balancesRepository.balances(groupId: groupId)
       async let fetchedPage = transactionsRepository.page(groupId: groupId, cursor: nil)
-      async let fetchedPending = fetchOptional(fallback: existingPending) {
-        try await fetchPendingRequests()
-      }
+      async let fetchedPending = fetchPendingRequestsResult(fallback: existingPending)
       async let fetchedCycles = fetchOptional(fallback: existingCycles) {
         try await fetchCyclesOverview()
       }
@@ -152,7 +150,7 @@ public final class BalancesModel {
         members,
         balances,
         firstPage,
-        pendingRequests,
+        pendingResult,
         cyclesOverview,
         vault,
         breakdowns
@@ -181,14 +179,19 @@ public final class BalancesModel {
           members: members,
           balances: balances,
           transactions: allTransactions,
-          pendingRequests: pendingRequests,
+          pendingRequests: pendingResult.requests,
           cyclesOverview: cyclesOverview,
           vault: vault,
           breakdowns: breakdowns
         )
       )
       refreshError = nil
-      hasCurrentPaymentDetails = true
+      hasCurrentPaymentDetails = (pendingResult.error == nil)
+      if let pendingError = pendingResult.error {
+        settlementError = pendingError
+      } else {
+        settlementError = nil
+      }
     } catch let error as AppError {
       handleError(error)
     } catch {
@@ -294,8 +297,8 @@ public final class BalancesModel {
     } catch {
       if error == .unauthorized {
         onUnauthorized()
-      } else {
-        vaultError = L10n.tr("common.saveError")
+      } else if vaultFilter == next {
+        vaultError = L10n.tr("common.loadError")
       }
     }
   }
@@ -396,6 +399,17 @@ public final class BalancesModel {
           await load()
         }
       }
+    }
+  }
+
+  private func fetchPendingRequestsResult(
+    fallback: [SettlementRequest]
+  ) async throws(AppError) -> (requests: [SettlementRequest], error: AppError?) {
+    do {
+      return (try await fetchPendingRequests(), nil)
+    } catch {
+      if error == .unauthorized { throw error }
+      return (fallback, error)
     }
   }
 

@@ -270,16 +270,16 @@ public struct ExpenseFormView: View {
                   text: Binding(
                     get: { model.paymentNote ?? "" },
                     set: { next in
-                      let clamped: String
-                      if next.utf16.count > 120 {
-                        var trimmed = next
-                        while trimmed.utf16.count > 120, !trimmed.isEmpty {
-                          trimmed.removeLast()
-                        }
-                        clamped = trimmed
-                      } else {
-                        clamped = next
+                      var utf16Count = 0
+                      var endIndex = next.startIndex
+                      for index in next.indices {
+                        let nextIndex = next.index(after: index)
+                        let scalarUtf16 = next[index..<nextIndex].utf16.count
+                        if utf16Count + scalarUtf16 > 120 { break }
+                        utf16Count += scalarUtf16
+                        endIndex = nextIndex
                       }
+                      let clamped = String(next[..<endIndex])
                       model.paymentNote = clamped.isEmpty ? nil : clamped
                     }
                   ),

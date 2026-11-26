@@ -786,11 +786,18 @@ function drawReceiverFooterSection({
 	ctx.fillStyle = palette.ink;
 	ctx.font = fontSpec(600, 12);
 	for (const receiver of receivers) {
-		const summary = receiver.bank
-			? `${receiver.memberName}: ${receiver.bank.bankShortName} ${receiver.bank.accountNumber}`
+		const details = receiver.bank
+			? `${receiver.bank.bankShortName} ${receiver.bank.accountNumber}`
 			: receiver.wallets[0]
-				? `${receiver.memberName}: ${receiver.wallets[0].kind === "momo" ? "MoMo" : "ZaloPay"} ${receiver.wallets[0].phone}`
-				: receiver.memberName;
+				? `${receiver.wallets[0].kind === "momo" ? "MoMo" : "ZaloPay"} ${receiver.wallets[0].phone}`
+				: "";
+		const summary = details
+			? `${clipText(
+					ctx,
+					receiver.memberName,
+					Math.max(60, INNER_WIDTH - ctx.measureText(`: ${details}`).width),
+				)}: ${details}`
+			: clipText(ctx, receiver.memberName, INNER_WIDTH);
 		ctx.fillText(clipText(ctx, summary, INNER_WIDTH), PAD + CARD_PAD, fy + 12);
 		fy += 22;
 	}

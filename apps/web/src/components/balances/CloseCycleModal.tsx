@@ -82,7 +82,10 @@ export function CloseCycleModal({
 						type="text"
 						maxLength={80}
 						value={title}
-						onChange={(event) => setTitle(event.target.value)}
+						onChange={(event) => {
+							setTitle(event.target.value);
+							setKey(crypto.randomUUID());
+						}}
 						className="h-12 min-w-0 rounded-[20px] bg-surface px-3.5 text-sm font-bold text-ink"
 					/>
 				</label>

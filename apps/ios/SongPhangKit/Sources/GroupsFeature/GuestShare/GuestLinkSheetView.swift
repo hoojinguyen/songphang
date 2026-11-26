@@ -56,9 +56,7 @@ public struct GuestLinkSheetView: View {
         }
       }
       .task {
-        if model.state.value == nil {
-          await model.load()
-        }
+        await model.load()
       }
       .confirmationDialog(
         L10n.tr("guestLink.revokeAction"),

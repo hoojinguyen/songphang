@@ -214,10 +214,24 @@
       }
       let cycles = settlementCyclesByGroup[groupId] ?? []
       let latestClosedAt = cycles.first?.closedAt
-      let targetCycle: SettlementCycle? = {
-        guard case .cycle(let id) = cycleId else { return nil }
-        return cycles.first(where: { $0.id == id })
-      }()
+      let targetCycle: SettlementCycle?
+      if case .cycle(let id) = cycleId {
+        guard let matched = cycles.first(where: { $0.id == id }) else {
+          throw .api(code: "NOT_FOUND", status: 404)
+        }
+        targetCycle = matched
+      } else {
+        targetCycle = nil
+      }
+      let startIndex: Int
+      if let cursor {
+        guard let parsed = Int(cursor), parsed >= 0 else {
+          throw .api(code: "VALIDATION_FAILED", status: 400)
+        }
+        startIndex = max(0, parsed)
+      } else {
+        startIndex = 0
+      }
       let matchesRequestCycle: (SettlementRequest) -> Bool = { req in
         guard let cycleId else { return true }
         switch cycleId {
@@ -346,8 +360,17 @@
         }
       }
 
-      let startIndex = cursor.flatMap(Int.init) ?? 0
-      let pageItems = Array(filtered.dropFirst(startIndex).prefix(limit))
+      let sortedFiltered = filtered.sorted { lhs, rhs in
+        let lhsPending = lhs.status == .pending
+        let rhsPending = rhs.status == .pending
+        if lhsPending != rhsPending { return lhsPending }
+        let lhsDate = lhs.resolvedAt ?? lhs.occurredAt
+        let rhsDate = rhs.resolvedAt ?? rhs.occurredAt
+        if lhsDate != rhsDate { return lhsDate > rhsDate }
+        if lhs.kind != rhs.kind { return lhs.kind == .request }
+        return lhs.id > rhs.id
+      }
+      let pageItems = Array(sortedFiltered.dropFirst(startIndex).prefix(limit))
       let nextOffset = startIndex + pageItems.count
       return SettlementVaultPage(
         items: pageItems,
@@ -357,7 +380,7 @@
           confirmedTotalAmount: confirmedTotal,
           proofCount: proofCount
         ),
-        nextCursor: nextOffset < filtered.count ? String(nextOffset) : nil
+        nextCursor: nextOffset < sortedFiltered.count ? String(nextOffset) : nil
       )
     }
 
@@ -597,7 +620,15 @@
         case .cycle(let id): return tx.cycleId == id
         }
       }
-      let startIndex = cursor.flatMap(Int.init) ?? 0
+      let startIndex: Int
+      if let cursor {
+        guard let parsed = Int(cursor), parsed >= 0 else {
+          throw .api(code: "VALIDATION_FAILED", status: 400)
+        }
+        startIndex = max(0, parsed)
+      } else {
+        startIndex = 0
+      }
       let pageTxs = Array(allTxs.dropFirst(startIndex).prefix(limit))
       let guestTxs = pageTxs.map { tx in
         GuestTransaction(

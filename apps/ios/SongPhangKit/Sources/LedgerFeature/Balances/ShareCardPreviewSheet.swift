@@ -70,10 +70,10 @@ public struct ShareCardPreviewSheet: View {
             selectedTransferId = data.balances.transfers.first?.id
           }
         #endif
+        rerenderImage()
         if let loadGuestLink {
           guestLink = await loadGuestLink()
         }
-        rerenderImage()
       }
       .onChange(of: mode) { _, _ in rerenderImage() }
       .onChange(of: selectedThemeOverride) { _, _ in rerenderImage() }

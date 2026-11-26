@@ -392,11 +392,6 @@ public struct ReceiptItemsAssignmentView: View {
   }
 
   private func extraKindLabel(_ kind: ReceiptExtraKind) -> String {
-    switch kind {
-    case .tax: return L10n.tr("receipts.extrasKinds.tax")
-    case .service: return L10n.tr("receipts.extrasKinds.service")
-    case .discount: return L10n.tr("receipts.extrasKinds.discount")
-    case .other, .unknown: return L10n.tr("receipts.extrasKinds.other")
-    }
+    kind.localizedTitle
   }
 }

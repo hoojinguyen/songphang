@@ -124,7 +124,7 @@ public struct GuestGroupView: View {
     if model.refreshError != nil {
       SPCard(padding: 12) {
         HStack(spacing: 12) {
-          Text(L10n.tr("common.saveError"))
+          Text(L10n.tr("common.loadError"))
             .font(Typography.captionBold)
             .foregroundStyle(Tokens.debt)
           Spacer()
@@ -268,7 +268,7 @@ public struct GuestGroupView: View {
         }
 
         if !transfer.paymentMethods.isEmpty {
-          Button(isExpanded ? L10n.tr("pay.hideDetails") : L10n.tr("pay.qrHint")) {
+          Button(isExpanded ? L10n.tr("pay.hideDetails") : L10n.tr("pay.showDetails")) {
             expandedTransferId = isExpanded ? nil : transfer.id
           }
           .font(Typography.captionBold)

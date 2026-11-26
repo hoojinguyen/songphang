@@ -230,15 +230,7 @@ public enum ActivitySentenceFormatter {
           }
         }
         for extra in extras {
-          let label: String = {
-            if !extra.label.isEmpty { return extra.label }
-            switch extra.kind {
-            case .tax: return L10n.tr("receipts.extrasKinds.tax")
-            case .service: return L10n.tr("receipts.extrasKinds.service")
-            case .discount: return L10n.tr("receipts.extrasKinds.discount")
-            case .other, .unknown: return L10n.tr("receipts.extrasKinds.other")
-            }
-          }()
+          let label = extra.label.isEmpty ? extra.kind.localizedTitle : extra.label
           parts.append("\(label) \(MoneyFormat.amount(extra.amount))")
         }
         return parts.joined(separator: " · ")

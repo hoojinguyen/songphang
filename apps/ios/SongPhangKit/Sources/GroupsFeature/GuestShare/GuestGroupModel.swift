@@ -64,8 +64,12 @@ public final class GuestGroupModel {
       refreshError = nil
     } catch {
       if case .api(_, 404) = error {
-        isNotFound = true
-        state = .failed(error)
+        if case .cycle = cycle {
+          await handleCycleScoped404(error)
+        } else {
+          isNotFound = true
+          state = .failed(error)
+        }
       } else {
         refreshError = error
       }
@@ -109,8 +113,32 @@ public final class GuestGroupModel {
       refreshError = nil
     } catch {
       if case .api(_, 404) = error {
+        if case .cycle = requestedCycle {
+          await handleCycleScoped404(error)
+        } else {
+          isNotFound = true
+          state = .failed(error)
+        }
+      } else {
+        refreshError = error
+      }
+    }
+  }
+
+  private func handleCycleScoped404(_ originalError: AppError) async {
+    do throws(AppError) {
+      let fallback = try await guestLinksRepository.fetchGuestGroup(
+        token: token,
+        cycleId: nil,
+        cursor: nil
+      )
+      selectedCycleId = fallback.selectedCycleId
+      state = .loaded(fallback)
+      refreshError = nil
+    } catch {
+      if case .api(_, 404) = error {
         isNotFound = true
-        state = .failed(error)
+        state = .failed(originalError)
       } else {
         refreshError = error
       }

@@ -1,6 +1,6 @@
 "use client";
 import type { GuestTransactionDto } from "@songphang/contract";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGuestGroupView } from "../../lib/guest-links";
 import { formatMoney, formatSignedAmount } from "../../lib/money";
 import { useThemeMode } from "../../lib/theme";
@@ -30,15 +30,21 @@ export function GuestGroupPage({ token }: { token: string }) {
 		...(selectedCycleId ? { cycleId: selectedCycleId } : {}),
 	});
 
+	useEffect(() => {
+		if (guestQuery.error?.status === 404 && selectedCycleId !== undefined) {
+			setSelectedCycleId(undefined);
+		}
+	}, [guestQuery.error?.status, selectedCycleId]);
+
 	if (guestQuery.error?.status === 404 && selectedCycleId !== undefined) {
 		return (
-			<main className="mx-auto grid min-h-dvh max-w-[460px] content-center px-5 text-center">
-				<LoadError
-					onRetry={() => {
-						setSelectedCycleId(undefined);
-					}}
-					isRetrying={guestQuery.isFetching}
-				/>
+			<main
+				aria-busy="true"
+				className="mx-auto grid min-h-dvh max-w-[680px] gap-4 px-5 py-6"
+			>
+				<div className="h-24 rounded-card bg-sunken" />
+				<div className="h-44 rounded-card bg-sunken" />
+				<div className="h-64 rounded-card bg-sunken" />
 			</main>
 		);
 	}
@@ -438,7 +444,7 @@ export function GuestGroupPage({ token }: { token: string }) {
 
 				{guestQuery.isFetchNextPageError && (
 					<p role="alert" className="text-center text-xs font-bold text-debt">
-						{vi.common.saveError}
+						{vi.common.loadError}
 					</p>
 				)}
 

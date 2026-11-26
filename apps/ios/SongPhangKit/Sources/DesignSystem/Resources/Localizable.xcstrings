@@ -1244,6 +1244,17 @@
         }
       }
     },
+    "pay.showDetails": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem thông tin"
+          }
+        }
+      }
+    },
     "pay.purpose": {
       "extractionState": "manual",
       "localizations": {

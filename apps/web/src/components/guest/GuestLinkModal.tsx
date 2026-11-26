@@ -31,6 +31,8 @@ export function GuestLinkModal({
 	const guestLink = useGuestLink(groupId, open);
 	const enableMutation = useEnableGuestLink(groupId);
 	const revokeMutation = useRevokeGuestLink(groupId);
+	const { reset: resetEnable } = enableMutation;
+	const { reset: resetRevoke } = revokeMutation;
 	useSessionGuard(
 		guestLink.error ?? enableMutation.error ?? revokeMutation.error,
 	);
@@ -41,13 +43,13 @@ export function GuestLinkModal({
 		dialog.setAttribute("closedby", "any");
 		if (open && !dialog.open) {
 			setConfirmRotate(false);
-			enableMutation.reset();
-			revokeMutation.reset();
+			resetEnable();
+			resetRevoke();
 			dialog.showModal();
 		} else if (!open && dialog.open) {
 			dialog.close();
 		}
-	}, [open, enableMutation, revokeMutation]);
+	}, [open, resetEnable, resetRevoke]);
 
 	const linkData = guestLink.data;
 	const busy = enableMutation.isPending || revokeMutation.isPending;
