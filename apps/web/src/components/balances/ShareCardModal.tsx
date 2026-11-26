@@ -125,19 +125,8 @@ export function ShareCardModal({
 			const matched = cycles.find((cycle) => cycle.id === focus.cycleId);
 			if (matched) return matched.totalExpenseAmount;
 		}
-		if (focus?.kind === "current" && currentPeriod) {
-			return currentPeriod.totalExpenseAmount;
-		}
-		if (focusedExpenses.length > 0) {
-			return focusedExpenses.reduce((sum, item) => sum + item.amount, 0);
-		}
 		return currentPeriod?.totalExpenseAmount ?? 0;
-	}, [
-		breakdownsQuery.data?.resolvedFocus,
-		cycles,
-		currentPeriod,
-		focusedExpenses,
-	]);
+	}, [breakdownsQuery.data?.resolvedFocus, cycles, currentPeriod]);
 
 	const guestLinkUrl = guestLinkQuery.data?.active
 		? guestLinkQuery.data.url

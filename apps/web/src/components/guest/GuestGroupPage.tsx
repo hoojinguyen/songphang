@@ -272,6 +272,17 @@ export function GuestGroupPage({ token }: { token: string }) {
 															</div>
 														);
 													})}
+													{breakdown.postCycleDelta !== 0 && (
+														<div className="flex justify-between gap-2">
+															<span className="text-muted">
+																{vi.breakdown.postCycleDelta}
+															</span>
+															<span className="tabular-nums font-bold">
+																{formatSignedAmount(breakdown.postCycleDelta)}{" "}
+																{vi.common.currency}
+															</span>
+														</div>
+													)}
 													<div className="flex justify-between gap-2 border-t border-border-subtle pt-2 font-black text-ink">
 														<span>{vi.breakdown.currentBalance}</span>
 														<span className="tabular-nums">

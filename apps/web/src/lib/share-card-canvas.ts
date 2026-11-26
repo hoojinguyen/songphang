@@ -268,36 +268,42 @@ function collectReceivers(
 	return [...map.values()];
 }
 
-function renderPass(
+function clipText(
 	ctx: CanvasRenderingContext2D,
-	options: ShareCardRenderOptions,
-	palette: Palette,
-	draw: boolean,
-): number {
-	const memberName = (id: string) =>
-		options.members.find((m) => m.id === id)?.name ?? vi.activity.someone;
-	const findMember = (id: string) => options.members.find((m) => m.id === id);
+	text: string,
+	maxWidth: number,
+): string {
+	let clipped = text;
+	while (ctx.measureText(clipped).width > maxWidth && clipped.length > 3) {
+		clipped = `${clipped.slice(0, -2)}…`;
+	}
+	return clipped;
+}
 
-	const selectedTransfer =
-		options.mode === "reminder" && options.targetTransferKey !== "all"
-			? (options.transfers.find(
-					(t) =>
-						`${t.fromMemberId}-${t.toMemberId}` === options.targetTransferKey,
-				) ?? null)
-			: null;
+type SectionParams = {
+	ctx: CanvasRenderingContext2D;
+	options: ShareCardRenderOptions;
+	palette: Palette;
+	y: number;
+	draw: boolean;
+};
 
-	let y = PAD;
-
-	// 1. Header Card
+function drawHeaderSection({
+	ctx,
+	options,
+	palette,
+	y,
+	draw,
+}: SectionParams): number {
 	ctx.font = fontSpec(800, 11);
 	const brandText = vi.common.appName.toLocaleUpperCase("vi");
 	ctx.font = fontSpec(900, 22);
 	const groupLines = wrapText(ctx, options.groupName, INNER_WIDTH);
-	const headerHeight = CARD_PAD * 2 + 18 + groupLines.length * 27 + 8 + 18 + 20;
+	const height = CARD_PAD * 2 + 18 + groupLines.length * 27 + 8 + 18 + 20;
 
 	if (draw) {
 		ctx.fillStyle = palette.surface;
-		roundRectPath(ctx, PAD, y, CONTENT_WIDTH, headerHeight, 24);
+		roundRectPath(ctx, PAD, y, CONTENT_WIDTH, height, 24);
 		ctx.fill();
 
 		let hy = y + CARD_PAD;
@@ -327,454 +333,549 @@ function renderPass(
 			hy + 13,
 		);
 	}
-	y += headerHeight + 12;
+	return y + height + 12;
+}
 
-	// 2. Polite Reminder Caption Banner (in reminder mode)
-	if (options.mode === "reminder" && options.caption.trim()) {
+function drawCaptionBanner({
+	ctx,
+	options,
+	palette,
+	y,
+	draw,
+}: SectionParams): number {
+	if (options.mode !== "reminder" || !options.caption.trim()) return y;
+	ctx.font = fontSpec(700, 13);
+	const captionLines = wrapText(ctx, options.caption.trim(), INNER_WIDTH);
+	const height = CARD_PAD * 2 + captionLines.length * 19;
+	if (draw) {
+		ctx.fillStyle = palette.accent;
+		roundRectPath(ctx, PAD, y, CONTENT_WIDTH, height, 20);
+		ctx.fill();
+
+		ctx.fillStyle = palette.onAccent;
 		ctx.font = fontSpec(700, 13);
-		const captionLines = wrapText(ctx, options.caption.trim(), INNER_WIDTH);
-		const bannerHeight = CARD_PAD * 2 + captionLines.length * 19;
-		if (draw) {
-			ctx.fillStyle = palette.accent;
-			roundRectPath(ctx, PAD, y, CONTENT_WIDTH, bannerHeight, 20);
-			ctx.fill();
-
-			ctx.fillStyle = palette.onAccent;
-			ctx.font = fontSpec(700, 13);
-			let cy = y + CARD_PAD;
-			for (const line of captionLines) {
-				ctx.fillText(line, PAD + CARD_PAD, cy + 13);
-				cy += 19;
-			}
+		let cy = y + CARD_PAD;
+		for (const line of captionLines) {
+			ctx.fillText(line, PAD + CARD_PAD, cy + 13);
+			cy += 19;
 		}
-		y += bannerHeight + 12;
 	}
+	return y + height + 12;
+}
 
-	// 3A. Single-debtor Polite Reminder Hero + Breakdown + Exact VietQR
-	if (selectedTransfer) {
-		const from = findMember(selectedTransfer.fromMemberId);
-		const to = findMember(selectedTransfer.toMemberId);
-		const fromName = from?.name ?? vi.activity.someone;
-		const toName = to?.name ?? vi.activity.someone;
+type SelectedTransfer = BalancesResponse["transfers"][number];
 
-		// Hero card
-		const heroHeight = CARD_PAD * 2 + 54;
-		if (draw) {
-			ctx.fillStyle = palette.surface;
-			roundRectPath(ctx, PAD, y, CONTENT_WIDTH, heroHeight, 24);
-			ctx.fill();
+function drawSingleDebtorHero(
+	params: SectionParams & { transfer: SelectedTransfer },
+): number {
+	const { ctx, options, palette, y, draw, transfer } = params;
+	const from = options.members.find((m) => m.id === transfer.fromMemberId);
+	const to = options.members.find((m) => m.id === transfer.toMemberId);
+	const heroHeight = CARD_PAD * 2 + 54;
+	if (draw) {
+		ctx.fillStyle = palette.surface;
+		roundRectPath(ctx, PAD, y, CONTENT_WIDTH, heroHeight, 24);
+		ctx.fill();
 
-			if (from) {
-				drawMemberShape(
-					ctx,
-					PAD + CARD_PAD,
-					y + CARD_PAD + 8,
-					32,
-					from.shape,
-					from.color,
-					palette,
-				);
-			}
-			ctx.fillStyle = palette.muted;
-			ctx.font = fontSpec(700, 12);
-			ctx.fillText(
-				`${fromName} → ${toName}`,
-				PAD + CARD_PAD + 42,
-				y + CARD_PAD + 16,
-			);
-			ctx.fillStyle = palette.ink;
-			ctx.font = fontSpec(900, 26);
-			ctx.fillText(
-				formatMoney(selectedTransfer.amount),
-				PAD + CARD_PAD + 42,
-				y + CARD_PAD + 46,
+		if (from) {
+			drawMemberShape(
+				ctx,
+				PAD + CARD_PAD,
+				y + CARD_PAD + 8,
+				32,
+				from.shape,
+				from.color,
+				palette,
 			);
 		}
-		y += heroHeight + 12;
-
-		// Breakdown box
-		const breakdown = options.breakdowns.find(
-			(b) => b.memberId === selectedTransfer.fromMemberId,
+		ctx.fillStyle = palette.muted;
+		ctx.font = fontSpec(700, 12);
+		ctx.fillText(
+			`${from?.name ?? vi.activity.someone} → ${to?.name ?? vi.activity.someone}`,
+			PAD + CARD_PAD + 42,
+			y + CARD_PAD + 16,
 		);
-		if (breakdown) {
-			const visibleLines = breakdown.lines.slice(0, 12);
-			const extraLinesCount = Math.max(
-				0,
-				breakdown.lines.length - visibleLines.length,
-			);
-			const debtorTransfers = options.transfers.filter(
-				(t) => t.fromMemberId === selectedTransfer.fromMemberId,
-			);
-			const showAllocation =
-				debtorTransfers.length > 1 ||
-				Math.abs(breakdown.netBalance) !== selectedTransfer.amount;
+		ctx.fillStyle = palette.ink;
+		ctx.font = fontSpec(900, 26);
+		ctx.fillText(
+			formatMoney(transfer.amount),
+			PAD + CARD_PAD + 42,
+			y + CARD_PAD + 46,
+		);
+	}
+	return y + heroHeight + 12;
+}
 
-			let boxHeight = CARD_PAD * 2 + 24; // header
-			if (breakdown.carryOverBalance !== 0) boxHeight += 22;
-			boxHeight += visibleLines.length * 24;
-			if (extraLinesCount > 0) boxHeight += 20;
-			boxHeight += 28; // netBalance total
-			if (showAllocation) {
-				boxHeight += 28 + debtorTransfers.length * 22;
-			}
+function drawBreakdownAllocation(
+	ctx: CanvasRenderingContext2D,
+	palette: Palette,
+	members: MemberDto[],
+	debtorTransfers: SelectedTransfer[],
+	selectedTransfer: SelectedTransfer,
+	startY: number,
+): number {
+	const memberName = (id: string) =>
+		members.find((m) => m.id === id)?.name ?? vi.activity.someone;
+	let by = startY;
+	ctx.fillStyle = palette.border;
+	ctx.fillRect(PAD + CARD_PAD, by + 2, INNER_WIDTH, 1);
+	by += 10;
+	ctx.fillStyle = palette.ink;
+	ctx.font = fontSpec(800, 12);
+	ctx.fillText(vi.breakdown.transferAllocation, PAD + CARD_PAD, by + 12);
+	by += 20;
 
-			if (draw) {
-				ctx.fillStyle = palette.surface;
-				roundRectPath(ctx, PAD, y, CONTENT_WIDTH, boxHeight, 24);
-				ctx.fill();
+	for (const item of debtorTransfers) {
+		const isCurrent =
+			item.fromMemberId === selectedTransfer.fromMemberId &&
+			item.toMemberId === selectedTransfer.toMemberId;
+		ctx.font = fontSpec(isCurrent ? 800 : 600, 12);
+		ctx.fillStyle = isCurrent ? palette.ink : palette.muted;
+		const label = `${memberName(item.fromMemberId)} → ${memberName(item.toMemberId)}`;
+		const amt = formatMoney(item.amount);
+		const amtW = ctx.measureText(amt).width;
+		ctx.fillText(label, PAD + CARD_PAD, by + 12);
+		ctx.fillText(amt, PAD + CARD_PAD + INNER_WIDTH - amtW, by + 12);
+		by += 22;
+	}
+	return by;
+}
 
-				let by = y + CARD_PAD;
-				ctx.fillStyle = palette.ink;
-				ctx.font = fontSpec(800, 13);
-				ctx.fillText(vi.breakdown.title, PAD + CARD_PAD, by + 13);
-				by += 24;
+function drawSingleDebtorBreakdown(
+	params: SectionParams & { transfer: SelectedTransfer },
+): number {
+	const { ctx, options, palette, y, draw, transfer } = params;
+	const breakdown = options.breakdowns.find(
+		(b) => b.memberId === transfer.fromMemberId,
+	);
+	if (!breakdown) return y;
 
-				if (breakdown.carryOverBalance !== 0) {
-					ctx.font = fontSpec(600, 12);
-					ctx.fillStyle = palette.muted;
-					ctx.fillText(vi.breakdown.carryOver, PAD + CARD_PAD, by + 12);
-					const valText = `${formatSignedAmount(breakdown.carryOverBalance)} ${vi.common.currency}`;
-					ctx.fillStyle = palette.ink;
-					ctx.font = fontSpec(700, 12);
-					const valW = ctx.measureText(valText).width;
-					ctx.fillText(valText, PAD + CARD_PAD + INNER_WIDTH - valW, by + 12);
-					by += 22;
-				}
+	const visibleLines = breakdown.lines.slice(0, 12);
+	const extraCount = Math.max(0, breakdown.lines.length - visibleLines.length);
+	const debtorTransfers = options.transfers.filter(
+		(t) => t.fromMemberId === transfer.fromMemberId,
+	);
+	const showAllocation =
+		debtorTransfers.length > 1 ||
+		Math.abs(breakdown.netBalance) !== transfer.amount;
 
-				for (const line of visibleLines) {
-					const valText = `${formatSignedAmount(line.delta)} ${vi.common.currency}`;
-					ctx.font = fontSpec(700, 12);
-					const valW = ctx.measureText(valText).width;
-					ctx.fillStyle = line.delta >= 0 ? palette.credit : palette.debt;
-					ctx.fillText(valText, PAD + CARD_PAD + INNER_WIDTH - valW, by + 12);
+	let boxHeight = CARD_PAD * 2 + 24 + visibleLines.length * 24 + 28;
+	if (breakdown.carryOverBalance !== 0) boxHeight += 22;
+	if (extraCount > 0) boxHeight += 20;
+	if (showAllocation) boxHeight += 28 + debtorTransfers.length * 22;
 
-					ctx.fillStyle = palette.ink;
-					ctx.font = fontSpec(600, 12);
-					const prefix = `${formatShortDate(line.occurredAt)} · ${line.description}`;
-					const maxTextW = INNER_WIDTH - valW - 12;
-					let clipped = prefix;
-					while (
-						ctx.measureText(clipped).width > maxTextW &&
-						clipped.length > 3
-					) {
-						clipped = `${clipped.slice(0, -2)}…`;
-					}
-					ctx.fillText(clipped, PAD + CARD_PAD, by + 12);
-					by += 24;
-				}
+	if (!draw) return y + boxHeight + 12;
 
-				if (extraLinesCount > 0) {
-					ctx.fillStyle = palette.muted;
-					ctx.font = fontSpec(600, 11);
-					ctx.fillText(`+${extraLinesCount}`, PAD + CARD_PAD, by + 11);
-					by += 20;
-				}
+	ctx.fillStyle = palette.surface;
+	roundRectPath(ctx, PAD, y, CONTENT_WIDTH, boxHeight, 24);
+	ctx.fill();
 
-				// Divider
-				ctx.fillStyle = palette.border;
-				ctx.fillRect(PAD + CARD_PAD, by + 2, INNER_WIDTH, 1);
-				by += 10;
+	let by = y + CARD_PAD;
+	ctx.fillStyle = palette.ink;
+	ctx.font = fontSpec(800, 13);
+	ctx.fillText(vi.breakdown.title, PAD + CARD_PAD, by + 13);
+	by += 24;
 
-				ctx.fillStyle = palette.ink;
-				ctx.font = fontSpec(800, 13);
-				ctx.fillText(vi.breakdown.currentBalance, PAD + CARD_PAD, by + 13);
-				const netText = `${formatSignedAmount(breakdown.netBalance)} ${vi.common.currency}`;
-				const netW = ctx.measureText(netText).width;
-				ctx.fillText(netText, PAD + CARD_PAD + INNER_WIDTH - netW, by + 13);
-				by += 22;
-
-				if (showAllocation) {
-					ctx.fillStyle = palette.border;
-					ctx.fillRect(PAD + CARD_PAD, by + 2, INNER_WIDTH, 1);
-					by += 10;
-					ctx.fillStyle = palette.ink;
-					ctx.font = fontSpec(800, 12);
-					ctx.fillText(
-						vi.breakdown.transferAllocation,
-						PAD + CARD_PAD,
-						by + 12,
-					);
-					by += 20;
-
-					for (const item of debtorTransfers) {
-						const isCurrent =
-							item.fromMemberId === selectedTransfer.fromMemberId &&
-							item.toMemberId === selectedTransfer.toMemberId;
-						ctx.font = fontSpec(isCurrent ? 800 : 600, 12);
-						ctx.fillStyle = isCurrent ? palette.ink : palette.muted;
-						const label = `${memberName(item.fromMemberId)} → ${memberName(item.toMemberId)}`;
-						const amt = formatMoney(item.amount);
-						const amtW = ctx.measureText(amt).width;
-						ctx.fillText(label, PAD + CARD_PAD, by + 12);
-						ctx.fillText(amt, PAD + CARD_PAD + INNER_WIDTH - amtW, by + 12);
-						by += 22;
-					}
-				}
-			}
-			y += boxHeight + 12;
-		}
-
-		// Exact-amount VietQR card
-		const bank = selectedTransfer.payTo.find((m) => m.kind === "bank");
-		const wallets = selectedTransfer.payTo.filter((m) => m.kind !== "bank");
-		if (bank || wallets.length > 0) {
-			const qrSize = bank?.qrPayload ? 168 : 0;
-			const bankLinesCount = bank ? 4 : 0;
-			const walletLinesCount = wallets.length;
-			const payBoxHeight =
-				CARD_PAD * 2 +
-				(qrSize > 0 ? qrSize + 14 : 0) +
-				bankLinesCount * 19 +
-				walletLinesCount * 19 +
-				4;
-
-			if (draw) {
-				ctx.fillStyle = palette.surface;
-				roundRectPath(ctx, PAD, y, CONTENT_WIDTH, payBoxHeight, 24);
-				ctx.fill();
-
-				let py = y + CARD_PAD;
-				if (bank?.qrPayload) {
-					drawQrBox(
-						ctx,
-						PAD + (CONTENT_WIDTH - qrSize) / 2,
-						py,
-						qrSize,
-						bank.qrPayload,
-					);
-					py += qrSize + 14;
-				}
-				if (bank) {
-					const lines = [
-						`${vi.payment.bank}: ${bank.bankShortName}`,
-						`${vi.payment.accountNumber}: ${bank.accountNumber}`,
-						`${vi.payment.accountName}: ${bank.accountName}`,
-						`${vi.pay.purpose}: ${selectedTransfer.purpose}`,
-					];
-					ctx.fillStyle = palette.ink;
-					ctx.font = fontSpec(700, 12);
-					for (const line of lines) {
-						ctx.fillText(line, PAD + CARD_PAD, py + 12);
-						py += 19;
-					}
-				}
-				for (const wallet of wallets) {
-					ctx.fillStyle = palette.ink;
-					ctx.font = fontSpec(700, 12);
-					const label =
-						wallet.kind === "momo"
-							? `MoMo: ${wallet.phone}`
-							: `ZaloPay: ${wallet.phone}`;
-					ctx.fillText(label, PAD + CARD_PAD, py + 12);
-					py += 19;
-				}
-			}
-			y += payBoxHeight + 12;
-		}
-	} else {
-		// 3B. Multi-transfer Summary or All-debtor Reminder
-		const rowCount = options.transfers.length;
-		const listHeight =
-			rowCount === 0 ? CARD_PAD * 2 + 28 : CARD_PAD * 2 + 26 + rowCount * 34;
-
-		if (draw) {
-			ctx.fillStyle = palette.surface;
-			roundRectPath(ctx, PAD, y, CONTENT_WIDTH, listHeight, 24);
-			ctx.fill();
-
-			let ly = y + CARD_PAD;
-			if (rowCount === 0) {
-				ctx.fillStyle = palette.ink;
-				ctx.font = fontSpec(800, 14);
-				ctx.fillText(vi.balances.allSettledTitle, PAD + CARD_PAD, ly + 16);
-			} else {
-				ctx.fillStyle = palette.muted;
-				ctx.font = fontSpec(800, 12);
-				ctx.fillText(
-					vi.balances.headline.replace("{count}", String(rowCount)),
-					PAD + CARD_PAD,
-					ly + 12,
-				);
-				ly += 26;
-
-				for (const transfer of options.transfers) {
-					const from = findMember(transfer.fromMemberId);
-					const to = findMember(transfer.toMemberId);
-					if (from) {
-						drawMemberShape(
-							ctx,
-							PAD + CARD_PAD,
-							ly + 2,
-							22,
-							from.shape,
-							from.color,
-							palette,
-						);
-					}
-					const amtText = formatMoney(transfer.amount);
-					ctx.font = fontSpec(800, 13);
-					const amtW = ctx.measureText(amtText).width;
-					ctx.fillStyle = palette.ink;
-					ctx.fillText(amtText, PAD + CARD_PAD + INNER_WIDTH - amtW, ly + 17);
-
-					ctx.font = fontSpec(700, 13);
-					const label = `${from?.name ?? vi.activity.someone} → ${to?.name ?? vi.activity.someone}`;
-					const maxW = INNER_WIDTH - 30 - amtW - 10;
-					let clipped = label;
-					while (ctx.measureText(clipped).width > maxW && clipped.length > 3) {
-						clipped = `${clipped.slice(0, -2)}…`;
-					}
-					ctx.fillText(clipped, PAD + CARD_PAD + 30, ly + 17);
-					ly += 34;
-				}
-			}
-		}
-		y += listHeight + 12;
-
-		// Optional expense digest (summary mode)
-		if (
-			options.mode === "summary" &&
-			options.includeExpenses &&
-			options.expenses.length > 0
-		) {
-			const visibleExpenses = options.expenses.slice(0, 15);
-			const remainingCount = Math.max(
-				0,
-				options.expenses.length - visibleExpenses.length,
-			);
-			const digestHeight =
-				CARD_PAD * 2 +
-				24 +
-				visibleExpenses.length * 24 +
-				(remainingCount > 0 ? 20 : 0);
-
-			if (draw) {
-				ctx.fillStyle = palette.surface;
-				roundRectPath(ctx, PAD, y, CONTENT_WIDTH, digestHeight, 24);
-				ctx.fill();
-
-				let ey = y + CARD_PAD;
-				ctx.fillStyle = palette.muted;
-				ctx.font = fontSpec(800, 12);
-				ctx.fillText(vi.groupSegments.expenses, PAD + CARD_PAD, ey + 12);
-				ey += 24;
-
-				for (const expense of visibleExpenses) {
-					const amtText = formatMoney(expense.amount);
-					ctx.font = fontSpec(700, 12);
-					const amtW = ctx.measureText(amtText).width;
-					ctx.fillStyle = palette.ink;
-					ctx.fillText(amtText, PAD + CARD_PAD + INNER_WIDTH - amtW, ey + 12);
-
-					ctx.font = fontSpec(600, 12);
-					ctx.fillStyle = palette.muted;
-					const text = `${formatShortDate(expense.occurredAt)} · ${expense.description}`;
-					const maxW = INNER_WIDTH - amtW - 10;
-					let clipped = text;
-					while (ctx.measureText(clipped).width > maxW && clipped.length > 3) {
-						clipped = `${clipped.slice(0, -2)}…`;
-					}
-					ctx.fillText(clipped, PAD + CARD_PAD, ey + 12);
-					ey += 24;
-				}
-				if (remainingCount > 0) {
-					ctx.fillStyle = palette.muted;
-					ctx.font = fontSpec(600, 11);
-					ctx.fillText(`+${remainingCount}`, PAD + CARD_PAD, ey + 11);
-				}
-			}
-			y += digestHeight + 12;
-		}
-
-		// Receiver payment footer
-		const receivers = collectReceivers(options.transfers, options.members);
-		if (receivers.length === 1 && receivers[0]?.bank?.accountQrPayload) {
-			const receiver = receivers[0];
-			const bank = receiver.bank;
-			if (bank?.accountQrPayload) {
-				const qrSize = 156;
-				const footerHeight = CARD_PAD * 2 + qrSize + 14 + 58;
-				if (draw) {
-					ctx.fillStyle = palette.surface;
-					roundRectPath(ctx, PAD, y, CONTENT_WIDTH, footerHeight, 24);
-					ctx.fill();
-
-					let fy = y + CARD_PAD;
-					drawQrBox(
-						ctx,
-						PAD + (CONTENT_WIDTH - qrSize) / 2,
-						fy,
-						qrSize,
-						bank.accountQrPayload,
-					);
-					fy += qrSize + 14;
-					ctx.fillStyle = palette.ink;
-					ctx.font = fontSpec(700, 12);
-					ctx.fillText(
-						`${bank.bankShortName} · ${bank.accountNumber}`,
-						PAD + CARD_PAD,
-						fy + 12,
-					);
-					fy += 19;
-					ctx.fillText(bank.accountName, PAD + CARD_PAD, fy + 12);
-					fy += 19;
-					ctx.fillStyle = palette.muted;
-					ctx.font = fontSpec(600, 11);
-					ctx.fillText(receiver.memberName, PAD + CARD_PAD, fy + 11);
-				}
-				y += footerHeight + 12;
-			}
-		} else if (receivers.length > 0) {
-			const footerHeight = CARD_PAD * 2 + 22 + receivers.length * 22;
-			if (draw) {
-				ctx.fillStyle = palette.surface;
-				roundRectPath(ctx, PAD, y, CONTENT_WIDTH, footerHeight, 24);
-				ctx.fill();
-
-				let fy = y + CARD_PAD;
-				ctx.fillStyle = palette.muted;
-				ctx.font = fontSpec(800, 12);
-				ctx.fillText(vi.payment.title, PAD + CARD_PAD, fy + 12);
-				fy += 22;
-
-				ctx.fillStyle = palette.ink;
-				ctx.font = fontSpec(600, 12);
-				for (const receiver of receivers) {
-					const summary = receiver.bank
-						? `${receiver.memberName}: ${receiver.bank.bankShortName} ${receiver.bank.accountNumber}`
-						: receiver.wallets[0]
-							? `${receiver.memberName}: ${receiver.wallets[0].kind === "momo" ? "MoMo" : "ZaloPay"} ${receiver.wallets[0].phone}`
-							: receiver.memberName;
-					ctx.fillText(summary, PAD + CARD_PAD, fy + 12);
-					fy += 22;
-				}
-			}
-			y += footerHeight + 12;
-		}
+	if (breakdown.carryOverBalance !== 0) {
+		ctx.font = fontSpec(600, 12);
+		ctx.fillStyle = palette.muted;
+		ctx.fillText(vi.breakdown.carryOver, PAD + CARD_PAD, by + 12);
+		const valText = `${formatSignedAmount(breakdown.carryOverBalance)} ${vi.common.currency}`;
+		ctx.fillStyle = palette.ink;
+		ctx.font = fontSpec(700, 12);
+		const valW = ctx.measureText(valText).width;
+		ctx.fillText(valText, PAD + CARD_PAD + INNER_WIDTH - valW, by + 12);
+		by += 22;
 	}
 
-	// 4. Optional Guest Link footer
-	if (options.guestLinkUrl) {
+	for (const line of visibleLines) {
+		const valText = `${formatSignedAmount(line.delta)} ${vi.common.currency}`;
+		ctx.font = fontSpec(700, 12);
+		const valW = ctx.measureText(valText).width;
+		ctx.fillStyle = line.delta >= 0 ? palette.credit : palette.debt;
+		ctx.fillText(valText, PAD + CARD_PAD + INNER_WIDTH - valW, by + 12);
+
+		ctx.fillStyle = palette.ink;
+		ctx.font = fontSpec(600, 12);
+		const prefix = `${formatShortDate(line.occurredAt)} · ${line.description}`;
+		ctx.fillText(
+			clipText(ctx, prefix, INNER_WIDTH - valW - 12),
+			PAD + CARD_PAD,
+			by + 12,
+		);
+		by += 24;
+	}
+
+	if (extraCount > 0) {
+		ctx.fillStyle = palette.muted;
 		ctx.font = fontSpec(600, 11);
-		const linkText = `${vi.guestLink.title}: ${options.guestLinkUrl}`;
-		const linkLines = wrapText(ctx, linkText, INNER_WIDTH);
-		const linkBoxHeight = CARD_PAD * 2 + linkLines.length * 16;
-		if (draw) {
-			ctx.fillStyle = palette.sunken;
-			roundRectPath(ctx, PAD, y, CONTENT_WIDTH, linkBoxHeight, 18);
-			ctx.fill();
-
-			ctx.fillStyle = palette.muted;
-			ctx.font = fontSpec(600, 11);
-			let ly = y + CARD_PAD;
-			for (const line of linkLines) {
-				ctx.fillText(line, PAD + CARD_PAD, ly + 11);
-				ly += 16;
-			}
-		}
-		y += linkBoxHeight + 12;
+		ctx.fillText(`+${extraCount}`, PAD + CARD_PAD, by + 11);
+		by += 20;
 	}
 
+	ctx.fillStyle = palette.border;
+	ctx.fillRect(PAD + CARD_PAD, by + 2, INNER_WIDTH, 1);
+	by += 10;
+
+	ctx.fillStyle = palette.ink;
+	ctx.font = fontSpec(800, 13);
+	ctx.fillText(vi.breakdown.currentBalance, PAD + CARD_PAD, by + 13);
+	const netText = `${formatSignedAmount(breakdown.netBalance)} ${vi.common.currency}`;
+	const netW = ctx.measureText(netText).width;
+	ctx.fillText(netText, PAD + CARD_PAD + INNER_WIDTH - netW, by + 13);
+	by += 22;
+
+	if (showAllocation) {
+		drawBreakdownAllocation(
+			ctx,
+			palette,
+			options.members,
+			debtorTransfers,
+			transfer,
+			by,
+		);
+	}
+	return y + boxHeight + 12;
+}
+
+function drawSingleDebtorPayBox(
+	params: SectionParams & { transfer: SelectedTransfer },
+): number {
+	const { ctx, palette, y, draw, transfer } = params;
+	const bank = transfer.payTo.find((m) => m.kind === "bank");
+	const wallets = transfer.payTo.filter((m) => m.kind !== "bank");
+	if (!bank && wallets.length === 0) return y;
+
+	const qrSize = bank?.qrPayload ? 168 : 0;
+	const payBoxHeight =
+		CARD_PAD * 2 +
+		(qrSize > 0 ? qrSize + 14 : 0) +
+		(bank ? 4 : 0) * 19 +
+		wallets.length * 19 +
+		4;
+
+	if (!draw) return y + payBoxHeight + 12;
+
+	ctx.fillStyle = palette.surface;
+	roundRectPath(ctx, PAD, y, CONTENT_WIDTH, payBoxHeight, 24);
+	ctx.fill();
+
+	let py = y + CARD_PAD;
+	if (bank?.qrPayload) {
+		drawQrBox(
+			ctx,
+			PAD + (CONTENT_WIDTH - qrSize) / 2,
+			py,
+			qrSize,
+			bank.qrPayload,
+		);
+		py += qrSize + 14;
+	}
+	ctx.fillStyle = palette.ink;
+	ctx.font = fontSpec(700, 12);
+	if (bank) {
+		for (const line of [
+			`${vi.payment.bank}: ${bank.bankShortName}`,
+			`${vi.payment.accountNumber}: ${bank.accountNumber}`,
+			`${vi.payment.accountName}: ${bank.accountName}`,
+			`${vi.pay.purpose}: ${transfer.purpose}`,
+		]) {
+			ctx.fillText(line, PAD + CARD_PAD, py + 12);
+			py += 19;
+		}
+	}
+	for (const wallet of wallets) {
+		const label =
+			wallet.kind === "momo"
+				? `MoMo: ${wallet.phone}`
+				: `ZaloPay: ${wallet.phone}`;
+		ctx.fillText(label, PAD + CARD_PAD, py + 12);
+		py += 19;
+	}
+	return y + payBoxHeight + 12;
+}
+
+function drawTransfersListSection({
+	ctx,
+	options,
+	palette,
+	y,
+	draw,
+}: SectionParams): number {
+	const rowCount = options.transfers.length;
+	const listHeight =
+		rowCount === 0 ? CARD_PAD * 2 + 28 : CARD_PAD * 2 + 26 + rowCount * 34;
+
+	if (!draw) return y + listHeight + 12;
+
+	ctx.fillStyle = palette.surface;
+	roundRectPath(ctx, PAD, y, CONTENT_WIDTH, listHeight, 24);
+	ctx.fill();
+
+	let ly = y + CARD_PAD;
+	if (rowCount === 0) {
+		ctx.fillStyle = palette.ink;
+		ctx.font = fontSpec(800, 14);
+		ctx.fillText(vi.balances.allSettledTitle, PAD + CARD_PAD, ly + 16);
+		return y + listHeight + 12;
+	}
+
+	ctx.fillStyle = palette.muted;
+	ctx.font = fontSpec(800, 12);
+	ctx.fillText(
+		vi.balances.headline.replace("{count}", String(rowCount)),
+		PAD + CARD_PAD,
+		ly + 12,
+	);
+	ly += 26;
+
+	for (const transfer of options.transfers) {
+		const from = options.members.find((m) => m.id === transfer.fromMemberId);
+		const to = options.members.find((m) => m.id === transfer.toMemberId);
+		if (from) {
+			drawMemberShape(
+				ctx,
+				PAD + CARD_PAD,
+				ly + 2,
+				22,
+				from.shape,
+				from.color,
+				palette,
+			);
+		}
+		const amtText = formatMoney(transfer.amount);
+		ctx.font = fontSpec(800, 13);
+		const amtW = ctx.measureText(amtText).width;
+		ctx.fillStyle = palette.ink;
+		ctx.fillText(amtText, PAD + CARD_PAD + INNER_WIDTH - amtW, ly + 17);
+
+		ctx.font = fontSpec(700, 13);
+		const label = `${from?.name ?? vi.activity.someone} → ${to?.name ?? vi.activity.someone}`;
+		ctx.fillText(
+			clipText(ctx, label, INNER_WIDTH - 30 - amtW - 10),
+			PAD + CARD_PAD + 30,
+			ly + 17,
+		);
+		ly += 34;
+	}
+	return y + listHeight + 12;
+}
+
+function drawExpenseDigestSection({
+	ctx,
+	options,
+	palette,
+	y,
+	draw,
+}: SectionParams): number {
+	if (
+		options.mode !== "summary" ||
+		!options.includeExpenses ||
+		options.expenses.length === 0
+	) {
+		return y;
+	}
+	const visibleExpenses = options.expenses.slice(0, 15);
+	const remainingCount = Math.max(
+		0,
+		options.expenses.length - visibleExpenses.length,
+	);
+	const digestHeight =
+		CARD_PAD * 2 +
+		24 +
+		visibleExpenses.length * 24 +
+		(remainingCount > 0 ? 20 : 0);
+
+	if (!draw) return y + digestHeight + 12;
+
+	ctx.fillStyle = palette.surface;
+	roundRectPath(ctx, PAD, y, CONTENT_WIDTH, digestHeight, 24);
+	ctx.fill();
+
+	let ey = y + CARD_PAD;
+	ctx.fillStyle = palette.muted;
+	ctx.font = fontSpec(800, 12);
+	ctx.fillText(vi.groupSegments.expenses, PAD + CARD_PAD, ey + 12);
+	ey += 24;
+
+	for (const expense of visibleExpenses) {
+		const amtText = formatMoney(expense.amount);
+		ctx.font = fontSpec(700, 12);
+		const amtW = ctx.measureText(amtText).width;
+		ctx.fillStyle = palette.ink;
+		ctx.fillText(amtText, PAD + CARD_PAD + INNER_WIDTH - amtW, ey + 12);
+
+		ctx.font = fontSpec(600, 12);
+		ctx.fillStyle = palette.muted;
+		const text = `${formatShortDate(expense.occurredAt)} · ${expense.description}`;
+		ctx.fillText(
+			clipText(ctx, text, INNER_WIDTH - amtW - 10),
+			PAD + CARD_PAD,
+			ey + 12,
+		);
+		ey += 24;
+	}
+	if (remainingCount > 0) {
+		ctx.fillStyle = palette.muted;
+		ctx.font = fontSpec(600, 11);
+		ctx.fillText(`+${remainingCount}`, PAD + CARD_PAD, ey + 11);
+	}
+	return y + digestHeight + 12;
+}
+
+function drawReceiverFooterSection({
+	ctx,
+	options,
+	palette,
+	y,
+	draw,
+}: SectionParams): number {
+	const receivers = collectReceivers(options.transfers, options.members);
+	if (receivers.length === 0) return y;
+
+	if (receivers.length === 1 && receivers[0]?.bank?.accountQrPayload) {
+		const receiver = receivers[0];
+		const bank = receiver.bank;
+		if (!bank?.accountQrPayload) return y;
+		const qrSize = 156;
+		const footerHeight = CARD_PAD * 2 + qrSize + 14 + 58;
+		if (!draw) return y + footerHeight + 12;
+
+		ctx.fillStyle = palette.surface;
+		roundRectPath(ctx, PAD, y, CONTENT_WIDTH, footerHeight, 24);
+		ctx.fill();
+
+		let fy = y + CARD_PAD;
+		drawQrBox(
+			ctx,
+			PAD + (CONTENT_WIDTH - qrSize) / 2,
+			fy,
+			qrSize,
+			bank.accountQrPayload,
+		);
+		fy += qrSize + 14;
+		ctx.fillStyle = palette.ink;
+		ctx.font = fontSpec(700, 12);
+		ctx.fillText(
+			`${bank.bankShortName} · ${bank.accountNumber}`,
+			PAD + CARD_PAD,
+			fy + 12,
+		);
+		fy += 19;
+		ctx.fillText(bank.accountName, PAD + CARD_PAD, fy + 12);
+		fy += 19;
+		ctx.fillStyle = palette.muted;
+		ctx.font = fontSpec(600, 11);
+		ctx.fillText(receiver.memberName, PAD + CARD_PAD, fy + 11);
+		return y + footerHeight + 12;
+	}
+
+	const footerHeight = CARD_PAD * 2 + 22 + receivers.length * 22;
+	if (!draw) return y + footerHeight + 12;
+
+	ctx.fillStyle = palette.surface;
+	roundRectPath(ctx, PAD, y, CONTENT_WIDTH, footerHeight, 24);
+	ctx.fill();
+
+	let fy = y + CARD_PAD;
+	ctx.fillStyle = palette.muted;
+	ctx.font = fontSpec(800, 12);
+	ctx.fillText(vi.payment.title, PAD + CARD_PAD, fy + 12);
+	fy += 22;
+
+	ctx.fillStyle = palette.ink;
+	ctx.font = fontSpec(600, 12);
+	for (const receiver of receivers) {
+		const summary = receiver.bank
+			? `${receiver.memberName}: ${receiver.bank.bankShortName} ${receiver.bank.accountNumber}`
+			: receiver.wallets[0]
+				? `${receiver.memberName}: ${receiver.wallets[0].kind === "momo" ? "MoMo" : "ZaloPay"} ${receiver.wallets[0].phone}`
+				: receiver.memberName;
+		ctx.fillText(summary, PAD + CARD_PAD, fy + 12);
+		fy += 22;
+	}
+	return y + footerHeight + 12;
+}
+
+function drawGuestLinkSection({
+	ctx,
+	options,
+	palette,
+	y,
+	draw,
+}: SectionParams): number {
+	if (!options.guestLinkUrl) return y;
+	ctx.font = fontSpec(600, 11);
+	const linkLines = wrapText(
+		ctx,
+		`${vi.guestLink.title}: ${options.guestLinkUrl}`,
+		INNER_WIDTH,
+	);
+	const linkBoxHeight = CARD_PAD * 2 + linkLines.length * 16;
+	if (draw) {
+		ctx.fillStyle = palette.sunken;
+		roundRectPath(ctx, PAD, y, CONTENT_WIDTH, linkBoxHeight, 18);
+		ctx.fill();
+
+		ctx.fillStyle = palette.muted;
+		ctx.font = fontSpec(600, 11);
+		let ly = y + CARD_PAD;
+		for (const line of linkLines) {
+			ctx.fillText(line, PAD + CARD_PAD, ly + 11);
+			ly += 16;
+		}
+	}
+	return y + linkBoxHeight + 12;
+}
+
+function renderPass(
+	ctx: CanvasRenderingContext2D,
+	options: ShareCardRenderOptions,
+	palette: Palette,
+	draw: boolean,
+): number {
+	const selectedTransfer =
+		options.mode === "reminder" && options.targetTransferKey !== "all"
+			? (options.transfers.find(
+					(t) =>
+						`${t.fromMemberId}-${t.toMemberId}` === options.targetTransferKey,
+				) ?? null)
+			: null;
+
+	let y = PAD;
+	y = drawHeaderSection({ ctx, options, palette, y, draw });
+	y = drawCaptionBanner({ ctx, options, palette, y, draw });
+	if (selectedTransfer) {
+		y = drawSingleDebtorHero({
+			ctx,
+			options,
+			palette,
+			y,
+			draw,
+			transfer: selectedTransfer,
+		});
+		y = drawSingleDebtorBreakdown({
+			ctx,
+			options,
+			palette,
+			y,
+			draw,
+			transfer: selectedTransfer,
+		});
+		y = drawSingleDebtorPayBox({
+			ctx,
+			options,
+			palette,
+			y,
+			draw,
+			transfer: selectedTransfer,
+		});
+	} else {
+		y = drawTransfersListSection({ ctx, options, palette, y, draw });
+		y = drawExpenseDigestSection({ ctx, options, palette, y, draw });
+		y = drawReceiverFooterSection({ ctx, options, palette, y, draw });
+	}
+	y = drawGuestLinkSection({ ctx, options, palette, y, draw });
 	return y + PAD - 12;
 }
 
