@@ -9967,6 +9967,17 @@
         }
       }
     },
+    "ios.widget.galleryDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem tổng quan số dư các nhóm và mở nhanh thao tác chi tiêu."
+          }
+        }
+      }
+    },
     "ios.widget.settled": {
       "extractionState": "manual",
       "localizations": {

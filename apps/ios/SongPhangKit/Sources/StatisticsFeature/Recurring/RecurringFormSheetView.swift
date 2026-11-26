@@ -148,6 +148,7 @@ struct RecurringFormSheetView: View {
               )
               .keyboardType(.numberPad)
               .font(Typography.sectionTitle)
+              .monospacedDigit()
               .foregroundStyle(Tokens.ink)
 
               Text(L10n.tr("common.currency"))
@@ -172,7 +173,7 @@ struct RecurringFormSheetView: View {
                   } label: {
                     Text(freqTitle(freq))
                       .font(Typography.captionBold)
-                      .foregroundStyle(selected ? Tokens.surface : Tokens.ink)
+                      .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
                       .padding(.horizontal, 12)
                       .frame(minHeight: 36)
                       .background(selected ? Tokens.ink : Tokens.surface, in: Capsule())
@@ -214,7 +215,7 @@ struct RecurringFormSheetView: View {
                   } label: {
                     Text(member.name)
                       .font(Typography.captionBold)
-                      .foregroundStyle(selected ? Tokens.surface : Tokens.ink)
+                      .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
                       .padding(.horizontal, 12)
                       .frame(minHeight: 36)
                       .background(selected ? Tokens.ink : Tokens.surface, in: Capsule())
@@ -242,7 +243,7 @@ struct RecurringFormSheetView: View {
                   } label: {
                     Text(member.name)
                       .font(Typography.captionBold)
-                      .foregroundStyle(selected ? Tokens.surface : Tokens.ink)
+                      .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
                       .padding(.horizontal, 12)
                       .frame(minHeight: 36)
                       .background(selected ? Tokens.ink : Tokens.surface, in: Capsule())

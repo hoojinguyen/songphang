@@ -81,7 +81,7 @@ public struct ItemsSplitDraft: Sendable, Equatable {
       }
       self.items = mappedItems
       self.extras = mappedExtras
-      self.extrasAllocation = specAlloc ?? .equal
+      self.extrasAllocation = specAlloc ?? .proportional
       self.selectedItemId = mappedItems.first?.id ?? UUID()
     } else {
       let defaultMemberIds =

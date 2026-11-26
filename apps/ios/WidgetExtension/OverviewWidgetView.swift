@@ -82,8 +82,30 @@ struct OverviewWidgetView: View {
 
   private var smallContent: some View {
     VStack(alignment: .leading, spacing: 6) {
+      HStack {
+        Text("SÒNG PHẲNG")
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.muted)
+          .lineLimit(1)
+        Spacer()
+        if entry.snapshot.pendingActionCount > 0 {
+          Text(
+            L10n.t(
+              "ios.widget.pendingActions",
+              ["count": String(entry.snapshot.pendingActionCount)]
+            )
+          )
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.onAccent)
+          .lineLimit(1)
+          .padding(.horizontal, 7)
+          .padding(.vertical, 2)
+          .background(Tokens.accent, in: Capsule())
+        }
+      }
+
       Text(netStatusLabel)
-        .font(Typography.captionBold)
+        .font(Typography.caption)
         .foregroundStyle(Tokens.muted)
         .lineLimit(1)
 
@@ -102,31 +124,26 @@ struct OverviewWidgetView: View {
         .minimumScaleFactor(0.75)
       }
 
-      Spacer()
+      Spacer(minLength: 4)
 
       if let recent = entry.snapshot.recentGroup {
         Text(recent.name)
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.muted)
           .lineLimit(1)
       }
 
-      if entry.snapshot.pendingActionCount > 0 {
-        Text(
-          L10n.t(
-            "ios.widget.pendingActions",
-            ["count": String(entry.snapshot.pendingActionCount)]
-          )
-        )
-        .font(Typography.captionBold)
-        .foregroundStyle(Tokens.ink)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(Tokens.accent, in: Capsule())
-      } else {
-        Text(L10n.tr("ios.widget.tapToOpen"))
-          .font(Typography.caption)
-          .foregroundStyle(Tokens.muted)
+      let quickAddURL =
+        entry.snapshot.recentGroup.flatMap {
+          URL(string: "songphang://group/\($0.id)/quick-entry")
+        } ?? overviewURL
+      Link(destination: quickAddURL) {
+        Text(L10n.tr("ios.widget.addExpenseCta"))
+          .font(Typography.captionBold)
+          .foregroundStyle(Tokens.onAccent)
+          .lineLimit(1)
+          .frame(maxWidth: .infinity, minHeight: 30)
+          .background(Tokens.accent, in: Capsule())
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -170,9 +187,11 @@ struct OverviewWidgetView: View {
             HStack(spacing: 8) {
               Text(MoneyFormat.compact(Money(entry.snapshot.totalOwedToMe)))
                 .font(Typography.captionBold)
+                .monospacedDigit()
                 .foregroundStyle(Tokens.credit)
               Text(MoneyFormat.compact(Money(entry.snapshot.totalIOwe)))
                 .font(Typography.captionBold)
+                .monospacedDigit()
                 .foregroundStyle(Tokens.debt)
             }
           }
@@ -189,7 +208,7 @@ struct OverviewWidgetView: View {
             highlighted: true
           )
           actionPill(
-            title: L10n.tr("ios.widget.addExpenseCta"),
+            title: L10n.tr("ios.widget.manualOrBill"),
             url: URL(string: "songphang://group/\(recent.id)/expense-new") ?? overviewURL,
             highlighted: false
           )
@@ -213,7 +232,7 @@ struct OverviewWidgetView: View {
     Link(destination: url) {
       Text(title)
         .font(Typography.captionBold)
-        .foregroundStyle(Tokens.ink)
+        .foregroundStyle(highlighted ? Tokens.onAccent : Tokens.ink)
         .lineLimit(1)
         .frame(maxWidth: .infinity, minHeight: 34)
         .background(

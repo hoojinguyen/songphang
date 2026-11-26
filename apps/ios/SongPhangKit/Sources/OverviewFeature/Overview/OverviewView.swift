@@ -193,7 +193,10 @@ public struct OverviewView: View {
             if let suggested = action.suggestedAmount {
               MoneyText(suggested, style: .full, font: Typography.subheadlineBold)
             } else {
-              Text(action.dueDate)
+              let parts = action.dueDate.split(separator: "-")
+              let formatted =
+                parts.count == 3 ? "\(parts[2])/\(parts[1])/\(parts[0])" : action.dueDate
+              Text(formatted)
                 .font(Typography.caption)
                 .foregroundStyle(Tokens.muted)
             }

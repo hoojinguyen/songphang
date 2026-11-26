@@ -61,7 +61,7 @@ public struct RecurringInlineCardView: View {
                 } label: {
                   Text(freqTitle(freq))
                     .font(Typography.captionBold)
-                    .foregroundStyle(selected ? Tokens.surface : Tokens.ink)
+                    .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
                     .padding(.horizontal, 12)
                     .frame(minHeight: 36)
                     .background(selected ? Tokens.ink : Tokens.sunken, in: Capsule())
@@ -105,7 +105,7 @@ public struct RecurringInlineCardView: View {
     } label: {
       Text(title)
         .font(Typography.captionBold)
-        .foregroundStyle(selected ? Tokens.surface : Tokens.ink)
+        .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
         .multilineTextAlignment(.center)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)

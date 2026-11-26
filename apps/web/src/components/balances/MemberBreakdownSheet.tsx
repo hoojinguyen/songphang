@@ -233,14 +233,19 @@ export function MemberBreakdownSheet({
 													<p className="mt-0.5 text-muted">
 														{householdBreakdown ? `${line.memberName} · ` : ""}
 														{dateText} · {line.payerSummary} ·{" "}
-														{formatMoney(line.totalAmount)}
+														<span className="tabular-nums">
+															{formatMoney(line.totalAmount)}
+														</span>
 													</p>
 													{line.memberShare > 0 && (
 														<p className="mt-0.5 text-muted">
 															{t(vi.breakdown.memberShare, {
 																name: line.memberName,
 															})}
-															: {formatMoney(line.memberShare)}
+															:{" "}
+															<span className="tabular-nums">
+																{formatMoney(line.memberShare)}
+															</span>
 														</p>
 													)}
 												</div>

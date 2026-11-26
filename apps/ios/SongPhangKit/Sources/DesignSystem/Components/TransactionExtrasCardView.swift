@@ -5,17 +5,20 @@ public struct TransactionExtrasCardView: View {
   private let totalAmount: Money
   private let extras: [SplitSpec.ItemsExtra]
   private let allocation: ExtrasAllocation?
+  private let defaultAllocation: ExtrasAllocation
   private let showCardChrome: Bool
 
   public init(
     totalAmount: Money,
     extras: [SplitSpec.ItemsExtra],
     allocation: ExtrasAllocation?,
+    defaultAllocation: ExtrasAllocation = .equal,
     showCardChrome: Bool = true
   ) {
     self.totalAmount = totalAmount
     self.extras = extras
     self.allocation = allocation
+    self.defaultAllocation = defaultAllocation
     self.showCardChrome = showCardChrome
   }
 
@@ -31,10 +34,10 @@ public struct TransactionExtrasCardView: View {
   }
 
   private var allocationText: String {
-    switch allocation {
+    switch allocation ?? defaultAllocation {
     case .proportional:
       return L10n.tr("extras.allocProportionalLabel")
-    case .equal, .none, .unknown:
+    case .equal, .unknown:
       return L10n.tr("extras.allocEqualLabel")
     }
   }
@@ -67,7 +70,7 @@ public struct TransactionExtrasCardView: View {
       ForEach(Array(extras.enumerated()), id: \.offset) { _, extra in
         let baseTitle = extra.label.isEmpty ? extra.kind.localizedTitle : extra.label
         let title =
-          extra.ratePercent.map { "\($0)% · \(baseTitle)" } ?? baseTitle
+          extra.ratePercent.map { "\(baseTitle) (\($0)%)" } ?? baseTitle
         let displayedAmount =
           extra.kind == .discount
           ? Money(-extra.amount.amount)

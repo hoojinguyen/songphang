@@ -305,7 +305,7 @@ function RecurringFormBody({
 									if (value !== null) setAmountText(formatAmount(value));
 								}}
 								placeholder="0"
-								className="min-w-0 flex-1 bg-transparent text-right text-lg font-black text-ink outline-none"
+								className="min-w-0 flex-1 bg-transparent text-right tabular-nums text-lg font-black text-ink outline-none"
 							/>
 							<span className="text-sm font-bold text-muted">
 								{vi.common.currency}

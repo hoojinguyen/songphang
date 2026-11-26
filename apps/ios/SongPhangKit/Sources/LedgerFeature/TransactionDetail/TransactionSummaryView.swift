@@ -198,6 +198,7 @@ struct TransactionSummaryView: View {
               totalAmount: transaction.amount,
               extras: extras,
               allocation: allocation,
+              defaultAllocation: .proportional,
               showCardChrome: false
             )
           }

@@ -42,7 +42,7 @@ struct SongPhangOverviewWidget: Widget {
       OverviewWidgetView(entry: entry)
     }
     .configurationDisplayName("Sòng Phẳng")
-    .description(L10n.tr("ios.widget.recentGroup"))
+    .description(L10n.tr("ios.widget.galleryDescription"))
     .supportedFamilies([.systemSmall, .systemMedium])
   }
 }

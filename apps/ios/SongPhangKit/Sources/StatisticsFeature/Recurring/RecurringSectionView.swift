@@ -207,9 +207,9 @@ public struct RecurringSectionView: View {
         }
 
         if let pendingDue = item.pendingDueDate {
-          Text(L10n.t("recurring.pendingDueTemplate", ["date": pendingDue]))
+          Text(L10n.t("recurring.pendingDueTemplate", ["date": Self.formatVNDate(pendingDue)]))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Tokens.accent, in: Capsule())
@@ -226,7 +226,7 @@ public struct RecurringSectionView: View {
           }
         } else {
           HStack(spacing: 8) {
-            Text(L10n.t("recurring.nextDueTemplate", ["date": item.nextDueDate]))
+            Text(L10n.t("recurring.nextDueTemplate", ["date": Self.formatVNDate(item.nextDueDate)]))
               .font(Typography.caption)
               .foregroundStyle(Tokens.muted)
             Spacer()
@@ -257,6 +257,12 @@ public struct RecurringSectionView: View {
     case .yearly: return L10n.tr("recurring.freqYearly")
     case .unknown(let raw): return raw
     }
+  }
+
+  private static func formatVNDate(_ iso: String) -> String {
+    let parts = iso.split(separator: "-")
+    guard parts.count == 3 else { return iso }
+    return "\(parts[2])/\(parts[1])/\(parts[0])"
   }
 }
 

@@ -190,7 +190,7 @@ public struct HouseholdsSectionView: View {
         if !repName.isEmpty {
           Text(L10n.t("households.representativeBadge", ["name": repName]))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(Tokens.accent, in: Capsule())

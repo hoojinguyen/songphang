@@ -99,7 +99,7 @@ struct ShareExtensionView: View {
   private var finishedCard: some View {
     SPCard(padding: 20) {
       VStack(alignment: .leading, spacing: 14) {
-        Text(L10n.tr("ios.shareExtension.openAppToFinish"))
+        Text(L10n.t("ios.shareExtension.openAppToFinish", ["name": selectedGroup?.name ?? ""]))
           .font(Typography.bodyBold)
           .foregroundStyle(Tokens.ink)
         SPButton(L10n.tr("ios.shareExtension.done"), variant: .primary, isFullWidth: true) {
@@ -345,13 +345,20 @@ struct ShareExtensionView: View {
     let info = Bundle.main.infoDictionary
     let rawAPI = (info?["API_BASE_URL"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
     let rawWeb = (info?["WEB_BASE_URL"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+    #if DEBUG
+      let fallbackAPI = URL(string: "http://127.0.0.1:4000/api/v1")
+      let fallbackWeb = URL(string: "http://localhost:3000")
+    #else
+      let fallbackAPI: URL? = nil
+      let fallbackWeb: URL? = nil
+    #endif
     let apiURL =
       rawAPI.flatMap { !$0.isEmpty && !$0.contains("$(") ? URL(string: $0) : nil }
-      ?? URL(string: "http://127.0.0.1:4000/api/v1")
+      ?? fallbackAPI
       ?? URL(filePath: "/")
     let webURL =
       rawWeb.flatMap { !$0.isEmpty && !$0.contains("$(") ? URL(string: $0) : nil }
-      ?? URL(string: "http://localhost:3000")
+      ?? fallbackWeb
       ?? URL(filePath: "/")
     let version = (info?["CFBundleShortVersionString"] as? String) ?? "1.0.0"
     return APIConfiguration(

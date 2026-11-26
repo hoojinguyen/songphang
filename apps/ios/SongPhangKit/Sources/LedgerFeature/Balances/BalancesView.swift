@@ -844,7 +844,7 @@ private func transferPartyLabel(
   household: HouseholdTransferRef?
 ) -> String {
   if let household {
-    return "\(household.name) (\(L10n.t("households.representativeBadge", ["name": member.name])))"
+    return "\(member.name) (\(L10n.t("households.representativeBadge", ["name": household.name])))"
   }
   return member.name
 }

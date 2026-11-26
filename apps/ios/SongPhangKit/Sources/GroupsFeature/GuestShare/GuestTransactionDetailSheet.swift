@@ -159,6 +159,7 @@ struct GuestTransactionDetailSheet: View {
             totalAmount: transaction.amount,
             extras: extras,
             allocation: allocation,
+            defaultAllocation: .proportional,
             showCardChrome: false
           )
         }

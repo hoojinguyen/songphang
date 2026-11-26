@@ -388,13 +388,13 @@ public struct ShareCardPreviewSheet: View {
     else { return nil }
     let fromLabel: String = {
       if let hh = transfer.fromHousehold {
-        return "\(hh.name) (\(L10n.t("households.representativeBadge", ["name": from.name])))"
+        return "\(from.name) (\(L10n.t("households.representativeBadge", ["name": hh.name])))"
       }
       return from.name
     }()
     let toLabel: String = {
       if let hh = transfer.toHousehold {
-        return "\(hh.name) (\(L10n.t("households.representativeBadge", ["name": to.name])))"
+        return "\(to.name) (\(L10n.t("households.representativeBadge", ["name": hh.name])))"
       }
       return to.name
     }()

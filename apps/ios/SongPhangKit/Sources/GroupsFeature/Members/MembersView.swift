@@ -362,7 +362,7 @@ public struct MembersView: View {
         if let household {
           let label =
             household.representativeMemberId == member.id
-            ? "\(household.name) · \(L10n.t("households.representativeBadge", ["name": member.name]))"
+            ? L10n.t("households.representativeBadge", ["name": household.name])
             : household.name
           Text(label)
             .font(Typography.captionBold)
@@ -382,7 +382,7 @@ public struct MembersView: View {
             : L10n.tr("members.roleViewer")
         Text(badgeText)
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(role == .owner ? Tokens.onAccent : Tokens.ink)
           .padding(.horizontal, 12)
           .padding(.vertical, 6)
           .background(role == .owner ? Tokens.accent : Tokens.sunken)

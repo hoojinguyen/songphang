@@ -322,7 +322,7 @@ public struct ReceiptItemsAssignmentView: View {
             } label: {
               Text(title)
                 .font(Typography.captionBold)
-                .foregroundStyle(selected ? Tokens.surface : Tokens.ink)
+                .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
                 .frame(maxWidth: .infinity, minHeight: 36)
                 .background(selected ? Tokens.ink : Tokens.sunken, in: Capsule())
             }

@@ -254,14 +254,14 @@ public struct GuestGroupView: View {
             let fromLabel: String = {
               let name = from?.name ?? ""
               if let hh = transfer.fromHousehold {
-                return "\(hh.name) (\(L10n.t("households.representativeBadge", ["name": name])))"
+                return "\(name) (\(L10n.t("households.representativeBadge", ["name": hh.name])))"
               }
               return name
             }()
             let toLabel: String = {
               let name = to?.name ?? ""
               if let hh = transfer.toHousehold {
-                return "\(hh.name) (\(L10n.t("households.representativeBadge", ["name": name])))"
+                return "\(name) (\(L10n.t("households.representativeBadge", ["name": hh.name])))"
               }
               return name
             }()

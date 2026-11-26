@@ -382,7 +382,9 @@ export function GuestGroupPage({ token }: { token: string }) {
 																			? `${line.memberName} · `
 																			: ""}
 																		{dateText} · {line.payerSummary} ·{" "}
-																		{formatMoney(line.totalAmount)}
+																		<span className="tabular-nums">
+																			{formatMoney(line.totalAmount)}
+																		</span>
 																	</p>
 																</div>
 																<span

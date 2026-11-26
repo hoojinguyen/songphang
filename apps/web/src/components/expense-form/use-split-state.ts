@@ -123,7 +123,9 @@ export function useSplitState(
 		})),
 	);
 	const [extrasAllocation, setExtrasAllocation] = useState<ExtrasAllocation>(
-		() => initial?.extrasAllocation ?? "equal",
+		() =>
+			initial?.extrasAllocation ??
+			(initial?.method === "items" ? "proportional" : "equal"),
 	);
 	const [selectedItemId, setSelectedItemId] = useState(
 		() => items[0]?.id ?? "",

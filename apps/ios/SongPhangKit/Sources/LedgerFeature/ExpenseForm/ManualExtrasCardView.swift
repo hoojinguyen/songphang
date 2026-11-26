@@ -238,6 +238,7 @@ public struct ManualExtrasCardView: View {
             .keyboardType(.decimalPad)
             .multilineTextAlignment(.trailing)
             .font(Typography.subheadlineBold)
+            .monospacedDigit()
             .foregroundStyle(Tokens.ink)
             .accessibilityLabel(L10n.tr("extras.percentLabel"))
 
@@ -268,6 +269,7 @@ public struct ManualExtrasCardView: View {
             .keyboardType(.numberPad)
             .multilineTextAlignment(.trailing)
             .font(Typography.subheadlineBold)
+            .monospacedDigit()
             .foregroundStyle(Tokens.ink)
             .accessibilityLabel(L10n.tr("extras.amountLabel"))
 
@@ -314,7 +316,7 @@ public struct ManualExtrasCardView: View {
     } label: {
       Text(title)
         .font(Typography.captionBold)
-        .foregroundStyle(selected ? Tokens.surface : Tokens.ink)
+        .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
         .frame(maxWidth: .infinity, minHeight: 36)
         .background(selected ? Tokens.ink : Tokens.sunken, in: Capsule())
     }

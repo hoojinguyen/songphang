@@ -282,7 +282,7 @@ export function ManualExtrasCard({
 														}
 													}}
 													placeholder="8"
-													className="min-w-0 flex-1 bg-transparent text-right text-sm font-black text-ink outline-none"
+													className="min-w-0 flex-1 bg-transparent text-right tabular-nums text-sm font-black text-ink outline-none"
 												/>
 												<span className="text-xs font-bold text-muted">%</span>
 											</label>
@@ -315,7 +315,7 @@ export function ManualExtrasCard({
 														}
 													}}
 													placeholder="0"
-													className="min-w-0 flex-1 bg-transparent text-right text-sm font-black text-ink outline-none"
+													className="min-w-0 flex-1 bg-transparent text-right tabular-nums text-sm font-black text-ink outline-none"
 												/>
 												<span className="text-xs font-bold text-muted">
 													{vi.common.currency}

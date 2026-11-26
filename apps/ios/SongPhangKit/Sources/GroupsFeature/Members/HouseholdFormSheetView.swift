@@ -154,7 +154,7 @@ struct HouseholdFormSheetView: View {
                     if hasVietQR(member) {
                       Text(L10n.tr("households.hasVietQrHint"))
                         .font(Typography.captionBold)
-                        .foregroundStyle(Tokens.ink)
+                        .foregroundStyle(Tokens.onAccent)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Tokens.accent, in: Capsule())

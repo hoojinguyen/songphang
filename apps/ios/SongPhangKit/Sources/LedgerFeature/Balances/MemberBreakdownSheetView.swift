@@ -213,6 +213,7 @@ struct MemberBreakdownSheetView: View {
                     "\(MoneyFormat.full(line.memberShare)) / \(MoneyFormat.full(line.totalAmount))"
                   )
                   .font(Typography.caption)
+                  .monospacedDigit()
                   .foregroundStyle(Tokens.muted)
                 } else {
                   MoneyText(

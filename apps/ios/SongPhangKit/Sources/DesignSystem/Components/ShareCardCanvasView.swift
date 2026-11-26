@@ -211,6 +211,7 @@ public struct ShareCardCanvasView: View {
         Spacer()
         Text("\(content.expenseCount) \(L10n.tr("groupSegments.expenses").lowercased())")
           .font(Typography.captionBold)
+          .monospacedDigit()
           .foregroundStyle(Tokens.muted)
       }
     }
