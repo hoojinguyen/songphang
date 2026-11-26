@@ -230,7 +230,7 @@ export function GuestGroupPage({ token }: { token: string }) {
 													{toMember?.name ?? vi.activity.someone}
 												</p>
 												<p className="text-xs font-bold text-muted underline">
-													{vi.breakdown.viewAction}
+													{expanded ? vi.pay.hideDetails : vi.pay.showDetails}
 												</p>
 											</div>
 										</div>
