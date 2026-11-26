@@ -109,8 +109,12 @@ function OverviewContent({ name }: { name: string }) {
 
 			<OverviewSummaryCard overview={overview.data} />
 
-			{overview.data.pendingActions.length > 0 && (
-				<PendingActionsList actions={overview.data.pendingActions} />
+			{(overview.data.pendingActions.length > 0 ||
+				(overview.data.dueRecurringActions?.length ?? 0) > 0) && (
+				<PendingActionsList
+					actions={overview.data.pendingActions}
+					dueRecurringActions={overview.data.dueRecurringActions ?? []}
+				/>
 			)}
 
 			<section className="grid gap-3">

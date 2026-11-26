@@ -19,6 +19,10 @@ import { useBudget } from "../../../lib/budget";
 import { useCategories } from "../../../lib/categories";
 import { useGroup } from "../../../lib/groups";
 import { useMembers } from "../../../lib/members";
+import {
+	formatCalendarDateVN,
+	useRecurringExpenses,
+} from "../../../lib/recurring-expenses";
 import { useMe } from "../../../lib/session";
 import { useSettlementCycles } from "../../../lib/settlement-cycles";
 import {
@@ -51,6 +55,7 @@ function GroupScreen() {
 	const balances = useBalances(groupId);
 	const budget = useBudget(groupId);
 	const cycles = useSettlementCycles(groupId);
+	const recurringQuery = useRecurringExpenses(groupId);
 	const hasClosedCycles = (cycles.data?.cycles.length ?? 0) > 0;
 	const knownCycleIds = new Set(cycles.data?.cycles.map((cycle) => cycle.id));
 	const requestedCycleId = filters.cycleId ?? "current";
@@ -193,10 +198,37 @@ function GroupScreen() {
 		balances.data.balances.find(
 			(balance) => balance.memberId === group.data.myMemberId,
 		)?.balance ?? 0;
+	const dueRecurring =
+		group.data.role !== "viewer" && !group.data.archivedAt
+			? (recurringQuery.data ?? []).filter(
+					(item) => item.pendingDueDate !== null,
+				)
+			: [];
 	return (
 		<main className="mx-auto flex h-dvh max-w-[430px] flex-col gap-4 px-5 pb-[100px] pt-6">
 			<GroupNavHeader groupId={groupId} />
 			{!filtersActive && <BalanceBlock groupId={groupId} balance={balance} />}
+			{dueRecurring.length > 0 && (
+				<div className="grid gap-2">
+					{dueRecurring.map((item) => (
+						<Link
+							key={item.id}
+							href={`/g/${encodeURIComponent(groupId)}/tx/new?form=1&recurringId=${encodeURIComponent(item.id)}`}
+							className="flex items-center justify-between gap-2 rounded-[20px] bg-warning-soft px-4 py-3 text-xs font-extrabold text-ink"
+						>
+							<span className="truncate">
+								{t(vi.recurring.pendingDueTemplate, {
+									date: formatCalendarDateVN(item.pendingDueDate ?? ""),
+								})}{" "}
+								· {item.description}
+							</span>
+							<span className="shrink-0 underline">
+								{vi.recurring.enterAmountShort}
+							</span>
+						</Link>
+					))}
+				</div>
+			)}
 			{group.data.myMemberId === null && (
 				<Link
 					href={`/g/${groupId}/members`}

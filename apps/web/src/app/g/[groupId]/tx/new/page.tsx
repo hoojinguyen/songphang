@@ -7,6 +7,7 @@ import { LoadError } from "../../../../../components/ui/LoadError";
 import { VerifyEmailBanner } from "../../../../../components/ui/VerifyEmailBanner";
 import { useGroup } from "../../../../../lib/groups";
 import { useMembers } from "../../../../../lib/members";
+import { useRecurringExpenses } from "../../../../../lib/recurring-expenses";
 import { useMe } from "../../../../../lib/session";
 import { useSessionGuard } from "../../../../../lib/use-session-guard";
 import { vi } from "../../../../../messages/vi";
@@ -15,10 +16,13 @@ export default function NewExpensePage() {
 	const { groupId } = useParams<{ groupId: string }>();
 	const search = useSearchParams();
 
+	const recurringId = search.get("recurringId");
 	const me = useMe();
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
-	const error = group.error ?? members.error ?? me.error;
+	const recurringQuery = useRecurringExpenses(groupId, Boolean(recurringId));
+	const error =
+		group.error ?? members.error ?? me.error ?? recurringQuery.error;
 	useSessionGuard(error);
 	if (group.data?.role === "viewer")
 		return (
@@ -40,6 +44,7 @@ export default function NewExpensePage() {
 		me.isPending ||
 		group.isPending ||
 		members.isPending ||
+		(Boolean(recurringId) && recurringQuery.isPending) ||
 		error?.status === 401
 	)
 		return (
@@ -70,6 +75,9 @@ export default function NewExpensePage() {
 			</main>
 		);
 	const scanId = search.get("scan");
+	const recurringTemplate = recurringId
+		? recurringQuery.data?.find((item) => item.id === recurringId)
+		: undefined;
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-4 px-5 py-5">
 			{!me.data.emailVerified ? (
@@ -90,6 +98,7 @@ export default function NewExpensePage() {
 				/>
 			) : (
 				<ExpenseForm
+					key={recurringTemplate?.id ?? "default"}
 					groupId={groupId}
 					members={members.data}
 					myMemberId={group.data.myMemberId}
@@ -101,6 +110,7 @@ export default function NewExpensePage() {
 							? { attachmentId: search.get("attachmentId") }
 							: {}),
 						...(search.get("text") ? { text: search.get("text") } : {}),
+						...(recurringTemplate ? { recurringTemplate } : {}),
 					}}
 				/>
 			)}

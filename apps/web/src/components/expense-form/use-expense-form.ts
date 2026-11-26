@@ -2,6 +2,9 @@
 import type {
 	AttachmentDto,
 	MemberDto,
+	RecurringExpenseDto,
+	RecurringFrequency,
+	RecurringMode,
 	SplitTransactionRequest,
 	TransactionDto,
 } from "@songphang/contract";
@@ -60,6 +63,7 @@ export type FormPrefill = {
 	to?: string | null;
 	attachmentId?: string | null;
 	text?: string | null;
+	recurringTemplate?: RecurringExpenseDto;
 };
 
 export function useExpenseForm(
@@ -106,7 +110,23 @@ export function useExpenseForm(
 				split: parsedFromText.draft.split,
 			})
 		: undefined;
-	const draft = transaction ?? memory.draft?.draft ?? prefillDraft;
+	const recurringPrefill: ParseDraft | undefined =
+		!transaction && prefill?.recurringTemplate
+			? ParseDraft.parse({
+					type: "expense",
+					description: prefill.recurringTemplate.description,
+					amount: prefill.recurringTemplate.amount,
+					category: prefill.recurringTemplate.category,
+					categoryId: prefill.recurringTemplate.categoryId,
+					payers: prefill.recurringTemplate.payersTemplate.map((p) => ({
+						memberId: p.memberId,
+						amount: p.amount ?? prefill.recurringTemplate?.amount ?? 1,
+					})),
+					split: prefill.recurringTemplate.splitTemplate,
+				})
+			: undefined;
+	const draft =
+		transaction ?? recurringPrefill ?? memory.draft?.draft ?? prefillDraft;
 	const activeQueue =
 		!transaction &&
 		memory.draft &&
@@ -187,6 +207,10 @@ export function useExpenseForm(
 	const [occurredAt, setOccurredAt] = useState(() =>
 		localDateTime(baseOccurredAt),
 	);
+	const [recurringEnabled, setRecurringEnabled] = useState(false);
+	const [recurringMode, setRecurringMode] = useState<RecurringMode>("fixed");
+	const [recurringFrequency, setRecurringFrequency] =
+		useState<RecurringFrequency>("monthly");
 	const [attachments, setAttachments] = useState<AttachmentDto[]>(() => {
 		if (transaction?.attachments && transaction.attachments.length > 0) {
 			return transaction.attachments;
@@ -331,6 +355,16 @@ export function useExpenseForm(
 	const attachmentIds = attachments.map((attachment) => attachment.id);
 	const optionalAttachments =
 		transaction || attachmentIds.length > 0 ? { attachmentIds } : {};
+	const canInlineRecurring =
+		!transaction && !prefill?.recurringTemplate && type === "expense";
+	const canVariableRecurring =
+		payerIds.length === 1 &&
+		(splitState.method === "equal" ||
+			splitState.method === "shares" ||
+			splitState.method === "percent");
+	const effectiveRecurringMode: RecurringMode = canVariableRecurring
+		? recurringMode
+		: "fixed";
 	const parsed = CreateTransactionRequest.safeParse(
 		type === "transfer"
 			? {
@@ -358,6 +392,16 @@ export function useExpenseForm(
 					payers,
 					split: finalSplit,
 					...optionalAttachments,
+					...(prefill?.recurringTemplate
+						? { recurringExpenseId: prefill.recurringTemplate.id }
+						: canInlineRecurring && recurringEnabled
+							? {
+									recurring: {
+										mode: effectiveRecurringMode,
+										frequency: recurringFrequency,
+									},
+								}
+							: {}),
 				},
 	);
 	const request =
@@ -514,6 +558,14 @@ export function useExpenseForm(
 		setTransferTo,
 		occurredAt,
 		setOccurredAt,
+		canInlineRecurring,
+		canVariableRecurring,
+		recurringEnabled,
+		setRecurringEnabled,
+		recurringMode: effectiveRecurringMode,
+		setRecurringMode,
+		recurringFrequency,
+		setRecurringFrequency,
 		attachments,
 		addAttachment: (attachment: AttachmentDto) =>
 			setAttachments((current) =>

@@ -8,6 +8,7 @@ import type {
 import { formatMoney } from "../../lib/money";
 import { buildFilterQueryString } from "../../lib/transactions";
 import { t, vi } from "../../messages/vi";
+import { RecurringSection } from "../recurring/RecurringSection";
 import { BarRow } from "./BarRow";
 import { MemberStatsRow } from "./MemberStatsRow";
 
@@ -61,6 +62,9 @@ export function StatsContent({
 	categories,
 	periodRange,
 	budget,
+	myMemberId = null,
+	canWrite = false,
+	isArchived = false,
 }: {
 	groupId: string;
 	stats: StatsResponse;
@@ -68,6 +72,9 @@ export function StatsContent({
 	categories: CategoryDto[];
 	periodRange: { from?: string; to?: string };
 	budget?: BudgetDto | null;
+	myMemberId?: string | null;
+	canWrite?: boolean;
+	isArchived?: boolean;
 }) {
 	const isEmpty = stats.byBucket.length === 0 && stats.byCategory.length === 0;
 	const maxCategory = Math.max(
@@ -192,6 +199,14 @@ export function StatsContent({
 					</section>
 				</>
 			)}
+			<RecurringSection
+				groupId={groupId}
+				members={members}
+				categories={categories}
+				myMemberId={myMemberId}
+				canWrite={canWrite}
+				isArchived={isArchived}
+			/>
 		</div>
 	);
 }

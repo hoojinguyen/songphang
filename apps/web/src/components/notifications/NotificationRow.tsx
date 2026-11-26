@@ -2,6 +2,7 @@
 import type { NotificationDto } from "@songphang/contract";
 import { formatVietnamDateTime } from "@songphang/core";
 import Link from "next/link";
+import { z } from "zod";
 import { notificationText } from "../../lib/notification-text";
 
 export function NotificationRow({
@@ -11,7 +12,19 @@ export function NotificationRow({
 	notification: NotificationDto;
 	onOpen: (notification: NotificationDto) => void;
 }) {
-	const { text, href } = notificationText(notification);
+	const { text, href: defaultHref } = notificationText(notification);
+	const parsedRecurring =
+		notification.kind === "recurring_due"
+			? z
+					.object({ recurringExpenseId: z.uuid() })
+					.safeParse(notification.payload)
+			: null;
+	const recurringId = parsedRecurring?.success
+		? parsedRecurring.data.recurringExpenseId
+		: null;
+	const href = recurringId
+		? `/g/${encodeURIComponent(notification.groupId)}/tx/new?form=1&recurringId=${encodeURIComponent(recurringId)}`
+		: defaultHref;
 	const groupName =
 		typeof notification.payload.groupName === "string"
 			? notification.payload.groupName

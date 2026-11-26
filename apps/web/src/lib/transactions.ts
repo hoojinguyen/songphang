@@ -201,6 +201,10 @@ export function useCreateTransaction(groupId: string) {
 				}),
 				client.invalidateQueries({ queryKey: ["group", groupId, "budget"] }),
 				client.invalidateQueries({ queryKey: ["group", groupId, "stats"] }),
+				client.invalidateQueries({
+					queryKey: ["group", groupId, "recurringExpenses"],
+				}),
+				client.invalidateQueries({ queryKey: ["me", "overview"] }),
 				client.invalidateQueries({ queryKey: ["groups"] }),
 			]);
 		},

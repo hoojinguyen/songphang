@@ -11,6 +11,7 @@ import {
 	useRestoreTransaction,
 } from "../../lib/transaction-changes";
 import { t, vi } from "../../messages/vi";
+import { RecurringInlineCard } from "../recurring/RecurringInlineCard";
 import { Button } from "../ui/Button";
 import { ScreenHeader } from "../ui/ScreenHeader";
 import { useSnackbar } from "../ui/Snackbar";
@@ -277,6 +278,17 @@ export function ExpenseForm({
 					className="h-16 min-w-0 w-full rounded-[32px] bg-surface px-4 text-base text-ink"
 				/>
 			</label>
+			{form.canInlineRecurring && (
+				<RecurringInlineCard
+					enabled={form.recurringEnabled}
+					onToggle={form.setRecurringEnabled}
+					mode={form.recurringMode}
+					onModeChange={form.setRecurringMode}
+					frequency={form.recurringFrequency}
+					onFrequencyChange={form.setRecurringFrequency}
+					canVariable={form.canVariableRecurring}
+				/>
+			)}
 			<PhotoRow
 				groupId={groupId}
 				attachments={attachments}

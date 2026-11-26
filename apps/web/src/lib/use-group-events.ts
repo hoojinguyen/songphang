@@ -1,4 +1,5 @@
 "use client";
+import { GroupEventNotification } from "@songphang/contract";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -8,24 +9,7 @@ import { requestFailed } from "./network-state";
 import { useOnline } from "./use-online";
 
 const Resources = z.object({
-	resources: z
-		.array(
-			z.enum([
-				"group",
-				"members",
-				"users",
-				"transactions",
-				"balances",
-				"activity",
-				"settlementRequests",
-				"categories",
-				"budget",
-				"receiptScans",
-				"comments",
-				"settlementCycles",
-			]),
-		)
-		.max(10),
+	resources: GroupEventNotification.shape.resources,
 });
 export function useGroupEvents(groupId: string) {
 	const online = useOnline();
@@ -86,6 +70,25 @@ export function useGroupEvents(groupId: string) {
 						void client.invalidateQueries({
 							queryKey: ["group", groupId, "settlementCycles"],
 						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "recurringExpenses"],
+						});
+						void client.invalidateQueries({ queryKey: ["me", "overview"] });
+					}
+					if (resource === "recurringExpenses") {
+						void client.invalidateQueries({ queryKey: ["me", "overview"] });
+					}
+					if (resource === "households") {
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "members"],
+						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "balances"],
+						});
+						void client.invalidateQueries({
+							queryKey: ["group", groupId, "breakdowns"],
+						});
+						void client.invalidateQueries({ queryKey: ["me", "overview"] });
 					}
 					if (resource === "settlementCycles") {
 						void client.invalidateQueries({
