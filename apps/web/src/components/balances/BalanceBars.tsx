@@ -1,4 +1,8 @@
-import type { BalancesResponse, MemberDto } from "@songphang/contract";
+import type {
+	BalancesResponse,
+	HouseholdBalanceDto,
+	MemberDto,
+} from "@songphang/contract";
 import { formatSignedAmount } from "../../lib/money";
 import { vi } from "../../messages/vi";
 
@@ -11,10 +15,12 @@ const COLORS: Record<MemberDto["color"], string> = {
 };
 export function BalanceBars({
 	balances,
+	households = [],
 	members,
 	onInspectMember,
 }: {
 	balances: BalancesResponse["balances"];
+	households?: HouseholdBalanceDto[];
 	members: MemberDto[];
 	onInspectMember?: (memberId: string) => void;
 }) {
@@ -29,8 +35,58 @@ export function BalanceBars({
 				? 1
 				: -1,
 	);
+	const memberName = (id: string) =>
+		members.find((m) => m.id === id)?.name ?? vi.activity.someone;
 	return (
 		<section className="grid gap-4 rounded-[30px] bg-surface p-5">
+			{households.length > 0 && (
+				<div className="grid gap-2 border-b border-sunken pb-4">
+					<h2 className="text-sm font-extrabold">
+						{vi.households.byHouseholdTitle}
+					</h2>
+					{households.map((household) => {
+						const row = (
+							<div className="flex items-center justify-between gap-2 px-1 py-1 text-[13px]">
+								<div className="min-w-0">
+									<p className="truncate font-extrabold text-ink">
+										{household.name}
+									</p>
+									<p className="truncate text-[11px] text-muted">
+										{household.memberIds.map(memberName).join(", ")}
+									</p>
+								</div>
+								<span
+									className={`shrink-0 tabular-nums font-black ${
+										household.netBalance > 0
+											? "text-credit"
+											: household.netBalance < 0
+												? "text-debt"
+												: "text-muted"
+									}`}
+								>
+									{formatSignedAmount(household.netBalance)}{" "}
+									{vi.common.currency}
+								</span>
+							</div>
+						);
+						if (onInspectMember) {
+							return (
+								<button
+									key={household.id}
+									type="button"
+									onClick={() =>
+										onInspectMember(household.representativeMemberId)
+									}
+									className="min-h-11 w-full rounded-[14px] text-left transition-colors hover:bg-sunken/50"
+								>
+									{row}
+								</button>
+							);
+						}
+						return <div key={household.id}>{row}</div>;
+					})}
+				</div>
+			)}
 			<h2 className="text-sm font-extrabold">
 				{vi.balances.groupBalanceTitle}
 			</h2>

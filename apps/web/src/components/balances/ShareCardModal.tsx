@@ -2,6 +2,7 @@
 import type {
 	BalancesResponse,
 	CurrentPeriodSummaryDto,
+	HouseholdDebtBreakdownDto,
 	MemberDebtBreakdownDto,
 	MemberDto,
 	SettlementCycleDto,
@@ -104,6 +105,10 @@ export function ShareCardModal({
 		() => breakdownsQuery.data?.breakdowns ?? [],
 		[breakdownsQuery.data?.breakdowns],
 	);
+	const householdBreakdowns: HouseholdDebtBreakdownDto[] = useMemo(
+		() => breakdownsQuery.data?.householdBreakdowns ?? [],
+		[breakdownsQuery.data?.householdBreakdowns],
+	);
 	const cycleLabel =
 		breakdownsQuery.data?.resolvedFocus.label ?? vi.cycles.currentPeriod;
 
@@ -152,6 +157,7 @@ export function ShareCardModal({
 			transfers: balances.transfers,
 			members,
 			breakdowns,
+			householdBreakdowns,
 			targetTransferKey: targetKey,
 			caption,
 			includeExpenses,
@@ -188,6 +194,7 @@ export function ShareCardModal({
 		balances.transfers,
 		members,
 		breakdowns,
+		householdBreakdowns,
 		targetKey,
 		caption,
 		includeExpenses,
@@ -343,11 +350,15 @@ export function ShareCardModal({
 									<option value="all">{vi.shareCard.targetAll}</option>
 									{balances.transfers.map((transfer) => {
 										const key = `${transfer.fromMemberId}-${transfer.toMemberId}`;
+										const suffix = transfer.fromHousehold
+											? ` · ${transfer.fromHousehold.name}`
+											: "";
 										return (
 											<option key={key} value={key}>
 												{memberName(transfer.fromMemberId)} →{" "}
 												{memberName(transfer.toMemberId)} (
-												{formatMoney(transfer.amount)})
+												{formatMoney(transfer.amount)}
+												{suffix})
 											</option>
 										);
 									})}

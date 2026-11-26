@@ -39,19 +39,53 @@ export function MemberBreakdownSheet({
 	}, [open]);
 
 	const member = members.find((m) => m.id === memberId);
+	const householdBreakdown = query.data?.householdBreakdowns?.find(
+		(h) =>
+			h.representativeMemberId === memberId ||
+			(memberId !== null && h.memberIds.includes(memberId)),
+	);
 	const breakdown = query.data?.breakdowns.find((b) => b.memberId === memberId);
-	const relevantTransfers = memberId
+	const householdMemberBreakdowns = householdBreakdown
+		? householdBreakdown.memberIds.flatMap((id) => {
+				const found = query.data?.breakdowns.find((b) => b.memberId === id);
+				return found ? [found] : [];
+			})
+		: [];
+	const displayedLines = householdBreakdown
+		? householdMemberBreakdowns
+				.flatMap((entry) =>
+					entry.lines.map((line) => ({
+						...line,
+						memberName: entry.memberName,
+					})),
+				)
+				.toSorted((a, b) =>
+					a.occurredAt === b.occurredAt
+						? 0
+						: a.occurredAt < b.occurredAt
+							? 1
+							: -1,
+				)
+		: (breakdown?.lines ?? []).map((line) => ({
+				...line,
+				memberName: breakdown?.memberName ?? "",
+			}));
+	const targetTransferMemberId = householdBreakdown
+		? householdBreakdown.representativeMemberId
+		: memberId;
+	const relevantTransfers = targetTransferMemberId
 		? transfers.filter(
 				(transfer) =>
-					transfer.fromMemberId === memberId ||
-					transfer.toMemberId === memberId,
+					transfer.fromMemberId === targetTransferMemberId ||
+					transfer.toMemberId === targetTransferMemberId,
 			)
 		: [];
+	const summaryTotals = householdBreakdown ?? breakdown;
 	const showAllocation =
-		breakdown !== undefined &&
+		summaryTotals !== undefined &&
 		relevantTransfers.length > 0 &&
 		(relevantTransfers.length > 1 ||
-			Math.abs(breakdown.netBalance) !== relevantTransfers[0]?.amount);
+			Math.abs(summaryTotals.netBalance) !== relevantTransfers[0]?.amount);
 
 	const memberName = (id: string) =>
 		members.find((m) => m.id === id)?.name ?? vi.activity.someone;
@@ -102,15 +136,36 @@ export function MemberBreakdownSheet({
 							}}
 							isRetrying={query.isFetching}
 						/>
-					) : !breakdown ? null : (
+					) : !summaryTotals ? null : (
 						<>
 							<section className="grid gap-2 rounded-[24px] bg-surface p-4 text-sm">
+								{householdBreakdown && (
+									<div className="grid gap-1.5 border-b border-sunken pb-2.5">
+										<p className="text-xs font-extrabold text-ink">
+											{t(vi.households.summaryTitleTemplate, {
+												name: householdBreakdown.name,
+											})}
+										</p>
+										{householdMemberBreakdowns.map((entry) => (
+											<div
+												key={entry.memberId}
+												className="flex items-center justify-between gap-2 text-xs text-muted"
+											>
+												<span>{entry.memberName}</span>
+												<span className="tabular-nums font-bold text-ink">
+													{formatSignedAmount(entry.netBalance)}{" "}
+													{vi.common.currency}
+												</span>
+											</div>
+										))}
+									</div>
+								)}
 								{(query.data.hasClosedCycles ||
-									breakdown.carryOverBalance !== 0) && (
+									summaryTotals.carryOverBalance !== 0) && (
 									<div className="flex items-center justify-between gap-2">
 										<span className="text-muted">{vi.breakdown.carryOver}</span>
 										<span className="tabular-nums font-bold">
-											{formatSignedAmount(breakdown.carryOverBalance)}{" "}
+											{formatSignedAmount(summaryTotals.carryOverBalance)}{" "}
 											{vi.common.currency}
 										</span>
 									</div>
@@ -120,7 +175,7 @@ export function MemberBreakdownSheet({
 										{vi.breakdown.periodExpenses}
 									</span>
 									<span className="tabular-nums font-bold">
-										{formatSignedAmount(breakdown.focusExpenseDelta)}{" "}
+										{formatSignedAmount(summaryTotals.focusExpenseDelta)}{" "}
 										{vi.common.currency}
 									</span>
 								</div>
@@ -129,17 +184,17 @@ export function MemberBreakdownSheet({
 										{vi.breakdown.periodTransfers}
 									</span>
 									<span className="tabular-nums font-bold">
-										{formatSignedAmount(breakdown.focusTransferDelta)}{" "}
+										{formatSignedAmount(summaryTotals.focusTransferDelta)}{" "}
 										{vi.common.currency}
 									</span>
 								</div>
-								{breakdown.postCycleDelta !== 0 && (
+								{summaryTotals.postCycleDelta !== 0 && (
 									<div className="flex items-center justify-between gap-2">
 										<span className="text-muted">
 											{vi.breakdown.postCycleDelta}
 										</span>
 										<span className="tabular-nums font-bold">
-											{formatSignedAmount(breakdown.postCycleDelta)}{" "}
+											{formatSignedAmount(summaryTotals.postCycleDelta)}{" "}
 											{vi.common.currency}
 										</span>
 									</div>
@@ -148,27 +203,27 @@ export function MemberBreakdownSheet({
 									<span>{vi.breakdown.currentBalance}</span>
 									<span
 										className={`tabular-nums ${
-											breakdown.netBalance > 0
+											summaryTotals.netBalance > 0
 												? "text-credit"
-												: breakdown.netBalance < 0
+												: summaryTotals.netBalance < 0
 													? "text-debt"
 													: "text-ink"
 										}`}
 									>
-										{formatSignedAmount(breakdown.netBalance)}{" "}
+										{formatSignedAmount(summaryTotals.netBalance)}{" "}
 										{vi.common.currency}
 									</span>
 								</div>
 							</section>
 
-							{breakdown.lines.length > 0 && (
+							{displayedLines.length > 0 && (
 								<section className="grid gap-2">
-									{breakdown.lines.map((line) => {
+									{displayedLines.map((line) => {
 										const date = new Date(line.occurredAt);
 										const dateText = `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
 										return (
 											<div
-												key={line.transactionId}
+												key={`${line.transactionId}-${line.memberName}`}
 												className="flex items-start justify-between gap-3 rounded-[20px] bg-surface px-3.5 py-3 text-xs"
 											>
 												<div className="min-w-0 flex-1">
@@ -176,13 +231,14 @@ export function MemberBreakdownSheet({
 														{line.description}
 													</p>
 													<p className="mt-0.5 text-muted">
+														{householdBreakdown ? `${line.memberName} · ` : ""}
 														{dateText} · {line.payerSummary} ·{" "}
 														{formatMoney(line.totalAmount)}
 													</p>
 													{line.memberShare > 0 && (
 														<p className="mt-0.5 text-muted">
 															{t(vi.breakdown.memberShare, {
-																name: breakdown.memberName,
+																name: line.memberName,
 															})}
 															: {formatMoney(line.memberShare)}
 														</p>

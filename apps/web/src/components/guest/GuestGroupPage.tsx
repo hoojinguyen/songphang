@@ -176,6 +176,38 @@ export function GuestGroupPage({ token }: { token: string }) {
 						))}
 					</div>
 				)}
+				{data.households && data.households.length > 0 && (
+					<div className="grid gap-1.5 border-t border-sunken pt-3">
+						<p className="text-xs font-extrabold text-muted">
+							{vi.households.byHouseholdTitle}
+						</p>
+						{data.households.map((household) => (
+							<div
+								key={household.id}
+								className="flex items-center justify-between gap-2 text-xs"
+							>
+								<span className="min-w-0 truncate font-bold text-ink">
+									{household.name}{" "}
+									<span className="font-normal text-muted">
+										({household.memberIds.map(memberName).join(", ")})
+									</span>
+								</span>
+								<span
+									className={`shrink-0 tabular-nums font-extrabold ${
+										household.netBalance > 0
+											? "text-credit"
+											: household.netBalance < 0
+												? "text-debt"
+												: "text-muted"
+									}`}
+								>
+									{formatSignedAmount(household.netBalance)}{" "}
+									{vi.common.currency}
+								</span>
+							</div>
+						))}
+					</div>
+				)}
 			</header>
 
 			<section className="grid gap-3">
@@ -200,14 +232,61 @@ export function GuestGroupPage({ token }: { token: string }) {
 							const toMember = data.members.find(
 								(m) => m.id === transfer.toMemberId,
 							);
+							const householdBreakdown = data.householdBreakdowns?.find(
+								(h) =>
+									h.representativeMemberId === transfer.fromMemberId ||
+									h.memberIds.includes(transfer.fromMemberId),
+							);
+							const householdMemberBreakdowns = householdBreakdown
+								? householdBreakdown.memberIds.flatMap((id) => {
+										const found = data.breakdowns.find(
+											(b) => b.memberId === id,
+										);
+										return found ? [found] : [];
+									})
+								: [];
 							const breakdown = data.breakdowns.find(
 								(b) => b.memberId === transfer.fromMemberId,
 							);
+							const summaryTotals = householdBreakdown ?? breakdown;
+							const displayedLines = householdBreakdown
+								? householdMemberBreakdowns
+										.flatMap((entry) =>
+											entry.lines.map((line) => ({
+												...line,
+												memberName: entry.memberName,
+											})),
+										)
+										.toSorted((a, b) =>
+											a.occurredAt === b.occurredAt
+												? 0
+												: a.occurredAt < b.occurredAt
+													? 1
+													: -1,
+										)
+								: (breakdown?.lines ?? []).map((line) => ({
+										...line,
+										memberName: breakdown?.memberName ?? "",
+									}));
 							const debtorTransfers = data.transfers.filter(
 								(t) => t.fromMemberId === transfer.fromMemberId,
 							);
 							const bank = transfer.payTo.find((m) => m.kind === "bank");
 							const wallets = transfer.payTo.filter((m) => m.kind !== "bank");
+							const householdSubtitle = [
+								transfer.fromHousehold
+									? t(vi.households.representativeBadge, {
+											name: transfer.fromHousehold.name,
+										})
+									: null,
+								transfer.toHousehold
+									? t(vi.households.representativeBadge, {
+											name: transfer.toHousehold.name,
+										})
+									: null,
+							]
+								.filter(Boolean)
+								.join(" → ");
 
 							return (
 								<article
@@ -229,6 +308,11 @@ export function GuestGroupPage({ token }: { token: string }) {
 													{fromMember?.name ?? vi.activity.someone} →{" "}
 													{toMember?.name ?? vi.activity.someone}
 												</p>
+												{householdSubtitle && (
+													<p className="truncate text-[11px] font-semibold text-muted">
+														{householdSubtitle}
+													</p>
+												)}
 												<p className="text-xs font-bold text-muted underline">
 													{expanded ? vi.pay.hideDetails : vi.pay.showDetails}
 												</p>
@@ -241,30 +325,52 @@ export function GuestGroupPage({ token }: { token: string }) {
 
 									{expanded && (
 										<div className="grid gap-4 border-t border-sunken pt-4">
-											{breakdown && (
+											{summaryTotals && (
 												<div className="grid gap-2.5 rounded-[20px] bg-sunken p-4 text-xs">
 													<p className="font-black text-ink">
-														{vi.breakdown.title} · {breakdown.memberName} (
-														{data.resolvedFocus.label})
+														{householdBreakdown
+															? t(vi.households.summaryTitleTemplate, {
+																	name: householdBreakdown.name,
+																})
+															: `${vi.breakdown.title} · ${breakdown?.memberName ?? ""}`}{" "}
+														({data.resolvedFocus.label})
 													</p>
+													{householdBreakdown && (
+														<div className="grid gap-1 border-b border-border-subtle pb-2">
+															{householdMemberBreakdowns.map((entry) => (
+																<div
+																	key={entry.memberId}
+																	className="flex justify-between gap-2 text-muted"
+																>
+																	<span>{entry.memberName}</span>
+																	<span className="tabular-nums font-bold text-ink">
+																		{formatSignedAmount(entry.netBalance)}{" "}
+																		{vi.common.currency}
+																	</span>
+																</div>
+															))}
+														</div>
+													)}
 													{(data.cycles.length > 0 ||
-														breakdown.carryOverBalance !== 0) && (
+														summaryTotals.carryOverBalance !== 0) && (
 														<div className="flex justify-between gap-2">
 															<span className="text-muted">
 																{vi.breakdown.carryOver}
 															</span>
 															<span className="tabular-nums font-bold">
-																{formatSignedAmount(breakdown.carryOverBalance)}{" "}
+																{formatSignedAmount(
+																	summaryTotals.carryOverBalance,
+																)}{" "}
 																{vi.common.currency}
 															</span>
 														</div>
 													)}
-													{breakdown.lines.map((line) => {
+													{displayedLines.map((line) => {
 														const date = new Date(line.occurredAt);
 														const dateText = `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
 														return (
 															<div
-																key={line.transactionId}
+																key={`${line.transactionId}-${line.memberName}`}
 																className="flex items-start justify-between gap-2 rounded-[14px] bg-surface px-3 py-2"
 															>
 																<div className="min-w-0 flex-1">
@@ -272,6 +378,9 @@ export function GuestGroupPage({ token }: { token: string }) {
 																		{line.description}
 																	</p>
 																	<p className="text-[11px] text-muted">
+																		{householdBreakdown
+																			? `${line.memberName} · `
+																			: ""}
 																		{dateText} · {line.payerSummary} ·{" "}
 																		{formatMoney(line.totalAmount)}
 																	</p>
@@ -291,13 +400,15 @@ export function GuestGroupPage({ token }: { token: string }) {
 															</div>
 														);
 													})}
-													{breakdown.postCycleDelta !== 0 && (
+													{summaryTotals.postCycleDelta !== 0 && (
 														<div className="flex justify-between gap-2">
 															<span className="text-muted">
 																{vi.breakdown.postCycleDelta}
 															</span>
 															<span className="tabular-nums font-bold">
-																{formatSignedAmount(breakdown.postCycleDelta)}{" "}
+																{formatSignedAmount(
+																	summaryTotals.postCycleDelta,
+																)}{" "}
 																{vi.common.currency}
 															</span>
 														</div>
@@ -305,12 +416,12 @@ export function GuestGroupPage({ token }: { token: string }) {
 													<div className="flex justify-between gap-2 border-t border-border-subtle pt-2 font-black text-ink">
 														<span>{vi.breakdown.currentBalance}</span>
 														<span className="tabular-nums">
-															{formatSignedAmount(breakdown.netBalance)}{" "}
+															{formatSignedAmount(summaryTotals.netBalance)}{" "}
 															{vi.common.currency}
 														</span>
 													</div>
 													{(debtorTransfers.length > 1 ||
-														Math.abs(breakdown.netBalance) !==
+														Math.abs(summaryTotals.netBalance) !==
 															transfer.amount) && (
 														<div className="grid gap-1 border-t border-border-subtle pt-2">
 															<span className="font-extrabold text-ink">

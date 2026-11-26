@@ -194,10 +194,17 @@ function GroupScreen() {
 		selectedCycleId && selectedCycleId !== "current"
 			? closedCycles.find((cycle) => cycle.id === selectedCycleId)
 			: undefined;
-	const balance =
+	const individualBalance =
 		balances.data.balances.find(
 			(balance) => balance.memberId === group.data.myMemberId,
 		)?.balance ?? 0;
+	const myHousehold =
+		group.data.myMemberId !== null
+			? (balances.data.households ?? []).find((h) =>
+					h.memberIds.includes(group.data.myMemberId ?? ""),
+				)
+			: undefined;
+	const balance = myHousehold ? myHousehold.netBalance : individualBalance;
 	const dueRecurring =
 		group.data.role !== "viewer" && !group.data.archivedAt
 			? (recurringQuery.data ?? []).filter(
@@ -207,7 +214,13 @@ function GroupScreen() {
 	return (
 		<main className="mx-auto flex h-dvh max-w-[430px] flex-col gap-4 px-5 pb-[100px] pt-6">
 			<GroupNavHeader groupId={groupId} />
-			{!filtersActive && <BalanceBlock groupId={groupId} balance={balance} />}
+			{!filtersActive && (
+				<BalanceBlock
+					groupId={groupId}
+					balance={balance}
+					householdName={myHousehold?.name}
+				/>
+			)}
 			{dueRecurring.length > 0 && (
 				<div className="grid gap-2">
 					{dueRecurring.map((item) => (

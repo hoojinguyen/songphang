@@ -36,15 +36,18 @@ export function PayContent({
 	role: "owner" | "editor" | "viewer";
 	verified: boolean;
 }) {
-	const mayCreate = role !== "viewer" || myMemberId === from.id;
+	const isFromSide =
+		myMemberId !== null &&
+		(myMemberId === from.id ||
+			Boolean(transfer.fromHousehold?.memberIds.includes(myMemberId)));
+	const mayCreate = role !== "viewer" || isFromSide;
 	const canEdit = verified && role !== "viewer";
 	const canAddDetails = verified && (role !== "viewer" || myMemberId === to.id);
 	const canResolve =
 		role === "owner" ||
 		myMemberId === to.id ||
 		(role === "editor" && !to.claimed);
-	const canCancel =
-		Boolean(transfer.pendingRequest?.createdByMe) || myMemberId === from.id;
+	const canCancel = Boolean(transfer.pendingRequest?.createdByMe) || isFromSide;
 	const payAmount = Math.min(transfer.amount, MAX_TRANSFER_AMOUNT);
 	const isPartial = transfer.amount > MAX_TRANSFER_AMOUNT;
 
@@ -67,13 +70,23 @@ export function PayContent({
 				backLabel={vi.common.back}
 			/>
 			<div className="flex items-center justify-around rounded-[36px] bg-surface p-4">
-				{[from, to].map((member, index) => (
+				{[
+					{ member: from, household: transfer.fromHousehold },
+					{ member: to, household: transfer.toHousehold },
+				].map(({ member, household }, index) => (
 					<div key={member.id} className="flex items-center gap-3">
-						<div className="grid justify-items-center gap-2">
+						<div className="grid justify-items-center gap-1.5 text-center">
 							<MemberShape {...member} size={56} />
 							<span className="text-sm font-extrabold">
 								{member.id === myMemberId ? vi.common.you : member.name}
 							</span>
+							{household && (
+								<span className="rounded-pill bg-sunken px-2 py-0.5 text-[11px] font-bold text-muted">
+									{t(vi.households.representativeBadge, {
+										name: household.name,
+									})}
+								</span>
+							)}
 						</div>
 						{index === 0 && <Icon name="arrow-right" size={20} />}
 					</div>

@@ -170,7 +170,16 @@ function OverviewContent({ name }: { name: string }) {
 											{t(vi.groups.memberCount, {
 												count: String(group.memberCount),
 											})}
+											{group.householdName ? ` · ${group.householdName}` : ""}
 										</p>
+										{group.householdName &&
+											group.myIndividualBalance !== undefined && (
+												<p className="mt-0.5 tabular-nums text-[11px] font-semibold text-muted">
+													{t(vi.households.personalShareTemplate, {
+														amount: `${formatSignedAmount(group.myIndividualBalance)} ${vi.common.currency}`,
+													})}
+												</p>
+											)}
 									</div>
 									<div className="shrink-0 text-right">
 										<p className={`tabular-nums text-sm font-black ${tone}`}>

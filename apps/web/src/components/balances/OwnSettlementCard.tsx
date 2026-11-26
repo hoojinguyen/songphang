@@ -26,10 +26,27 @@ export function OwnSettlementCard({
 	const caption =
 		fundTransferCaption(from, to, transfer.amount) ??
 		t(vi.balances.youPayMember, { name: to.name });
+	const householdLine = [
+		transfer.fromHousehold
+			? t(vi.households.representativeBadge, {
+					name: transfer.fromHousehold.name,
+				})
+			: null,
+		transfer.toHousehold
+			? t(vi.households.representativeBadge, {
+					name: transfer.toHousehold.name,
+				})
+			: null,
+	]
+		.filter(Boolean)
+		.join(" → ");
 	return (
 		<section className="grid justify-items-center gap-3 rounded-[40px] bg-surface p-5">
 			<MemberShape {...to} size={84} />
 			<p className="text-[13px]">{caption}</p>
+			{householdLine && (
+				<p className="text-xs font-bold text-muted">{householdLine}</p>
+			)}
 			<p className="tabular-nums text-[40px] font-black">
 				{formatAmount(transfer.amount)}
 			</p>

@@ -1,20 +1,23 @@
-import type { GroupRole, MemberDto } from "@songphang/contract";
+import type { GroupRole, HouseholdDto, MemberDto } from "@songphang/contract";
 import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
 export function MemberRow({
 	member,
 	role,
+	household,
 	isExpanded,
 	onEdit,
 	canEdit = true,
 }: {
 	member: MemberDto;
 	role: GroupRole | undefined;
+	household?: HouseholdDto | undefined;
 	isExpanded: boolean;
 	onEdit: () => void;
 	canEdit?: boolean;
 }) {
 	const RowTag = canEdit ? "button" : "div";
+	const isRep = household?.representativeMemberId === member.id;
 	return (
 		<RowTag
 			type={canEdit ? "button" : undefined}
@@ -30,14 +33,25 @@ export function MemberRow({
 				<span className="block break-words text-base font-extrabold">
 					{member.name}
 				</span>
-				<span className="text-xs text-muted">
-					{!member.active
-						? vi.members.inactiveTag
-						: member.isMe
-							? vi.members.loggedInYou
-							: member.claimed
-								? vi.members.joined
-								: vi.members.unclaimed}
+				<span className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+					<span>
+						{!member.active
+							? vi.members.inactiveTag
+							: member.isMe
+								? vi.members.loggedInYou
+								: member.claimed
+									? vi.members.joined
+									: vi.members.unclaimed}
+					</span>
+					{household && (
+						<span className="rounded-pill bg-sunken px-2 py-0.5 text-[11px] font-bold text-ink">
+							{isRep
+								? t(vi.households.representativeBadge, {
+										name: household.name,
+									})
+								: household.name}
+						</span>
+					)}
 				</span>
 			</span>
 			{role && (
