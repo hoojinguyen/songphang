@@ -24,3 +24,30 @@
 ## Baseline Failures
 
 - None. All baseline checks (`pnpm check`, `pnpm contract:check`, `pnpm build`, `./apps/ios/Scripts/check-strings.sh`, `xcrun swift-format lint --strict --recursive apps/ios`, Simulator Debug `xcodebuild`, and disposable-DB smoke check) passed on `2b556de`.
+
+## Stage 5.5C.1 Decisions
+
+1. **Added `receipts.extrasKinds.shipping` in `vi.ts` and `Localizable.xcstrings` during `5.5C.1.2` / `5.5C.1.4`**
+   - Problem: Spec §7 / Plan `5.5C.1.2` added `"shipping"` (`Phí giao hàng`) to `ItemsSplitExtra.kind`, and existing Web code maps `extrasKinds` keys cleanly when typed across all extra kinds.
+   - Options: (a) Defer `shipping` UI key to `5.5C.1.4`; (b) Add `receipts.extrasKinds.shipping: "Phí giao hàng"` alongside `5.5C.1.2` contract update and mirror in `Localizable.xcstrings` in `5.5C.1.4`.
+   - Choice: (b) Keeps `vi.ts` exhaustive with `ItemsSplitExtra.kind` from `5.5C.1.2` onward while `check-strings.sh` passes `0 missing, 0 differing` in `5.5C.1.4`.
+
+2. **`CloneGroupRequest.includeMembers` made optional (`z.boolean().optional()`) instead of required default**
+   - Problem: Existing Web `CloneGroupDialog.tsx` sends `CloneGroupRequest` without `includeMembers`, which would fail `pnpm check` if `includeMembers` were required.
+   - Options: (a) Make `includeMembers` optional (treating omitted as copying existing members unless household cloning opts in); (b) Touch `apps/web` out of scope in Stage `5.5C.1`.
+   - Choice: (a) Preserves backwards compatibility and avoids crossing `api-db` write boundaries before `5.5C.2`.
+
+3. **Keep `NotificationPayload` OpenAPI union at 12 branches and handle recurring notification text cleanly**
+   - Problem: Plan `00-overview.md` and `contract:check` prohibit changing the 12-branch `NotificationPayload` or 2-branch `OverviewPendingAction` OpenAPI unions; recurring auto-post/due notifications (`recurring_posted`, `recurring_due`) still need server-side Vietnamese text, APNs push, and deep-link sanitization (`/g/{groupId}/stats`).
+   - Options: (a) Add new branches to `NotificationPayload` (breaking `contract:check` / Swift generator); (b) Introduce internal `ExtendedNotificationPayload` union in `apps/api/src/services/notify.ts` and route `recurring_posted` / `recurring_due` via `notification-text.ts` while `NotificationDto.payload` validates cleanly.
+   - Choice: (b) Keeps OpenAPI non-breaking (`0 breaking, 61 additive`) while delivering localized recurring notifications and push targets cleanly.
+
+4. **Inline `S8` recurring schemas in `packages/contract/src/transaction.ts` re-exported from `recurring.ts`**
+   - Problem: `transaction.ts` (`CreateSplitTransactionRequest`) needs `CreateInlineRecurringInput`, while `recurring.ts` imports `SplitInput` and `CalendarDate` from `transaction.ts`.
+   - Options: (a) Circular import between `transaction.ts` and `recurring.ts`; (b) Define `CreateInlineRecurringInput` in `transaction.ts` and re-export from `recurring.ts`.
+   - Choice: (b) Keeps the package contract dependency graph strictly acyclic.
+
+5. **`quarterly` recurring schedule fields use `dayOfMonth` without `monthOfYear` or `dayOfWeek`**
+   - Problem: Clarify exact schedule-field invariant for `quarterly` frequency alongside `weekly` (`dayOfWeek`), `monthly` (`dayOfMonth`), and `yearly` (`dayOfMonth` + `monthOfYear`).
+   - Options: (a) Require `monthOfYear` for quarterly; (b) Use `dayOfMonth` (advancing +3 calendar months with month-end clamping in `packages/core/src/recurring.ts`) and forbid `dayOfWeek`/`monthOfYear`.
+   - Choice: (b) Matches Spec §5.1 (`Hằng quý`, anchor on `occurredAt` day-of-month) cleanly with `packages/db` constraints.

@@ -8910,6 +8910,1315 @@
           }
         }
       }
+    },
+    "receipts.extrasKinds.shipping": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phí giao hàng"
+          }
+        }
+      }
+    },
+    "extras.goodsSubtotal": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiền hàng"
+          }
+        }
+      }
+    },
+    "extras.totalPayment": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng thanh toán"
+          }
+        }
+      }
+    },
+    "extras.cardTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ phí & Giảm giá"
+          }
+        }
+      }
+    },
+    "extras.chipVat8": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VAT 8%"
+          }
+        }
+      }
+    },
+    "extras.chipVat10": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ VAT 10%"
+          }
+        }
+      }
+    },
+    "extras.chipService5": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Phí DV 5%"
+          }
+        }
+      }
+    },
+    "extras.chipShipping": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Phí ship"
+          }
+        }
+      }
+    },
+    "extras.chipDiscount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "- Giảm giá"
+          }
+        }
+      }
+    },
+    "extras.chipOther": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Khác"
+          }
+        }
+      }
+    },
+    "extras.addVat8": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VAT 8%"
+          }
+        }
+      }
+    },
+    "extras.addVat10": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VAT 10%"
+          }
+        }
+      }
+    },
+    "extras.addService5": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phí DV 5%"
+          }
+        }
+      }
+    },
+    "extras.addShipping": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phí giao hàng"
+          }
+        }
+      }
+    },
+    "extras.addDiscount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giảm giá"
+          }
+        }
+      }
+    },
+    "extras.addOther": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ phí khác"
+          }
+        }
+      }
+    },
+    "extras.kindTax": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thuế VAT"
+          }
+        }
+      }
+    },
+    "extras.kindService": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phí dịch vụ"
+          }
+        }
+      }
+    },
+    "extras.kindShipping": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phí giao hàng"
+          }
+        }
+      }
+    },
+    "extras.kindDiscount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giảm giá"
+          }
+        }
+      }
+    },
+    "extras.kindOther": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ phí khác"
+          }
+        }
+      }
+    },
+    "extras.allocEqual": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chia đều"
+          }
+        }
+      }
+    },
+    "extras.allocProportional": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo tỷ lệ"
+          }
+        }
+      }
+    },
+    "extras.allocEqualLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ phí chia đều"
+          }
+        }
+      }
+    },
+    "extras.allocProportionalLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phụ phí theo tỷ lệ"
+          }
+        }
+      }
+    },
+    "extras.modePercent": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo %"
+          }
+        }
+      }
+    },
+    "extras.modeAmount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo số tiền"
+          }
+        }
+      }
+    },
+    "extras.percentLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phần trăm"
+          }
+        }
+      }
+    },
+    "extras.amountLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tiền"
+          }
+        }
+      }
+    },
+    "extras.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xoá"
+          }
+        }
+      }
+    },
+    "extras.maxExtras": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tối đa 6 phụ phí"
+          }
+        }
+      }
+    },
+    "recurring.sectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch định kỳ"
+          }
+        }
+      }
+    },
+    "recurring.toggleLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lặp lại định kỳ"
+          }
+        }
+      }
+    },
+    "recurring.createTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo chi tiêu định kỳ"
+          }
+        }
+      }
+    },
+    "recurring.createAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Tạo chi tiêu định kỳ"
+          }
+        }
+      }
+    },
+    "recurring.editTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa chi tiêu định kỳ"
+          }
+        }
+      }
+    },
+    "recurring.modeLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loại định kỳ"
+          }
+        }
+      }
+    },
+    "recurring.modeFixed": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tự động ghi sổ"
+          }
+        }
+      }
+    },
+    "recurring.modeFixedDesc": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tự động ghi sổ (số tiền cố định)"
+          }
+        }
+      }
+    },
+    "recurring.modeVariable": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhắc nhập số tiền"
+          }
+        }
+      }
+    },
+    "recurring.modeVariableDesc": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhắc nhập số tiền mỗi kỳ"
+          }
+        }
+      }
+    },
+    "recurring.frequencyLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chu kỳ lặp"
+          }
+        }
+      }
+    },
+    "recurring.freqWeekly": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hằng tuần"
+          }
+        }
+      }
+    },
+    "recurring.freqMonthly": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hằng tháng"
+          }
+        }
+      }
+    },
+    "recurring.freqQuarterly": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hằng quý"
+          }
+        }
+      }
+    },
+    "recurring.freqYearly": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hằng năm"
+          }
+        }
+      }
+    },
+    "recurring.nextDueTemplate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kỳ tiếp theo: {date}"
+          }
+        }
+      }
+    },
+    "recurring.pendingDueTemplate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần nhập số tiền kỳ {date}"
+          }
+        }
+      }
+    },
+    "recurring.enterAmount": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập số tiền kỳ này"
+          }
+        }
+      }
+    },
+    "recurring.enterAmountShort": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập số tiền"
+          }
+        }
+      }
+    },
+    "recurring.skipThisPeriod": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ qua kỳ này"
+          }
+        }
+      }
+    },
+    "recurring.skipNextPeriod": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ qua kỳ tới"
+          }
+        }
+      }
+    },
+    "recurring.pause": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạm dừng"
+          }
+        }
+      }
+    },
+    "recurring.pausedBadge": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tạm dừng"
+          }
+        }
+      }
+    },
+    "recurring.pausedMemberInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạm dừng vì có thành viên ngừng tham gia"
+          }
+        }
+      }
+    },
+    "recurring.resume": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bật lại"
+          }
+        }
+      }
+    },
+    "recurring.deleteAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xoá mẫu định kỳ"
+          }
+        }
+      }
+    },
+    "recurring.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có chi tiêu định kỳ nào"
+          }
+        }
+      }
+    },
+    "recurring.overviewDueTemplate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đến kỳ nhập: {description}"
+          }
+        }
+      }
+    },
+    "recurring.titleLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên khoản chi"
+          }
+        }
+      }
+    },
+    "recurring.payerLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Người trả"
+          }
+        }
+      }
+    },
+    "recurring.splitLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cách chia"
+          }
+        }
+      }
+    },
+    "recurring.amountLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tiền"
+          }
+        }
+      }
+    },
+    "recurring.dayOfWeekLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ trong tuần"
+          }
+        }
+      }
+    },
+    "recurring.dayOfMonthLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày trong tháng"
+          }
+        }
+      }
+    },
+    "recurring.monthOfYearLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tháng trong năm"
+          }
+        }
+      }
+    },
+    "recurring.saveAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu mẫu định kỳ"
+          }
+        }
+      }
+    },
+    "households.sectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hộ gia đình / Cặp đôi"
+          }
+        }
+      }
+    },
+    "households.sectionHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gộp số dư khi thanh toán qua một người đại diện, vẫn giữ tên riêng khi chia từng bữa."
+          }
+        }
+      }
+    },
+    "households.createTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo nhóm hộ / cặp đôi"
+          }
+        }
+      }
+    },
+    "households.createAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Tạo nhóm hộ / cặp đôi"
+          }
+        }
+      }
+    },
+    "households.editTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa nhóm hộ / cặp đôi"
+          }
+        }
+      }
+    },
+    "households.nameLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên hộ / cặp đôi"
+          }
+        }
+      }
+    },
+    "households.namePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VD: Nhà Minh & Lan"
+          }
+        }
+      }
+    },
+    "households.membersLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn thành viên"
+          }
+        }
+      }
+    },
+    "households.representativeLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Người đại diện thanh toán"
+          }
+        }
+      }
+    },
+    "households.representativeBadge": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đại diện {name}"
+          }
+        }
+      }
+    },
+    "households.hasVietQrHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã có VietQR"
+          }
+        }
+      }
+    },
+    "households.ungroupAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tách nhóm hộ"
+          }
+        }
+      }
+    },
+    "households.ungroupConfirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tách hộ sẽ trả lại các lượt thanh toán riêng lẻ cho từng thành viên."
+          }
+        }
+      }
+    },
+    "households.personalShareTemplate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phần riêng của bạn: {amount}"
+          }
+        }
+      }
+    },
+    "households.settledThroughTemplate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gộp thanh toán qua {name}"
+          }
+        }
+      }
+    },
+    "households.summaryTitleTemplate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tổng hợp hộ {name}"
+          }
+        }
+      }
+    },
+    "households.byHouseholdTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Theo hộ / cặp đôi"
+          }
+        }
+      }
+    },
+    "households.editAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sửa"
+          }
+        }
+      }
+    },
+    "households.saveAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu nhóm hộ"
+          }
+        }
+      }
+    },
+    "households.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có nhóm hộ / cặp đôi nào"
+          }
+        }
+      }
+    },
+    "households.conflictError": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành viên đã thuộc một nhóm hộ khác."
+          }
+        }
+      }
+    },
+    "households.repActiveError": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hãy đổi người đại diện hoặc tách nhóm hộ trước khi ngừng hoạt động thành viên này."
+          }
+        }
+      }
+    },
+    "ios.widget.hideAmountsTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn số tiền trên Widget"
+          }
+        }
+      }
+    },
+    "ios.widget.hideAmountsSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn số dư ròng trên màn hình chính iPhone."
+          }
+        }
+      }
+    },
+    "ios.widget.amountsHidden": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số dư đang ẩn"
+          }
+        }
+      }
+    },
+    "ios.widget.tapToOpen": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chạm để mở Sòng Phẳng"
+          }
+        }
+      }
+    },
+    "ios.widget.owedToMe": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Được nhận"
+          }
+        }
+      }
+    },
+    "ios.widget.iOwe": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần trả"
+          }
+        }
+      }
+    },
+    "ios.widget.recentGroup": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhóm gần nhất: {name}"
+          }
+        }
+      }
+    },
+    "ios.widget.settled": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cân bằng"
+          }
+        }
+      }
+    },
+    "ios.widget.pendingActions": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count} việc cần xử lý"
+          }
+        }
+      }
+    },
+    "ios.widget.addExpenseCta": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ Ghi chi tiêu"
+          }
+        }
+      }
+    },
+    "ios.widget.quickEntry": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi nhanh"
+          }
+        }
+      }
+    },
+    "ios.widget.manualOrBill": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập tay / Bill"
+          }
+        }
+      }
+    },
+    "ios.widget.balances": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanh toán"
+          }
+        }
+      }
+    },
+    "ios.widget.signedOutHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Sòng Phẳng để đăng nhập"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đưa vào Sòng Phẳng"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.groupPickerLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn nhóm nhận ảnh"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.purposeExpense": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi tiêu mới"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.purposeExpenseSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quét hoá đơn / Mở Form S8"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.purposeTransferProof": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chứng từ trả nợ"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.purposeTransferProofSubtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đính kèm vào Thanh toán"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.uploadAndContinue": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tải lên & Tiếp tục"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.uploadedPendingTemplate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tải ảnh lên nhóm {name}"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.openAppToFinish": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tải ảnh lên nhóm {name} — mở Sòng Phẳng để hoàn tất"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.signInRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vui lòng mở Sòng Phẳng và đăng nhập trước khi chia sẻ hoá đơn."
+          }
+        }
+      }
+    },
+    "ios.shareExtension.done": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xong"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng"
+          }
+        }
+      }
+    },
+    "ios.shareExtension.noEligibleGroups": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn chưa có nhóm phù hợp để nhận ảnh."
+          }
+        }
+      }
+    },
+    "ios.shortcuts.quickEntry": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ghi chi tiêu nhanh"
+          }
+        }
+      }
+    },
+    "ios.shortcuts.expenseNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập tay / Quét hoá đơn"
+          }
+        }
+      }
+    },
+    "ios.shortcuts.balances": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem cần thanh toán"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
