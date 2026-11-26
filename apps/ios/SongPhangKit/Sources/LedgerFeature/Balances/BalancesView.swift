@@ -101,6 +101,20 @@ public struct BalancesView: View {
         if model.state.value == nil {
           await model.load()
         }
+        #if DEBUG
+          let args = ProcessInfo.processInfo.arguments
+          if args.contains("--balances-subtab-vault") {
+            model.selectedSubTab = .vault
+          } else if args.contains("--balances-subtab-cycles") {
+            model.selectedSubTab = .cycles
+          }
+          if args.contains("--open-breakdown"),
+            let firstDebtor = model.state.value?.balances.transfers.first?.fromMemberId
+              ?? model.state.value?.breakdowns?.breakdowns.first?.memberId
+          {
+            selectedBreakdownMemberId = firstDebtor
+          }
+        #endif
         if ProcessInfo.processInfo.arguments.contains("--scroll-bars") {
           proxy.scrollTo("balance-bars", anchor: .bottom)
         }

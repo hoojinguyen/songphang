@@ -57,6 +57,8 @@ public struct GroupContainerView: View {
   @State private var isCloneSheetPresented = false
   @State private var isArchiveConfirmPresented = false
   @State private var isReceiptCaptureOpen = false
+  @State private var isGuestLinkSheetOpen = false
+  @State private var isShareCardSheetOpen = false
   @State private var isArchiving = false
   @State private var paymentSheet: PaymentSheet?
 
@@ -259,6 +261,43 @@ public struct GroupContainerView: View {
       guard let id else { return }
       feedModel.markDeleted(id)
       deletedTransactionId = nil
+    }
+    #if DEBUG
+      .task {
+        if ProcessInfo.processInfo.arguments.contains("--open-share-card") {
+          while balancesModel.state.value == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+          }
+          isShareCardSheetOpen = true
+        }
+      }
+    #endif
+    .sheet(isPresented: $isGuestLinkSheetOpen) {
+      GuestLinkSheetView(
+        model: GuestLinkSheetModel(
+          groupId: groupId,
+          guestLinksRepository: dependencies.guestLinks,
+          onUnauthorized: {
+            isGuestLinkSheetOpen = false
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
+          }
+        ),
+        isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
+        onDismiss: { isGuestLinkSheetOpen = false }
+      )
+    }
+    .sheet(isPresented: $isShareCardSheetOpen) {
+      if let balancesData = balancesModel.state.value {
+        ShareCardPreviewSheet(
+          data: balancesData,
+          loadGuestLink: {
+            try? await dependencies.guestLinks.status(groupId: groupId)
+          },
+          onDismiss: { isShareCardSheetOpen = false }
+        )
+      }
     }
     .sheet(item: $paymentSheet) { selection in
       let role = balancesModel.state.value?.group.role ?? .editor
@@ -556,6 +595,12 @@ public struct GroupContainerView: View {
           },
         loadAttachment: { attachmentId in
           try await dependencies.attachments.content(groupId: groupId, attachmentId: attachmentId)
+        },
+        onOpenShareCard: {
+          isShareCardSheetOpen = true
+        },
+        onOpenGuestLink: {
+          isGuestLinkSheetOpen = true
         },
         onOpenTransaction: { txId in
           onNavigate(.transactionDetail(groupId: groupId, transactionId: txId))
