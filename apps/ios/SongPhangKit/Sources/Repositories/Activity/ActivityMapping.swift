@@ -194,6 +194,8 @@ enum ActivityMapping {
         case .member: return "member"
         case .group: return "group"
         case .groupUser: return "group_user"
+        case .household: return "household"
+        case .recurringExpense: return "recurring_expense"
         case .unknown(let raw): return raw
         }
       }()

@@ -86,6 +86,16 @@ public enum ActivitySentenceFormatter {
     case .group:
       if entry.action == "create" {
         templates = [L10n.tr("activity.groupCreate")]
+      } else if entry.action == "group.archived" {
+        templates = [L10n.tr("activity.groupArchive")]
+      } else if entry.action == "group.unarchived" {
+        templates = [L10n.tr("activity.groupUnarchive")]
+      } else if entry.action == "cycle.closed" {
+        templates = [L10n.tr("activity.cycleClose")]
+      } else if entry.action == "cycle.reopened" {
+        templates = [L10n.tr("activity.cycleReopen")]
+      } else if entry.action.hasPrefix("guest_link.") {
+        templates = [L10n.tr("activity.guestLinkChange")]
       } else {
         if after?.name != nil {
           templates.append(L10n.tr("activity.groupName"))
@@ -110,6 +120,30 @@ public enum ActivitySentenceFormatter {
         if after?.inviteRotated == true {
           templates.append(L10n.tr("activity.inviteRotate"))
         }
+      }
+
+    case .household:
+      switch entry.action {
+      case "household.created":
+        templates = [L10n.tr("activity.householdCreate")]
+      case "household.updated":
+        templates = [L10n.tr("activity.householdUpdate")]
+      default:
+        templates = [L10n.tr("activity.householdDelete")]
+      }
+
+    case .recurringExpense:
+      switch entry.action {
+      case "recurring.created":
+        templates = [L10n.tr("activity.recurringCreate")]
+      case "recurring.updated":
+        templates = [L10n.tr("activity.recurringUpdate")]
+      case "recurring.deleted":
+        templates = [L10n.tr("activity.recurringDelete")]
+      case "recurring.skipped":
+        templates = [L10n.tr("activity.recurringSkip")]
+      default:
+        templates = [L10n.tr("activity.recurringPause")]
       }
 
     case .member:

@@ -233,7 +233,7 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 			{isMine && myTransfers.length > 0 && (
 				<section className="grid gap-3">
 					<h3 className="text-xs font-bold uppercase tracking-wider text-muted">
-						{vi.balances.headline}
+						{t(vi.balances.headline, { count: String(myTransfers.length) })}
 					</h3>
 					<div className="grid gap-2">
 						{myTransfers.map((transfer) => {

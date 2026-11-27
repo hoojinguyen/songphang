@@ -70,7 +70,9 @@
 										"transaction",
 										"member",
 										"group",
-										"group_user"
+										"group_user",
+										"household",
+										"recurring_expense"
 									],
 									"type": "string"
 								},

@@ -1486,6 +1486,149 @@
         }
       }
     },
+    "activity.cycleClose": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} chốt {summary}"
+          }
+        }
+      }
+    },
+    "activity.cycleReopen": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} mở lại {summary}"
+          }
+        }
+      }
+    },
+    "activity.groupArchive": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} lưu trữ nhóm {summary}"
+          }
+        }
+      }
+    },
+    "activity.groupUnarchive": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} mở lại nhóm {summary}"
+          }
+        }
+      }
+    },
+    "activity.guestLinkChange": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} cập nhật link khách"
+          }
+        }
+      }
+    },
+    "activity.householdCreate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} tạo hộ gia đình {summary}"
+          }
+        }
+      }
+    },
+    "activity.householdDelete": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} tách hộ gia đình {summary}"
+          }
+        }
+      }
+    },
+    "activity.householdUpdate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} cập nhật hộ gia đình {summary}"
+          }
+        }
+      }
+    },
+    "activity.recurringCreate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} tạo chi tiêu định kỳ {summary}"
+          }
+        }
+      }
+    },
+    "activity.recurringDelete": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} xoá chi tiêu định kỳ {summary}"
+          }
+        }
+      }
+    },
+    "activity.recurringPause": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} tạm dừng chi tiêu định kỳ {summary}"
+          }
+        }
+      }
+    },
+    "activity.recurringSkip": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} bỏ qua kỳ tiếp theo của {summary}"
+          }
+        }
+      }
+    },
+    "activity.recurringUpdate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{actor} cập nhật chi tiêu định kỳ {summary}"
+          }
+        }
+      }
+    },
     "activity.date": {
       "extractionState": "manual",
       "localizations": {

@@ -21,6 +21,8 @@ public struct ActivityItem: Sendable, Hashable, Identifiable {
     case member
     case group
     case groupUser
+    case household
+    case recurringExpense
     case unknown(String)
 
     public init(code: String) {
@@ -29,6 +31,8 @@ public struct ActivityItem: Sendable, Hashable, Identifiable {
       case "member": self = .member
       case "group": self = .group
       case "group_user": self = .groupUser
+      case "household": self = .household
+      case "recurring_expense": self = .recurringExpense
       default: self = .unknown(code)
       }
     }

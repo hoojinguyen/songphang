@@ -176,6 +176,16 @@ export function describeActivity(
 		];
 	else if (entry.entityType === "group") {
 		if (entry.action === "create") templates = [vi.activity.groupCreate];
+		else if (entry.action === "group.archived")
+			templates = [vi.activity.groupArchive];
+		else if (entry.action === "group.unarchived")
+			templates = [vi.activity.groupUnarchive];
+		else if (entry.action === "cycle.closed")
+			templates = [vi.activity.cycleClose];
+		else if (entry.action === "cycle.reopened")
+			templates = [vi.activity.cycleReopen];
+		else if (entry.action.startsWith("guest_link."))
+			templates = [vi.activity.guestLinkChange];
 		else {
 			if (Object.hasOwn(after, "name")) templates.push(vi.activity.groupName);
 			if (typeof after.minimizeDebts === "boolean")
@@ -198,6 +208,26 @@ export function describeActivity(
 			if (after.inviteRotated === true)
 				templates.push(vi.activity.inviteRotate);
 		}
+	} else if (entry.entityType === "household") {
+		templates = [
+			entry.action === "household.created"
+				? vi.activity.householdCreate
+				: entry.action === "household.updated"
+					? vi.activity.householdUpdate
+					: vi.activity.householdDelete,
+		];
+	} else if (entry.entityType === "recurring_expense") {
+		templates = [
+			entry.action === "recurring.created"
+				? vi.activity.recurringCreate
+				: entry.action === "recurring.updated"
+					? vi.activity.recurringUpdate
+					: entry.action === "recurring.deleted"
+						? vi.activity.recurringDelete
+						: entry.action === "recurring.skipped"
+							? vi.activity.recurringSkip
+							: vi.activity.recurringPause,
+		];
 	} else if (entry.entityType === "member")
 		templates = [
 			entry.action === "create"

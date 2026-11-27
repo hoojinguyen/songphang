@@ -12,7 +12,14 @@ export const ActivityDto = z.object({
 		})
 		.nullable(),
 	action: z.string(),
-	entityType: z.enum(["transaction", "member", "group", "group_user"]),
+	entityType: z.enum([
+		"transaction",
+		"member",
+		"group",
+		"group_user",
+		"household",
+		"recurring_expense",
+	]),
 	entityId: z.uuid().nullable(),
 	summary: z.string(),
 	before: z.record(z.string(), z.unknown()).nullable(),
