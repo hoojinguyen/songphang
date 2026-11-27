@@ -22,7 +22,7 @@ import { useSnackbar } from "../../../../components/ui/Snackbar";
 import { useBalances } from "../../../../lib/balances";
 import { useGroup } from "../../../../lib/groups";
 import { useMembers } from "../../../../lib/members";
-import { formatMoney } from "../../../../lib/money";
+import { formatMoney, formatSignedAmount } from "../../../../lib/money";
 import { canRemindTransfer, useSendReminder } from "../../../../lib/reminders";
 import { useMe } from "../../../../lib/session";
 import { useSettlementCycles } from "../../../../lib/settlement-cycles";
@@ -136,19 +136,28 @@ export default function BalancesPage() {
 
 	const hasTransactions =
 		(transactions.data.pages[0]?.transactions.length ?? 0) > 0;
+	const myMemberId = group.data.myMemberId;
+	const households = balances.data.households ?? [];
+	const myHousehold =
+		myMemberId !== null
+			? households.find((h) => h.memberIds.includes(myMemberId))
+			: undefined;
+	const isMyFromSide = (transfer: (typeof balances.data.transfers)[number]) =>
+		myMemberId !== null &&
+		(transfer.fromMemberId === myMemberId ||
+			Boolean(transfer.fromHousehold?.memberIds.includes(myMemberId)));
+	const isMyToSide = (transfer: (typeof balances.data.transfers)[number]) =>
+		myMemberId !== null &&
+		(transfer.toMemberId === myMemberId ||
+			Boolean(transfer.toHousehold?.memberIds.includes(myMemberId)));
 	const transfers = balances.data.transfers.toSorted(
 		(first, second) =>
-			Number(
-				second.fromMemberId === group.data.myMemberId ||
-					second.toMemberId === group.data.myMemberId,
-			) -
-			Number(
-				first.fromMemberId === group.data.myMemberId ||
-					first.toMemberId === group.data.myMemberId,
-			),
+			Number(isMyFromSide(second) || isMyToSide(second)) -
+			Number(isMyFromSide(first) || isMyToSide(first)),
 	);
-	const own = transfers.filter(
-		(transfer) => transfer.fromMemberId === group.data.myMemberId,
+	const own = transfers.filter(isMyFromSide);
+	const otherTransfers = transfers.filter(
+		(transfer) => !isMyFromSide(transfer),
 	);
 	const matchedIds = new Set(
 		transfers.flatMap((transfer) =>
@@ -190,10 +199,15 @@ export default function BalancesPage() {
 		}
 	};
 
-	const myBalance =
+	const individualBalance =
 		balances.data.balances.find(
 			(balance) => balance.memberId === group.data.myMemberId,
 		)?.balance ?? 0;
+	const myBalance = myHousehold ? myHousehold.netBalance : individualBalance;
+	const myHouseholdRepName = myHousehold
+		? (members.data.find((m) => m.id === myHousehold.representativeMemberId)
+				?.name ?? "")
+		: "";
 	const heroTone =
 		myBalance > 0
 			? "bg-accent text-on-accent"
@@ -295,10 +309,23 @@ export default function BalancesPage() {
 				<>
 					{group.data.myMemberId !== null && (
 						<section className={`rounded-[30px] p-5 ${heroTone}`}>
-							<p className="text-xs font-bold opacity-80">{heroLabel}</p>
+							<p className="text-xs font-bold opacity-80">
+								{myHousehold ? `${myHousehold.name} · ${heroLabel}` : heroLabel}
+							</p>
 							<p className="mt-1 tabular-nums text-[36px] font-black leading-tight tracking-tight">
 								{formatMoney(Math.abs(myBalance))}
 							</p>
+							{myHousehold && (
+								<p className="mt-1.5 text-xs font-semibold opacity-80">
+									{t(vi.households.personalShareTemplate, {
+										amount: `${formatSignedAmount(individualBalance)} ${vi.common.currency}`,
+									})}{" "}
+									·{" "}
+									{t(vi.households.settledThroughTemplate, {
+										name: myHouseholdRepName,
+									})}
+								</p>
+							)}
 						</section>
 					)}
 
@@ -419,10 +446,7 @@ export default function BalancesPage() {
 									))}
 									<OtherSettlements
 										groupId={groupId}
-										transfers={transfers.filter(
-											(transfer) =>
-												transfer.fromMemberId !== group.data.myMemberId,
-										)}
+										transfers={otherTransfers}
 										members={members.data}
 										myMemberId={group.data.myMemberId}
 										role={group.data.role}
@@ -449,6 +473,7 @@ export default function BalancesPage() {
 
 							<BalanceBars
 								balances={balances.data.balances}
+								households={households}
 								members={members.data}
 								onInspectMember={setInspectedMemberId}
 							/>
@@ -468,9 +493,16 @@ export default function BalancesPage() {
 									group.data.role === "owner" ||
 									group.data.myMemberId === to.id ||
 									(group.data.role === "editor" && !to.claimed);
+								const fromHousehold = households.find(
+									(h) => h.representativeMemberId === from.id,
+								);
 								const canCancel =
 									request.createdBy?.id === me.data.id ||
-									group.data.myMemberId === from.id;
+									group.data.myMemberId === from.id ||
+									(group.data.myMemberId !== null &&
+										Boolean(
+											fromHousehold?.memberIds.includes(group.data.myMemberId),
+										));
 								return (
 									<PendingRequestRow
 										key={request.id}

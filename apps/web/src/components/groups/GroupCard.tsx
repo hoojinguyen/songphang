@@ -50,10 +50,11 @@ export function GroupCard({ group }: { group: GroupSummaryDto }) {
 				<h2 className="break-words text-[18px] font-extrabold">{group.name}</h2>
 				<p className="text-[13px] text-muted">
 					{t(vi.groups.memberCount, { count: String(group.memberCount) })}
+					{group.householdName ? ` · ${group.householdName}` : ""}
 				</p>
 			</div>
 			<div className={`shrink-0 rounded-[18px] px-3 py-2 text-right ${tone}`}>
-				<p className="break-words text-[18px] font-black">
+				<p className="tabular-nums break-words text-[18px] font-black">
 					{formatSignedAmount(group.myBalance)}
 				</p>
 				<p className="text-[11px] font-bold">{caption}</p>

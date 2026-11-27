@@ -22,7 +22,10 @@ enum GroupMapping {
         )
       },
       myBalance: Money(Int64(dto.myBalance)),
+      myIndividualBalance: dto.myIndividualBalance.map { Money(Int64($0)) },
+      householdName: dto.householdName,
       role: dto.role.map { Role(code: $0.rawValue) } ?? .editor,
+      myMemberId: dto.myMemberId.map(Member.ID.init),
       archivedAt: dto.archivedAt,
       pendingActionCount: dto.pendingActionCount ?? 0
     )
@@ -85,7 +88,10 @@ enum GroupMapping {
     let memberCount: Int
     let previewMembers: [RawPreviewMember]
     let myBalance: Int64
+    let myIndividualBalance: Int64?
+    let householdName: String?
     let role: String?
+    let myMemberId: String?
     let archivedAt: String?
     let pendingActionCount: Int?
 
@@ -104,7 +110,10 @@ enum GroupMapping {
           )
         },
         myBalance: Money(myBalance),
+        myIndividualBalance: myIndividualBalance.map(Money.init),
+        householdName: householdName,
         role: role.map { Role(code: $0) } ?? .editor,
+        myMemberId: myMemberId.map(Member.ID.init),
         archivedAt: archivedAt.flatMap(ISO8601Support.parse),
         pendingActionCount: pendingActionCount ?? 0
       )
@@ -178,7 +187,10 @@ enum GroupMapping {
             )
           },
           myBalance: g.myBalance.amount,
+          myIndividualBalance: g.myIndividualBalance?.amount,
+          householdName: g.householdName,
           role: g.role.code,
+          myMemberId: g.myMemberId?.rawValue,
           archivedAt: g.archivedAt.map { formatISO($0) },
           pendingActionCount: g.pendingActionCount
         )

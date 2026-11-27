@@ -161,14 +161,31 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 
 	if (!group || !balances) return null;
 
-	const myBalance =
-		balances.balances.find((b) => b.memberId === group.myMemberId)?.balance ??
-		0;
-	const isMine = group.myMemberId !== null;
+	const myMemberId = group.myMemberId;
+	const households = balances.households ?? [];
+	const myHousehold =
+		myMemberId !== null
+			? households.find((h) => h.memberIds.includes(myMemberId))
+			: undefined;
+	const individualBalance =
+		balances.balances.find((b) => b.memberId === myMemberId)?.balance ?? 0;
+	const myBalance = myHousehold ? myHousehold.netBalance : individualBalance;
+	const isMine = myMemberId !== null;
+	const repName = myHousehold
+		? (members.find((m) => m.id === myHousehold.representativeMemberId)?.name ??
+			"")
+		: "";
 
+	const isMyFromSide = (t: (typeof balances.transfers)[number]) =>
+		myMemberId !== null &&
+		(t.fromMemberId === myMemberId ||
+			Boolean(t.fromHousehold?.memberIds.includes(myMemberId)));
+	const isMyToSide = (t: (typeof balances.transfers)[number]) =>
+		myMemberId !== null &&
+		(t.toMemberId === myMemberId ||
+			Boolean(t.toHousehold?.memberIds.includes(myMemberId)));
 	const myTransfers = balances.transfers.filter(
-		(t) =>
-			t.fromMemberId === group.myMemberId || t.toMemberId === group.myMemberId,
+		(t) => isMyFromSide(t) || isMyToSide(t),
 	);
 
 	const isPositive = myBalance > 0;
@@ -193,15 +210,23 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 			{/* Live Group Net Balance Hero */}
 			<section className={`rounded-[30px] p-5 ${tone}`}>
 				<p className={`text-xs font-bold uppercase tracking-wider ${subTone}`}>
-					{group.name}
+					{myHousehold ? `${group.name} · ${myHousehold.name}` : group.name}
 				</p>
-				<p className="mt-1 break-words text-[36px] font-black leading-tight tracking-tight">
+				<p className="mt-1 tabular-nums break-words text-[36px] font-black leading-tight tracking-tight">
 					{formatSignedAmount(myBalance)}{" "}
 					<span className={`text-lg font-bold ${subTone}`}>
 						{vi.common.currency}
 					</span>
 				</p>
 				<p className="mt-1 text-xs font-bold">{caption}</p>
+				{myHousehold && (
+					<p className={`mt-1 text-[11px] font-semibold ${subTone}`}>
+						{t(vi.households.personalShareTemplate, {
+							amount: `${formatSignedAmount(individualBalance)} ${vi.common.currency}`,
+						})}{" "}
+						· {t(vi.households.settledThroughTemplate, { name: repName })}
+					</p>
+				)}
 			</section>
 
 			{/* Suggested Transfers for Me */}
@@ -216,7 +241,7 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 							const to = members.find((m) => m.id === transfer.toMemberId);
 							if (!from || !to) return null;
 
-							const iPay = transfer.fromMemberId === group.myMemberId;
+							const iPay = isMyFromSide(transfer);
 							const fundCaption = fundTransferCaption(
 								from,
 								to,
@@ -263,6 +288,24 @@ export function GroupInspector({ groupId }: { groupId: string }) {
 											</span>
 										)}
 									</div>
+									{(transfer.fromHousehold || transfer.toHousehold) && (
+										<p className="text-[11px] font-semibold text-muted">
+											{[
+												transfer.fromHousehold
+													? t(vi.households.representativeBadge, {
+															name: transfer.fromHousehold.name,
+														})
+													: null,
+												transfer.toHousehold
+													? t(vi.households.representativeBadge, {
+															name: transfer.toHousehold.name,
+														})
+													: null,
+											]
+												.filter(Boolean)
+												.join(" → ")}
+										</p>
+									)}
 
 									<TransferAction
 										groupId={groupId}

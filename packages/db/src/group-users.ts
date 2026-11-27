@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { groupUsers } from "./schema-groups.js";
@@ -18,6 +18,21 @@ export function listGroupUsers(executor: DbExecutor, groupId: string) {
 			asc(groupUsers.createdAt),
 			asc(groupUsers.userId),
 		);
+}
+export function listGroupUsersForGroups(
+	executor: DbExecutor,
+	groupIds: string[],
+) {
+	if (groupIds.length === 0) return Promise.resolve([]);
+	return executor
+		.select({
+			groupId: groupUsers.groupId,
+			userId: groupUsers.userId,
+			role: groupUsers.role,
+			memberId: groupUsers.memberId,
+		})
+		.from(groupUsers)
+		.where(inArray(groupUsers.groupId, groupIds));
 }
 export function updateGroupUserRole(
 	executor: DbExecutor,

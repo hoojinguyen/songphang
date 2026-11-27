@@ -122,6 +122,32 @@ public enum NotificationFormatter {
         return L10n.t("notifications.budgetNear", ["group": group])
       }
 
+    case .recurringPosted(let groupName, _, let desc, let amount, let share):
+      let resolvedGroup = groupName.isEmpty ? group : groupName
+      if let share {
+        return L10n.t(
+          "ios.notifications.recurringPostedShare",
+          [
+            "description": desc,
+            "amount": MoneyFormat.full(amount),
+            "share": MoneyFormat.full(share),
+          ]
+        )
+      } else {
+        return L10n.t(
+          "ios.notifications.recurringPostedGroup",
+          [
+            "description": desc,
+            "amount": MoneyFormat.full(amount),
+            "group": resolvedGroup,
+          ]
+        )
+      }
+
+    case .recurringDue(let groupName, _, let desc, _):
+      let resolvedGroup = groupName.isEmpty ? group : groupName
+      return "\(L10n.t("recurring.overviewDueTemplate", ["description": desc])) (\(resolvedGroup))"
+
     case .unknown:
       return L10n.t("notifications.fallback", ["group": group])
     }
@@ -148,11 +174,11 @@ public enum NotificationFormatter {
       printFormatter.dateFormat = "HH:mm dd/MM"
       return printFormatter.string(from: date)
     } else if let hour = components.hour, hour >= 1 {
-      return "\(hour) giờ trước"
+      return L10n.t("ios.notifications.hoursAgo", ["count": String(hour)])
     } else if let minute = components.minute, minute >= 1 {
-      return "\(minute) phút trước"
+      return L10n.t("ios.notifications.minutesAgo", ["count": String(minute)])
     } else {
-      return "vừa xong"
+      return L10n.tr("ios.notifications.justNow")
     }
   }
 }

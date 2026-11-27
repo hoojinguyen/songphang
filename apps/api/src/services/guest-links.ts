@@ -63,6 +63,10 @@ function mapGuestTransfers(input: {
 		toMemberId: string;
 		amount: number;
 	}>;
+	householdByRep: Map<
+		string,
+		{ id: string; name: string; memberIds: string[] }
+	>;
 	memberById: Map<string, MemberRow>;
 	methods: PaymentMethodsMap;
 	staticPurpose: string;
@@ -75,6 +79,8 @@ function mapGuestTransfers(input: {
 		return {
 			fromMemberId: transfer.fromMemberId,
 			toMemberId: transfer.toMemberId,
+			fromHousehold: input.householdByRep.get(from.id) ?? null,
+			toHousehold: input.householdByRep.get(to.id) ?? null,
 			amount: transfer.amount,
 			purpose,
 			payTo: buildPayToMethods({
@@ -323,6 +329,7 @@ export async function getGuestGroupView(
 					active: member.active,
 					shape: member.shape,
 					color: member.color,
+					householdId: member.householdId,
 				})),
 				cycles: cyclesPayload.cycles,
 				selectedCycleId,
@@ -330,8 +337,19 @@ export async function getGuestGroupView(
 				balances: settlements.balances.filter((entry) =>
 					peopleIds.has(entry.memberId),
 				),
+				households: settlements.households,
 				transfers: mapGuestTransfers({
 					transfers: settlements.transfers,
+					householdByRep: new Map(
+						settlements.households.map((household) => [
+							household.representativeMemberId,
+							{
+								id: household.id,
+								name: household.name,
+								memberIds: household.memberIds,
+							},
+						]),
+					),
 					memberById,
 					methods,
 					staticPurpose: groupTransferPurpose(group.name),
@@ -339,6 +357,7 @@ export async function getGuestGroupView(
 				fund,
 				resolvedFocus: breakdownPayload.resolvedFocus,
 				breakdowns: breakdownPayload.breakdowns,
+				householdBreakdowns: breakdownPayload.householdBreakdowns ?? [],
 				transactions: {
 					items: page.map((row) =>
 						mapGuestTransaction({ row, payers, shares, attachmentRows }),

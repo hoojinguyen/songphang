@@ -131,6 +131,9 @@ export default function StatsPage() {
 				categories={categories.data}
 				periodRange={range}
 				budget={budget.data ?? null}
+				myMemberId={group.data.myMemberId}
+				canWrite={group.data.role !== "viewer" && me.data.emailVerified}
+				isArchived={Boolean(group.data.archivedAt)}
 			/>
 			<a
 				href={`/api/v1/groups/${encodeURIComponent(groupId)}/export.csv`}

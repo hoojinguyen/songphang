@@ -41,6 +41,24 @@ export function SettlementCard({
 					<p className="break-words text-[13px] font-semibold text-muted">
 						{caption}
 					</p>
+					{(transfer.fromHousehold || transfer.toHousehold) && (
+						<p className="text-xs font-semibold text-muted">
+							{[
+								transfer.fromHousehold
+									? t(vi.households.representativeBadge, {
+											name: transfer.fromHousehold.name,
+										})
+									: null,
+								transfer.toHousehold
+									? t(vi.households.representativeBadge, {
+											name: transfer.toHousehold.name,
+										})
+									: null,
+							]
+								.filter(Boolean)
+								.join(" → ")}
+						</p>
+					)}
 					<p className="break-words tabular-nums text-[26px] font-black">
 						{formatAmount(transfer.amount)}
 					</p>

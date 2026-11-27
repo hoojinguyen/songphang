@@ -100,7 +100,7 @@ export async function sendReminders(
 		const group = await findGroup(executor, input.groupId);
 		if (group === null)
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
-		const [{ transfers }, members, actor] = await Promise.all([
+		const [{ transfers, households }, members, actor] = await Promise.all([
 			suggestGroupTransfers(executor, {
 				groupId: input.groupId,
 				minimizeDebts: group.minimizeDebts,
@@ -109,6 +109,10 @@ export async function sendReminders(
 			findUserById(executor, input.userId),
 		]);
 		const memberById = new Map(members.map((m) => [m.id, m]));
+		const myHousehold =
+			access.memberId === null
+				? undefined
+				: households.find((h) => h.memberIds.includes(access.memberId ?? ""));
 		const mayRemind = (toMemberId: string) =>
 			access.role !== "viewer" || access.memberId === toMemberId;
 		const actorName = actor?.name ?? "";
@@ -179,6 +183,13 @@ export async function sendReminders(
 		const skipped: SkippedReminderDto[] = [];
 		for (const transfer of transfers) {
 			if (!mayRemind(transfer.toMemberId)) continue;
+			if (
+				access.memberId !== null &&
+				(transfer.fromMemberId === access.memberId ||
+					myHousehold?.representativeMemberId === transfer.fromMemberId)
+			) {
+				continue;
+			}
 			const fromMember = memberById.get(transfer.fromMemberId);
 			const toMember = memberById.get(transfer.toMemberId);
 			if (!fromMember || !toMember) continue;

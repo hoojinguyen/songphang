@@ -23,6 +23,8 @@ export default defineConfig({
 		"./src/schema-reminders.ts",
 		"./src/schema-chat.ts",
 		"./src/schema-push.ts",
+		"./src/schema-households.ts",
+		"./src/schema-recurring.ts",
 	],
 	out: "./drizzle",
 });

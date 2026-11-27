@@ -26,7 +26,24 @@ enum LiveMemberBreakdownsMapping {
     MemberBreakdownsResult(
       hasClosedCycles: dto.hasClosedCycles,
       resolvedFocus: mapResolvedFocus(dto.resolvedFocus),
-      breakdowns: dto.breakdowns.map(mapBreakdown)
+      breakdowns: dto.breakdowns.map(mapBreakdown),
+      householdBreakdowns: (dto.householdBreakdowns ?? []).map(mapHouseholdBreakdown)
+    )
+  }
+
+  static func mapHouseholdBreakdown(
+    _ dto: Components.Schemas.HouseholdDebtBreakdownDto
+  ) -> HouseholdDebtBreakdown {
+    HouseholdDebtBreakdown(
+      householdId: Household.ID(dto.householdId),
+      name: dto.name,
+      representativeMemberId: Member.ID(dto.representativeMemberId),
+      memberIds: dto.memberIds.map(Member.ID.init),
+      carryOverBalance: Money(Int64(dto.carryOverBalance)),
+      focusExpenseDelta: Money(Int64(dto.focusExpenseDelta)),
+      focusTransferDelta: Money(Int64(dto.focusTransferDelta)),
+      postCycleDelta: Money(Int64(dto.postCycleDelta)),
+      netBalance: Money(Int64(dto.netBalance))
     )
   }
 

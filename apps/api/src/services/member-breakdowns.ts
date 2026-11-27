@@ -8,6 +8,7 @@ import {
 import {
 	type DbExecutor,
 	listCountedTransactionsForBreakdown,
+	listGroupHouseholds,
 	listGroupLivePayers,
 	listGroupLiveShares,
 	listGroupMembers,
@@ -267,6 +268,18 @@ function buildMemberBreakdown(input: {
 	};
 }
 
+function toSafeMoneyInt(value: bigint): number {
+	if (
+		value < BigInt(Number.MIN_SAFE_INTEGER) ||
+		value > BigInt(Number.MAX_SAFE_INTEGER)
+	) {
+		throw new RangeError(
+			"Household breakdown amount exceeds safe integer range",
+		);
+	}
+	return Number(value);
+}
+
 export async function computeMemberBreakdownsIn(
 	executor: DbExecutor,
 	input: {
@@ -274,13 +287,15 @@ export async function computeMemberBreakdownsIn(
 		cycleId: MemberBreakdownsQuery["cycleId"];
 	},
 ): Promise<MemberBreakdownsResponse> {
-	const [cycles, members, txRows, payerRows, shareRows] = await Promise.all([
-		listSettlementCycles(executor, input.groupId),
-		listGroupMembers(executor, input.groupId),
-		listCountedTransactionsForBreakdown(executor, input.groupId),
-		listGroupLivePayers(executor, input.groupId),
-		listGroupLiveShares(executor, input.groupId),
-	]);
+	const [cycles, members, households, txRows, payerRows, shareRows] =
+		await Promise.all([
+			listSettlementCycles(executor, input.groupId),
+			listGroupMembers(executor, input.groupId),
+			listGroupHouseholds(executor, input.groupId),
+			listCountedTransactionsForBreakdown(executor, input.groupId),
+			listGroupLivePayers(executor, input.groupId),
+			listGroupLiveShares(executor, input.groupId),
+		]);
 
 	const cycleById = new Map(cycles.map((cycle) => [cycle.id, cycle]));
 	const memberNameById = new Map(
@@ -299,21 +314,53 @@ export async function computeMemberBreakdownsIn(
 		openExpenseOrIncomeCount,
 	});
 	const people = members.filter((member) => member.kind === "person");
+	const breakdowns = people.map((member) =>
+		buildMemberBreakdown({
+			member,
+			txRows,
+			payersByTx,
+			sharesByTx,
+			cycleById,
+			memberNameById,
+			focus,
+		}),
+	);
+	const breakdownByMemberId = new Map(
+		breakdowns.map((entry) => [entry.memberId, entry]),
+	);
+	const householdBreakdowns = households.map((household) => {
+		let carryOverBalance = 0n;
+		let focusExpenseDelta = 0n;
+		let focusTransferDelta = 0n;
+		let postCycleDelta = 0n;
+		let netBalance = 0n;
+		for (const memberId of household.memberIds) {
+			const entry = breakdownByMemberId.get(memberId);
+			if (!entry) continue;
+			carryOverBalance += BigInt(entry.carryOverBalance);
+			focusExpenseDelta += BigInt(entry.focusExpenseDelta);
+			focusTransferDelta += BigInt(entry.focusTransferDelta);
+			postCycleDelta += BigInt(entry.postCycleDelta);
+			netBalance += BigInt(entry.netBalance);
+		}
+		return {
+			householdId: household.id,
+			name: household.name,
+			representativeMemberId: household.representativeMemberId,
+			memberIds: household.memberIds,
+			carryOverBalance: toSafeMoneyInt(carryOverBalance),
+			focusExpenseDelta: toSafeMoneyInt(focusExpenseDelta),
+			focusTransferDelta: toSafeMoneyInt(focusTransferDelta),
+			postCycleDelta: toSafeMoneyInt(postCycleDelta),
+			netBalance: toSafeMoneyInt(netBalance),
+		};
+	});
 
 	return MemberBreakdownsResponse.parse({
 		hasClosedCycles: cycles.length > 0,
 		resolvedFocus: focus.resolvedFocus,
-		breakdowns: people.map((member) =>
-			buildMemberBreakdown({
-				member,
-				txRows,
-				payersByTx,
-				sharesByTx,
-				cycleById,
-				memberNameById,
-				focus,
-			}),
-		),
+		breakdowns,
+		householdBreakdowns,
 	});
 }
 

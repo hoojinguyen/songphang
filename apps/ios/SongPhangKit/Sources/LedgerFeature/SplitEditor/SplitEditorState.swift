@@ -59,13 +59,13 @@ public struct SplitEditorState: Sendable, Equatable {
     initialAmount: Money = .zero
   ) {
     switch initial {
-    case .equal(let memberIds):
+    case .equal(let memberIds, _, _):
       self.method = .equal
       self.ids = memberIds
       self.values = [:]
       self.spread = false
       self.hasCustomizedItems = false
-    case .exact(let memberIds, let entries, let remainder):
+    case .exact(let memberIds, let entries, let remainder, _, _):
       self.method = .exact
       self.ids = memberIds
       var map: [Member.ID: String] = [:]
@@ -75,7 +75,7 @@ public struct SplitEditorState: Sendable, Equatable {
       self.values = map
       self.spread = (remainder == .equalAmongAll)
       self.hasCustomizedItems = false
-    case .shares(let entries):
+    case .shares(let entries, _, _):
       self.method = .shares
       self.ids = entries.map(\.memberId)
       var map: [Member.ID: String] = [:]
@@ -85,7 +85,7 @@ public struct SplitEditorState: Sendable, Equatable {
       self.values = map
       self.spread = false
       self.hasCustomizedItems = false
-    case .percent(let entries):
+    case .percent(let entries, _, _):
       self.method = .percent
       self.ids = entries.map(\.memberId)
       var map: [Member.ID: String] = [:]
@@ -194,7 +194,11 @@ public struct SplitEditorState: Sendable, Equatable {
       guard let payload = itemsDraft.buildPayload(),
         itemsDraft.unassignedCount == 0
       else { return nil }
-      return .items(items: payload.items, extras: payload.extras)
+      return .items(
+        items: payload.items,
+        extras: payload.extras,
+        extrasAllocation: itemsDraft.extrasAllocation
+      )
     }
   }
 

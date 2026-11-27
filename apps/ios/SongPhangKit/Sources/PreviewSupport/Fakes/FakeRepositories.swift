@@ -329,14 +329,23 @@
       groupId: ExpenseGroup.ID,
       items: [SplitSpec.ItemEntry],
       extras: [SplitSpec.ItemsExtra],
+      extrasAllocation: ExtrasAllocation?,
       targetTotal: Money?
     ) async throws(AppError) -> ItemsPreview {
       try await world.previewItems(
         groupId: groupId,
         items: items,
         extras: extras,
+        extrasAllocation: extrasAllocation,
         targetTotal: targetTotal
       )
+    }
+
+    public func previewExtras(
+      groupId: ExpenseGroup.ID,
+      input: PreviewExtrasInput
+    ) async throws(AppError) -> PreviewExtrasResult {
+      try await world.previewExtras(groupId: groupId, input: input)
     }
 
     public func create(

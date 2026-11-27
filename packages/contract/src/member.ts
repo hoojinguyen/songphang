@@ -57,6 +57,7 @@ export const MemberDto = z
 		id: z.uuid(),
 		kind: MemberKind.default("person"),
 		fundHolderMemberId: z.uuid().nullable().default(null),
+		householdId: z.uuid().nullable().optional(),
 		name: MemberName,
 		active: z.boolean(),
 		defaultWeight: z.string(),

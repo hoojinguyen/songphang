@@ -8,21 +8,30 @@ public import SwiftUI
 
 public struct StatsView: View {
   @Bindable private var model: StatsModel
+  private let recurringExpensesModel: RecurringExpensesModel?
+  private let isEmailVerified: Bool
   private let showHeader: Bool
   private let onBack: () -> Void
   private let onOpenFilteredFeed: (TransactionFilter) -> Void
+  private let onCompleteDueRecurring: ((RecurringExpense) -> Void)?
   @State private var shareItem: ShareFileItem?
 
   public init(
     model: StatsModel,
+    recurringExpensesModel: RecurringExpensesModel? = nil,
+    isEmailVerified: Bool = true,
     showHeader: Bool = true,
     onBack: @escaping () -> Void,
-    onOpenFilteredFeed: @escaping (TransactionFilter) -> Void
+    onOpenFilteredFeed: @escaping (TransactionFilter) -> Void,
+    onCompleteDueRecurring: ((RecurringExpense) -> Void)? = nil
   ) {
     self.model = model
+    self.recurringExpensesModel = recurringExpensesModel
+    self.isEmailVerified = isEmailVerified
     self.showHeader = showHeader
     self.onBack = onBack
     self.onOpenFilteredFeed = onOpenFilteredFeed
+    self.onCompleteDueRecurring = onCompleteDueRecurring
   }
 
   public var body: some View {
@@ -78,7 +87,9 @@ public struct StatsView: View {
       .presentationDetents([.medium, .large])
     }
     .task {
-      await model.load()
+      async let loadStats: Void = model.load()
+      async let loadRecurring: Void = recurringExpensesModel?.load() ?? ()
+      _ = await (loadStats, loadRecurring)
     }
   }
 
@@ -159,6 +170,17 @@ public struct StatsView: View {
       Text(L10n.tr("common.loadError"))
         .font(Typography.captionBold)
         .foregroundStyle(Tokens.ink)
+    }
+
+    if let recurringExpensesModel {
+      RecurringSectionView(
+        model: recurringExpensesModel,
+        members: data.members,
+        canWrite: data.group.role.canWrite && !data.group.isArchived && isEmailVerified,
+        onCompleteDue: { item in
+          onCompleteDueRecurring?(item)
+        }
+      )
     }
   }
 

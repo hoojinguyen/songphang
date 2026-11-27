@@ -3,11 +3,12 @@ import type {
 	AnyMemberColorCode,
 	AnyMemberShapeCode,
 	BalancesResponse,
+	HouseholdDebtBreakdownDto,
 	MemberDebtBreakdownDto,
 	MemberDto,
 } from "@songphang/contract";
 import { create } from "qrcode";
-import { vi } from "../messages/vi";
+import { t, vi } from "../messages/vi";
 import { formatMoney, formatSignedAmount } from "./money";
 
 export type ShareCardMode = "summary" | "reminder";
@@ -29,6 +30,7 @@ export type ShareCardRenderOptions = {
 	transfers: BalancesResponse["transfers"];
 	members: MemberDto[];
 	breakdowns: MemberDebtBreakdownDto[];
+	householdBreakdowns?: HouseholdDebtBreakdownDto[];
 	targetTransferKey: string | "all";
 	caption: string;
 	includeExpenses: boolean;
@@ -365,13 +367,31 @@ function drawCaptionBanner({
 
 type SelectedTransfer = BalancesResponse["transfers"][number];
 
+function transferHouseholdSubtitle(transfer: SelectedTransfer): string {
+	return [
+		transfer.fromHousehold
+			? t(vi.households.representativeBadge, {
+					name: transfer.fromHousehold.name,
+				})
+			: null,
+		transfer.toHousehold
+			? t(vi.households.representativeBadge, {
+					name: transfer.toHousehold.name,
+				})
+			: null,
+	]
+		.filter(Boolean)
+		.join(" → ");
+}
+
 function drawSingleDebtorHero(
 	params: SectionParams & { transfer: SelectedTransfer },
 ): number {
 	const { ctx, options, palette, y, draw, transfer } = params;
 	const from = options.members.find((m) => m.id === transfer.fromMemberId);
 	const to = options.members.find((m) => m.id === transfer.toMemberId);
-	const heroHeight = CARD_PAD * 2 + 54;
+	const subtitle = transferHouseholdSubtitle(transfer);
+	const heroHeight = CARD_PAD * 2 + (subtitle ? 70 : 54);
 	if (draw) {
 		ctx.fillStyle = palette.surface;
 		roundRectPath(ctx, PAD, y, CONTENT_WIDTH, heroHeight, 24);
@@ -395,13 +415,20 @@ function drawSingleDebtorHero(
 			PAD + CARD_PAD + 42,
 			y + CARD_PAD + 16,
 		);
+		let amountY = y + CARD_PAD + 46;
+		if (subtitle) {
+			ctx.fillStyle = palette.muted;
+			ctx.font = fontSpec(600, 11);
+			ctx.fillText(
+				clipText(ctx, subtitle, INNER_WIDTH - 42),
+				PAD + CARD_PAD + 42,
+				y + CARD_PAD + 33,
+			);
+			amountY = y + CARD_PAD + 62;
+		}
 		ctx.fillStyle = palette.ink;
 		ctx.font = fontSpec(900, 26);
-		ctx.fillText(
-			formatMoney(transfer.amount),
-			PAD + CARD_PAD + 42,
-			y + CARD_PAD + 46,
-		);
+		ctx.fillText(formatMoney(transfer.amount), PAD + CARD_PAD + 42, amountY);
 	}
 	return y + heroHeight + 12;
 }
@@ -445,22 +472,53 @@ function drawSingleDebtorBreakdown(
 	params: SectionParams & { transfer: SelectedTransfer },
 ): number {
 	const { ctx, options, palette, y, draw, transfer } = params;
+	const householdBreakdown = options.householdBreakdowns?.find(
+		(h) =>
+			h.representativeMemberId === transfer.fromMemberId ||
+			h.memberIds.includes(transfer.fromMemberId),
+	);
 	const breakdown = options.breakdowns.find(
 		(b) => b.memberId === transfer.fromMemberId,
 	);
-	if (!breakdown) return y;
+	const summaryTotals = householdBreakdown ?? breakdown;
+	if (!summaryTotals) return y;
 
-	const visibleLines = breakdown.lines.slice(0, 12);
-	const extraCount = Math.max(0, breakdown.lines.length - visibleLines.length);
+	const householdSubBreakdowns = householdBreakdown
+		? householdBreakdown.memberIds.flatMap((id) => {
+				const found = options.breakdowns.find((b) => b.memberId === id);
+				return found ? [found] : [];
+			})
+		: [];
+	const allLines = householdBreakdown
+		? householdSubBreakdowns
+				.flatMap((entry) =>
+					entry.lines.map((line) => ({
+						...line,
+						description: `${entry.memberName} · ${line.description}`,
+					})),
+				)
+				.toSorted((a, b) =>
+					a.occurredAt === b.occurredAt
+						? 0
+						: a.occurredAt < b.occurredAt
+							? 1
+							: -1,
+				)
+		: (breakdown?.lines ?? []);
+	const visibleLines = allLines.slice(0, 12);
+	const extraCount = Math.max(0, allLines.length - visibleLines.length);
 	const debtorTransfers = options.transfers.filter(
 		(t) => t.fromMemberId === transfer.fromMemberId,
 	);
 	const showAllocation =
 		debtorTransfers.length > 1 ||
-		Math.abs(breakdown.netBalance) !== transfer.amount;
+		Math.abs(summaryTotals.netBalance) !== transfer.amount;
 
 	let boxHeight = CARD_PAD * 2 + 24 + visibleLines.length * 24 + 28;
-	if (breakdown.carryOverBalance !== 0) boxHeight += 22;
+	if (householdBreakdown) {
+		boxHeight += householdSubBreakdowns.length * 19 + 8;
+	}
+	if (summaryTotals.carryOverBalance !== 0) boxHeight += 22;
 	if (extraCount > 0) boxHeight += 20;
 	if (showAllocation) boxHeight += 28 + debtorTransfers.length * 22;
 
@@ -473,14 +531,37 @@ function drawSingleDebtorBreakdown(
 	let by = y + CARD_PAD;
 	ctx.fillStyle = palette.ink;
 	ctx.font = fontSpec(800, 13);
-	ctx.fillText(vi.breakdown.title, PAD + CARD_PAD, by + 13);
+	ctx.fillText(
+		householdBreakdown
+			? t(vi.households.summaryTitleTemplate, { name: householdBreakdown.name })
+			: vi.breakdown.title,
+		PAD + CARD_PAD,
+		by + 13,
+	);
 	by += 24;
 
-	if (breakdown.carryOverBalance !== 0) {
+	if (householdBreakdown) {
+		for (const entry of householdSubBreakdowns) {
+			ctx.font = fontSpec(600, 11);
+			ctx.fillStyle = palette.muted;
+			ctx.fillText(entry.memberName, PAD + CARD_PAD, by + 11);
+			const subText = `${formatSignedAmount(entry.netBalance)} ${vi.common.currency}`;
+			ctx.fillStyle = palette.ink;
+			ctx.font = fontSpec(700, 11);
+			const subW = ctx.measureText(subText).width;
+			ctx.fillText(subText, PAD + CARD_PAD + INNER_WIDTH - subW, by + 11);
+			by += 19;
+		}
+		ctx.fillStyle = palette.border;
+		ctx.fillRect(PAD + CARD_PAD, by + 2, INNER_WIDTH, 1);
+		by += 8;
+	}
+
+	if (summaryTotals.carryOverBalance !== 0) {
 		ctx.font = fontSpec(600, 12);
 		ctx.fillStyle = palette.muted;
 		ctx.fillText(vi.breakdown.carryOver, PAD + CARD_PAD, by + 12);
-		const valText = `${formatSignedAmount(breakdown.carryOverBalance)} ${vi.common.currency}`;
+		const valText = `${formatSignedAmount(summaryTotals.carryOverBalance)} ${vi.common.currency}`;
 		ctx.fillStyle = palette.ink;
 		ctx.font = fontSpec(700, 12);
 		const valW = ctx.measureText(valText).width;
@@ -520,7 +601,7 @@ function drawSingleDebtorBreakdown(
 	ctx.fillStyle = palette.ink;
 	ctx.font = fontSpec(800, 13);
 	ctx.fillText(vi.breakdown.currentBalance, PAD + CARD_PAD, by + 13);
-	const netText = `${formatSignedAmount(breakdown.netBalance)} ${vi.common.currency}`;
+	const netText = `${formatSignedAmount(summaryTotals.netBalance)} ${vi.common.currency}`;
 	const netW = ctx.measureText(netText).width;
 	ctx.fillText(netText, PAD + CARD_PAD + INNER_WIDTH - netW, by + 13);
 	by += 22;
@@ -603,8 +684,12 @@ function drawTransfersListSection({
 	draw,
 }: SectionParams): number {
 	const rowCount = options.transfers.length;
+	const rowsTotalHeight = options.transfers.reduce(
+		(sum, transfer) => sum + (transferHouseholdSubtitle(transfer) ? 46 : 34),
+		0,
+	);
 	const listHeight =
-		rowCount === 0 ? CARD_PAD * 2 + 28 : CARD_PAD * 2 + 26 + rowCount * 34;
+		rowCount === 0 ? CARD_PAD * 2 + 28 : CARD_PAD * 2 + 26 + rowsTotalHeight;
 
 	if (!draw) return y + listHeight + 12;
 
@@ -632,6 +717,7 @@ function drawTransfersListSection({
 	for (const transfer of options.transfers) {
 		const from = options.members.find((m) => m.id === transfer.fromMemberId);
 		const to = options.members.find((m) => m.id === transfer.toMemberId);
+		const subtitle = transferHouseholdSubtitle(transfer);
 		if (from) {
 			drawMemberShape(
 				ctx,
@@ -656,7 +742,18 @@ function drawTransfersListSection({
 			PAD + CARD_PAD + 30,
 			ly + 17,
 		);
-		ly += 34;
+		if (subtitle) {
+			ctx.fillStyle = palette.muted;
+			ctx.font = fontSpec(600, 11);
+			ctx.fillText(
+				clipText(ctx, subtitle, INNER_WIDTH - 30),
+				PAD + CARD_PAD + 30,
+				ly + 34,
+			);
+			ly += 46;
+		} else {
+			ly += 34;
+		}
 	}
 	return y + listHeight + 12;
 }

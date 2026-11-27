@@ -1,5 +1,6 @@
 import {
 	CreateTransactionRequest,
+	type ExtrasAllocation,
 	type ItemsSplitExtra,
 	type ItemsSplitItem,
 	type PreviewItemsResponse,
@@ -25,8 +26,17 @@ export function receiptMismatch(
 
 // Returns the create request only when every save condition holds; amounts come from the API preview.
 export function buildReceiptRequest(input: {
-	editor: { description: string; occurredOn: string; payerId: string | null };
-	itemsPayload: { items: ItemsSplitItem[]; extras: ItemsSplitExtra[] } | null;
+	editor: {
+		description: string;
+		occurredOn: string;
+		payerId: string | null;
+		extrasAllocation: ExtrasAllocation;
+	};
+	itemsPayload: {
+		items: ItemsSplitItem[];
+		extras: ItemsSplitExtra[];
+		extrasAllocation?: ExtrasAllocation | undefined;
+	} | null;
 	preview: PreviewItemsResponse | undefined;
 	attachmentId: string;
 }): CreateTransactionRequest | null {
@@ -57,6 +67,9 @@ export function buildReceiptRequest(input: {
 			method: "items",
 			items: itemsPayload.items,
 			extras: itemsPayload.extras,
+			...(itemsPayload.extras.length > 0
+				? { extrasAllocation: editor.extrasAllocation }
+				: {}),
 		},
 		attachmentIds: [input.attachmentId],
 	});

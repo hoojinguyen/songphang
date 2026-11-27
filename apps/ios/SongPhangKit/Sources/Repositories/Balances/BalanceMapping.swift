@@ -10,10 +10,13 @@ enum BalanceMapping {
       balances: dto.balances.map {
         Balance(memberId: Member.ID($0.memberId), balance: Money(Int64($0.balance)))
       },
+      households: (dto.households ?? []).map(mapHouseholdBalance),
       transfers: dto.transfers.map {
         SuggestedTransfer(
           fromMemberId: Member.ID($0.fromMemberId),
           toMemberId: Member.ID($0.toMemberId),
+          fromHousehold: $0.fromHousehold.map(mapHouseholdTransferRef),
+          toHousehold: $0.toHousehold.map(mapHouseholdTransferRef),
           amount: Money(Int64($0.amount)),
           paymentMethods: $0.payTo.map(mapPaymentMethod),
           purpose: $0.purpose,
@@ -30,6 +33,31 @@ enum BalanceMapping {
         )
       },
       fund: dto.fund.map(mapFund)
+    )
+  }
+
+  static func mapHouseholdTransferRef(
+    _ dto: Components.Schemas.HouseholdTransferRefDto
+  ) -> HouseholdTransferRef {
+    HouseholdTransferRef(
+      id: Household.ID(dto.id),
+      name: dto.name,
+      memberIds: dto.memberIds.map(Member.ID.init)
+    )
+  }
+
+  static func mapHouseholdBalance(
+    _ dto: Components.Schemas.HouseholdBalanceDto
+  ) -> HouseholdBalance {
+    HouseholdBalance(
+      id: Household.ID(dto.id),
+      name: dto.name,
+      representativeMemberId: Member.ID(dto.representativeMemberId),
+      memberIds: dto.memberIds.map(Member.ID.init),
+      netBalance: Money(Int64(dto.netBalance)),
+      memberBalances: dto.memberBalances.map {
+        HouseholdMemberBalance(memberId: Member.ID($0.memberId), balance: Money(Int64($0.balance)))
+      }
     )
   }
 
@@ -185,6 +213,64 @@ enum BalanceMapping {
     }
   }
 
+  struct RawHouseholdTransferRef: Codable, Sendable {
+    let id: String
+    let name: String
+    let memberIds: [String]
+
+    init(ref: HouseholdTransferRef) {
+      self.id = ref.id.rawValue
+      self.name = ref.name
+      self.memberIds = ref.memberIds.map(\.rawValue)
+    }
+
+    func toDomain() -> HouseholdTransferRef {
+      HouseholdTransferRef(
+        id: Household.ID(id),
+        name: name,
+        memberIds: memberIds.map(Member.ID.init)
+      )
+    }
+  }
+
+  struct RawHouseholdMemberBalance: Codable, Sendable {
+    let memberId: String
+    let balance: Int64
+  }
+
+  struct RawHouseholdBalance: Codable, Sendable {
+    let id: String
+    let name: String
+    let representativeMemberId: String
+    let memberIds: [String]
+    let netBalance: Int64
+    let memberBalances: [RawHouseholdMemberBalance]
+
+    init(hb: HouseholdBalance) {
+      self.id = hb.id.rawValue
+      self.name = hb.name
+      self.representativeMemberId = hb.representativeMemberId.rawValue
+      self.memberIds = hb.memberIds.map(\.rawValue)
+      self.netBalance = hb.netBalance.amount
+      self.memberBalances = hb.memberBalances.map {
+        RawHouseholdMemberBalance(memberId: $0.memberId.rawValue, balance: $0.balance.amount)
+      }
+    }
+
+    func toDomain() -> HouseholdBalance {
+      HouseholdBalance(
+        id: Household.ID(id),
+        name: name,
+        representativeMemberId: Member.ID(representativeMemberId),
+        memberIds: memberIds.map(Member.ID.init),
+        netBalance: Money(netBalance),
+        memberBalances: memberBalances.map {
+          HouseholdMemberBalance(memberId: Member.ID($0.memberId), balance: Money($0.balance))
+        }
+      )
+    }
+  }
+
   struct RawBalancesResponse: Codable, Sendable {
     struct RawBalance: Codable, Sendable {
       let memberId: String
@@ -193,6 +279,8 @@ enum BalanceMapping {
     struct RawTransfer: Codable, Sendable {
       let fromMemberId: String
       let toMemberId: String
+      let fromHousehold: RawHouseholdTransferRef?
+      let toHousehold: RawHouseholdTransferRef?
       let amount: Int64
       let payTo: [RawPaymentMethod]?
       let purpose: String?
@@ -202,6 +290,7 @@ enum BalanceMapping {
     let currency: String
     let minimized: Bool
     let balances: [RawBalance]
+    let households: [RawHouseholdBalance]?
     let transfers: [RawTransfer]
     let fund: RawFundSummary?
 
@@ -212,10 +301,13 @@ enum BalanceMapping {
         balances: balances.map {
           Balance(memberId: Member.ID($0.memberId), balance: Money($0.balance))
         },
+        households: (households ?? []).map { $0.toDomain() },
         transfers: transfers.map {
           SuggestedTransfer(
             fromMemberId: Member.ID($0.fromMemberId),
             toMemberId: Member.ID($0.toMemberId),
+            fromHousehold: $0.fromHousehold?.toDomain(),
+            toHousehold: $0.toHousehold?.toDomain(),
             amount: Money($0.amount),
             paymentMethods: ($0.payTo ?? []).compactMap { $0.toDomain() },
             purpose: $0.purpose,
@@ -250,10 +342,13 @@ enum BalanceMapping {
           balance: $0.balance.amount
         )
       },
+      households: value.households.map(RawHouseholdBalance.init),
       transfers: value.transfers.map {
         RawBalancesResponse.RawTransfer(
           fromMemberId: $0.fromMemberId.rawValue,
           toMemberId: $0.toMemberId.rawValue,
+          fromHousehold: $0.fromHousehold.map(RawHouseholdTransferRef.init),
+          toHousehold: $0.toHousehold.map(RawHouseholdTransferRef.init),
           amount: $0.amount.amount,
           payTo: $0.paymentMethods.map(RawPaymentMethod.init),
           purpose: $0.purpose,

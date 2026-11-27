@@ -17,29 +17,71 @@ enum TransactionMapping {
     return Date()
   }
 
+  static func mapExtrasAllocation(_ raw: String?) -> ExtrasAllocation? {
+    raw.map(ExtrasAllocation.init(code:))
+  }
+
   static func mapSplitInput(_ dto: Components.Schemas.SplitInput) -> SplitSpec {
     switch dto {
     case .case1(let eq):
-      return .equal(members: eq.members.map(Member.ID.init))
+      return .equal(
+        members: eq.members.map(Member.ID.init),
+        extras: (eq.extras ?? []).map {
+          SplitSpec.ItemsExtra(
+            kind: ReceiptExtraKind(code: $0.kind.rawValue),
+            label: $0.label,
+            amount: Money(Int64($0.amount)),
+            ratePercent: $0.ratePercent
+          )
+        },
+        extrasAllocation: mapExtrasAllocation(eq.extrasAllocation?.rawValue)
+      )
     case .case2(let ex):
       return .exact(
         members: ex.members.map(Member.ID.init),
         entries: ex.entries.map {
           SplitSpec.ExactEntry(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
         },
-        remainder: ExactRemainderMode(code: ex.remainder.rawValue)
+        remainder: ExactRemainderMode(code: ex.remainder.rawValue),
+        extras: (ex.extras ?? []).map {
+          SplitSpec.ItemsExtra(
+            kind: ReceiptExtraKind(code: $0.kind.rawValue),
+            label: $0.label,
+            amount: Money(Int64($0.amount)),
+            ratePercent: $0.ratePercent
+          )
+        },
+        extrasAllocation: mapExtrasAllocation(ex.extrasAllocation?.rawValue)
       )
     case .case3(let sh):
       return .shares(
         entries: sh.entries.map {
           SplitSpec.ShareWeightEntry(memberId: Member.ID($0.memberId), weight: $0.weight)
-        }
+        },
+        extras: (sh.extras ?? []).map {
+          SplitSpec.ItemsExtra(
+            kind: ReceiptExtraKind(code: $0.kind.rawValue),
+            label: $0.label,
+            amount: Money(Int64($0.amount)),
+            ratePercent: $0.ratePercent
+          )
+        },
+        extrasAllocation: mapExtrasAllocation(sh.extrasAllocation?.rawValue)
       )
     case .case4(let pct):
       return .percent(
         entries: pct.entries.map {
           SplitSpec.PercentEntry(memberId: Member.ID($0.memberId), percent: $0.percent)
-        }
+        },
+        extras: (pct.extras ?? []).map {
+          SplitSpec.ItemsExtra(
+            kind: ReceiptExtraKind(code: $0.kind.rawValue),
+            label: $0.label,
+            amount: Money(Int64($0.amount)),
+            ratePercent: $0.ratePercent
+          )
+        },
+        extrasAllocation: mapExtrasAllocation(pct.extrasAllocation?.rawValue)
       )
     case .case5(let items):
       return .items(
@@ -54,18 +96,36 @@ enum TransactionMapping {
           SplitSpec.ItemsExtra(
             kind: ReceiptExtraKind(code: $0.kind.rawValue),
             label: $0.label,
-            amount: Money(Int64($0.amount))
+            amount: Money(Int64($0.amount)),
+            ratePercent: $0.ratePercent
           )
-        }
+        },
+        extrasAllocation: mapExtrasAllocation(items.extrasAllocation?.rawValue)
       )
     }
   }
 
   static func encodeSplitInput(_ spec: SplitSpec) -> Components.Schemas.SplitInput {
     switch spec {
-    case .equal(let members):
-      return .case1(.init(members: members.map(\.rawValue), method: .equal))
-    case .exact(let members, let entries, let remainder):
+    case .equal(let members, let extras, let allocation):
+      return .case1(
+        .init(
+          extras: extras.isEmpty
+            ? nil
+            : extras.map { extra in
+              .init(
+                amount: Int(extra.amount.amount),
+                kind: .init(rawValue: extra.kind.code) ?? .other,
+                label: extra.label,
+                ratePercent: extra.ratePercent
+              )
+            },
+          extrasAllocation: allocation.flatMap { .init(rawValue: $0.code) },
+          members: members.map(\.rawValue),
+          method: .equal
+        )
+      )
+    case .exact(let members, let entries, let remainder, let extras, let allocation):
       let remPayload: Components.Schemas.SplitInput.Case2Payload.remainderPayload = {
         switch remainder {
         case .equalAmongBlank: return .equal_among_blank
@@ -78,40 +138,70 @@ enum TransactionMapping {
           entries: entries.map {
             .init(amount: Int($0.amount.amount), memberId: $0.memberId.rawValue)
           },
+          extras: extras.isEmpty
+            ? nil
+            : extras.map { extra in
+              .init(
+                amount: Int(extra.amount.amount),
+                kind: .init(rawValue: extra.kind.code) ?? .other,
+                label: extra.label,
+                ratePercent: extra.ratePercent
+              )
+            },
+          extrasAllocation: allocation.flatMap { .init(rawValue: $0.code) },
           members: members.map(\.rawValue),
           method: .exact,
           remainder: remPayload
         )
       )
-    case .shares(let entries):
+    case .shares(let entries, let extras, let allocation):
       return .case3(
         .init(
           entries: entries.map { .init(memberId: $0.memberId.rawValue, weight: $0.weight) },
+          extras: extras.isEmpty
+            ? nil
+            : extras.map { extra in
+              .init(
+                amount: Int(extra.amount.amount),
+                kind: .init(rawValue: extra.kind.code) ?? .other,
+                label: extra.label,
+                ratePercent: extra.ratePercent
+              )
+            },
+          extrasAllocation: allocation.flatMap { .init(rawValue: $0.code) },
           method: .shares
         )
       )
-    case .percent(let entries):
+    case .percent(let entries, let extras, let allocation):
       return .case4(
         .init(
           entries: entries.map { .init(memberId: $0.memberId.rawValue, percent: $0.percent) },
+          extras: extras.isEmpty
+            ? nil
+            : extras.map { extra in
+              .init(
+                amount: Int(extra.amount.amount),
+                kind: .init(rawValue: extra.kind.code) ?? .other,
+                label: extra.label,
+                ratePercent: extra.ratePercent
+              )
+            },
+          extrasAllocation: allocation.flatMap { .init(rawValue: $0.code) },
           method: .percent
         )
       )
-    case .items(let items, let extras):
+    case .items(let items, let extras, let allocation):
       return .case5(
         .init(
           extras: extras.map { extra in
-            let kind: Components.Schemas.SplitInput.Case5Payload.extrasPayloadPayload.kindPayload =
-              {
-                switch extra.kind {
-                case .tax: return .tax
-                case .service: return .service
-                case .discount: return .discount
-                case .other, .unknown: return .other
-                }
-              }()
-            return .init(amount: Int(extra.amount.amount), kind: kind, label: extra.label)
+            .init(
+              amount: Int(extra.amount.amount),
+              kind: .init(rawValue: extra.kind.code) ?? .other,
+              label: extra.label,
+              ratePercent: extra.ratePercent
+            )
           },
+          extrasAllocation: allocation.flatMap { .init(rawValue: $0.code) },
           items: items.map {
             .init(
               amount: Int($0.amount.amount),
@@ -293,7 +383,8 @@ enum TransactionMapping {
       myDelta: dto.myDelta.map { Money(Int64($0)) },
       paymentChannel: LiveSettlementVaultMapping.mapPaymentChannel(dto.paymentChannel),
       paymentNote: dto.paymentNote,
-      cycleId: dto.cycleId.map(SettlementCycle.ID.init)
+      cycleId: dto.cycleId.map(SettlementCycle.ID.init),
+      recurringExpenseId: dto.recurringExpenseId.map(RecurringExpense.ID.init)
     )
   }
 
@@ -338,7 +429,90 @@ enum TransactionMapping {
       myDelta: dto.myDelta.map { Money(Int64($0)) },
       paymentChannel: LiveSettlementVaultMapping.mapPaymentChannel(dto.paymentChannel),
       paymentNote: dto.paymentNote,
-      cycleId: dto.cycleId.map(SettlementCycle.ID.init)
+      cycleId: dto.cycleId.map(SettlementCycle.ID.init),
+      recurringExpenseId: dto.recurringExpenseId.map(RecurringExpense.ID.init)
+    )
+  }
+
+  static func encodeInlineRecurring(
+    _ input: CreateInlineRecurringInput?
+  ) -> Components.Schemas.CreateInlineRecurringInput? {
+    guard let input else { return nil }
+    let freq: Components.Schemas.CreateInlineRecurringInput.frequencyPayload? = {
+      switch input.frequency {
+      case .weekly: return .weekly
+      case .monthly: return .monthly
+      case .quarterly: return .quarterly
+      case .yearly: return .yearly
+      case .unknown: return nil
+      }
+    }()
+    let mode: Components.Schemas.CreateInlineRecurringInput.modePayload? = {
+      switch input.mode {
+      case .fixed: return .fixed
+      case .variable: return .variable
+      case .unknown: return nil
+      }
+    }()
+    guard let freq, let mode else { return nil }
+    return Components.Schemas.CreateInlineRecurringInput(
+      dayOfMonth: input.dayOfMonth,
+      dayOfWeek: input.dayOfWeek,
+      frequency: freq,
+      mode: mode,
+      monthOfYear: input.monthOfYear
+    )
+  }
+
+  static func encodePreviewExtrasRequest(
+    _ input: PreviewExtrasInput
+  ) -> Components.Schemas.PreviewExtrasRequest {
+    Components.Schemas.PreviewExtrasRequest(
+      baseAmount: Int(input.baseAmount.amount),
+      extras: input.extras.map { item in
+        .init(
+          amount: item.amount.map { Int($0.amount) },
+          kind: .init(rawValue: item.kind.code) ?? .other,
+          label: item.label,
+          ratePercent: item.ratePercent
+        )
+      },
+      extrasAllocation: input.extrasAllocation.flatMap { .init(rawValue: $0.code) },
+      occurredAt: input.occurredAt,
+      payerMemberId: input.payerMemberId?.rawValue,
+      payers: input.payers?.map {
+        .init(amount: $0.amount.map { Int($0.amount) }, memberId: $0.memberId.rawValue)
+      },
+      split: input.split.map(encodeSplitInput),
+      transactionId: input.transactionId?.rawValue
+    )
+  }
+
+  static func mapPreviewExtrasResponse(
+    _ dto: Components.Schemas.PreviewExtrasResponse
+  ) -> PreviewExtrasResult {
+    PreviewExtrasResult(
+      baseAmount: Money(Int64(dto.baseAmount)),
+      resolvedExtras: dto.resolvedExtras.map {
+        SplitSpec.ItemsExtra(
+          kind: ReceiptExtraKind(code: $0.kind.rawValue),
+          label: $0.label,
+          amount: Money(Int64($0.amount)),
+          ratePercent: $0.ratePercent
+        )
+      },
+      netExtras: Money(Int64(dto.netExtras)),
+      computedAmount: Money(Int64(dto.computedAmount)),
+      shares: dto.shares?.map {
+        MemberAmount(memberId: Member.ID($0.memberId), amount: Money(Int64($0.amount)))
+      },
+      issues: dto.issues.map {
+        ExtrasPreviewIssue(
+          code: ExtrasPreviewIssueCode(code: $0.code.rawValue),
+          itemIndex: $0.itemIndex
+        )
+      },
+      warnings: (dto.warnings ?? []).map { TransactionWarning(code: $0.rawValue) }
     )
   }
 
@@ -355,6 +529,8 @@ enum TransactionMapping {
       payers: payload.payers.map {
         .init(amount: Int($0.amount.amount), memberId: $0.memberId.rawValue)
       },
+      recurring: encodeInlineRecurring(payload.recurring),
+      recurringExpenseId: payload.recurringExpenseId?.rawValue,
       split: encodeSplitInput(payload.split),
       _type: payload.isIncome ? .income : .expense
     )
@@ -462,6 +638,7 @@ enum TransactionMapping {
       let kind: String
       let label: String
       let amount: Int64
+      let ratePercent: String?
     }
 
     let method: String
@@ -472,9 +649,10 @@ enum TransactionMapping {
     let percentEntries: [RawPercent]?
     let items: [RawItem]?
     let extras: [RawExtra]?
+    let extrasAllocation: String?
 
     enum CodingKeys: String, CodingKey {
-      case method, members, remainder, entries, items, extras
+      case method, members, remainder, entries, items, extras, extrasAllocation
     }
 
     init(from decoder: any Decoder) throws {
@@ -484,6 +662,7 @@ enum TransactionMapping {
       self.remainder = try c.decodeIfPresent(String.self, forKey: .remainder)
       self.items = try c.decodeIfPresent([RawItem].self, forKey: .items)
       self.extras = try c.decodeIfPresent([RawExtra].self, forKey: .extras)
+      self.extrasAllocation = try c.decodeIfPresent(String.self, forKey: .extrasAllocation)
       switch method {
       case "exact":
         self.exactEntries = try c.decodeIfPresent([RawExact].self, forKey: .entries)
@@ -505,8 +684,20 @@ enum TransactionMapping {
     }
 
     init(spec: SplitSpec) {
+      let mappedExtras = spec.extras.map {
+        RawExtra(
+          kind: $0.kind.code,
+          label: $0.label,
+          amount: $0.amount.amount,
+          ratePercent: $0.ratePercent
+        )
+      }
+      let isItemsMethod: Bool
+      if case .items = spec { isItemsMethod = true } else { isItemsMethod = false }
+      self.extras = (mappedExtras.isEmpty && !isItemsMethod) ? nil : mappedExtras
+      self.extrasAllocation = spec.extrasAllocation?.code
       switch spec {
-      case .equal(let members):
+      case .equal(let members, _, _):
         self.method = "equal"
         self.members = members.map(\.rawValue)
         self.remainder = nil
@@ -514,8 +705,7 @@ enum TransactionMapping {
         self.weightEntries = nil
         self.percentEntries = nil
         self.items = nil
-        self.extras = nil
-      case .exact(let members, let entries, let remainder):
+      case .exact(let members, let entries, let remainder, _, _):
         self.method = "exact"
         self.members = members.map(\.rawValue)
         self.remainder = remainder.code
@@ -525,8 +715,7 @@ enum TransactionMapping {
         self.weightEntries = nil
         self.percentEntries = nil
         self.items = nil
-        self.extras = nil
-      case .shares(let entries):
+      case .shares(let entries, _, _):
         self.method = "shares"
         self.members = nil
         self.remainder = nil
@@ -536,8 +725,7 @@ enum TransactionMapping {
         }
         self.percentEntries = nil
         self.items = nil
-        self.extras = nil
-      case .percent(let entries):
+      case .percent(let entries, _, _):
         self.method = "percent"
         self.members = nil
         self.remainder = nil
@@ -547,8 +735,7 @@ enum TransactionMapping {
           RawPercent(memberId: $0.memberId.rawValue, percent: $0.percent)
         }
         self.items = nil
-        self.extras = nil
-      case .items(let entries, let extraEntries):
+      case .items(let entries, _, _):
         self.method = "items"
         self.members = nil
         self.remainder = nil
@@ -557,9 +744,6 @@ enum TransactionMapping {
         self.percentEntries = nil
         self.items = entries.map {
           RawItem(name: $0.name, amount: $0.amount.amount, memberIds: $0.memberIds.map(\.rawValue))
-        }
-        self.extras = extraEntries.map {
-          RawExtra(kind: $0.kind.code, label: $0.label, amount: $0.amount.amount)
         }
       }
     }
@@ -574,9 +758,19 @@ enum TransactionMapping {
       if let percentEntries { try c.encode(percentEntries, forKey: .entries) }
       if let items { try c.encode(items, forKey: .items) }
       if let extras { try c.encode(extras, forKey: .extras) }
+      try c.encodeIfPresent(extrasAllocation, forKey: .extrasAllocation)
     }
 
     func toDomain() -> SplitSpec {
+      let domainExtras = (extras ?? []).map {
+        SplitSpec.ItemsExtra(
+          kind: ReceiptExtraKind(code: $0.kind),
+          label: $0.label,
+          amount: Money($0.amount),
+          ratePercent: $0.ratePercent
+        )
+      }
+      let allocation = extrasAllocation.map(ExtrasAllocation.init(code:))
       switch method {
       case "exact":
         return .exact(
@@ -584,19 +778,25 @@ enum TransactionMapping {
           entries: (exactEntries ?? []).map {
             SplitSpec.ExactEntry(memberId: Member.ID($0.memberId), amount: Money($0.amount))
           },
-          remainder: ExactRemainderMode(code: remainder ?? "none")
+          remainder: ExactRemainderMode(code: remainder ?? "none"),
+          extras: domainExtras,
+          extrasAllocation: allocation
         )
       case "shares":
         return .shares(
           entries: (weightEntries ?? []).map {
             SplitSpec.ShareWeightEntry(memberId: Member.ID($0.memberId), weight: $0.weight)
-          }
+          },
+          extras: domainExtras,
+          extrasAllocation: allocation
         )
       case "percent":
         return .percent(
           entries: (percentEntries ?? []).map {
             SplitSpec.PercentEntry(memberId: Member.ID($0.memberId), percent: $0.percent)
-          }
+          },
+          extras: domainExtras,
+          extrasAllocation: allocation
         )
       case "items":
         return .items(
@@ -607,16 +807,15 @@ enum TransactionMapping {
               memberIds: $0.memberIds.map(Member.ID.init)
             )
           },
-          extras: (extras ?? []).map {
-            SplitSpec.ItemsExtra(
-              kind: ReceiptExtraKind(code: $0.kind),
-              label: $0.label,
-              amount: Money($0.amount)
-            )
-          }
+          extras: domainExtras,
+          extrasAllocation: allocation
         )
       default:
-        return .equal(members: (members ?? []).map(Member.ID.init))
+        return .equal(
+          members: (members ?? []).map(Member.ID.init),
+          extras: domainExtras,
+          extrasAllocation: allocation
+        )
       }
     }
   }
@@ -706,6 +905,7 @@ enum TransactionMapping {
     let paymentChannel: String?
     let paymentNote: String?
     let cycleId: String?
+    let recurringExpenseId: String?
 
     func toDomain() -> LedgerTransaction {
       let decodedAttachments = (attachments ?? []).map { $0.toDomain() }
@@ -741,7 +941,8 @@ enum TransactionMapping {
         myDelta: myDelta.map(Money.init),
         paymentChannel: paymentChannel.map(PaymentChannel.init(code:)),
         paymentNote: paymentNote,
-        cycleId: cycleId.map(SettlementCycle.ID.init)
+        cycleId: cycleId.map(SettlementCycle.ID.init),
+        recurringExpenseId: recurringExpenseId.map(RecurringExpense.ID.init)
       )
     }
 
@@ -778,6 +979,7 @@ enum TransactionMapping {
       self.paymentChannel = tx.paymentChannel?.code
       self.paymentNote = tx.paymentNote
       self.cycleId = tx.cycleId?.rawValue
+      self.recurringExpenseId = tx.recurringExpenseId?.rawValue
     }
   }
 

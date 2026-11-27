@@ -8,6 +8,7 @@ export const MEMBER_COLUMNS = {
 	groupId: members.groupId,
 	kind: members.kind,
 	fundHolderMemberId: members.fundHolderMemberId,
+	householdId: members.householdId,
 	name: members.name,
 	active: members.active,
 	defaultWeight: members.defaultWeight,

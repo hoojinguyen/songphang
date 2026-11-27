@@ -24,6 +24,7 @@ public struct RouteDestination: View {
   private let onPop: () -> Void
   private let onPopToRoot: (String?) -> Void
   private let onExpenseSaved: () -> Void
+  private let recurringRefreshTick: Int
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
   private struct PaymentSheet: Identifiable {
@@ -68,9 +69,11 @@ public struct RouteDestination: View {
     onPop: @escaping () -> Void,
     onPopToRoot: @escaping (String?) -> Void,
     onExpenseSaved: @escaping () -> Void = {},
+    recurringRefreshTick: Int = 0,
     deletedTransactionId: Binding<LedgerTransaction.ID?>
   ) {
     self._deletedTransactionId = deletedTransactionId
+    self.recurringRefreshTick = recurringRefreshTick
     self.route = route
     self.dependencies = dependencies
     self.sessionModel = sessionModel
@@ -143,7 +146,8 @@ public struct RouteDestination: View {
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
           balancesRepository: dependencies.balances,
-          invitesRepository: dependencies.invites
+          invitesRepository: dependencies.invites,
+          householdsRepository: dependencies.households
         )
       )
     case .groupFund(let groupId):
@@ -212,7 +216,7 @@ public struct RouteDestination: View {
           }
         )
       )
-    case .groupBalances(let groupId):
+    case .groupBalances(let groupId, _):
       self._balancesModel = State(
         initialValue: BalancesModel(
           groupId: groupId,
@@ -271,7 +275,11 @@ public struct RouteDestination: View {
       let initialReading,
       let initialTransferFrom,
       let initialTransferTo,
-      let initialAttachmentId
+      let initialAttachmentId,
+      let initialAttachmentIds,
+      let initialPendingImageDatas,
+      let initialRecurringExpense,
+      let initialRecurringDueAction
     ):
       self._expenseFormModel = State(
         initialValue: ExpenseFormModel(
@@ -281,6 +289,10 @@ public struct RouteDestination: View {
           initialTransferFrom: initialTransferFrom,
           initialTransferTo: initialTransferTo,
           initialAttachmentId: initialAttachmentId,
+          initialAttachmentIds: initialAttachmentIds,
+          initialPendingImageDatas: initialPendingImageDatas,
+          initialRecurringExpense: initialRecurringExpense,
+          initialRecurringDueAction: initialRecurringDueAction,
           initialSplitEditorOpen: args.contains("--open-split-editor"),
           groupsRepository: dependencies.groups,
           membersRepository: dependencies.members,
@@ -288,6 +300,7 @@ public struct RouteDestination: View {
           transactionsRepository: dependencies.transactions,
           categoriesRepository: dependencies.categories,
           attachmentsRepository: dependencies.attachments,
+          recurringExpensesRepository: dependencies.recurringExpenses,
           onSaved: {
             onPop()
             onExpenseSaved()
@@ -528,7 +541,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved
+        onExpenseSaved: onExpenseSaved,
+        recurringRefreshTick: recurringRefreshTick
       )
     case .groupSettings:
       if let settingsModel {
@@ -553,7 +567,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved
+        onExpenseSaved: onExpenseSaved,
+        recurringRefreshTick: recurringRefreshTick
       )
     case .groupStats(let groupId):
       GroupContainerView(
@@ -568,13 +583,15 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved
+        onExpenseSaved: onExpenseSaved,
+        recurringRefreshTick: recurringRefreshTick
       )
-    case .groupBalances(let groupId):
+    case .groupBalances(let groupId, let initialTransferProofAttachmentId):
       GroupContainerView(
         groupId: groupId,
         initialSegment: .payments,
         initialFilter: nil,
+        initialTransferProofAttachmentId: initialTransferProofAttachmentId,
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
@@ -583,7 +600,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved
+        onExpenseSaved: onExpenseSaved,
+        recurringRefreshTick: recurringRefreshTick
       )
     case .groupActivity:
       if let activityModel {

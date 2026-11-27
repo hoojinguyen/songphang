@@ -10,6 +10,7 @@ public final class MembersModel {
     public var users: [GroupUser]
     public var balances: GroupBalances
     public var invite: Invite?
+    public var households: [Household]
   }
 
   public let groupId: ExpenseGroup.ID
@@ -17,6 +18,7 @@ public final class MembersModel {
   public private(set) var refreshError: AppError?
   private(set) var hasCurrentPaymentDetails = false
   public private(set) var actionError: AppError?
+  public private(set) var householdError: AppError?
   public private(set) var isPerformingAction = false
   public var expandedMemberId: Member.ID?
   public var isAddMemberOpen = false
@@ -25,19 +27,22 @@ public final class MembersModel {
   private let membersRepository: any MembersRepository
   private let balancesRepository: any BalancesRepository
   private let invitesRepository: any InvitesRepository
+  private let householdsRepository: (any HouseholdsRepository)?
 
   public init(
     groupId: ExpenseGroup.ID,
     groupsRepository: any GroupsRepository,
     membersRepository: any MembersRepository,
     balancesRepository: any BalancesRepository,
-    invitesRepository: any InvitesRepository
+    invitesRepository: any InvitesRepository,
+    householdsRepository: (any HouseholdsRepository)? = nil
   ) {
     self.groupId = groupId
     self.groupsRepository = groupsRepository
     self.membersRepository = membersRepository
     self.balancesRepository = balancesRepository
     self.invitesRepository = invitesRepository
+    self.householdsRepository = householdsRepository
   }
 
   public func load() async {
@@ -54,7 +59,14 @@ public final class MembersModel {
       let b = await cachedBalances
     {
       state = .loaded(
-        ScreenData(group: g, members: m, users: u, balances: b, invite: await cachedInvite)
+        ScreenData(
+          group: g,
+          members: m,
+          users: u,
+          balances: b,
+          invite: await cachedInvite,
+          households: state.value?.households ?? []
+        )
       )
     } else if case .failed = state {
       state = .loading
@@ -72,13 +84,27 @@ public final class MembersModel {
         }
       }()
       async let fetchedInvite = invitesRepository.invite(groupId: groupId)
+      async let fetchedHouseholds: [Household]? = {
+        guard let householdsRepository else { return [] }
+        return try? await householdsRepository.list(groupId: groupId)
+      }()
 
       let g = try await fetchedGroup
       let m = try await fetchedMembers
       let u = try await fetchedUsers
       let b = try await fetchedBalances.get()
       let inv = try? await fetchedInvite
-      state = .loaded(ScreenData(group: g, members: m, users: u, balances: b, invite: inv))
+      let hh = (await fetchedHouseholds) ?? (state.value?.households ?? [])
+      state = .loaded(
+        ScreenData(
+          group: g,
+          members: m,
+          users: u,
+          balances: b,
+          invite: inv,
+          households: hh
+        )
+      )
       refreshError = nil
       hasCurrentPaymentDetails = true
     } catch let error as AppError {
@@ -227,6 +253,68 @@ public final class MembersModel {
         current.group.muted = muted
         state = .loaded(current)
       }
+    } catch {
+      actionError = error
+    }
+  }
+
+  public func createHousehold(
+    name: String,
+    representativeMemberId: Member.ID,
+    memberIds: [Member.ID]
+  ) async -> Bool {
+    guard let householdsRepository, !isPerformingAction else { return false }
+    isPerformingAction = true
+    householdError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      _ = try await householdsRepository.create(
+        groupId: groupId,
+        input: CreateHouseholdInput(
+          name: name,
+          memberIds: memberIds,
+          representativeMemberId: representativeMemberId
+        ),
+        key: IdempotencyKey()
+      )
+      await load()
+      return true
+    } catch {
+      householdError = error
+      return false
+    }
+  }
+
+  public func updateHousehold(
+    id: Household.ID,
+    input: UpdateHouseholdInput
+  ) async -> Bool {
+    guard let householdsRepository, !isPerformingAction else { return false }
+    isPerformingAction = true
+    householdError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      _ = try await householdsRepository.update(groupId: groupId, id: id, input: input)
+      await load()
+      return true
+    } catch {
+      householdError = error
+      return false
+    }
+  }
+
+  public func clearHouseholdError() {
+    householdError = nil
+  }
+
+  public func deleteHousehold(id: Household.ID) async {
+    guard let householdsRepository, !isPerformingAction else { return }
+    isPerformingAction = true
+    actionError = nil
+    defer { isPerformingAction = false }
+    do throws(AppError) {
+      try await householdsRepository.delete(groupId: groupId, id: id)
+      await load()
     } catch {
       actionError = error
     }

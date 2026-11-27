@@ -1,12 +1,12 @@
 import {
 	type LedgerEntry,
-	netPairwiseDebts,
 	pairDebtsOf,
-	suggestMinimizedSettlements,
+	suggestHouseholdSettlements,
 } from "@songphang/core";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { listLedgerSides, listMemberBalances } from "./balances.js";
 import type { DbExecutor } from "./client.js";
+import { listGroupHouseholds } from "./households.js";
 import { groups } from "./schema-groups.js";
 import { debtReminders } from "./schema-reminders.js";
 
@@ -31,15 +31,26 @@ export async function suggestGroupTransfers(
 	executor: DbExecutor,
 	input: { groupId: string; minimizeDebts: boolean },
 ) {
-	const balances = await listMemberBalances(executor, input.groupId);
-	if (balances.length === 0) return { balances: [], transfers: [] };
-	const transfers = input.minimizeDebts
-		? suggestMinimizedSettlements(balances)
-		: netPairwiseDebts(
-				ledgerDebts(await listLedgerSides(executor, input.groupId)),
-				balances.map((member) => member.memberId),
-			);
-	return { balances, transfers };
+	const [balances, households] = await Promise.all([
+		listMemberBalances(executor, input.groupId),
+		listGroupHouseholds(executor, input.groupId),
+	]);
+	if (balances.length === 0) {
+		return { balances: [], transfers: [], households: [] };
+	}
+	const { transfers, summaries } = suggestHouseholdSettlements({
+		balancesByPosition: balances,
+		minimizeDebts: input.minimizeDebts,
+		...(input.minimizeDebts
+			? {}
+			: {
+					pairDebts: ledgerDebts(
+						await listLedgerSides(executor, input.groupId),
+					),
+				}),
+		households,
+	});
+	return { balances, transfers, households: summaries };
 }
 
 export async function findLatestDebtReminder(

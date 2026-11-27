@@ -8,6 +8,7 @@ import SwiftUI
 
 struct MemberBreakdownSheetView: View {
   private let breakdown: MemberDebtBreakdown
+  private let householdBreakdown: HouseholdDebtBreakdown?
   private let focusLabel: String
   private let memberTransfers: [SuggestedTransfer]
   private let members: [Member]
@@ -15,12 +16,14 @@ struct MemberBreakdownSheetView: View {
 
   init(
     breakdown: MemberDebtBreakdown,
+    householdBreakdown: HouseholdDebtBreakdown? = nil,
     focusLabel: String,
     memberTransfers: [SuggestedTransfer] = [],
     members: [Member] = [],
     onDismiss: @escaping () -> Void
   ) {
     self.breakdown = breakdown
+    self.householdBreakdown = householdBreakdown
     self.focusLabel = focusLabel
     self.memberTransfers = memberTransfers
     self.members = members
@@ -32,6 +35,9 @@ struct MemberBreakdownSheetView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
           headerCard
+          if let householdBreakdown {
+            householdSummaryCard(householdBreakdown)
+          }
           reconciliationCard
           if !memberTransfers.isEmpty {
             allocationCard
@@ -124,6 +130,33 @@ struct MemberBreakdownSheetView: View {
     }
   }
 
+  private func householdSummaryCard(_ hh: HouseholdDebtBreakdown) -> some View {
+    SPCard(padding: 16) {
+      VStack(alignment: .leading, spacing: 10) {
+        HStack {
+          Text(L10n.t("households.summaryTitleTemplate", ["name": hh.name]))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+          Spacer()
+          MoneyText(
+            hh.netBalance,
+            style: .signed,
+            font: Typography.subheadlineBold,
+            color: hh.netBalance.isPositive
+              ? Tokens.credit
+              : (hh.netBalance.isNegative ? Tokens.debt : Tokens.ink)
+          )
+        }
+        summaryRow(label: L10n.tr("breakdown.carryOver"), money: hh.carryOverBalance)
+        summaryRow(label: L10n.tr("breakdown.periodExpenses"), money: hh.focusExpenseDelta)
+        summaryRow(label: L10n.tr("breakdown.periodTransfers"), money: hh.focusTransferDelta)
+        if !hh.postCycleDelta.isZero {
+          summaryRow(label: L10n.tr("breakdown.postCycleDelta"), money: hh.postCycleDelta)
+        }
+      }
+    }
+  }
+
   private var allocationCard: some View {
     SPCard(padding: 16) {
       VStack(alignment: .leading, spacing: 8) {
@@ -180,6 +213,7 @@ struct MemberBreakdownSheetView: View {
                     "\(MoneyFormat.full(line.memberShare)) / \(MoneyFormat.full(line.totalAmount))"
                   )
                   .font(Typography.caption)
+                  .monospacedDigit()
                   .foregroundStyle(Tokens.muted)
                 } else {
                   MoneyText(

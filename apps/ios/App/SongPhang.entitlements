@@ -12,5 +12,13 @@
 	<array>
 		<string>applinks:$(ASSOCIATED_DOMAIN_HOST)</string>
 	</array>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>$(APP_GROUP_IDENTIFIER)</string>
+	</array>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(KEYCHAIN_ACCESS_GROUP)</string>
+	</array>
 </dict>
 </plist>

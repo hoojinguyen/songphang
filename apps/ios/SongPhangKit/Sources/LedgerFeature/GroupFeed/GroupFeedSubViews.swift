@@ -4,6 +4,8 @@ import SwiftUI
 
 struct FeedBalanceBlockView: View {
   let balance: Money
+  var individualBalance: Money? = nil
+  var householdName: String? = nil
   let onOpenBalances: () -> Void
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -29,6 +31,11 @@ struct FeedBalanceBlockView: View {
     Button(action: onOpenBalances) {
       layout {
         VStack(alignment: .leading, spacing: 2) {
+          if let householdName {
+            Text(householdName)
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.ink)
+          }
           Text(caption)
             .font(Typography.captionBold)
             .foregroundStyle(Tokens.ink)
@@ -38,6 +45,16 @@ struct FeedBalanceBlockView: View {
             font: Typography.heroNumber,
             color: Tokens.ink
           )
+          if let individualBalance {
+            Text(
+              L10n.t(
+                "households.personalShareTemplate",
+                ["amount": MoneyFormat.full(individualBalance)]
+              )
+            )
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.ink)
+          }
         }
         Spacer(minLength: 8)
         Text(actionLabel)

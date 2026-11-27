@@ -30,6 +30,7 @@ public struct Member: Sendable, Hashable, Identifiable {
   public var name: String
   public var kind: MemberKind
   public var fundHolderMemberId: Member.ID?
+  public var householdId: Household.ID?
   public var active: Bool
   public var defaultWeight: String
   public var position: Int
@@ -44,6 +45,7 @@ public struct Member: Sendable, Hashable, Identifiable {
     name: String,
     kind: MemberKind = .person,
     fundHolderMemberId: Member.ID? = nil,
+    householdId: Household.ID? = nil,
     active: Bool = true,
     defaultWeight: String = "1.00",
     position: Int,
@@ -57,6 +59,7 @@ public struct Member: Sendable, Hashable, Identifiable {
     self.name = name
     self.kind = kind
     self.fundHolderMemberId = fundHolderMemberId
+    self.householdId = householdId
     self.active = active
     self.defaultWeight = defaultWeight
     self.position = position

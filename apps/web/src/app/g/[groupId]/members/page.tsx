@@ -5,6 +5,7 @@ import { useState } from "react";
 import { CreateFundDialog } from "../../../../components/fund/CreateFundDialog";
 import { GuestLinkModal } from "../../../../components/guest/GuestLinkModal";
 import { AddMemberRow } from "../../../../components/members/AddMemberRow";
+import { HouseholdsCard } from "../../../../components/members/HouseholdsCard";
 import { InviteCard } from "../../../../components/members/InviteCard";
 import { LeaveGroupButton } from "../../../../components/members/LeaveGroupButton";
 import { MemberEditor } from "../../../../components/members/MemberEditor";
@@ -20,6 +21,7 @@ import { VerifyEmailBanner } from "../../../../components/ui/VerifyEmailBanner";
 import { useBalances } from "../../../../lib/balances";
 import { useGroupUserAction, useGroupUsers } from "../../../../lib/group-users";
 import { useGroup } from "../../../../lib/groups";
+import { useHouseholds } from "../../../../lib/households";
 import { useMembers } from "../../../../lib/members";
 import { useSetGroupMuted } from "../../../../lib/notifications";
 import { useMe } from "../../../../lib/session";
@@ -34,6 +36,7 @@ export default function MembersPage() {
 	const group = useGroup(groupId);
 	const members = useMembers(groupId);
 	const balances = useBalances(groupId);
+	const households = useHouseholds(groupId);
 	const users = useGroupUsers(groupId);
 	const action = useGroupUserAction(groupId);
 	const setMuted = useSetGroupMuted(groupId);
@@ -130,6 +133,9 @@ export default function MembersPage() {
 					<MemberRow
 						member={member}
 						role={users.data.find((user) => user.memberId === member.id)?.role}
+						household={(households.data ?? []).find((h) =>
+							h.memberIds.includes(member.id),
+						)}
 						canEdit={true}
 						isExpanded={expanded === member.id}
 						onEdit={() =>
@@ -197,6 +203,13 @@ export default function MembersPage() {
 			) : !me.data.emailVerified ? (
 				<VerifyEmailBanner />
 			) : null}
+			<HouseholdsCard
+				groupId={groupId}
+				people={people}
+				households={households.data ?? []}
+				canWrite={me.data.emailVerified && group.data.role !== "viewer"}
+				isArchived={Boolean(group.data.archivedAt)}
+			/>
 			{users.data
 				.filter((user) => user.memberId === null)
 				.map((user) => (

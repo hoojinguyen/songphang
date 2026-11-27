@@ -6,6 +6,9 @@ public enum AppError: Error, Sendable, Equatable {
   case groupArchived
   case cycleEmpty
   case cycleNotLatest
+  case householdMemberConflict
+  case householdRepresentativeActiveRequired
+  case recurringMemberInactive
   case rateLimited
   case reminderTooSoon(nextAt: String)
   case api(code: String, status: Int)

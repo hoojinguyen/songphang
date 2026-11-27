@@ -53,13 +53,16 @@ export function TransferAction({
 	onRemindNotice?: (message: string) => void;
 }) {
 	const sendReminder = useSendReminder(groupId);
+	const isFromSide =
+		myMemberId !== null &&
+		(myMemberId === from.id ||
+			Boolean(transfer.fromHousehold?.memberIds.includes(myMemberId)));
 	if (transfer.pendingRequest) {
 		const canResolve =
 			role === "owner" ||
 			myMemberId === to.id ||
 			(role === "editor" && !to.claimed);
-		const canCancel =
-			transfer.pendingRequest.createdByMe || myMemberId === from.id;
+		const canCancel = transfer.pendingRequest.createdByMe || isFromSide;
 		return (
 			<PendingRequestRow
 				groupId={groupId}
@@ -87,12 +90,11 @@ export function TransferAction({
 			</OnlineLink>
 		);
 	}
-	const label =
-		from.id === myMemberId
-			? vi.feed.pay
-			: role !== "viewer"
-				? vi.balances.record
-				: vi.feed.view;
+	const label = isFromSide
+		? vi.feed.pay
+		: role !== "viewer"
+			? vi.balances.record
+			: vi.feed.view;
 	const showRemind = canRemindTransfer({
 		transfer,
 		from,

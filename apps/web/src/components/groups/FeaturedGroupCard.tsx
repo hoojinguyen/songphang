@@ -1,7 +1,7 @@
 import type { GroupSummaryDto } from "@songphang/contract";
 import Link from "next/link";
 import { formatSignedAmount } from "../../lib/money";
-import { vi } from "../../messages/vi";
+import { t, vi } from "../../messages/vi";
 import { MemberShape } from "../ui/MemberShape";
 export function FeaturedGroupCard({ group }: { group: GroupSummaryDto }) {
 	const isArchived = Boolean(group.archivedAt);
@@ -38,10 +38,19 @@ export function FeaturedGroupCard({ group }: { group: GroupSummaryDto }) {
 				</div>
 			</div>
 			<h2 className="break-words text-xl font-extrabold">{group.name}</h2>
-			<p className="break-words text-[52px] font-black tracking-tight">
+			<p className="tabular-nums break-words text-[52px] font-black tracking-tight">
 				{formatSignedAmount(group.myBalance)}
 			</p>
-			<p className="text-sm font-semibold">{caption}</p>
+			<p className="text-sm font-semibold">
+				{group.householdName ? `${group.householdName} · ${caption}` : caption}
+			</p>
+			{group.householdName && group.myIndividualBalance !== undefined && (
+				<p className="mt-1 tabular-nums text-xs font-semibold opacity-80">
+					{t(vi.households.personalShareTemplate, {
+						amount: `${formatSignedAmount(group.myIndividualBalance)} ${vi.common.currency}`,
+					})}
+				</p>
+			)}
 		</Link>
 	);
 }

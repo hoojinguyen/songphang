@@ -58,7 +58,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
         && !shares.contains(where: { $0.memberId == member.id })
     }
     let rest: Money = {
-      if case .exact(_, let entries, _) = split, let total = draft.amount {
+      if case .exact(_, let entries, _, _, _) = split, let total = draft.amount {
         let entrySum = entries.reduce(Money.zero) { $0 + $1.amount }
         return total - entrySum
       }
@@ -136,7 +136,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
 
         if !shares.isEmpty, let split {
           let splitText: String = {
-            if case .exact(_, let entries, _) = split {
+            if case .exact(_, let entries, _, _, _) = split {
               let parts = entries.map { entry in
                 let memberName =
                   members.first(where: { $0.id == entry.memberId })?.name ?? ""

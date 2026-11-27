@@ -45,6 +45,24 @@ export function OtherSettlements({
 										to: to.name,
 									})}
 							</p>
+							{(transfer.fromHousehold || transfer.toHousehold) && (
+								<p className="text-[11px] font-semibold text-muted">
+									{[
+										transfer.fromHousehold
+											? t(vi.households.representativeBadge, {
+													name: transfer.fromHousehold.name,
+												})
+											: null,
+										transfer.toHousehold
+											? t(vi.households.representativeBadge, {
+													name: transfer.toHousehold.name,
+												})
+											: null,
+									]
+										.filter(Boolean)
+										.join(" → ")}
+								</p>
+							)}
 							{onInspectMember && from.kind === "person" && (
 								<button
 									type="button"

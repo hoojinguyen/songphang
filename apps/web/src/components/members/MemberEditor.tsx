@@ -22,19 +22,25 @@ export function MemberEditor({
 	const remove = useDeleteMember(groupId);
 	useSessionGuard(update.error ?? remove.error);
 	const isPending = update.isPending || remove.isPending;
-	const setActive = (active: boolean) =>
+	const setActive = (active: boolean) => {
+		remove.reset();
 		update.mutate(
 			{ memberId: member.id, request: { active } },
 			{ onSuccess: () => setShowsWarning(false) },
 		);
+	};
 	const error =
 		remove.error?.code === "MEMBER_HAS_TRANSACTIONS"
 			? t(vi.members.hasTransactions, { name: member.name })
-			: update.isError || remove.isError
-				? (update.error ?? remove.error)?.status === 403
-					? vi.common.forbidden
-					: vi.common.saveError
-				: null;
+			: update.error?.code === "HOUSEHOLD_REPRESENTATIVE_ACTIVE_REQUIRED"
+				? vi.households.repActiveError
+				: remove.error?.code === "HOUSEHOLD_MEMBER_CONFLICT"
+					? vi.households.conflictError
+					: update.isError || remove.isError
+						? (remove.error ?? update.error)?.status === 403
+							? vi.common.forbidden
+							: vi.common.saveError
+						: null;
 	return (
 		<div className="grid gap-3 rounded-[28px] bg-surface p-4">
 			<label className="grid gap-1 text-xs text-muted">
@@ -49,9 +55,13 @@ export function MemberEditor({
 			<Button
 				variant="primary"
 				disabled={isPending || !name.trim() || name.trim() === member.name}
-				onClick={() =>
-					update.mutate({ memberId: member.id, request: { name: name.trim() } })
-				}
+				onClick={() => {
+					remove.reset();
+					update.mutate({
+						memberId: member.id,
+						request: { name: name.trim() },
+					});
+				}}
 			>
 				{vi.members.saveName}
 			</Button>
@@ -95,7 +105,10 @@ export function MemberEditor({
 					<Button
 						variant="surface"
 						disabled={isPending}
-						onClick={() => remove.mutate(member.id)}
+						onClick={() => {
+							update.reset();
+							remove.mutate(member.id);
+						}}
 					>
 						{vi.members.delete}
 					</Button>

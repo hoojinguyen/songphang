@@ -1,7 +1,8 @@
 "use client";
-import type { ItemsSplitExtra } from "@songphang/contract";
+import type { ExtrasAllocation, ItemsSplitExtra } from "@songphang/contract";
 import { vi } from "../../messages/vi";
 import { Icon } from "../ui/Icon";
+import { SegmentedControl } from "../ui/SegmentedControl";
 
 export type EditableReceiptExtra = {
 	id: string;
@@ -13,17 +14,22 @@ export type EditableReceiptExtra = {
 const EXTRA_KINDS: ItemsSplitExtra["kind"][] = [
 	"tax",
 	"service",
+	"shipping",
 	"discount",
 	"other",
 ];
 
 export function ExtrasFields({
 	extras,
+	extrasAllocation,
+	onChangeAllocation,
 	onAdd,
 	onChange,
 	onRemove,
 }: {
 	extras: EditableReceiptExtra[];
+	extrasAllocation?: ExtrasAllocation;
+	onChangeAllocation?: (next: ExtrasAllocation) => void;
 	onAdd: () => void;
 	onChange: (
 		id: string,
@@ -46,6 +52,24 @@ export function ExtrasFields({
 					+ {vi.receipts.addExtra}
 				</button>
 			</div>
+			{extras.length > 0 &&
+				extrasAllocation !== undefined &&
+				onChangeAllocation !== undefined && (
+					<SegmentedControl
+						label={vi.extras.cardTitle}
+						allowOffline
+						value={extrasAllocation}
+						onChange={(value) => {
+							if (value === "equal" || value === "proportional") {
+								onChangeAllocation(value);
+							}
+						}}
+						options={[
+							{ value: "equal", label: vi.extras.allocEqual },
+							{ value: "proportional", label: vi.extras.allocProportional },
+						]}
+					/>
+				)}
 			{extras.length >= 6 && (
 				<p role="status" className="text-xs font-semibold text-muted">
 					{vi.receipts.maxExtras}

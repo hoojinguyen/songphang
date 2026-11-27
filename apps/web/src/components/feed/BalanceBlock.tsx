@@ -6,9 +6,11 @@ import { vi } from "../../messages/vi";
 export function BalanceBlock({
 	groupId,
 	balance,
+	householdName,
 }: {
 	groupId: string;
 	balance: number;
+	householdName?: string | undefined;
 }) {
 	const display = useCountedBalance(balance);
 	const caption =
@@ -25,8 +27,10 @@ export function BalanceBlock({
 			className="flex items-center justify-between gap-2 rounded-[32px] bg-accent pb-4 pl-5 pr-[18px] pt-[14px] text-on-accent"
 		>
 			<div className="min-w-0">
-				<p className="text-[13px] font-semibold">{caption}</p>
-				<p className="break-words text-[40px] font-black tracking-tight">
+				<p className="text-[13px] font-semibold">
+					{householdName ? `${householdName} · ${caption}` : caption}
+				</p>
+				<p className="tabular-nums break-words text-[40px] font-black tracking-tight">
 					{formatMoney(Math.abs(display))}
 				</p>
 			</div>

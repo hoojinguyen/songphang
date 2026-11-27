@@ -211,7 +211,11 @@ public final class ReceiptReviewModel {
         category: nil,
         categoryId: nil,
         payers: [MemberAmount(memberId: payerId, amount: preview.computedAmount)],
-        split: .items(items: payload.items, extras: payload.extras),
+        split: .items(
+          items: payload.items,
+          extras: payload.extras,
+          extrasAllocation: itemsDraft.extrasAllocation
+        ),
         attachmentIds: [data.scan.attachmentId]
       )
     )
@@ -403,6 +407,7 @@ public final class ReceiptReviewModel {
         groupId: groupId,
         items: items,
         extras: extras,
+        extrasAllocation: itemsDraft.extrasAllocation,
         targetTotal: targetTotal
       )
       guard !Task.isCancelled else { return }

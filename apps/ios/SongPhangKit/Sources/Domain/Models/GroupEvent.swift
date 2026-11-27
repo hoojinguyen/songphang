@@ -12,6 +12,8 @@ public enum GroupEvent: Sendable, Hashable {
     case receiptScans
     case comments
     case settlementCycles
+    case households
+    case recurringExpenses
   }
 
   case changed([String])

@@ -10,12 +10,53 @@
 		A10000010000000000000001 /* AppShell in Frameworks */ = {isa = PBXBuildFile; productRef = A10000020000000000000001 /* AppShell */; };
 		A10000010000000000000002 /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = A10000020000000000000002 /* DesignSystem */; };
 		A10000010000000000000003 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = A10000020000000000000003 /* Domain */; };
+		A10000010000000000000010 /* SongPhangShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B10000100000000000000001 /* SongPhangShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A10000010000000000000011 /* SongPhangWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C10000100000000000000001 /* SongPhangWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B10000010000000000000001 /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = B10000020000000000000001 /* DesignSystem */; };
+		B10000010000000000000002 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = B10000020000000000000002 /* Domain */; };
+		B10000010000000000000003 /* Repositories in Frameworks */ = {isa = PBXBuildFile; productRef = B10000020000000000000003 /* Repositories */; };
+		C10000010000000000000001 /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = C10000020000000000000001 /* DesignSystem */; };
+		C10000010000000000000002 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = C10000020000000000000002 /* Domain */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B10000910000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000700000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B10000500000000000000001;
+			remoteInfo = SongPhangShareExtension;
+		};
+		C10000910000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000700000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C10000500000000000000001;
+			remoteInfo = SongPhangWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A10000600000000000000003 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A10000010000000000000010 /* SongPhangShareExtension.appex in Embed Foundation Extensions */,
+				A10000010000000000000011 /* SongPhangWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		A10000100000000000000001 /* SongPhang.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SongPhang.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000100000000000000002 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Debug.xcconfig; sourceTree = "<group>"; };
 		A10000100000000000000003 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/Release.xcconfig; sourceTree = "<group>"; };
+		B10000100000000000000001 /* SongPhangShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SongPhangShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C10000100000000000000001 /* SongPhangWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SongPhangWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -27,6 +68,22 @@
 			);
 			target = A10000500000000000000001 /* SongPhang */;
 		};
+		B10000200000000000000001 /* Exceptions for "ShareExtension" folder in "SongPhangShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				SongPhangShareExtension.entitlements,
+			);
+			target = B10000500000000000000001 /* SongPhangShareExtension */;
+		};
+		C10000200000000000000001 /* Exceptions for "WidgetExtension" folder in "SongPhangWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				SongPhangWidgetExtension.entitlements,
+			);
+			target = C10000500000000000000001 /* SongPhangWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -36,6 +93,22 @@
 				A10000200000000000000001 /* Exceptions for "App" folder in "SongPhang" target */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		B10000300000000000000001 /* ShareExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B10000200000000000000001 /* Exceptions for "ShareExtension" folder in "SongPhangShareExtension" target */,
+			);
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
+		C10000300000000000000001 /* WidgetExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C10000200000000000000001 /* Exceptions for "WidgetExtension" folder in "SongPhangWidgetExtension" target */,
+			);
+			path = WidgetExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -51,6 +124,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B10000400000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000010000000000000001 /* DesignSystem in Frameworks */,
+				B10000010000000000000002 /* Domain in Frameworks */,
+				B10000010000000000000003 /* Repositories in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000400000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C10000010000000000000001 /* DesignSystem in Frameworks */,
+				C10000010000000000000002 /* Domain in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -58,6 +150,8 @@
 			isa = PBXGroup;
 			children = (
 				A10000300000000000000001 /* App */,
+				B10000300000000000000001 /* ShareExtension */,
+				C10000300000000000000001 /* WidgetExtension */,
 				A10000100000000000000002 /* Debug.xcconfig */,
 				A10000100000000000000003 /* Release.xcconfig */,
 				A10000450000000000000002 /* Products */,
@@ -68,6 +162,8 @@
 			isa = PBXGroup;
 			children = (
 				A10000100000000000000001 /* SongPhang.app */,
+				B10000100000000000000001 /* SongPhangShareExtension.appex */,
+				C10000100000000000000001 /* SongPhangWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -82,10 +178,13 @@
 				A10000600000000000000001 /* Sources */,
 				A10000400000000000000001 /* Frameworks */,
 				A10000600000000000000002 /* Resources */,
+				A10000600000000000000003 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B10000920000000000000001 /* PBXTargetDependency */,
+				C10000920000000000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A10000300000000000000001 /* App */,
@@ -100,6 +199,55 @@
 			productReference = A10000100000000000000001 /* SongPhang.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B10000500000000000000001 /* SongPhangShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B10000800000000000000001 /* Build configuration list for PBXNativeTarget "SongPhangShareExtension" */;
+			buildPhases = (
+				B10000600000000000000001 /* Sources */,
+				B10000400000000000000001 /* Frameworks */,
+				B10000600000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B10000300000000000000001 /* ShareExtension */,
+			);
+			name = SongPhangShareExtension;
+			packageProductDependencies = (
+				B10000020000000000000001 /* DesignSystem */,
+				B10000020000000000000002 /* Domain */,
+				B10000020000000000000003 /* Repositories */,
+			);
+			productName = SongPhangShareExtension;
+			productReference = B10000100000000000000001 /* SongPhangShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C10000500000000000000001 /* SongPhangWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C10000800000000000000001 /* Build configuration list for PBXNativeTarget "SongPhangWidgetExtension" */;
+			buildPhases = (
+				C10000600000000000000001 /* Sources */,
+				C10000400000000000000001 /* Frameworks */,
+				C10000600000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C10000300000000000000001 /* WidgetExtension */,
+			);
+			name = SongPhangWidgetExtension;
+			packageProductDependencies = (
+				C10000020000000000000001 /* DesignSystem */,
+				C10000020000000000000002 /* Domain */,
+			);
+			productName = SongPhangWidgetExtension;
+			productReference = C10000100000000000000001 /* SongPhangWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -111,6 +259,12 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					A10000500000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					B10000500000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					C10000500000000000000001 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -133,12 +287,28 @@
 			projectRoot = "";
 			targets = (
 				A10000500000000000000001 /* SongPhang */,
+				B10000500000000000000001 /* SongPhangShareExtension */,
+				C10000500000000000000001 /* SongPhangWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A10000600000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B10000600000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000600000000000000002 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -155,7 +325,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B10000600000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000600000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B10000920000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B10000500000000000000001 /* SongPhangShareExtension */;
+			targetProxy = B10000910000000000000001 /* PBXContainerItemProxy */;
+		};
+		C10000920000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C10000500000000000000001 /* SongPhangWidgetExtension */;
+			targetProxy = C10000910000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A10000850000000000000001 /* Debug */ = {
@@ -263,6 +460,122 @@
 			};
 			name = Release;
 		};
+		B10000850000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A10000100000000000000002 /* Debug.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/SongPhangShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = vn.songphang.app.share-extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		B10000850000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A10000100000000000000003 /* Release.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/SongPhangShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = vn.songphang.app.share-extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		C10000850000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A10000100000000000000002 /* Debug.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = WidgetExtension/SongPhangWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WidgetExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = vn.songphang.app.widget-extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		C10000850000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A10000100000000000000003 /* Release.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = WidgetExtension/SongPhangWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WidgetExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = vn.songphang.app.widget-extension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -280,6 +593,24 @@
 			buildConfigurations = (
 				A10000850000000000000003 /* Debug */,
 				A10000850000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B10000800000000000000001 /* Build configuration list for PBXNativeTarget "SongPhangShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000850000000000000001 /* Debug */,
+				B10000850000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C10000800000000000000001 /* Build configuration list for PBXNativeTarget "SongPhangWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C10000850000000000000001 /* Debug */,
+				C10000850000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -305,6 +636,31 @@
 			productName = DesignSystem;
 		};
 		A10000020000000000000003 /* Domain */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000900000000000000001 /* XCLocalSwiftPackageReference "SongPhangKit" */;
+			productName = Domain;
+		};
+		B10000020000000000000001 /* DesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000900000000000000001 /* XCLocalSwiftPackageReference "SongPhangKit" */;
+			productName = DesignSystem;
+		};
+		B10000020000000000000002 /* Domain */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000900000000000000001 /* XCLocalSwiftPackageReference "SongPhangKit" */;
+			productName = Domain;
+		};
+		B10000020000000000000003 /* Repositories */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000900000000000000001 /* XCLocalSwiftPackageReference "SongPhangKit" */;
+			productName = Repositories;
+		};
+		C10000020000000000000001 /* DesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000900000000000000001 /* XCLocalSwiftPackageReference "SongPhangKit" */;
+			productName = DesignSystem;
+		};
+		C10000020000000000000002 /* Domain */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A10000900000000000000001 /* XCLocalSwiftPackageReference "SongPhangKit" */;
 			productName = Domain;

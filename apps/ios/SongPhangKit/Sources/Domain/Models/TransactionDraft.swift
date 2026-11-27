@@ -9,6 +9,8 @@ public enum TransactionDraft: Sendable, Hashable {
     public var payers: [MemberAmount]
     public var split: SplitSpec
     public var attachmentIds: [Attachment.ID]?
+    public var recurringExpenseId: RecurringExpense.ID?
+    public var recurring: CreateInlineRecurringInput?
 
     public init(
       isIncome: Bool = false,
@@ -19,7 +21,9 @@ public enum TransactionDraft: Sendable, Hashable {
       categoryId: GroupCategory.ID? = nil,
       payers: [MemberAmount],
       split: SplitSpec,
-      attachmentIds: [Attachment.ID]? = nil
+      attachmentIds: [Attachment.ID]? = nil,
+      recurringExpenseId: RecurringExpense.ID? = nil,
+      recurring: CreateInlineRecurringInput? = nil
     ) {
       self.isIncome = isIncome
       self.description = description
@@ -30,6 +34,8 @@ public enum TransactionDraft: Sendable, Hashable {
       self.payers = payers
       self.split = split
       self.attachmentIds = attachmentIds
+      self.recurringExpenseId = recurringExpenseId
+      self.recurring = recurring
     }
   }
 

@@ -63,6 +63,8 @@
     internal var budgetsByGroup: [ExpenseGroup.ID: GroupBudget] = [:]
     internal var settlementRequestsByGroup: [ExpenseGroup.ID: [SettlementRequest]] = [:]
     internal var settlementCyclesByGroup: [ExpenseGroup.ID: [SettlementCycle]] = [:]
+    internal var recurringExpensesByGroup: [ExpenseGroup.ID: [RecurringExpense]] = [:]
+    internal var householdsByGroup: [ExpenseGroup.ID: [Household]] = [:]
     internal var guestLinksByGroup: [ExpenseGroup.ID: (token: String, link: GuestLink)] = [:]
     internal var attachmentsByGroup: [ExpenseGroup.ID: [Attachment.ID: Attachment]] = [:]
     internal var attachmentDataById: [Attachment.ID: Data] = [:]
@@ -130,6 +132,7 @@
       var activityByGroup: [ExpenseGroup.ID: [ActivityItem]] = [:]
       var categoriesByGroup: [ExpenseGroup.ID: [GroupCategory]] = [:]
       var budgetsByGroup: [ExpenseGroup.ID: GroupBudget] = [:]
+      var recurringExpensesByGroup: [ExpenseGroup.ID: [RecurringExpense]] = [:]
     }
 
     public init(
@@ -181,6 +184,7 @@
       self.activityByGroup = initial.activityByGroup
       self.categoriesByGroup = initial.categoriesByGroup
       self.budgetsByGroup = initial.budgetsByGroup
+      self.recurringExpensesByGroup = initial.recurringExpensesByGroup
     }
 
     public func setBehavior(_ newBehavior: FakeBehavior) {
@@ -212,6 +216,8 @@
       self.balancesByGroup = next.balancesByGroup
       self.activityByGroup = next.activityByGroup
       self.categoriesByGroup = next.categoriesByGroup
+      self.recurringExpensesByGroup = next.recurringExpensesByGroup
+      self.householdsByGroup.removeAll()
       self.seenIdempotencyKeys.removeAll()
       self.clonedGroupsByKey.removeAll()
       self.budgetsByGroup.removeAll()
@@ -257,6 +263,28 @@
         state.balancesByGroup[id] = TripScenario.balances(forStep: 4)
         state.activityByGroup[id] = TripScenario.activityItems
         state.categoriesByGroup[id] = FakeWorld.defaultTripCategories
+        state.recurringExpensesByGroup[id] = [
+          RecurringExpense(
+            id: RecurringExpense.ID("rec-water-bill"),
+            groupId: id,
+            mode: .variable,
+            active: true,
+            description: "Tiền nước",
+            amount: Money(140_000),
+            category: .bills,
+            payersTemplate: [RecurringPayerTemplateEntry(memberId: TripScenario.minhId)],
+            splitTemplate: .equal(members: [
+              TripScenario.minhId,
+              TripScenario.lanId,
+              TripScenario.hungId,
+              TripScenario.thuId,
+            ]),
+            frequency: .monthly,
+            dayOfMonth: 25,
+            nextDueDate: "2026-12-25",
+            pendingDueDate: "2026-11-25"
+          )
+        ]
       case .large:
         state.user = signedIn ? TripScenario.user : nil
         var group = LargeScenario.group
@@ -766,6 +794,13 @@
         members[idx].defaultWeight = weight
       }
       if let active = input.active {
+        if !active,
+          (householdsByGroup[groupId] ?? []).contains(where: {
+            $0.representativeMemberId == memberId
+          })
+        {
+          throw .householdRepresentativeActiveRequired
+        }
         members[idx].active = active
       }
       membersByGroup[groupId] = members
@@ -777,6 +812,9 @@
       try await simulateNetwork()
       guard var members = membersByGroup[groupId] else {
         throw .api(code: "NOT_FOUND", status: 404)
+      }
+      if members.first(where: { $0.id == memberId })?.householdId != nil {
+        throw .householdMemberConflict
       }
       let txs = transactionsByGroup[groupId] ?? []
       let hasTx = txs.contains { tx in

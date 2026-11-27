@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { HouseholdName } from "./household.ts";
 import { MemberColorCode, MemberName, MemberShapeCode } from "./member.ts";
 import { MoneyAmount } from "./transaction.ts";
 
@@ -52,11 +53,29 @@ export type MemberBreakdownsResolvedFocus = z.infer<
 	typeof MemberBreakdownsResolvedFocus
 >;
 
+export const HouseholdDebtBreakdownDto = z
+	.object({
+		householdId: z.uuid(),
+		name: HouseholdName,
+		representativeMemberId: z.uuid(),
+		memberIds: z.array(z.uuid()),
+		carryOverBalance: z.int(),
+		focusExpenseDelta: z.int(),
+		focusTransferDelta: z.int(),
+		postCycleDelta: z.int(),
+		netBalance: z.int(),
+	})
+	.openapi("HouseholdDebtBreakdownDto");
+export type HouseholdDebtBreakdownDto = z.infer<
+	typeof HouseholdDebtBreakdownDto
+>;
+
 export const MemberBreakdownsResponse = z
 	.object({
 		hasClosedCycles: z.boolean(),
 		resolvedFocus: MemberBreakdownsResolvedFocus,
 		breakdowns: z.array(MemberDebtBreakdownDto),
+		householdBreakdowns: z.array(HouseholdDebtBreakdownDto).optional(),
 	})
 	.openapi("MemberBreakdownsResponse");
 export type MemberBreakdownsResponse = z.infer<typeof MemberBreakdownsResponse>;

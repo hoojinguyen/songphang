@@ -19,6 +19,10 @@ public final class ExpenseFormModel {
   public let initialTransferFrom: Member.ID?
   public let initialTransferTo: Member.ID?
   public let initialAttachmentId: Attachment.ID?
+  public let initialAttachmentIds: [Attachment.ID]
+  public let initialPendingImageDatas: [Data]
+  public let initialRecurringExpense: RecurringExpense?
+  public let initialRecurringDueAction: OverviewRecurringDueAction?
   public let idempotencyKey: IdempotencyKey
 
   private let groupsRepository: any GroupsRepository
@@ -27,6 +31,7 @@ public final class ExpenseFormModel {
   private let transactionsRepository: any TransactionsRepository
   public let categoriesRepository: any CategoriesRepository
   public let attachmentsRepository: any AttachmentsRepository
+  private let recurringExpensesRepository: (any RecurringExpensesRepository)?
   private let onSaved: () -> Void
   private let onDeleted: (LedgerTransaction.ID) -> Void
 
@@ -52,6 +57,20 @@ public final class ExpenseFormModel {
   public var isSplitEditorOpen = false
   public var isUnparsedBannerDismissed = false
 
+  public var manualExtras: [EditableManualExtra] = []
+  public var extrasAllocation: ExtrasAllocation = .equal
+  public private(set) var extrasPreview: PreviewExtrasResult?
+  public private(set) var isExtrasPreviewCurrent = false
+  public private(set) var extrasPreviewError: AppError?
+
+  public var isRecurringEnabled = false
+  public var recurringMode: RecurringMode = .fixed
+  public var recurringFrequency: RecurringFrequency = .monthly
+  public var recurringDayOfWeek: Int = 1
+  public var recurringDayOfMonth: Int = 1
+  public var recurringMonthOfYear: Int = 1
+  private var resolvedRecurringExpense: RecurringExpense?
+
   public private(set) var previewShares: [MemberAmount] = []
   public private(set) var previewWarnings: [TransactionWarning] = []
   public private(set) var itemsPreview: ItemsPreview?
@@ -68,6 +87,7 @@ public final class ExpenseFormModel {
 
   private var previewTask: Task<Void, Never>?
   private var itemsPreviewTask: Task<Void, Never>?
+  private var extrasPreviewTask: Task<Void, Never>?
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -76,6 +96,10 @@ public final class ExpenseFormModel {
     initialTransferFrom: Member.ID? = nil,
     initialTransferTo: Member.ID? = nil,
     initialAttachmentId: Attachment.ID? = nil,
+    initialAttachmentIds: [Attachment.ID] = [],
+    initialPendingImageDatas: [Data] = [],
+    initialRecurringExpense: RecurringExpense? = nil,
+    initialRecurringDueAction: OverviewRecurringDueAction? = nil,
     initialSplitEditorOpen: Bool = false,
     groupsRepository: any GroupsRepository,
     membersRepository: any MembersRepository,
@@ -83,6 +107,7 @@ public final class ExpenseFormModel {
     transactionsRepository: any TransactionsRepository,
     categoriesRepository: any CategoriesRepository,
     attachmentsRepository: any AttachmentsRepository,
+    recurringExpensesRepository: (any RecurringExpensesRepository)? = nil,
     onSaved: @escaping () -> Void,
     onDeleted: @escaping (LedgerTransaction.ID) -> Void = { _ in }
   ) {
@@ -92,6 +117,11 @@ public final class ExpenseFormModel {
     self.initialTransferFrom = initialTransferFrom
     self.initialTransferTo = initialTransferTo
     self.initialAttachmentId = initialAttachmentId
+    self.initialAttachmentIds = initialAttachmentIds
+    self.initialPendingImageDatas = initialPendingImageDatas
+    self.initialRecurringExpense = initialRecurringExpense
+    self.initialRecurringDueAction = initialRecurringDueAction
+    self.resolvedRecurringExpense = initialRecurringExpense
     self.idempotencyKey = IdempotencyKey()
     self.groupsRepository = groupsRepository
     self.membersRepository = membersRepository
@@ -99,6 +129,7 @@ public final class ExpenseFormModel {
     self.transactionsRepository = transactionsRepository
     self.categoriesRepository = categoriesRepository
     self.attachmentsRepository = attachmentsRepository
+    self.recurringExpensesRepository = recurringExpensesRepository
     self.onSaved = onSaved
     self.onDeleted = onDeleted
     self.isSplitEditorOpen =
@@ -111,9 +142,16 @@ public final class ExpenseFormModel {
     MoneyFormat.parseInput(amountText) ?? .zero
   }
 
+  public var hasManualExtras: Bool {
+    transactionType == .expense && splitState.method != .items && !manualExtras.isEmpty
+  }
+
   public var effectiveAmount: Money {
     if transactionType == .expense && splitState.method == .items {
       return isItemsPreviewCurrent ? (itemsPreview?.computedAmount ?? .zero) : .zero
+    }
+    if hasManualExtras {
+      return isExtrasPreviewCurrent ? (extrasPreview?.computedAmount ?? .zero) : .zero
     }
     return amount
   }
@@ -191,6 +229,12 @@ public final class ExpenseFormModel {
       } else {
         editingTx = nil
       }
+      if resolvedRecurringExpense == nil,
+        let dueAction = initialRecurringDueAction,
+        let list = try? await recurringExpensesRepository?.list(groupId: groupId)
+      {
+        resolvedRecurringExpense = list.first(where: { $0.id == dueAction.id })
+      }
       let data = ScreenData(
         group: group,
         members: members,
@@ -201,6 +245,11 @@ public final class ExpenseFormModel {
       state = .loaded(data)
       configureFields(data: data)
       await refreshPreviewNow()
+      if editingTransactionId == nil && !initialPendingImageDatas.isEmpty {
+        for rawData in initialPendingImageDatas.prefix(3) where attachments.count < 3 {
+          await uploadAttachment(rawImageData: rawData)
+        }
+      }
     } catch let error as AppError {
       state = .failed(error)
     } catch {
@@ -217,7 +266,14 @@ public final class ExpenseFormModel {
 
     if let tx = data.editingTransaction {
       transactionType = tx.type
-      amountText = MoneyFormat.amount(tx.amount)
+      let netExtras = tx.split.extras.reduce(Int64(0)) { sum, extra in
+        sum + (extra.kind == .discount ? -extra.amount.amount : extra.amount.amount)
+      }
+      let baseAmt =
+        (!tx.split.extras.isEmpty && tx.amount.amount > netExtras)
+        ? Money(tx.amount.amount - netExtras)
+        : tx.amount
+      amountText = MoneyFormat.amount(baseAmt)
       descriptionText = tx.description
       category = tx.category
       categoryId = tx.categoryId
@@ -236,12 +292,69 @@ public final class ExpenseFormModel {
         members: people,
         initial: tx.split,
         defaultItemTitle: L10n.tr("receipts.title"),
-        initialAmount: tx.amount
+        initialAmount: baseAmt
       )
+      if case .items = tx.split {
+        manualExtras = []
+        extrasAllocation = .equal
+      } else {
+        manualExtras = Self.editableManualExtras(from: tx.split.extras)
+        extrasAllocation = tx.split.extrasAllocation ?? .equal
+      }
       previewShares = tx.shares
       if splitState.method == .items {
         scheduleItemsPreview()
+      } else if !manualExtras.isEmpty {
+        scheduleExtrasPreview()
       }
+    } else if let recurring = resolvedRecurringExpense {
+      transactionType = .expense
+      descriptionText = recurring.description
+      if let amt = recurring.amount {
+        let netExtras = recurring.splitTemplate.extras.reduce(Int64(0)) { sum, extra in
+          sum + (extra.kind == .discount ? -extra.amount.amount : extra.amount.amount)
+        }
+        let baseAmt =
+          (!recurring.splitTemplate.extras.isEmpty && amt.amount > netExtras)
+          ? Money(amt.amount - netExtras)
+          : amt
+        amountText = MoneyFormat.amount(baseAmt)
+      }
+      category = recurring.category
+      categoryId = recurring.categoryId
+      let templatePayers = recurring.payersTemplate.map(\.memberId)
+      payerIds = templatePayers.isEmpty ? (defaultMyId.map { [$0] } ?? []) : templatePayers
+      splitState = SplitEditorState(
+        members: people,
+        initial: recurring.splitTemplate,
+        defaultItemTitle: L10n.tr("receipts.title"),
+        initialAmount: recurring.amount ?? .zero
+      )
+      if case .items = recurring.splitTemplate {
+        manualExtras = []
+        extrasAllocation = .equal
+      } else {
+        manualExtras = Self.editableManualExtras(from: recurring.splitTemplate.extras)
+        extrasAllocation = recurring.splitTemplate.extrasAllocation ?? .equal
+      }
+      if splitState.method == .items {
+        scheduleItemsPreview()
+      } else if !manualExtras.isEmpty && amount.isPositive {
+        scheduleExtrasPreview()
+      }
+    } else if let dueAction = initialRecurringDueAction {
+      transactionType = .expense
+      descriptionText = dueAction.description
+      if let suggested = dueAction.suggestedAmount {
+        amountText = MoneyFormat.amount(suggested)
+      }
+      payerIds = [dueAction.payerMemberId]
+      splitState = SplitEditorState(
+        members: people,
+        initial: nil,
+        defaultItemTitle: L10n.tr("receipts.title"),
+        initialAmount: dueAction.suggestedAmount ?? .zero
+      )
     } else if let reading = initialReading {
       transactionType = .expense
       if let amt = reading.draft.amount {
@@ -278,10 +391,16 @@ public final class ExpenseFormModel {
       payerIds = defaultMyId.map { [$0] } ?? []
       transferFrom = initialTransferFrom ?? defaultMyId
       transferTo = initialTransferTo
-      attachments =
-        initialAttachmentId.map {
-          [Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)]
-        } ?? []
+      if !initialAttachmentIds.isEmpty {
+        attachments = initialAttachmentIds.prefix(3).map {
+          Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)
+        }
+      } else {
+        attachments =
+          initialAttachmentId.map {
+            [Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)]
+          } ?? []
+      }
       splitState = SplitEditorState(
         members: people,
         initial: nil,
@@ -315,6 +434,13 @@ public final class ExpenseFormModel {
 
   public func setType(_ next: TransactionType) {
     transactionType = next
+    if next != .expense {
+      manualExtras = []
+      extrasAllocation = .equal
+      extrasPreview = nil
+      isExtrasPreviewCurrent = false
+      extrasPreviewError = nil
+    }
     if next == .income {
       let defaultId = state.value?.group.myMemberId ?? payerIds.first
       payerIds = defaultId.map { [$0] } ?? []
@@ -390,6 +516,7 @@ public final class ExpenseFormModel {
         groupId: groupId,
         items: items,
         extras: extras,
+        extrasAllocation: splitState.itemsDraft.extrasAllocation,
         targetTotal: nil
       )
       guard !Task.isCancelled else { return }
@@ -405,6 +532,77 @@ public final class ExpenseFormModel {
     }
   }
 
+  public func scheduleExtrasPreview() {
+    extrasPreviewTask?.cancel()
+    guard hasManualExtras else {
+      extrasPreview = nil
+      isExtrasPreviewCurrent = false
+      extrasPreviewError = nil
+      schedulePreview()
+      return
+    }
+    let validItems = manualExtras.compactMap { $0.toPreviewItem() }
+    guard amount.isPositive, validItems.count == manualExtras.count, !validItems.isEmpty else {
+      extrasPreview = nil
+      isExtrasPreviewCurrent = false
+      return
+    }
+    isExtrasPreviewCurrent = false
+    let baseAmt = amount
+    let alloc = extrasAllocation
+    let splitSpec = splitState.resolvedSplit(from: activeMembers, totalAmount: baseAmt)
+    let editingId = state.value?.editingTransaction?.id
+    let payersPayload: [PreviewExtrasPayer]? = {
+      guard !payerIds.isEmpty else { return nil }
+      if payerIds.count == 1 {
+        return [PreviewExtrasPayer(memberId: payerIds[0], amount: nil)]
+      }
+      return payerIds.map { id in
+        PreviewExtrasPayer(memberId: id, amount: MoneyFormat.parseInput(payerAmounts[id] ?? ""))
+      }
+    }()
+    extrasPreviewTask = Task {
+      try? await Task.sleep(for: .milliseconds(300))
+      guard !Task.isCancelled else { return }
+      await refreshExtrasPreviewNow(
+        input: PreviewExtrasInput(
+          baseAmount: baseAmt,
+          extras: validItems,
+          extrasAllocation: alloc,
+          payers: payersPayload,
+          payerMemberId: payerIds.count == 1 ? payerIds.first : nil,
+          occurredAt: state.value?.editingTransaction.flatMap {
+            ISO8601Support.parse($0.occurredAt)
+          } ?? occurredAtDate,
+          split: splitSpec,
+          transactionId: editingId
+        )
+      )
+    }
+  }
+
+  private func refreshExtrasPreviewNow(input: PreviewExtrasInput) async {
+    extrasPreviewError = nil
+    do throws(AppError) {
+      let result = try await transactionsRepository.previewExtras(
+        groupId: groupId,
+        input: input
+      )
+      guard !Task.isCancelled else { return }
+      extrasPreview = result
+      isExtrasPreviewCurrent = true
+      if let shares = result.shares {
+        previewShares = shares
+      }
+      previewWarnings = result.warnings
+      previewError = nil
+      isPreviewPending = false
+    } catch {
+      extrasPreviewError = error
+      isExtrasPreviewCurrent = false
+    }
+  }
+
   public func updateAmountText(_ raw: String) {
     let digits = raw.filter { $0.isWholeNumber && $0.isASCII }
     if digits.isEmpty {
@@ -412,7 +610,11 @@ public final class ExpenseFormModel {
     } else if let parsed = MoneyFormat.parseInput(digits) {
       amountText = MoneyFormat.amount(parsed)
     }
-    schedulePreview()
+    if hasManualExtras {
+      scheduleExtrasPreview()
+    } else {
+      schedulePreview()
+    }
   }
 
   public func appendThousands() {
@@ -427,7 +629,11 @@ public final class ExpenseFormModel {
     } else {
       payerIds.append(id)
     }
-    schedulePreview()
+    if hasManualExtras {
+      scheduleExtrasPreview()
+    } else {
+      schedulePreview()
+    }
   }
 
   public func setPayerAmount(_ text: String, for id: Member.ID) {
@@ -437,12 +643,20 @@ public final class ExpenseFormModel {
     } else if let parsed = MoneyFormat.parseInput(digits) {
       payerAmounts[id] = MoneyFormat.amount(parsed)
     }
-    schedulePreview()
+    if hasManualExtras {
+      scheduleExtrasPreview()
+    } else {
+      schedulePreview()
+    }
   }
 
   public func toggleSharer(_ id: Member.ID) {
     splitState.toggle(id, members: sharerMembers)
-    schedulePreview()
+    if hasManualExtras {
+      scheduleExtrasPreview()
+    } else {
+      schedulePreview()
+    }
   }
 
   public func setTransferFrom(_ id: Member.ID) {
@@ -490,6 +704,15 @@ public final class ExpenseFormModel {
         !preview.shares.isEmpty,
         preview.computedAmount.isPositive
       else { return nil }
+    } else if hasManualExtras {
+      let validCount = manualExtras.compactMap { $0.toPreviewItem() }.count
+      guard amount.isPositive,
+        validCount == manualExtras.count,
+        isExtrasPreviewCurrent,
+        let preview = extrasPreview,
+        preview.issues.isEmpty,
+        preview.computedAmount.isPositive
+      else { return nil }
     }
 
     guard !payerIds.isEmpty else { return nil }
@@ -510,13 +733,38 @@ public final class ExpenseFormModel {
       resolvedPayers = list
     }
 
-    guard let resolvedSplit = splitState.resolvedSplit(from: activeMembers, totalAmount: amt)
+    let splitBaseAmount = hasManualExtras ? amount : amt
+    guard
+      let baseSplit = splitState.resolvedSplit(from: activeMembers, totalAmount: splitBaseAmount)
     else {
       return nil
     }
+    let resolvedSplit: SplitSpec = {
+      if hasManualExtras, isExtrasPreviewCurrent, let preview = extrasPreview {
+        return baseSplit.withExtras(preview.resolvedExtras, allocation: extrasAllocation)
+      }
+      return baseSplit
+    }()
 
     let trimmed = descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
     let desc = trimmed.isEmpty ? headerTitle : trimmed
+    let isCreatingExpense =
+      state.value?.editingTransaction == nil && transactionType == .expense
+    let recurringExpenseId =
+      isCreatingExpense
+      ? (resolvedRecurringExpense?.id ?? initialRecurringDueAction?.id)
+      : nil
+    let inlineRecurring: CreateInlineRecurringInput? =
+      (isCreatingExpense && recurringExpenseId == nil && isRecurringEnabled)
+      ? CreateInlineRecurringInput(
+        mode: canVariableRecurring ? recurringMode : .fixed,
+        frequency: recurringFrequency,
+        dayOfWeek: recurringFrequency == .weekly ? recurringDayOfWeek : nil,
+        dayOfMonth: recurringFrequency != .weekly ? recurringDayOfMonth : nil,
+        monthOfYear: recurringFrequency == .yearly ? recurringMonthOfYear : nil
+      )
+      : nil
+
     return .split(
       TransactionDraft.SplitPayload(
         isIncome: transactionType == .income,
@@ -527,7 +775,9 @@ public final class ExpenseFormModel {
         categoryId: categoryId,
         payers: resolvedPayers,
         split: resolvedSplit,
-        attachmentIds: attachmentIdList
+        attachmentIds: attachmentIdList,
+        recurringExpenseId: recurringExpenseId,
+        recurring: inlineRecurring
       )
     )
   }
@@ -547,8 +797,21 @@ public final class ExpenseFormModel {
     return true
   }
 
+  public var canVariableRecurring: Bool {
+    payerIds.count == 1
+      && (splitState.method == .equal || splitState.method == .shares
+        || splitState.method == .percent)
+  }
+
   public func schedulePreview() {
     previewTask?.cancel()
+    if hasManualExtras {
+      isExtrasPreviewCurrent = false
+      isPreviewPending = false
+      previewError = nil
+      scheduleExtrasPreview()
+      return
+    }
     guard transactionType != .transfer, buildDraft() != nil else {
       isPreviewPending = false
       previewError = nil
@@ -563,6 +826,10 @@ public final class ExpenseFormModel {
   }
 
   public func refreshPreviewNow() async {
+    if hasManualExtras {
+      scheduleExtrasPreview()
+      return
+    }
     guard transactionType != .transfer, let draft = buildDraft() else {
       isPreviewPending = false
       previewWarnings = []
@@ -667,6 +934,29 @@ public final class ExpenseFormModel {
       onDeleted(editingId)
     } catch {
       deleteError = error
+    }
+  }
+
+  private static func editableManualExtras(from extras: [SplitSpec.ItemsExtra])
+    -> [EditableManualExtra]
+  {
+    extras.map { extra in
+      if let rate = extra.ratePercent, !rate.isEmpty {
+        return EditableManualExtra(
+          kind: extra.kind,
+          label: extra.label,
+          mode: .percent,
+          percentText: rate,
+          amountText: ""
+        )
+      }
+      return EditableManualExtra(
+        kind: extra.kind,
+        label: extra.label,
+        mode: .amount,
+        percentText: "",
+        amountText: MoneyFormat.amount(extra.amount)
+      )
     }
   }
 }

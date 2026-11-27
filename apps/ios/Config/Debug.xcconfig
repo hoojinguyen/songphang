@@ -7,3 +7,5 @@ WEB_BASE_URL = http:/$()/localhost:3000
 APP_STORE_URL =
 APS_ENVIRONMENT = development
 ASSOCIATED_DOMAIN_HOST = example.invalid
+APP_GROUP_IDENTIFIER = group.vn.songphang.app
+KEYCHAIN_ACCESS_GROUP = $(AppIdentifierPrefix)vn.songphang.app.shared

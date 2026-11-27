@@ -11,6 +11,7 @@ export const JOB_NAMES = {
 	pruneNotifications: "prune-notifications",
 	autoReminders: "auto-reminders",
 	pruneBotData: "prune-bot-data",
+	processRecurring: "process-recurring",
 } as const;
 
 export const HeartbeatPayload = z.object({});
@@ -58,6 +59,9 @@ export type AutoRemindersPayload = z.infer<typeof AutoRemindersPayload>;
 export const PruneBotDataPayload = z.object({});
 export type PruneBotDataPayload = z.infer<typeof PruneBotDataPayload>;
 
+export const ProcessRecurringPayload = z.object({});
+export type ProcessRecurringPayload = z.infer<typeof ProcessRecurringPayload>;
+
 export const GroupEventResource = z.enum([
 	"group",
 	"members",
@@ -71,11 +75,13 @@ export const GroupEventResource = z.enum([
 	"receiptScans",
 	"comments",
 	"settlementCycles",
+	"households",
+	"recurringExpenses",
 ]);
 export type GroupEventResource = z.infer<typeof GroupEventResource>;
 
 export const GroupEventNotification = z.object({
 	groupId: z.uuid(),
-	resources: z.array(GroupEventResource).min(1).max(10),
+	resources: z.array(GroupEventResource).min(1).max(14),
 });
 export type GroupEventNotification = z.infer<typeof GroupEventNotification>;

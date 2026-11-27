@@ -68,10 +68,15 @@ public struct GuestGroupView: View {
         )
       ) { breakdown in
         if let snapshot = model.state.value {
+          let hhBreakdown = snapshot.householdBreakdowns.first {
+            $0.memberIds.contains(breakdown.memberId)
+          }
+          let transferIds = hhBreakdown.map { Set($0.memberIds) } ?? Set([breakdown.memberId])
           GuestBreakdownSheet(
             breakdown: breakdown,
+            householdBreakdown: hhBreakdown,
             focusLabel: snapshot.resolvedFocus.label,
-            transfers: snapshot.transfers.filter { $0.fromMemberId == breakdown.memberId },
+            transfers: snapshot.transfers.filter { transferIds.contains($0.fromMemberId) },
             members: snapshot.members,
             onDismiss: { selectedBreakdownMemberId = nil }
           )
@@ -246,7 +251,21 @@ public struct GuestGroupView: View {
             )
           }
           VStack(alignment: .leading, spacing: 2) {
-            Text("\(from?.name ?? "") → \(to?.name ?? "")")
+            let fromLabel: String = {
+              let name = from?.name ?? ""
+              if let hh = transfer.fromHousehold {
+                return "\(name) (\(L10n.t("households.representativeBadge", ["name": hh.name])))"
+              }
+              return name
+            }()
+            let toLabel: String = {
+              let name = to?.name ?? ""
+              if let hh = transfer.toHousehold {
+                return "\(name) (\(L10n.t("households.representativeBadge", ["name": hh.name])))"
+              }
+              return name
+            }()
+            Text("\(fromLabel) → \(toLabel)")
               .font(Typography.subheadlineBold)
               .foregroundStyle(Tokens.ink)
             if snapshot.breakdowns.contains(where: { $0.memberId == transfer.fromMemberId }) {
@@ -361,41 +380,83 @@ public struct GuestGroupView: View {
 
   private func balancesSection(snapshot: GuestGroupSnapshot) -> some View {
     let ordered = snapshot.balances.sorted { $0.balance > $1.balance }
-    return SPCard(padding: 16) {
-      VStack(alignment: .leading, spacing: 12) {
-        Text(L10n.tr("balances.groupBalanceTitle"))
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
-        ForEach(ordered) { item in
-          if let member = snapshot.members.first(where: { $0.id == item.memberId }),
-            member.active || !item.balance.isZero
-          {
-            Button {
-              selectedBreakdownMemberId = member.id
-            } label: {
-              HStack {
-                MemberShapeView(
-                  shape: member.shape,
-                  color: member.color,
-                  name: member.name,
-                  size: 28,
-                  showInitial: false
-                )
-                Text(member.name)
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                Spacer()
-                MoneyText(
-                  item.balance,
-                  style: .signed,
-                  font: Typography.captionBold,
-                  color: item.balance.isPositive
-                    ? Tokens.credit
-                    : (item.balance.isNegative ? Tokens.debt : Tokens.ink)
-                )
+    return VStack(alignment: .leading, spacing: 14) {
+      if !snapshot.households.isEmpty {
+        SPCard(padding: 16) {
+          VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.tr("households.byHouseholdTitle"))
+              .font(Typography.subheadlineBold)
+              .foregroundStyle(Tokens.ink)
+            ForEach(snapshot.households) { hh in
+              let repName =
+                snapshot.members.first(where: { $0.id == hh.representativeMemberId })?.name ?? ""
+              Button {
+                selectedBreakdownMemberId = hh.representativeMemberId
+              } label: {
+                HStack {
+                  VStack(alignment: .leading, spacing: 2) {
+                    Text(hh.name)
+                      .font(Typography.captionBold)
+                      .foregroundStyle(Tokens.ink)
+                    if !repName.isEmpty {
+                      Text(L10n.t("households.representativeBadge", ["name": repName]))
+                        .font(Typography.caption)
+                        .foregroundStyle(Tokens.muted)
+                    }
+                  }
+                  Spacer()
+                  MoneyText(
+                    hh.netBalance,
+                    style: .signed,
+                    font: Typography.captionBold,
+                    color: hh.netBalance.isPositive
+                      ? Tokens.credit
+                      : (hh.netBalance.isNegative ? Tokens.debt : Tokens.ink)
+                  )
+                }
               }
+              .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+          }
+        }
+      }
+
+      SPCard(padding: 16) {
+        VStack(alignment: .leading, spacing: 12) {
+          Text(L10n.tr("balances.groupBalanceTitle"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.ink)
+          ForEach(ordered) { item in
+            if let member = snapshot.members.first(where: { $0.id == item.memberId }),
+              member.active || !item.balance.isZero
+            {
+              Button {
+                selectedBreakdownMemberId = member.id
+              } label: {
+                HStack {
+                  MemberShapeView(
+                    shape: member.shape,
+                    color: member.color,
+                    name: member.name,
+                    size: 28,
+                    showInitial: false
+                  )
+                  Text(member.name)
+                    .font(Typography.captionBold)
+                    .foregroundStyle(Tokens.ink)
+                  Spacer()
+                  MoneyText(
+                    item.balance,
+                    style: .signed,
+                    font: Typography.captionBold,
+                    color: item.balance.isPositive
+                      ? Tokens.credit
+                      : (item.balance.isNegative ? Tokens.debt : Tokens.ink)
+                  )
+                }
+              }
+              .buttonStyle(.plain)
+            }
           }
         }
       }

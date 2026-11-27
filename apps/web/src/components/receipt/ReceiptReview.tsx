@@ -63,7 +63,7 @@ export function ReceiptReview({
 		activePeople,
 	});
 	const itemsPayload = editor.ready
-		? toItemsPayload(editor.items, editor.extras)
+		? toItemsPayload(editor.items, editor.extras, editor.extrasAllocation)
 		: null;
 	const printedTotal = scan?.reading?.total ?? null;
 	const preview = usePreviewItems(
@@ -179,6 +179,8 @@ export function ReceiptReview({
 			<ItemsAssignmentPanel
 				items={editor.items}
 				extras={editor.extras}
+				extrasAllocation={editor.extrasAllocation}
+				onChangeExtrasAllocation={editor.setExtrasAllocation}
 				selectedItemId={editor.selectedItemId}
 				activePeople={activePeople}
 				previewData={preview.data}

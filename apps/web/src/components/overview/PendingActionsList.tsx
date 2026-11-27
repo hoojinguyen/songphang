@@ -1,15 +1,22 @@
 "use client";
-import type { OverviewPendingAction } from "@songphang/contract";
+import type {
+	OverviewPendingAction,
+	OverviewRecurringDueAction,
+} from "@songphang/contract";
 import Link from "next/link";
 import { formatMoney } from "../../lib/money";
-import { vi } from "../../messages/vi";
+import { formatCalendarDateVN } from "../../lib/recurring-expenses";
+import { t, vi } from "../../messages/vi";
 
 export function PendingActionsList({
 	actions,
+	dueRecurringActions = [],
 }: {
 	actions: OverviewPendingAction[];
+	dueRecurringActions?: OverviewRecurringDueAction[];
 }) {
-	if (actions.length === 0) return null;
+	const totalCount = actions.length + dueRecurringActions.length;
+	if (totalCount === 0) return null;
 
 	return (
 		<section className="grid gap-3">
@@ -18,10 +25,43 @@ export function PendingActionsList({
 					{vi.overview.pendingActions}
 				</h2>
 				<span className="rounded-full bg-coral px-2 py-0.5 text-xs font-black text-on-accent">
-					{actions.length}
+					{totalCount}
 				</span>
 			</div>
 			<div className="grid gap-2">
+				{dueRecurringActions.map((item) => (
+					<Link
+						key={`recurring-${item.id}`}
+						href={`/g/${encodeURIComponent(item.groupId)}/tx/new?form=1&recurringId=${encodeURIComponent(item.id)}`}
+						className="flex items-center justify-between gap-3 rounded-[24px] bg-surface p-4 transition-colors hover:bg-surface-raised"
+					>
+						<div className="min-w-0 flex-1">
+							<div className="flex items-center gap-2">
+								<span className="rounded-md bg-warning-soft px-1.5 py-0.5 text-[11px] font-bold text-warning">
+									{vi.recurring.modeVariable}
+								</span>
+								<span className="truncate text-xs font-medium text-muted">
+									{item.groupName}
+								</span>
+							</div>
+							<p className="mt-1 truncate text-sm font-bold text-ink">
+								{t(vi.recurring.overviewDueTemplate, {
+									description: item.description,
+								})}
+							</p>
+							<p className="text-xs text-muted">
+								{item.payerName} · {formatCalendarDateVN(item.dueDate)}
+							</p>
+						</div>
+						<div className="shrink-0 text-right">
+							<p className="tabular-nums text-sm font-black text-ink">
+								{item.suggestedAmount !== null
+									? formatMoney(item.suggestedAmount)
+									: vi.recurring.enterAmountShort}
+							</p>
+						</div>
+					</Link>
+				))}
 				{actions.map((action) => {
 					const href =
 						action.kind === "settlement_confirmation"

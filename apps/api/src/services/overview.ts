@@ -1,12 +1,18 @@
+import { z } from "@hono/zod-openapi";
 import {
+	type OverviewRecurringDueAction,
 	OverviewResponse,
 	PersonalTransactionsQuery,
 	PersonalTransactionsResponse,
+	RecurringPayerTemplateEntry,
 } from "@songphang/contract";
 import {
 	type DbExecutor,
 	findGroupAccess,
 	listBalancesForGroups,
+	listDueVariableRecurringForUser,
+	listGroupUsersForGroups,
+	listHouseholdsForGroups,
 	listMembersForGroups,
 	listOpenDisputeTransactionIds,
 	listPendingApprovalsForGroups,
@@ -29,6 +35,13 @@ import {
 type UserGroupRow = Awaited<ReturnType<typeof listUserGroups>>[number];
 type GroupMemberRow = Awaited<ReturnType<typeof listMembersForGroups>>[number];
 type BalanceRow = Awaited<ReturnType<typeof listBalancesForGroups>>[number];
+type HouseholdRow = Awaited<ReturnType<typeof listHouseholdsForGroups>>[number];
+type DueVariableRecurringRow = Awaited<
+	ReturnType<typeof listDueVariableRecurringForUser>
+>[number];
+type GroupUserLiteRow = Awaited<
+	ReturnType<typeof listGroupUsersForGroups>
+>[number];
 type PendingApprovalRow = Awaited<
 	ReturnType<typeof listPendingApprovalsForGroups>
 >[number];
@@ -68,6 +81,7 @@ function summarizeBalances(input: {
 	groups: UserGroupRow[];
 	members: GroupMemberRow[];
 	balances: BalanceRow[];
+	households: HouseholdRow[];
 }) {
 	const balanceByMemberId = new Map(
 		input.balances.map((row) => [row.memberId, row.balance]),
@@ -79,7 +93,10 @@ function summarizeBalances(input: {
 		groupName: string;
 		archivedAt: string | null;
 		role: UserGroupRow["role"];
+		myMemberId: string | null;
 		myBalance: number;
+		myIndividualBalance?: number;
+		householdName?: string | null;
 		memberCount: number;
 		previewMembers: Array<{
 			id: string;
@@ -90,10 +107,24 @@ function summarizeBalances(input: {
 	}> = [];
 
 	for (const group of input.groups) {
-		const myBalance =
+		const individualBalance =
 			group.memberId === null
 				? 0
 				: (balanceByMemberId.get(group.memberId) ?? 0);
+		const household =
+			group.memberId === null
+				? undefined
+				: input.households.find(
+						(item) =>
+							item.groupId === group.id &&
+							item.memberIds.includes(group.memberId ?? ""),
+					);
+		const myBalance = household
+			? household.memberIds.reduce(
+					(sum, memberId) => sum + (balanceByMemberId.get(memberId) ?? 0),
+					0,
+				)
+			: individualBalance;
 		if (myBalance > 0) totalOwedToMe += myBalance;
 		if (myBalance < 0) totalIOwe += -myBalance;
 		if (myBalance === 0) continue;
@@ -105,7 +136,14 @@ function summarizeBalances(input: {
 			groupName: group.name,
 			archivedAt: group.archivedAt?.toISOString() ?? null,
 			role: group.role,
+			myMemberId: group.memberId,
 			myBalance,
+			...(household
+				? {
+						myIndividualBalance: individualBalance,
+						householdName: household.name,
+					}
+				: {}),
 			memberCount: people.length,
 			previewMembers: people.slice(0, 4).map((member) => ({
 				id: member.id,
@@ -130,6 +168,70 @@ function summarizeBalances(input: {
 	};
 }
 
+function resolveDueRecurringActionsForUser(input: {
+	userId: string;
+	dueRows: DueVariableRecurringRow[];
+	members: GroupMemberRow[];
+	groupUsers: GroupUserLiteRow[];
+}): OverviewRecurringDueAction[] {
+	const memberNameById = new Map(
+		input.members.map((member) => [member.id, member.name]),
+	);
+	const usersByGroup = new Map<string, GroupUserLiteRow[]>();
+	for (const row of input.groupUsers) {
+		const list = usersByGroup.get(row.groupId);
+		if (list) list.push(row);
+		else usersByGroup.set(row.groupId, [row]);
+	}
+
+	const actions: OverviewRecurringDueAction[] = [];
+	for (const row of input.dueRows) {
+		if (row.dueDate === null) continue;
+		const payers = z
+			.array(RecurringPayerTemplateEntry)
+			.parse(row.payersTemplate);
+		const payerMemberId = payers[0]?.memberId;
+		if (!payerMemberId) continue;
+
+		const groupMemberships = usersByGroup.get(row.groupId) ?? [];
+		const payerUser = groupMemberships.find(
+			(gu) => gu.memberId === payerMemberId,
+		);
+		const targetUserIds = new Set<string>();
+		if (
+			payerUser &&
+			(payerUser.role === "owner" || payerUser.role === "editor")
+		) {
+			targetUserIds.add(payerUser.userId);
+		} else {
+			const creatorId = row.updatedBy ?? row.createdBy;
+			if (creatorId) {
+				const creatorAccess = groupMemberships.find(
+					(gu) =>
+						gu.userId === creatorId &&
+						(gu.role === "owner" || gu.role === "editor"),
+				);
+				if (creatorAccess) targetUserIds.add(creatorAccess.userId);
+			}
+			const ownerAccess = groupMemberships.find((gu) => gu.role === "owner");
+			if (ownerAccess) targetUserIds.add(ownerAccess.userId);
+		}
+
+		if (!targetUserIds.has(input.userId)) continue;
+		actions.push({
+			id: row.id,
+			groupId: row.groupId,
+			groupName: row.groupName,
+			description: row.description,
+			dueDate: row.dueDate,
+			suggestedAmount: row.suggestedAmount,
+			payerMemberId,
+			payerName: memberNameById.get(payerMemberId) ?? "",
+		});
+	}
+	return actions;
+}
+
 export async function getMeOverview(deps: AppDeps, userId: string) {
 	return deps.db.transaction(
 		async (executor) => {
@@ -138,13 +240,23 @@ export async function getMeOverview(deps: AppDeps, userId: string) {
 			const activeGroupIds = groups
 				.filter((group) => group.archivedAt === null)
 				.map((group) => group.id);
-			const [members, balances, pendingSettlements, rawPendingApprovals] =
-				await Promise.all([
-					listMembersForGroups(executor, groupIds),
-					listBalancesForGroups(executor, groupIds),
-					listPendingSettlementsForGroups(executor, activeGroupIds),
-					listPendingApprovalsForGroups(executor, activeGroupIds),
-				]);
+			const [
+				members,
+				balances,
+				households,
+				pendingSettlements,
+				rawPendingApprovals,
+				dueRecurringRows,
+				groupUsers,
+			] = await Promise.all([
+				listMembersForGroups(executor, groupIds),
+				listBalancesForGroups(executor, groupIds),
+				listHouseholdsForGroups(executor, groupIds),
+				listPendingSettlementsForGroups(executor, activeGroupIds),
+				listPendingApprovalsForGroups(executor, activeGroupIds),
+				listDueVariableRecurringForUser(executor, userId),
+				listGroupUsersForGroups(executor, activeGroupIds),
+			]);
 			const pendingApprovals = await hydrateApprovalActorNames(
 				executor,
 				rawPendingApprovals,
@@ -155,7 +267,18 @@ export async function getMeOverview(deps: AppDeps, userId: string) {
 				pendingSettlements,
 				pendingApprovals,
 			});
-			const summary = summarizeBalances({ groups, members, balances });
+			const summary = summarizeBalances({
+				groups,
+				members,
+				balances,
+				households,
+			});
+			const dueRecurringActions = resolveDueRecurringActionsForUser({
+				userId,
+				dueRows: dueRecurringRows,
+				members,
+				groupUsers,
+			});
 			const archivedGroupCount = groups.filter(
 				(group) => group.archivedAt !== null,
 			).length;
@@ -169,6 +292,8 @@ export async function getMeOverview(deps: AppDeps, userId: string) {
 					...item,
 					createdAt: item.createdAt.toISOString(),
 				})),
+				dueRecurringCount: dueRecurringActions.length,
+				dueRecurringActions: dueRecurringActions.slice(0, 20),
 			});
 		},
 		{ isolationLevel: "repeatable read", accessMode: "read only" },

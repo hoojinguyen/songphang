@@ -11,11 +11,13 @@ import {
 	useRestoreTransaction,
 } from "../../lib/transaction-changes";
 import { t, vi } from "../../messages/vi";
+import { RecurringInlineCard } from "../recurring/RecurringInlineCard";
 import { Button } from "../ui/Button";
 import { ScreenHeader } from "../ui/ScreenHeader";
 import { useSnackbar } from "../ui/Snackbar";
 import { AmountField } from "./AmountField";
 import { ConflictNotice } from "./ConflictNotice";
+import { ManualExtrasCard } from "./ManualExtrasCard";
 import { ParticipantFields } from "./ParticipantFields";
 import { PhotoRow } from "./PhotoRow";
 import { SplitEditor } from "./SplitEditor";
@@ -72,6 +74,9 @@ export function ExpenseForm({
 		setType,
 		title,
 		amount,
+		totalAmount,
+		hasManualExtras,
+		extrasPreview,
 		payerIds,
 		payerAmounts,
 		transferFrom,
@@ -120,6 +125,10 @@ export function ExpenseForm({
 					.object({ expected: z.number().int(), actual: z.number().int() })
 					.safeParse(mutation.error.details)
 			: null;
+	const extrasInvalidTotal =
+		hasManualExtras &&
+		extrasPreview.current &&
+		extrasPreview.data?.issues.some((issue) => issue.code === "INVALID_TOTAL");
 	const status = serverMismatch?.success
 		? {
 				matched: false,
@@ -139,7 +148,20 @@ export function ExpenseForm({
 					},
 				),
 			}
-		: splitState.status;
+		: extrasInvalidTotal
+			? { matched: false, text: vi.receipts.invalidTotal }
+			: hasManualExtras &&
+					splitState.status.matched &&
+					extrasPreview.current &&
+					extrasPreview.data &&
+					extrasPreview.data.computedAmount > 0
+				? {
+						matched: true,
+						text: t(vi.split.match, {
+							amount: formatMoney(extrasPreview.data.computedAmount),
+						}),
+					}
+				: splitState.status;
 	if (splitOpen)
 		return (
 			<SplitEditor
@@ -149,6 +171,14 @@ export function ExpenseForm({
 				state={splitState}
 				members={active}
 				amount={amount}
+				computedAmount={
+					hasManualExtras && extrasPreview.current
+						? extrasPreview.data?.computedAmount
+						: undefined
+				}
+				extrasPreviewData={hasManualExtras ? extrasPreview.data : undefined}
+				extrasPreviewCurrent={hasManualExtras ? extrasPreview.current : false}
+				extrasPreviewError={hasManualExtras ? extrasPreview.isError : false}
 				description={description || title}
 				payerLine={t(vi.expenseForm.payerAmountLabel, {
 					name: active
@@ -157,7 +187,7 @@ export function ExpenseForm({
 						.join(", "),
 				})}
 				shares={
-					request === null || !preview.current
+					!preview.current || (!hasManualExtras && request === null)
 						? []
 						: (preview.data?.shares ?? [])
 				}
@@ -187,7 +217,30 @@ export function ExpenseForm({
 					)
 				}
 			/>
-			<AmountField value={amountText} onChange={setAmountText} />
+			<AmountField
+				value={amountText}
+				onChange={setAmountText}
+				disabled={splitState.method === "items"}
+				label={
+					type === "expense" && hasManualExtras && splitState.method !== "items"
+						? vi.extras.goodsSubtotal
+						: vi.expenseForm.amountLabel
+				}
+			/>
+			{type === "expense" && (
+				<ManualExtrasCard
+					extras={splitState.extras}
+					extrasAllocation={splitState.extrasAllocation}
+					resolvedExtras={extrasPreview.data?.resolvedExtras}
+					computedAmount={extrasPreview.data?.computedAmount}
+					previewCurrent={extrasPreview.current}
+					onChangeAllocation={splitState.setExtrasAllocation}
+					onTogglePreset={splitState.onTogglePresetExtra}
+					onAddExtra={splitState.onAddManualExtra}
+					onChangeExtra={splitState.onChangeManualExtra}
+					onRemoveExtra={splitState.onRemoveExtra}
+				/>
+			)}
 			<input
 				aria-label={vi.expenseForm.descriptionLabel}
 				placeholder={
@@ -225,6 +278,17 @@ export function ExpenseForm({
 					className="h-16 min-w-0 w-full rounded-[32px] bg-surface px-4 text-base text-ink"
 				/>
 			</label>
+			{form.canInlineRecurring && (
+				<RecurringInlineCard
+					enabled={form.recurringEnabled}
+					onToggle={form.setRecurringEnabled}
+					mode={form.recurringMode}
+					onModeChange={form.setRecurringMode}
+					frequency={form.recurringFrequency}
+					onFrequencyChange={form.setRecurringFrequency}
+					canVariable={form.canVariableRecurring}
+				/>
+			)}
 			<PhotoRow
 				groupId={groupId}
 				attachments={attachments}
@@ -248,7 +312,7 @@ export function ExpenseForm({
 				(() => {
 					const fundPaid = payerIds.includes(fund.id)
 						? payerIds.length === 1
-							? amount
+							? totalAmount
 							: (parseAmountInput(payerAmounts[fund.id] ?? "") ?? 0)
 						: 0;
 					const oldFundPaid =

@@ -17,6 +17,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
 import { users } from "./schema.js";
+import { households } from "./schema-households.js";
 
 export const groups = pgTable(
 	"groups",
@@ -84,6 +85,10 @@ export const members = pgTable(
 			(): AnyPgColumn => members.id,
 			{ onDelete: "set null" },
 		),
+		householdId: uuid("household_id").references(
+			(): AnyPgColumn => households.id,
+			{ onDelete: "set null" },
+		),
 		active: boolean("active").notNull().default(true),
 		defaultWeight: numeric("default_weight", { precision: 6, scale: 2 })
 			.notNull()
@@ -99,6 +104,7 @@ export const members = pgTable(
 			.defaultNow(),
 	},
 	(table) => [
+		unique("members_group_id_id_unique").on(table.groupId, table.id),
 		unique("members_group_position_unique").on(table.groupId, table.position),
 		uniqueIndex("members_group_fund_unique")
 			.on(table.groupId)
@@ -121,6 +127,13 @@ export const members = pgTable(
 			"members_color_check",
 			sql`${table.color} in ('mint', 'sky', 'coral', 'lilac', 'sun')`,
 		),
+		check(
+			"members_household_person_check",
+			sql`${table.kind} = 'person' or ${table.householdId} is null`,
+		),
+		index("members_group_household_idx")
+			.on(table.groupId, table.householdId)
+			.where(sql`${table.householdId} is not null`),
 	],
 );
 

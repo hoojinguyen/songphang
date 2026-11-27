@@ -52,6 +52,17 @@ export async function calculateShares(
 			"Income transactions cannot split by items",
 		);
 	}
+	if (
+		input.type === "income" &&
+		request.split.method !== "items" &&
+		(request.split.extras?.length ?? 0) > 0
+	) {
+		throw new AppError(
+			400,
+			"VALIDATION_FAILED",
+			"Income transactions cannot have extras",
+		);
+	}
 	const members = await listGroupMembers(executor, groupId);
 	const splitIds =
 		request.split.method === "equal" || request.split.method === "exact"

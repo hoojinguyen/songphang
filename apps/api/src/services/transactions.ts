@@ -1,25 +1,35 @@
 import { z } from "@hono/zod-openapi";
 import {
 	type CreateTransactionRequest,
+	type ExtrasPreviewIssue,
 	type ItemsPreviewIssue,
+	type ItemsSplitExtra,
+	type PreviewExtrasRequest,
+	PreviewExtrasResponse,
 	type PreviewItemsRequest,
 	PreviewItemsResponse,
 	type PreviewTransactionRequest,
 	PreviewTransactionResponse,
+	type ShareDto,
+	type SplitInput,
 	TransactionDto,
 	TransactionListItemDto,
 	TransactionResponse,
 	type TransactionsQuery,
 	TransactionsResponse,
+	type TransactionWarning,
 } from "@songphang/contract";
 import {
 	approvalStatusFor,
 	computeItemShares,
 	computeItemsNetTotal,
+	computePercentExtraAmount,
+	computeShares,
 	foldVietnamese,
 	localDateRangeToUtc,
 	nextEditApprovalStatusFor,
 	receiptAdjustment,
+	toVietnamDate,
 } from "@songphang/core";
 import {
 	attachToTransaction,
@@ -28,6 +38,7 @@ import {
 	findGroup,
 	findGroupAccess,
 	findGroupOwner,
+	findRecurringExpense,
 	findSettlementCycle,
 	findTransactionRow,
 	findUserById,
@@ -45,6 +56,8 @@ import {
 	lockGroup,
 	type TransactionCursor,
 	type TransactionFilters,
+	updateRecurringExpense,
+	updateTransactionRow,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
 import { getGroupAccess } from "../auth/group-access.js";
@@ -57,6 +70,7 @@ import {
 import { assertLiveCategory } from "./categories.js";
 import { assertGroupRowNotArchived } from "./group-guards.js";
 import { notify, notifyBudgetWarnings } from "./notify.js";
+import { createRecurringExpenseIn } from "./recurring-expenses.js";
 import { calculateShares, normalizeTransaction } from "./transaction-input.js";
 import { type ReplacedTransaction, transactionWarnings } from "./warnings.js";
 
@@ -421,6 +435,31 @@ export async function createTransactionIn(
 				: {}),
 		},
 	);
+	const completedRecurringId =
+		input.request.type === "expense"
+			? input.request.recurringExpenseId
+			: undefined;
+	if (completedRecurringId !== undefined) {
+		const existingRecurring = await findRecurringExpense(
+			executor,
+			input.groupId,
+			completedRecurringId,
+		);
+		if (existingRecurring === null) {
+			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		}
+		if (
+			!existingRecurring.active ||
+			existingRecurring.mode !== "variable" ||
+			existingRecurring.pendingDueDate === null
+		) {
+			throw new AppError(
+				409,
+				"REQUEST_NOT_PENDING",
+				"Recurring expense is not awaiting completion",
+			);
+		}
+	}
 	const [group, owner, actor] = await Promise.all([
 		findGroup(executor, input.groupId),
 		findGroupOwner(executor, input.groupId),
@@ -450,6 +489,7 @@ export async function createTransactionIn(
 		approvalStatus,
 		paymentChannel: request.paymentChannel,
 		paymentNote: request.paymentNote,
+		recurringExpenseId: completedRecurringId ?? null,
 		createdBy: input.userId,
 		updatedBy: input.userId,
 		createdAt: input.now,
@@ -464,6 +504,69 @@ export async function createTransactionIn(
 		shares.map((share) => ({ ...share, transactionId: row.id })),
 	);
 	await attachToTransaction(executor, input.groupId, row.id, attachmentIds);
+	if (completedRecurringId !== undefined) {
+		await updateRecurringExpense(
+			executor,
+			input.groupId,
+			completedRecurringId,
+			{
+				pendingDueDate: null,
+				amount: request.amount,
+				lastPostedAt: input.now,
+				lastTransactionId: row.id,
+				updatedAt: input.now,
+				updatedBy: input.userId,
+			},
+		);
+	}
+	if (
+		input.request.type === "expense" &&
+		input.request.recurring !== undefined
+	) {
+		const inline = input.request.recurring;
+		const occurredDateVN = toVietnamDate(new Date(request.occurredAt));
+		const occurredMs = new Date(request.occurredAt).getTime() + 7 * 3600_000;
+		const occurredIsoDow = ((new Date(occurredMs).getUTCDay() + 6) % 7) + 1;
+		const occurredDay = Number(occurredDateVN.slice(8, 10));
+		const occurredMonth = Number(occurredDateVN.slice(5, 7));
+		const createdRecurring = await createRecurringExpenseIn(executor, {
+			groupId: input.groupId,
+			userId: input.userId,
+			request: {
+				mode: inline.mode,
+				description: request.description,
+				amount: inline.mode === "fixed" ? request.amount : null,
+				category: request.category,
+				categoryId: request.categoryId,
+				payersTemplate:
+					inline.mode === "fixed"
+						? request.payers
+						: [{ memberId: request.payers[0]?.memberId ?? "" }],
+				splitTemplate: request.split,
+				frequency: inline.frequency,
+				dayOfWeek:
+					inline.frequency === "weekly"
+						? (inline.dayOfWeek ?? occurredIsoDow)
+						: null,
+				dayOfMonth:
+					inline.frequency === "weekly"
+						? null
+						: (inline.dayOfMonth ?? occurredDay),
+				monthOfYear:
+					inline.frequency === "yearly"
+						? (inline.monthOfYear ?? occurredMonth)
+						: null,
+			},
+			now: input.now,
+			strictlyAfterToday: true,
+			lastTransactionId: row.id,
+		});
+		await updateTransactionRow(executor, {
+			groupId: input.groupId,
+			id: row.id,
+			changes: { recurringExpenseId: createdRecurring.recurringExpense.id },
+		});
+	}
 	await insertActivity(executor, {
 		groupId: input.groupId,
 		actorUserId: input.userId,
@@ -673,6 +776,9 @@ export async function previewItemsSplit(
 					method: "items",
 					items: request.items,
 					extras: request.extras,
+					...(request.extrasAllocation === undefined
+						? {}
+						: { extrasAllocation: request.extrasAllocation }),
 				},
 				members.map((m) => m.id),
 			);
@@ -696,6 +802,312 @@ export async function previewItemsSplit(
 				shares: result.shares,
 				issues: [],
 				...target,
+			});
+		},
+		{ isolationLevel: "repeatable read", accessMode: "read only" },
+	);
+}
+
+function splitParticipantIds(split: SplitInput): string[] {
+	if (split.method === "equal" || split.method === "exact") {
+		return [...split.members];
+	}
+	if (split.method === "items") {
+		return [...new Set(split.items.flatMap((item) => item.memberIds))];
+	}
+	return split.entries.map((entry) => entry.memberId);
+}
+
+function resolvePreviewPayers(
+	request: PreviewExtrasRequest,
+	computedAmount: number,
+): Array<{ memberId: string; amount: number }> | null {
+	if (request.payers !== undefined && request.payers.length > 0) {
+		return request.payers.map((payer) => ({
+			memberId: payer.memberId,
+			amount: payer.amount ?? computedAmount,
+		}));
+	}
+	if (request.payerMemberId !== undefined) {
+		return [{ memberId: request.payerMemberId, amount: computedAmount }];
+	}
+	return null;
+}
+
+function resolvePreviewExtrasList(
+	baseAmount: number,
+	extras: PreviewExtrasRequest["extras"],
+): { resolvedExtras: ItemsSplitExtra[]; netExtras: number } {
+	const resolvedExtras: ItemsSplitExtra[] = extras.map((extra) =>
+		extra.ratePercent !== undefined
+			? {
+					kind: extra.kind,
+					label: extra.label,
+					amount: computePercentExtraAmount(baseAmount, extra.ratePercent),
+					ratePercent: extra.ratePercent,
+				}
+			: {
+					kind: extra.kind,
+					label: extra.label,
+					amount: extra.amount ?? 0,
+				},
+	);
+	let netExtras = 0;
+	for (const extra of resolvedExtras) {
+		netExtras += extra.kind === "discount" ? -extra.amount : extra.amount;
+	}
+	return { resolvedExtras, netExtras };
+}
+
+function validatePreviewMembers(
+	members: Array<{ id: string; kind: string }>,
+	payerIds: string[],
+	splitIds: string[],
+): void {
+	const allIds = [...payerIds, ...splitIds];
+	if (allIds.some((id) => !members.some((member) => member.id === id))) {
+		throw new AppError(
+			400,
+			"MEMBER_NOT_IN_GROUP",
+			"Member does not belong to group",
+		);
+	}
+	if (
+		splitIds.some(
+			(id) => members.find((member) => member.id === id)?.kind === "fund",
+		)
+	) {
+		throw new AppError(
+			422,
+			"FUND_CANNOT_SHARE",
+			"Fund member cannot bear a share",
+		);
+	}
+}
+
+function computePreviewExtrasSplit(input: {
+	baseAmount: number;
+	computedAmount: number;
+	request: PreviewExtrasRequest;
+	resolvedExtras: ItemsSplitExtra[];
+	memberIds: string[];
+}): {
+	shares?: Array<z.infer<typeof ShareDto>>;
+	normalizedSplit?: SplitInput;
+	issues: ExtrasPreviewIssue[];
+} {
+	const issues: ExtrasPreviewIssue[] = [];
+	if (
+		input.baseAmount < 1 ||
+		input.computedAmount < 1 ||
+		input.computedAmount > MAX_TRANSACTION_AMOUNT
+	) {
+		issues.push({ code: "INVALID_TOTAL" });
+	}
+	if (!input.request.split) return { issues };
+
+	const allocation =
+		input.request.extrasAllocation ?? input.request.split.extrasAllocation;
+	const normalizedSplit: SplitInput = {
+		...input.request.split,
+		extras: input.resolvedExtras,
+		...(allocation === undefined ? {} : { extrasAllocation: allocation }),
+	};
+	if (normalizedSplit.method === "items") {
+		const unassignedIndex = normalizedSplit.items.findIndex(
+			(item) => item.memberIds.length === 0,
+		);
+		if (unassignedIndex >= 0) {
+			issues.push({ code: "ITEM_UNASSIGNED", itemIndex: unassignedIndex });
+		}
+	}
+	if (
+		input.baseAmount < 1 ||
+		input.computedAmount < 1 ||
+		input.computedAmount > MAX_TRANSACTION_AMOUNT
+	) {
+		return { normalizedSplit, issues };
+	}
+
+	const splitResult = computeShares(
+		input.computedAmount,
+		normalizedSplit,
+		input.memberIds,
+	);
+	if (splitResult.ok) {
+		return { shares: splitResult.shares, normalizedSplit, issues };
+	}
+	if (splitResult.code === "ITEM_UNASSIGNED") {
+		if (!issues.some((issue) => issue.code === "ITEM_UNASSIGNED")) {
+			issues.push({
+				code: "ITEM_UNASSIGNED",
+				itemIndex: splitResult.itemIndex,
+			});
+		}
+		return { normalizedSplit, issues };
+	}
+	issues.push({ code: "SPLIT_TOTAL_MISMATCH" });
+	return { normalizedSplit, issues };
+}
+
+async function computePreviewExtrasWarnings(
+	executor: DbExecutor,
+	input: {
+		groupId: string;
+		userId: string;
+		computedAmount: number;
+		request: PreviewExtrasRequest;
+		normalizedSplit: SplitInput | undefined;
+		members: Array<{ id: string }>;
+		now: Date;
+	},
+): Promise<TransactionWarning[]> {
+	const resolvedPayers = resolvePreviewPayers(
+		input.request,
+		input.computedAmount,
+	);
+	if (
+		resolvedPayers === null ||
+		resolvedPayers.reduce((sum, payer) => sum + payer.amount, 0) !==
+			input.computedAmount
+	) {
+		return [];
+	}
+
+	let replacing: ReplacedTransaction | undefined;
+	if (input.request.transactionId !== undefined) {
+		const existing = await findTransactionRow(
+			executor,
+			input.groupId,
+			input.request.transactionId,
+		);
+		if (existing === null || existing.deletedAt !== null) {
+			throw new AppError(404, "NOT_FOUND", "Resource not found");
+		}
+		if (
+			existing.type === "expense" ||
+			existing.type === "income" ||
+			existing.type === "transfer"
+		) {
+			const existingPayers = await listTransactionPayers(
+				executor,
+				input.groupId,
+				[existing.id],
+			);
+			replacing = {
+				type: existing.type,
+				amount: existing.amount,
+				occurredAt: existing.occurredAt,
+				payers: existingPayers,
+				counted:
+					existing.approvalStatus === "none" ||
+					existing.approvalStatus === "approved",
+			};
+		}
+	}
+
+	const [group, owner] = await Promise.all([
+		findGroup(executor, input.groupId),
+		findGroupOwner(executor, input.groupId),
+	]);
+	const actorIsOwner = owner !== null && owner.userId === input.userId;
+	const threshold = group?.approvalThreshold ?? null;
+	const prospectiveStatus = replacing
+		? nextEditApprovalStatusFor({
+				type: replacing.type,
+				amount: input.computedAmount,
+				threshold,
+				actorIsOwner,
+			})
+		: approvalStatusFor({
+				type: "expense",
+				amount: input.computedAmount,
+				threshold,
+				actorIsOwner,
+			});
+	const fallbackSplit: SplitInput = input.normalizedSplit ?? {
+		method: "equal",
+		members: [resolvedPayers[0]?.memberId ?? input.members[0]?.id ?? ""],
+	};
+	return transactionWarnings(executor, {
+		groupId: input.groupId,
+		request: {
+			type: "expense",
+			description: "preview",
+			amount: input.computedAmount,
+			occurredAt:
+				input.request.occurredAt ??
+				replacing?.occurredAt.toISOString() ??
+				input.now.toISOString(),
+			payers: resolvedPayers,
+			split: fallbackSplit,
+			category: null,
+			categoryId: null,
+		},
+		applied: false,
+		now: input.now,
+		counted: prospectiveStatus !== "pending",
+		...(replacing ? { replacing } : {}),
+	});
+}
+
+export async function previewExtras(
+	deps: AppDeps,
+	groupId: string,
+	userId: string,
+	request: PreviewExtrasRequest,
+): Promise<PreviewExtrasResponse> {
+	return deps.db.transaction(
+		async (executor) => {
+			const members = await listGroupMembers(executor, groupId);
+			const baseAmount =
+				request.split?.method === "items"
+					? request.split.items.reduce((sum, item) => sum + item.amount, 0)
+					: request.baseAmount;
+			const { resolvedExtras, netExtras } = resolvePreviewExtrasList(
+				baseAmount,
+				request.extras,
+			);
+			const computedAmount = baseAmount + netExtras;
+
+			const splitIds = request.split ? splitParticipantIds(request.split) : [];
+			const payerIds = [
+				...(request.payers?.map((payer) => payer.memberId) ?? []),
+				...(request.payerMemberId ? [request.payerMemberId] : []),
+			];
+			validatePreviewMembers(members, payerIds, splitIds);
+
+			const { shares, normalizedSplit, issues } = computePreviewExtrasSplit({
+				baseAmount,
+				computedAmount,
+				request,
+				resolvedExtras,
+				memberIds: members.map((member) => member.id),
+			});
+
+			const warnings =
+				issues.length === 0 &&
+				computedAmount >= 1 &&
+				computedAmount <= MAX_TRANSACTION_AMOUNT
+					? await computePreviewExtrasWarnings(executor, {
+							groupId,
+							userId,
+							computedAmount,
+							request,
+							normalizedSplit,
+							members,
+							now: deps.now(),
+						})
+					: [];
+
+			return PreviewExtrasResponse.parse({
+				baseAmount,
+				resolvedExtras,
+				netExtras,
+				computedAmount,
+				...(shares === undefined ? {} : { shares }),
+				issues,
+				warnings,
 			});
 		},
 		{ isolationLevel: "repeatable read", accessMode: "read only" },

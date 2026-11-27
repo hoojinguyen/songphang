@@ -16,6 +16,7 @@ public struct OverviewView: View {
   private let onOpenPersonalLedger: () -> Void
   private let onOpenNotifications: (() -> Void)?
   private let onOpenAccount: () -> Void
+  private let onOpenDueRecurring: ((OverviewRecurringDueAction) -> Void)?
 
   public init(
     model: OverviewModel,
@@ -26,7 +27,8 @@ public struct OverviewView: View {
     onOpenTransaction: @escaping (ExpenseGroup.ID, LedgerTransaction.ID) -> Void,
     onOpenPersonalLedger: @escaping () -> Void,
     onOpenNotifications: (() -> Void)? = nil,
-    onOpenAccount: @escaping () -> Void
+    onOpenAccount: @escaping () -> Void,
+    onOpenDueRecurring: ((OverviewRecurringDueAction) -> Void)? = nil
   ) {
     self.model = model
     self.user = user
@@ -37,6 +39,7 @@ public struct OverviewView: View {
     self.onOpenPersonalLedger = onOpenPersonalLedger
     self.onOpenNotifications = onOpenNotifications
     self.onOpenAccount = onOpenAccount
+    self.onOpenDueRecurring = onOpenDueRecurring
   }
 
   public var body: some View {
@@ -57,6 +60,10 @@ public struct OverviewView: View {
           }
         case .loaded(let summary):
           heroCard(summary)
+
+          if !summary.dueRecurringActions.isEmpty {
+            dueRecurringSection(summary.dueRecurringActions)
+          }
 
           if !summary.pendingActions.isEmpty {
             pendingActionsSection(summary.pendingActions)
@@ -170,6 +177,51 @@ public struct OverviewView: View {
     .clipShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
   }
 
+  private func dueRecurringSection(_ actions: [OverviewRecurringDueAction]) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text(L10n.tr("recurring.sectionTitle"))
+        .font(Typography.sectionTitle)
+        .foregroundStyle(Tokens.ink)
+
+      ForEach(actions) { action in
+        VStack(alignment: .leading, spacing: 10) {
+          HStack {
+            Text(action.groupName)
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+            Spacer()
+            if let suggested = action.suggestedAmount {
+              MoneyText(suggested, style: .full, font: Typography.subheadlineBold)
+            } else {
+              let parts = action.dueDate.split(separator: "-")
+              let formatted =
+                parts.count == 3 ? "\(parts[2])/\(parts[1])/\(parts[0])" : action.dueDate
+              Text(formatted)
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+            }
+          }
+
+          Text(L10n.t("recurring.overviewDueTemplate", ["description": action.description]))
+            .font(Typography.bodyBold)
+            .foregroundStyle(Tokens.ink)
+
+          SPButton(L10n.tr("recurring.enterAmountShort"), variant: .primary) {
+            if let onOpenDueRecurring {
+              onOpenDueRecurring(action)
+            } else {
+              onOpenGroup(action.groupId)
+            }
+          }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tokens.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+      }
+    }
+  }
+
   private func pendingActionsSection(_ actions: [OverviewPendingAction]) -> some View {
     VStack(alignment: .leading, spacing: 12) {
       Text(L10n.tr("overview.pendingActions"))
@@ -259,6 +311,22 @@ public struct OverviewView: View {
               Text(gb.groupName)
                 .font(Typography.screenHeaderTitle)
                 .foregroundStyle(Tokens.ink)
+
+              if let householdName = gb.householdName {
+                Text(householdName)
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.muted)
+              }
+              if let individual = gb.myIndividualBalance {
+                Text(
+                  L10n.t(
+                    "households.personalShareTemplate",
+                    ["amount": MoneyFormat.full(individual)]
+                  )
+                )
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+              }
             }
 
             Spacer(minLength: 8)

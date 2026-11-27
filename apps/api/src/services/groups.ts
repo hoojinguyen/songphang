@@ -24,12 +24,15 @@ import {
 	insertCategories,
 	insertGroup,
 	insertGroupUser,
+	insertHousehold,
 	insertMember,
 	insertPaymentMethods,
 	isAppleDeletionPending,
 	listBalancesForGroups,
 	listGroupAttachmentKeys,
 	listGroupCategories,
+	listGroupHouseholds,
+	listHouseholdsForGroups,
 	listMembersForGroups,
 	listPaymentMethodsByGroup,
 	listPendingApprovalsForGroups,
@@ -38,6 +41,7 @@ import {
 	listUserGroups,
 	lockAccount,
 	lockGroup,
+	setHouseholdMembers,
 	updateGroup,
 } from "@songphang/db";
 import type { AppDeps } from "../app.js";
@@ -45,6 +49,7 @@ import { getGroupAccess } from "../auth/group-access.js";
 import { AppError } from "../errors.js";
 import { assertGroupRowNotArchived } from "./group-guards.js";
 import { collectPendingActions } from "./pending-actions.js";
+import { advanceStaleRecurringDatesOnUnarchive } from "./recurring-expenses.js";
 
 async function assertAccountWritable(executor: DbExecutor, userId: string) {
 	const [account] = await lockAccount(executor, userId);
@@ -144,13 +149,22 @@ export async function listGroups(
 			const activeIds = groups
 				.filter((group) => group.archivedAt === null)
 				.map((group) => group.id);
-			const [members, balances, pendingSettlements, pendingApprovals] =
-				await Promise.all([
-					listMembersForGroups(executor, ids),
-					listBalancesForGroups(executor, ids),
-					listPendingSettlementsForGroups(executor, activeIds),
-					listPendingApprovalsForGroups(executor, activeIds),
-				]);
+			const [
+				members,
+				balances,
+				households,
+				pendingSettlements,
+				pendingApprovals,
+			] = await Promise.all([
+				listMembersForGroups(executor, ids),
+				listBalancesForGroups(executor, ids),
+				listHouseholdsForGroups(executor, ids),
+				listPendingSettlementsForGroups(executor, activeIds),
+				listPendingApprovalsForGroups(executor, activeIds),
+			]);
+			const balanceByMemberId = new Map(
+				balances.map((row) => [row.memberId, row.balance]),
+			);
 			const pending = collectPendingActions({
 				groups,
 				members,
@@ -162,17 +176,40 @@ export async function listGroups(
 					const people = members.filter(
 						(member) => member.groupId === group.id && member.kind === "person",
 					);
+					const individualBalance =
+						group.memberId === null
+							? 0
+							: (balanceByMemberId.get(group.memberId) ?? 0);
+					const household =
+						group.memberId === null
+							? undefined
+							: households.find(
+									(item) =>
+										item.groupId === group.id &&
+										item.memberIds.includes(group.memberId ?? ""),
+								);
+					const myBalance = household
+						? household.memberIds.reduce(
+								(sum, memberId) => sum + (balanceByMemberId.get(memberId) ?? 0),
+								0,
+							)
+						: individualBalance;
 					return {
 						id: group.id,
 						name: group.name,
 						currency: group.currency,
 						memberCount: people.length,
 						previewMembers: people.slice(0, 4),
-						myBalance:
-							balances.find((balance) => balance.memberId === group.memberId)
-								?.balance ?? 0,
+						myBalance,
+						...(household
+							? {
+									myIndividualBalance: individualBalance,
+									householdName: household.name,
+								}
+							: {}),
 						archivedAt: group.archivedAt?.toISOString() ?? null,
 						role: group.role,
+						myMemberId: group.memberId,
 						pendingActionCount: pending.countByGroupId.get(group.id) ?? 0,
 					};
 				}),
@@ -239,6 +276,7 @@ export async function setGroupArchived(
 	input: { groupId: string; userId: string; archived: boolean },
 ) {
 	let changed = false;
+	let advancedRecurringCount = 0;
 	const result = await deps.db.transaction(async (transaction) => {
 		const locked = await lockGroup(transaction, input.groupId);
 		const current = await getGroup(transaction, input.groupId, input.userId);
@@ -260,6 +298,15 @@ export async function setGroupArchived(
 			changes: { archivedAt: input.archived ? now : null },
 			now,
 		});
+		if (!input.archived) {
+			advancedRecurringCount = await advanceStaleRecurringDatesOnUnarchive(
+				transaction,
+				{
+					groupId: input.groupId,
+					now,
+				},
+			);
+		}
 		await insertActivity(transaction, {
 			groupId: input.groupId,
 			actorUserId: input.userId,
@@ -273,7 +320,12 @@ export async function setGroupArchived(
 		return getGroup(transaction, input.groupId, input.userId);
 	});
 	if (changed) {
-		deps.events.publishChanged(input.groupId, ["group", "activity"]);
+		deps.events.publishChanged(
+			input.groupId,
+			advancedRecurringCount > 0
+				? ["group", "activity", "recurringExpenses"]
+				: ["group", "activity"],
+		);
 	}
 	return result;
 }
@@ -370,16 +422,33 @@ export async function cloneGroup(
 		createdAt: input.now,
 		updatedAt: input.now,
 	});
-	const { ownerMemberId, memberIdMap, memberCount } = await cloneActivePeople(
-		executor,
-		{
+	const includeMembers = input.request.includeMembers ?? true;
+	let ownerMemberId: string | null = null;
+	let memberIdMap = new Map<string, string>();
+	let memberCount = 1;
+	if (includeMembers) {
+		const cloned = await cloneActivePeople(executor, {
 			sourceGroupId: input.sourceGroupId,
 			newGroupId: newGroup.id,
 			callerMemberId: access.memberId,
 			userName: input.user.name,
 			now: input.now,
-		},
-	);
+		});
+		ownerMemberId = cloned.ownerMemberId;
+		memberIdMap = cloned.memberIdMap;
+		memberCount = cloned.memberCount;
+	} else {
+		const appearance = nextMemberAppearance([], 0);
+		const inserted = await insertMember(executor, {
+			groupId: newGroup.id,
+			name: input.user.name,
+			position: 0,
+			...appearance,
+			createdAt: input.now,
+			updatedAt: input.now,
+		});
+		ownerMemberId = inserted.id;
+	}
 	await insertGroupUser(executor, {
 		groupId: newGroup.id,
 		userId: input.user.id,
@@ -387,7 +456,11 @@ export async function cloneGroup(
 		role: "owner",
 		createdAt: input.now,
 	});
-	if (input.request.copyPaymentMethods && memberIdMap.size > 0) {
+	if (
+		includeMembers &&
+		input.request.copyPaymentMethods &&
+		memberIdMap.size > 0
+	) {
 		const methodsByMember = await listPaymentMethodsByGroup(
 			executor,
 			input.sourceGroupId,
@@ -404,6 +477,33 @@ export async function cloneGroup(
 			})),
 		);
 		await insertPaymentMethods(executor, rows);
+	}
+	if (includeMembers && memberIdMap.size > 0) {
+		const sourceHouseholds = await listGroupHouseholds(
+			executor,
+			input.sourceGroupId,
+		);
+		for (const sourceHousehold of sourceHouseholds) {
+			const clonedRepId = memberIdMap.get(
+				sourceHousehold.representativeMemberId,
+			);
+			const clonedMemberIds = sourceHousehold.memberIds
+				.map((id) => memberIdMap.get(id))
+				.filter((id): id is string => id !== undefined);
+			if (clonedRepId === undefined || clonedMemberIds.length < 2) continue;
+			const createdHousehold = await insertHousehold(executor, {
+				groupId: newGroup.id,
+				name: sourceHousehold.name,
+				representativeMemberId: clonedRepId,
+				now: input.now,
+			});
+			await setHouseholdMembers(executor, {
+				groupId: newGroup.id,
+				householdId: createdHousehold.id,
+				memberIds: clonedMemberIds,
+				now: input.now,
+			});
+		}
 	}
 	if (input.request.copyCategories) {
 		const liveCategories = (

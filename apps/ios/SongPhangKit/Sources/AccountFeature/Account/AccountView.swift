@@ -3,6 +3,10 @@ import Domain
 public import SwiftUI
 import UIKit
 
+#if canImport(WidgetKit)
+  import WidgetKit
+#endif
+
 #if DEBUG
   import PreviewSupport
 #endif
@@ -12,6 +16,7 @@ public struct AccountView: View {
   private let onBack: () -> Void
   @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system
     .rawValue
+  @State private var hideWidgetAmounts = ExtensionSharedStore.shared.readWidgetHideAmounts()
 
   public init(model: AccountModel, onBack: @escaping () -> Void) {
     self.model = model
@@ -79,6 +84,8 @@ public struct AccountView: View {
 
     appearanceCard
 
+    widgetPrivacyCard
+
     if user.hasPassword {
       changePasswordCard
     }
@@ -141,6 +148,37 @@ public struct AccountView: View {
       ) { nextValue in
         appearanceModeRaw = nextValue
       }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+  }
+
+  private var widgetPrivacyCard: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Toggle(
+        isOn: Binding(
+          get: { hideWidgetAmounts },
+          set: { newValue in
+            hideWidgetAmounts = newValue
+            ExtensionSharedStore.shared.writeWidgetHideAmounts(newValue)
+            #if canImport(WidgetKit)
+              WidgetCenter.shared.reloadAllTimelines()
+            #endif
+          }
+        )
+      ) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(L10n.tr("ios.widget.hideAmountsTitle"))
+            .font(Typography.bodyBold)
+            .foregroundStyle(Tokens.ink)
+          Text(L10n.tr("ios.widget.hideAmountsSubtitle"))
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
+        }
+      }
+      .tint(Tokens.ink)
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)

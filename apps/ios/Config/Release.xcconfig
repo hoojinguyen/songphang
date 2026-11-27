@@ -7,3 +7,5 @@ WEB_BASE_URL = https:/$()/example.invalid
 APP_STORE_URL =
 APS_ENVIRONMENT = production
 ASSOCIATED_DOMAIN_HOST = example.invalid
+APP_GROUP_IDENTIFIER = group.vn.songphang.app
+KEYCHAIN_ACCESS_GROUP = $(AppIdentifierPrefix)vn.songphang.app.shared

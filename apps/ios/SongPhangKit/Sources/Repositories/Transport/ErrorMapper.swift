@@ -95,6 +95,9 @@ struct ErrorMapper: Sendable {
       if code == "CYCLE_NOT_LATEST" {
         return .cycleNotLatest
       }
+      if code == "HOUSEHOLD_MEMBER_CONFLICT" {
+        return .householdMemberConflict
+      }
       if code == nil || code == "VERSION_CONFLICT" || code == "CONFLICT" {
         return .conflict
       }
@@ -102,8 +105,16 @@ struct ErrorMapper: Sendable {
         return .api(code: code, status: 409)
       }
     }
-    if statusCode == 422, code == "CYCLE_EMPTY" {
-      return .cycleEmpty
+    if statusCode == 422 {
+      if code == "CYCLE_EMPTY" {
+        return .cycleEmpty
+      }
+      if code == "HOUSEHOLD_REPRESENTATIVE_ACTIVE_REQUIRED" {
+        return .householdRepresentativeActiveRequired
+      }
+      if code == "RECURRING_MEMBER_INACTIVE" {
+        return .recurringMemberInactive
+      }
     }
     if statusCode == 429 || code == "RATE_LIMITED" {
       return .rateLimited

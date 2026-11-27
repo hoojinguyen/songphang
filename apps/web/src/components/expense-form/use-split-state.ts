@@ -1,7 +1,14 @@
 "use client";
-import { type MemberDto, SplitInput } from "@songphang/contract";
+import {
+	type ExtrasAllocation,
+	type ItemsSplitExtra,
+	type MemberDto,
+	type PreviewExtrasItem,
+	RatePercent,
+	SplitInput,
+} from "@songphang/contract";
 import { useRef, useState } from "react";
-import { formatMoney, parseAmountInput } from "../../lib/money";
+import { formatAmount, formatMoney, parseAmountInput } from "../../lib/money";
 import { usePreviewItems } from "../../lib/receipt-scans";
 import { t, vi } from "../../messages/vi";
 import type { EditableReceiptExtra } from "../receipt/ExtrasFields";
@@ -10,17 +17,47 @@ import {
 	MAX_ITEM_MEMBERS,
 	toItemsPayload,
 } from "../receipt/ItemsAssignmentPanel";
+import type { EditableManualExtra } from "./ManualExtrasCard";
 
 export type SplitMethod = "equal" | "exact" | "shares" | "percent" | "items";
+
 function hundredths(value: string): number | null {
 	if (!/^\d{1,3}(\.\d{1,2})?$/.test(value)) return null;
 	const [whole, fraction = ""] = value.split(".");
 	return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
 }
+
 function percentText(value: number): string {
 	const digits = String(value).padStart(3, "0");
 	return `${digits.slice(0, -2)}.${digits.slice(-2)}`.replace(/\.?0+$/, "");
 }
+
+export function toPreviewExtrasItems(
+	extras: readonly EditableManualExtra[],
+): PreviewExtrasItem[] | null {
+	const result: PreviewExtrasItem[] = [];
+	for (const extra of extras) {
+		if (extra.mode === "percent") {
+			const parsed = RatePercent.safeParse(extra.ratePercentText.trim());
+			if (!parsed.success) return null;
+			result.push({
+				kind: extra.kind,
+				label: extra.label.trim(),
+				ratePercent: parsed.data,
+			});
+		} else {
+			const parsedAmount = parseAmountInput(extra.amountText);
+			if (parsedAmount === null) return null;
+			result.push({
+				kind: extra.kind,
+				label: extra.label.trim(),
+				amount: parsedAmount,
+			});
+		}
+	}
+	return result;
+}
+
 export function useSplitState(
 	members: MemberDto[],
 	amount: number,
@@ -74,39 +111,57 @@ export function useSplitState(
 					},
 				],
 	);
-	const [extras, setExtras] = useState<EditableReceiptExtra[]>(() =>
-		initial?.method === "items"
-			? initial.extras.map((extra) => ({
-					id: crypto.randomUUID(),
-					kind: extra.kind,
-					label: extra.label,
-					amountText: String(extra.amount),
-				}))
-			: [],
+	const [extras, setExtras] = useState<EditableManualExtra[]>(() =>
+		(initial?.extras ?? []).map((extra) => ({
+			id: crypto.randomUUID(),
+			kind: extra.kind,
+			label: extra.label,
+			mode: extra.ratePercent !== undefined ? "percent" : "amount",
+			ratePercentText: extra.ratePercent ?? "",
+			amountText:
+				extra.ratePercent !== undefined ? "" : formatAmount(extra.amount),
+		})),
+	);
+	const [extrasAllocation, setExtrasAllocation] = useState<ExtrasAllocation>(
+		() =>
+			initial?.extrasAllocation ??
+			(initial?.method === "items" ? "proportional" : "equal"),
 	);
 	const [selectedItemId, setSelectedItemId] = useState(
 		() => items[0]?.id ?? "",
 	);
 	const itemsCustomized = useRef(initial?.method === "items");
 
-	const itemsPayload =
-		method === "items" ? toItemsPayload(items, extras) : null;
+	const itemsBaseAmount = items.reduce(
+		(sum, item) => sum + (parseAmountInput(item.amountText) ?? 0),
+		0,
+	);
+	const itemsBasePayload =
+		method === "items" ? toItemsPayload(items, []) : null;
+	const itemsBaseUnassigned = items.some((item) => item.memberIds.length === 0);
 	const itemsPreview = usePreviewItems(
 		groupId,
-		groupId && method === "items" ? itemsPayload : null,
+		groupId && method === "items" && extras.length === 0
+			? itemsBasePayload
+			: null,
 	);
-	const itemsComputedAmount = itemsPreview.current
-		? itemsPreview.data?.computedAmount
-		: undefined;
+	const itemsComputedAmount =
+		extras.length === 0 && itemsPreview.current
+			? itemsPreview.data?.computedAmount
+			: undefined;
 	const itemsValid =
 		method === "items" &&
-		Boolean(
-			itemsPreview.current &&
-				itemsPreview.data &&
-				itemsPreview.data.issues.length === 0 &&
-				(itemsPreview.data.shares?.length ?? 0) > 0 &&
-				itemsPreview.data.computedAmount > 0,
-		);
+		itemsBasePayload !== null &&
+		!itemsBaseUnassigned &&
+		itemsBaseAmount > 0 &&
+		(extras.length > 0 ||
+			Boolean(
+				itemsPreview.current &&
+					itemsPreview.data &&
+					itemsPreview.data.issues.length === 0 &&
+					(itemsPreview.data.shares?.length ?? 0) > 0 &&
+					itemsPreview.data.computedAmount > 0,
+			));
 
 	const selected = members.filter((member) => ids.includes(member.id));
 	const blank = selected.filter((member) => !values[member.id]);
@@ -131,11 +186,11 @@ export function useSplitState(
 		method === "equal"
 			? { method, members: ids }
 			: method === "items"
-				? itemsPayload
+				? itemsBasePayload
 					? {
 							method: "items" as const,
-							items: itemsPayload.items,
-							extras: itemsPayload.extras,
+							items: itemsBasePayload.items,
+							extras: [],
 						}
 					: null
 				: method === "exact"
@@ -170,14 +225,20 @@ export function useSplitState(
 		selected.some((member) =>
 			/[1-9]/.test(values[member.id] ?? member.defaultWeight),
 		);
-	const split =
+	const baseSplit =
 		parsed.success && matched && positiveWeight ? parsed.data : null;
-	const effectiveAmount =
-		method === "items" ? (itemsComputedAmount ?? 0) : amount;
+	const split = extras.length === 0 ? baseSplit : null;
+	const effectiveBaseAmount = method === "items" ? itemsBaseAmount : amount;
 	const text =
 		method === "items"
 			? itemsValid
-				? t(vi.split.match, { amount: formatMoney(effectiveAmount) })
+				? t(vi.split.match, {
+						amount: formatMoney(
+							extras.length === 0
+								? (itemsComputedAmount ?? 0)
+								: itemsBaseAmount,
+						),
+					})
 				: items.filter((item) => item.memberIds.length === 0).length > 0
 					? t(vi.receipts.saveBlocked, {
 							count: String(
@@ -201,9 +262,19 @@ export function useSplitState(
 								amount: formatMoney(rest),
 								count: String(blank.length),
 							})
-						: !split
+						: !baseSplit
 							? t(vi.split.short, { amount: formatMoney(Math.max(0, rest)) })
-							: t(vi.split.match, { amount: formatMoney(amount) });
+							: t(vi.split.match, {
+									amount: formatMoney(effectiveBaseAmount),
+								});
+
+	const receiptExtras: EditableReceiptExtra[] = extras.map((extra) => ({
+		id: extra.id,
+		kind: extra.kind,
+		label: extra.label,
+		amountText: extra.amountText,
+	}));
+
 	return {
 		method,
 		ids,
@@ -212,12 +283,18 @@ export function useSplitState(
 		spread,
 		rest,
 		blankCount: blank.length,
+		baseSplit,
 		split,
-		status: { text, matched: split !== null },
+		status: { text, matched: baseSplit !== null },
 		setSpread,
 		items,
 		extras,
+		receiptExtras,
+		extrasAllocation,
+		setExtrasAllocation,
 		selectedItemId,
+		itemsBaseAmount,
+		itemsBaseValid: itemsValid,
 		itemsPreview,
 		itemsComputedAmount,
 		setSelectedItemId,
@@ -279,12 +356,75 @@ export function useSplitState(
 				),
 			);
 		},
+		onTogglePresetExtra: (kind: "tax" | "service", ratePercentText: string) => {
+			setExtras((current) => {
+				const existing = current.find(
+					(extra) =>
+						extra.kind === kind &&
+						extra.mode === "percent" &&
+						extra.ratePercentText === ratePercentText,
+				);
+				if (existing) {
+					return current.filter((extra) => extra.id !== existing.id);
+				}
+				if (current.length >= 6) return current;
+				return [
+					...current,
+					{
+						id: crypto.randomUUID(),
+						kind,
+						label: "",
+						mode: "percent",
+						ratePercentText,
+						amountText: "",
+					},
+				];
+			});
+		},
+		onAddManualExtra: (kind: ItemsSplitExtra["kind"]) => {
+			setExtras((current) => {
+				if (current.length >= 6) return current;
+				return [
+					...current,
+					{
+						id: crypto.randomUUID(),
+						kind,
+						label: "",
+						mode: "amount",
+						ratePercentText: "",
+						amountText: "",
+					},
+				];
+			});
+		},
+		onChangeManualExtra: (
+			id: string,
+			patch: Partial<
+				Pick<
+					EditableManualExtra,
+					"kind" | "label" | "mode" | "ratePercentText" | "amountText"
+				>
+			>,
+		) => {
+			setExtras((current) =>
+				current.map((extra) =>
+					extra.id === id ? { ...extra, ...patch } : extra,
+				),
+			);
+		},
 		onAddExtra: () => {
 			if (extras.length >= 6) return;
 			itemsCustomized.current = true;
 			setExtras((current) => [
 				...current,
-				{ id: crypto.randomUUID(), kind: "other", label: "", amountText: "0" },
+				{
+					id: crypto.randomUUID(),
+					kind: "other",
+					label: "",
+					mode: "amount",
+					ratePercentText: "",
+					amountText: "0",
+				},
 			]);
 		},
 		onChangeExtra: (
@@ -296,13 +436,25 @@ export function useSplitState(
 			itemsCustomized.current = true;
 			setExtras((current) =>
 				current.map((extra) =>
-					extra.id === id ? { ...extra, ...patch } : extra,
+					extra.id === id
+						? {
+								...extra,
+								...patch,
+								...(patch.amountText !== undefined
+									? { mode: "amount" as const, ratePercentText: "" }
+									: {}),
+							}
+						: extra,
 				),
 			);
 		},
 		onRemoveExtra: (id: string) => {
 			itemsCustomized.current = true;
 			setExtras((current) => current.filter((extra) => extra.id !== id));
+		},
+		clearExtras: () => {
+			setExtras([]);
+			setExtrasAllocation("equal");
 		},
 		changeMode: (next: SplitMethod) => {
 			if (next === "items" && !itemsCustomized.current) {

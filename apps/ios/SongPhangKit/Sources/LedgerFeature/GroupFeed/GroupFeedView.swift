@@ -208,7 +208,11 @@ public struct GroupFeedView: View {
       .padding(.top, 8)
     }
 
-    FeedBalanceBlockView(balance: myBalance) {
+    FeedBalanceBlockView(
+      balance: myBalance,
+      individualBalance: data.group.myIndividualBalance,
+      householdName: data.group.householdName
+    ) {
       onOpenBalances(model.groupId)
     }
     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)

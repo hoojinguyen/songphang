@@ -46,22 +46,25 @@ public struct ItemsSplitDraft: Sendable, Equatable {
 
   public var items: [EditableReceiptItem]
   public var extras: [EditableReceiptExtra]
+  public var extrasAllocation: ExtrasAllocation
   public var selectedItemId: UUID
 
   public init(
     items: [EditableReceiptItem] = [],
     extras: [EditableReceiptExtra] = [],
+    extrasAllocation: ExtrasAllocation = .equal,
     selectedItemId: UUID? = nil
   ) {
     self.items = items
     self.extras = extras
+    self.extrasAllocation = extrasAllocation
     self.selectedItemId = selectedItemId ?? items.first?.id ?? UUID()
   }
 
   public init(
     initialSplit: SplitSpec?, fallbackTitle: String, totalAmount: Money, members: [Member]
   ) {
-    if case .items(let specItems, let specExtras) = initialSplit {
+    if case .items(let specItems, let specExtras, let specAlloc) = initialSplit {
       let mappedItems = specItems.map {
         EditableReceiptItem(
           name: $0.name,
@@ -78,6 +81,7 @@ public struct ItemsSplitDraft: Sendable, Equatable {
       }
       self.items = mappedItems
       self.extras = mappedExtras
+      self.extrasAllocation = specAlloc ?? .proportional
       self.selectedItemId = mappedItems.first?.id ?? UUID()
     } else {
       let defaultMemberIds =
@@ -89,6 +93,7 @@ public struct ItemsSplitDraft: Sendable, Equatable {
       )
       self.items = [item]
       self.extras = []
+      self.extrasAllocation = .equal
       self.selectedItemId = item.id
     }
   }
@@ -96,6 +101,7 @@ public struct ItemsSplitDraft: Sendable, Equatable {
   public init(scan: ReceiptScan, fallbackTitle: String) {
     let merchant = scan.reading?.merchant?.trimmingCharacters(in: .whitespacesAndNewlines)
     let title = (merchant?.isEmpty == false) ? (merchant ?? fallbackTitle) : fallbackTitle
+    self.extrasAllocation = .proportional
     if let reading = scan.reading, !reading.items.isEmpty {
       self.items = reading.items.map {
         EditableReceiptItem(

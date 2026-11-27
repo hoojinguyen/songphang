@@ -280,12 +280,32 @@ public struct GroupListView: View {
           .font(Typography.sectionTitle)
           .foregroundStyle(Tokens.ink)
 
+        if let householdName = group.householdName {
+          Text(householdName)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Tokens.surface.opacity(0.65), in: Capsule())
+        }
+
         MoneyText(
           group.myBalance,
           style: .signed,
           font: Typography.heroNumber,
           color: Tokens.ink
         )
+
+        if let personal = group.myIndividualBalance {
+          Text(
+            L10n.t(
+              "households.personalShareTemplate",
+              ["amount": MoneyFormat.full(personal)]
+            )
+          )
+          .font(Typography.caption)
+          .foregroundStyle(Tokens.ink)
+        }
 
         Text(caption)
           .font(Typography.subheadlineBold)
@@ -371,6 +391,22 @@ public struct GroupListView: View {
             Text(roleLabel)
               .font(Typography.caption)
               .foregroundStyle(Tokens.muted)
+
+            if let householdName = group.householdName {
+              Text(householdName)
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.ink)
+            }
+          }
+          if let personal = group.myIndividualBalance {
+            Text(
+              L10n.t(
+                "households.personalShareTemplate",
+                ["amount": MoneyFormat.full(personal)]
+              )
+            )
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
           }
         }
         Spacer(minLength: 8)

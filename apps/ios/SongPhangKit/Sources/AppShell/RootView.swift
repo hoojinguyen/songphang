@@ -57,10 +57,12 @@ public struct RootView: View {
   @State private var notificationsPath: [Route] = []
   @State private var accountPath: [Route] = []
   @State private var pendingInviteState = PendingInviteState()
+  @State private var pendingAppAction: LinkRouter.AppActionRoute?
   @State private var pendingPushTap: PushTapPayload?
   @State private var activeGuestShare: GuestSharePresentation?
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
+  @State private var recurringRefreshTick = 0
   #if DEBUG
     @State private var isShowingDebugPanel = false
   #endif
@@ -380,6 +382,9 @@ public struct RootView: View {
         } else if args.contains("--route-feed") {
           selectedTab = .groups
           groupsPath = [.groupFeed(groupId: targetGroupId)]
+        } else if args.contains("--route-stats") {
+          selectedTab = .groups
+          groupsPath = [.groupStats(groupId: targetGroupId)]
         } else if args.contains("--route-balances") {
           selectedTab = .groups
           groupsPath = [.groupBalances(groupId: targetGroupId)]
@@ -513,11 +518,24 @@ public struct RootView: View {
           await sessionModel.refreshOnForeground()
           await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
           await syncPushRegistrationIfSignedIn()
+          consumeShareInboxIfNeeded()
+          syncSharedExtensionState()
         }
       }
     }
+    .onChange(of: appearanceModeRaw) { _, _ in
+      syncSharedExtensionState()
+    }
+    .onChange(of: overviewModel.overview) { _, _ in
+      syncSharedExtensionState()
+    }
+    .onChange(of: groupListModel.groups) { _, _ in
+      syncSharedExtensionState()
+    }
     .onChange(of: sessionModel.state) { oldState, newState in
       if case .signedOut = newState {
+        ExtensionStateSync.clearSignedOut()
+        pendingAppAction = nil
         pushCoordinator.clearSessionState()
         pendingPushTap = nil
         if case .signedIn = oldState {
@@ -585,7 +603,12 @@ public struct RootView: View {
           }
         )
         consumePendingRouteIfSignedIn()
+        consumePendingAppActionIfSignedIn()
+        consumeShareInboxIfNeeded()
         Task {
+          await overviewModel.load()
+          await groupListModel.load()
+          syncSharedExtensionState()
           await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
           await consumePendingPushIfSignedIn()
           await syncPushRegistrationIfSignedIn()
@@ -599,12 +622,24 @@ public struct RootView: View {
       PushEventBridge.shared.onPushTapReceived = { payload in
         Task { await handlePushTap(payload) }
       }
+      ShortcutEventBridge.shared.onShortcutReceived = { payload in
+        handleShortcut(payload)
+      }
+      if let pendingShortcut = ShortcutEventBridge.shared.consumePending() {
+        handleShortcut(pendingShortcut)
+      }
       if case .loading = sessionModel.state {
         await sessionModel.loadSession()
       }
       await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
       await consumePendingPushIfSignedIn()
       await syncPushRegistrationIfSignedIn()
+      if case .signedIn = sessionModel.state, groupListModel.groups.value == nil {
+        await groupListModel.load()
+      }
+      consumePendingAppActionIfSignedIn()
+      consumeShareInboxIfNeeded()
+      syncSharedExtensionState()
       hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
@@ -708,11 +743,141 @@ public struct RootView: View {
   }
 
   private func handleIncomingURL(_ url: URL) -> Bool {
+    if let appAction = linkRouter.appActionRoute(for: url) {
+      receiveAppAction(appAction)
+      return true
+    }
     guard let route = linkRouter.route(for: url) else {
       return false
     }
     routeValidated(route)
     return true
+  }
+
+  private func receiveAppAction(_ action: LinkRouter.AppActionRoute) {
+    guard isSignedIn else {
+      pendingAppAction = action
+      return
+    }
+    pendingAppAction = nil
+    applyAppAction(action)
+  }
+
+  private func consumePendingAppActionIfSignedIn() {
+    guard isSignedIn, let action = pendingAppAction else { return }
+    pendingAppAction = nil
+    applyAppAction(action)
+  }
+
+  private func applyAppAction(_ action: LinkRouter.AppActionRoute) {
+    statusNotice = nil
+    switch action {
+    case .overview:
+      selectedTab = .overview
+      overviewPath.removeAll()
+    case .quickEntry(let groupId):
+      selectedTab = .groups
+      groupsPath = [
+        .groupFeed(groupId: groupId),
+        .quickEntry(groupId: groupId, initialSentence: nil),
+      ]
+    case .newExpense(let groupId):
+      selectedTab = .groups
+      groupsPath = [
+        .groupFeed(groupId: groupId),
+        .newTransactionForm(groupId: groupId, initialReading: nil),
+      ]
+    case .balances(let groupId):
+      selectedTab = .groups
+      groupsPath = [.groupBalances(groupId: groupId)]
+    case .shareImport(let batchId):
+      if let manifest = ExtensionSharedStore.shared.readShareInboxManifest(batchId: batchId) {
+        consumeShareManifest(manifest)
+      } else {
+        consumeShareInboxIfNeeded()
+      }
+    }
+  }
+
+  private func handleShortcut(_ payload: ShortcutEventBridge.Payload) {
+    switch payload.kind {
+    case .quickEntry:
+      receiveAppAction(.quickEntry(groupId: payload.groupId))
+    case .expenseNew:
+      receiveAppAction(.newExpense(groupId: payload.groupId))
+    case .balances:
+      receiveAppAction(.balances(groupId: payload.groupId))
+    }
+  }
+
+  private func consumeShareInboxIfNeeded() {
+    guard isSignedIn else { return }
+    let manifests = ExtensionSharedStore.shared.pendingShareInboxManifests()
+    guard let latest = manifests.first else { return }
+    consumeShareManifest(latest)
+  }
+
+  private func consumeShareManifest(_ manifest: ShareInboxManifest) {
+    guard UUID(uuidString: manifest.groupId) != nil else {
+      ExtensionSharedStore.shared.removeShareInboxBatch(batchId: manifest.batchId)
+      return
+    }
+    let groupId = ExpenseGroup.ID(manifest.groupId)
+    var localDatas: [Data] = []
+    if manifest.attachmentIds.isEmpty,
+      !manifest.localImageFilenames.isEmpty,
+      let batchDir = ExtensionSharedStore.shared.shareInboxBatchDirectory(batchId: manifest.batchId)
+    {
+      for filename in manifest.localImageFilenames.prefix(3) {
+        let fileURL = batchDir.appending(path: filename)
+        if let bytes = try? Data(contentsOf: fileURL) {
+          localDatas.append(bytes)
+        }
+      }
+    }
+    ExtensionSharedStore.shared.removeShareInboxBatch(batchId: manifest.batchId)
+
+    selectedTab = .groups
+    switch manifest.mode {
+    case .expense:
+      if let scanId = manifest.receiptScanId {
+        groupsPath = [
+          .groupFeed(groupId: groupId),
+          .receiptReview(groupId: groupId, scanId: ReceiptScan.ID(scanId)),
+        ]
+      } else {
+        groupsPath = [
+          .groupFeed(groupId: groupId),
+          .newTransactionForm(
+            groupId: groupId,
+            initialAttachmentIds: manifest.attachmentIds.map { Attachment.ID($0) },
+            initialPendingImageDatas: localDatas
+          ),
+        ]
+      }
+    case .transferProof:
+      groupsPath = [
+        .groupFeed(groupId: groupId),
+        .groupBalances(
+          groupId: groupId,
+          initialTransferProofAttachmentId: manifest.attachmentIds.first.map { Attachment.ID($0) }
+        ),
+      ]
+    }
+  }
+
+  private func syncSharedExtensionState() {
+    guard case .signedIn = sessionModel.state else {
+      ExtensionStateSync.clearSignedOut()
+      return
+    }
+    let groups = groupListModel.groups.value ?? []
+    ExtensionStateSync.syncSignedIn(
+      overview: overviewModel.overview.value,
+      groups: groups,
+      features: sessionModel.latestFeatures,
+      appearanceMode: appearanceModeRaw
+    )
   }
 
   private func navigate(to route: Route) {
@@ -771,6 +936,8 @@ public struct RootView: View {
   }
 
   private func resetToSignedOut() {
+    ExtensionStateSync.clearSignedOut()
+    pendingAppAction = nil
     pushCoordinator.clearSessionState()
     path.removeAll()
     overviewPath.removeAll()
@@ -968,6 +1135,13 @@ public struct RootView: View {
             },
             onOpenAccount: {
               selectedTab = .account
+            },
+            onOpenDueRecurring: { action in
+              selectedTab = .groups
+              groupsPath = [
+                .groupFeed(groupId: action.groupId),
+                .newTransactionForm(groupId: action.groupId, initialRecurringDueAction: action),
+              ]
             }
           )
           .toolbar {
@@ -1132,6 +1306,7 @@ public struct RootView: View {
         }
       },
       onExpenseSaved: {
+        recurringRefreshTick &+= 1
         guard case .signedIn(let signedInUser) = sessionModel.state else { return }
         Task {
           let features: ServerFeatures?
@@ -1146,6 +1321,7 @@ public struct RootView: View {
           )
         }
       },
+      recurringRefreshTick: recurringRefreshTick,
       deletedTransactionId: $deletedTransactionId
     )
     .toolbar { keyboardDoneToolbar }

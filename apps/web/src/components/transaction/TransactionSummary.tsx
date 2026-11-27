@@ -10,6 +10,7 @@ import { PhotoRow } from "../expense-form/PhotoRow";
 import { paymentChannelLabel } from "../pay/TransferProofFields";
 import { ShareShapes } from "../quick-entry/ShareShapes";
 import { CATEGORY_COLORS } from "../settings/CategoryRow";
+import { SplitExtrasBreakdown } from "./SplitExtrasBreakdown";
 
 export function TransactionSummary({
 	groupId,
@@ -151,6 +152,13 @@ export function TransactionSummary({
 					})()}
 				</ul>
 			)}
+			{transaction.type === "expense" &&
+				(transaction.split.extras?.length ?? 0) > 0 && (
+					<SplitExtrasBreakdown
+						split={transaction.split}
+						totalAmount={transaction.amount}
+					/>
+				)}
 			{transaction.type !== "transfer" && transaction.shares.length > 0 && (
 				<ShareShapes
 					shares={transaction.shares.flatMap((s) => {

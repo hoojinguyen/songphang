@@ -1,10 +1,10 @@
 "use client";
 import {
+	type ExtrasAllocation,
 	type ItemsSplitExtra,
 	type ItemsSplitItem,
 	type MemberDto,
 	PreviewItemsRequest,
-	type PreviewItemsResponse,
 } from "@songphang/contract";
 import { formatAmount, parseAmountInput } from "../../lib/money";
 import { t, vi } from "../../messages/vi";
@@ -17,7 +17,12 @@ export const MAX_ITEM_MEMBERS = 20;
 export function toItemsPayload(
 	items: EditableReceiptItem[],
 	extras: EditableReceiptExtra[],
-): { items: ItemsSplitItem[]; extras: ItemsSplitExtra[] } | null {
+	extrasAllocation?: ExtrasAllocation,
+): {
+	items: ItemsSplitItem[];
+	extras: ItemsSplitExtra[];
+	extrasAllocation?: ExtrasAllocation | undefined;
+} | null {
 	if (items.length === 0 || items.length > 60 || extras.length > 6) {
 		return null;
 	}
@@ -43,6 +48,7 @@ export function toItemsPayload(
 	const checked = PreviewItemsRequest.safeParse({
 		items: builtItems,
 		extras: builtExtras,
+		...(extrasAllocation === undefined ? {} : { extrasAllocation }),
 	});
 	return checked.success ? checked.data : null;
 }
@@ -50,6 +56,8 @@ export function toItemsPayload(
 export function ItemsAssignmentPanel({
 	items,
 	extras,
+	extrasAllocation,
+	onChangeExtrasAllocation,
 	selectedItemId,
 	activePeople,
 	previewData,
@@ -64,12 +72,20 @@ export function ItemsAssignmentPanel({
 	onAddExtra,
 	onChangeExtra,
 	onRemoveExtra,
+	extrasSection,
 }: {
 	items: EditableReceiptItem[];
 	extras: EditableReceiptExtra[];
+	extrasAllocation?: ExtrasAllocation;
+	onChangeExtrasAllocation?: (next: ExtrasAllocation) => void;
 	selectedItemId: string;
 	activePeople: MemberDto[];
-	previewData: PreviewItemsResponse | undefined;
+	previewData:
+		| {
+				shares?: readonly { memberId: string; amount: number }[] | undefined;
+				issues: readonly { code: string }[];
+		  }
+		| undefined;
 	previewCurrent: boolean;
 	previewError: boolean;
 	onSelectItem: (id: string) => void;
@@ -87,6 +103,7 @@ export function ItemsAssignmentPanel({
 		patch: Partial<Pick<EditableReceiptExtra, "kind" | "label" | "amountText">>,
 	) => void;
 	onRemoveExtra: (id: string) => void;
+	extrasSection?: React.ReactNode;
 }) {
 	const selectedItem =
 		items.find((item) => item.id === selectedItemId) ?? items[0];
@@ -145,12 +162,18 @@ export function ItemsAssignmentPanel({
 				))}
 			</div>
 
-			<ExtrasFields
-				extras={extras}
-				onAdd={onAddExtra}
-				onChange={onChangeExtra}
-				onRemove={onRemoveExtra}
-			/>
+			{extrasSection ?? (
+				<ExtrasFields
+					extras={extras}
+					{...(extrasAllocation === undefined ? {} : { extrasAllocation })}
+					{...(onChangeExtrasAllocation === undefined
+						? {}
+						: { onChangeAllocation: onChangeExtrasAllocation })}
+					onAdd={onAddExtra}
+					onChange={onChangeExtra}
+					onRemove={onRemoveExtra}
+				/>
+			)}
 
 			<section className="grid gap-2 rounded-[26px] bg-surface p-3">
 				<div className="grid grid-cols-4 gap-2">

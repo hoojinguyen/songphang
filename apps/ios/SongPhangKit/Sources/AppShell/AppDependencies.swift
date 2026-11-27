@@ -30,6 +30,8 @@ public struct AppDependencies: Sendable {
   public let chatLinks: any ChatLinksRepository
   public let guestLinks: any GuestLinksRepository
   public let overview: any OverviewRepository
+  public let recurringExpenses: any RecurringExpensesRepository
+  public let households: any HouseholdsRepository
   public let liveConfiguration: APIConfiguration?
   public let webBaseURL: URL
   public let appVersion: String
@@ -67,6 +69,8 @@ public struct AppDependencies: Sendable {
         chatLinks: LiveChatLinksRepository(environment: environment),
         guestLinks: LiveGuestLinksRepository(environment: environment),
         overview: LiveOverviewRepository(environment: environment),
+        recurringExpenses: LiveRecurringExpensesRepository(environment: environment),
+        households: LiveHouseholdsRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -99,6 +103,8 @@ public struct AppDependencies: Sendable {
         chatLinks: LiveChatLinksRepository(environment: environment),
         guestLinks: LiveGuestLinksRepository(environment: environment),
         overview: LiveOverviewRepository(environment: environment),
+        recurringExpenses: LiveRecurringExpensesRepository(environment: environment),
+        households: LiveHouseholdsRepository(environment: environment),
         liveConfiguration: configuration,
         webBaseURL: configuration.webBaseURL,
         appVersion: configuration.appVersion,
@@ -138,6 +144,8 @@ public struct AppDependencies: Sendable {
         chatLinks: FakeChatLinksRepository(world: world),
         guestLinks: FakeGuestLinksRepository(world: world),
         overview: FakeOverviewRepository(world: world),
+        recurringExpenses: FakeRecurringExpensesRepository(world: world),
+        households: FakeHouseholdsRepository(world: world),
         liveConfiguration: nil,
         webBaseURL: webBaseURL,
         appVersion: appVersion,

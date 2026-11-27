@@ -60,6 +60,59 @@ public struct LinkRouter: Sendable, Hashable {
     }
   }
 
+  public enum AppActionRoute: Hashable, Sendable {
+    case overview
+    case quickEntry(groupId: ExpenseGroup.ID)
+    case newExpense(groupId: ExpenseGroup.ID)
+    case balances(groupId: ExpenseGroup.ID)
+    case shareImport(batchId: String)
+  }
+
+  public func appActionRoute(for url: URL) -> AppActionRoute? {
+    let raw = url.absoluteString
+    guard !raw.contains(".."),
+      !raw.contains("?"),
+      !raw.contains("#"),
+      let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+      components.scheme?.lowercased() == "songphang",
+      let host = components.host?.lowercased()
+    else {
+      return nil
+    }
+
+    let segments = components.percentEncodedPath
+      .split(separator: "/", omittingEmptySubsequences: true)
+      .map(String.init)
+
+    switch host {
+    case "overview":
+      guard segments.isEmpty else { return nil }
+      return .overview
+    case "group":
+      guard segments.count == 2, UUID(uuidString: segments[0]) != nil else {
+        return nil
+      }
+      let groupId = ExpenseGroup.ID(segments[0])
+      switch segments[1] {
+      case "quick-entry":
+        return .quickEntry(groupId: groupId)
+      case "expense-new":
+        return .newExpense(groupId: groupId)
+      case "balances":
+        return .balances(groupId: groupId)
+      default:
+        return nil
+      }
+    case "share-import":
+      guard segments.count == 1, UUID(uuidString: segments[0]) != nil else {
+        return nil
+      }
+      return .shareImport(batchId: segments[0])
+    default:
+      return nil
+    }
+  }
+
   public enum PushDestination: Hashable, Sendable {
     case groupFeed(groupId: ExpenseGroup.ID)
     case groupBalances(groupId: ExpenseGroup.ID)

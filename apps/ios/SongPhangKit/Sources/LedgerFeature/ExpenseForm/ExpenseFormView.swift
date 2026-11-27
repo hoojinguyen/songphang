@@ -99,14 +99,18 @@ public struct ExpenseFormView: View {
               get: { model.splitState },
               set: {
                 model.splitState = $0
-                model.schedulePreview()
+                if model.hasManualExtras {
+                  model.scheduleExtrasPreview()
+                } else {
+                  model.schedulePreview()
+                }
                 if $0.method == .items {
                   model.scheduleItemsPreview()
                 }
               }
             ),
             members: active,
-            amount: model.effectiveAmount,
+            amount: model.hasManualExtras ? model.amount : model.effectiveAmount,
             description: model.descriptionText.isEmpty ? model.headerTitle : model.descriptionText,
             payerLine: L10n.t("expenseForm.payerAmountLabel", ["name": payerNames]),
             shares: model.previewShares,
@@ -218,6 +222,13 @@ public struct ExpenseFormView: View {
             )
           }
 
+          if model.hasManualExtras {
+            Text(L10n.tr("extras.goodsSubtotal"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+              .padding(.leading, 4)
+          }
+
           AmountFieldView(
             value: model.amountText,
             onChange: { model.updateAmountText($0) },
@@ -327,8 +338,20 @@ public struct ExpenseFormView: View {
               PayerAmountsView(
                 members: model.payerMembers.filter { model.payerIds.contains($0.id) },
                 values: model.payerAmounts,
-                totalAmount: model.amount,
+                totalAmount: model.effectiveAmount,
                 onChange: { id, val in model.setPayerAmount(val, for: id) }
+              )
+            }
+
+            if model.transactionType == .expense && model.splitState.method != .items {
+              ManualExtrasCardView(
+                extras: $model.manualExtras,
+                allocation: $model.extrasAllocation,
+                baseAmount: model.amount,
+                preview: model.extrasPreview,
+                isPreviewCurrent: model.isExtrasPreviewCurrent,
+                previewError: model.extrasPreviewError,
+                onChange: { model.scheduleExtrasPreview() }
               )
             }
 
@@ -401,6 +424,22 @@ public struct ExpenseFormView: View {
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
             .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+          }
+
+          if !isEditing
+            && model.transactionType == .expense
+            && model.initialRecurringExpense == nil
+            && model.initialRecurringDueAction == nil
+          {
+            RecurringInlineCardView(
+              isEnabled: $model.isRecurringEnabled,
+              mode: $model.recurringMode,
+              frequency: $model.recurringFrequency,
+              dayOfWeek: $model.recurringDayOfWeek,
+              dayOfMonth: $model.recurringDayOfMonth,
+              monthOfYear: $model.recurringMonthOfYear,
+              canVariable: model.canVariableRecurring
+            )
           }
 
           PhotoRowView(
@@ -494,7 +533,7 @@ public struct ExpenseFormView: View {
             SplitStatusBannerView(
               status: model.splitState.status(
                 from: active,
-                totalAmount: model.effectiveAmount,
+                totalAmount: model.hasManualExtras ? model.amount : model.effectiveAmount,
                 itemsPreview: model.itemsPreview,
                 isItemsPreviewCurrent: model.isItemsPreviewCurrent
               )

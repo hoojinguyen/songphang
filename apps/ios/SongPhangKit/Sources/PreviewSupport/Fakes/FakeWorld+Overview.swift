@@ -131,6 +131,7 @@
             groupName: group.name,
             myBalance: bal,
             role: group.role,
+            myMemberId: group.myMemberId,
             archivedAt: group.archivedAt,
             memberCount: group.memberCount,
             previewMembers: group.previewMembers
@@ -191,12 +192,39 @@
         }
       }
 
+      var dueRecurringActions: [OverviewRecurringDueAction] = []
+      for group in activeGroups {
+        let groupMembers = membersByGroup[group.id] ?? []
+        for rec in recurringExpensesByGroup[group.id] ?? [] where rec.active {
+          if let pendingDue = rec.pendingDueDate,
+            let payerId = rec.payersTemplate.first?.memberId
+          {
+            let payerName =
+              groupMembers.first(where: { $0.id == payerId })?.name ?? "Thành viên"
+            dueRecurringActions.append(
+              OverviewRecurringDueAction(
+                id: rec.id,
+                groupId: group.id,
+                groupName: group.name,
+                description: rec.description,
+                dueDate: pendingDue,
+                suggestedAmount: rec.amount,
+                payerMemberId: payerId,
+                payerName: payerName
+              )
+            )
+          }
+        }
+      }
+
       return OverviewSummary(
         totalOwedToMe: Money(totalOwedToMe),
         totalIOwe: Money(totalIOwe),
         netBalance: netBalance,
         pendingActions: pendingActions,
-        groupBalances: groupBalances
+        groupBalances: groupBalances,
+        dueRecurringCount: dueRecurringActions.count,
+        dueRecurringActions: dueRecurringActions
       )
     }
 

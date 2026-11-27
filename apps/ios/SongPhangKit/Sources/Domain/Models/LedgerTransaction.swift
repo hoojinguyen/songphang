@@ -89,6 +89,28 @@ public enum ExactRemainderMode: Sendable, Hashable {
   }
 }
 
+public enum ExtrasAllocation: Sendable, Hashable, Codable {
+  case equal
+  case proportional
+  case unknown(String)
+
+  public init(code: String) {
+    switch code {
+    case "equal": self = .equal
+    case "proportional": self = .proportional
+    default: self = .unknown(code)
+    }
+  }
+
+  public var code: String {
+    switch self {
+    case .equal: return "equal"
+    case .proportional: return "proportional"
+    case .unknown(let raw): return raw
+    }
+  }
+}
+
 public enum SplitSpec: Sendable, Hashable {
   public struct ExactEntry: Sendable, Hashable {
     public let memberId: Member.ID
@@ -133,19 +155,94 @@ public enum SplitSpec: Sendable, Hashable {
     public let kind: ReceiptExtraKind
     public let label: String
     public let amount: Money
+    public let ratePercent: String?
 
-    public init(kind: ReceiptExtraKind, label: String, amount: Money) {
+    public init(
+      kind: ReceiptExtraKind,
+      label: String,
+      amount: Money,
+      ratePercent: String? = nil
+    ) {
       self.kind = kind
       self.label = label
       self.amount = amount
+      self.ratePercent = ratePercent
     }
   }
 
-  case equal(members: [Member.ID])
-  case exact(members: [Member.ID], entries: [ExactEntry], remainder: ExactRemainderMode)
-  case shares(entries: [ShareWeightEntry])
-  case percent(entries: [PercentEntry])
-  case items(items: [ItemEntry], extras: [ItemsExtra])
+  case equal(
+    members: [Member.ID],
+    extras: [ItemsExtra] = [],
+    extrasAllocation: ExtrasAllocation? = nil
+  )
+  case exact(
+    members: [Member.ID],
+    entries: [ExactEntry],
+    remainder: ExactRemainderMode,
+    extras: [ItemsExtra] = [],
+    extrasAllocation: ExtrasAllocation? = nil
+  )
+  case shares(
+    entries: [ShareWeightEntry],
+    extras: [ItemsExtra] = [],
+    extrasAllocation: ExtrasAllocation? = nil
+  )
+  case percent(
+    entries: [PercentEntry],
+    extras: [ItemsExtra] = [],
+    extrasAllocation: ExtrasAllocation? = nil
+  )
+  case items(
+    items: [ItemEntry],
+    extras: [ItemsExtra],
+    extrasAllocation: ExtrasAllocation? = nil
+  )
+
+  public var extras: [ItemsExtra] {
+    switch self {
+    case .equal(_, let extras, _),
+      .exact(_, _, _, let extras, _),
+      .shares(_, let extras, _),
+      .percent(_, let extras, _),
+      .items(_, let extras, _):
+      return extras
+    }
+  }
+
+  public var extrasAllocation: ExtrasAllocation? {
+    switch self {
+    case .equal(_, _, let allocation),
+      .exact(_, _, _, _, let allocation),
+      .shares(_, _, let allocation),
+      .percent(_, _, let allocation),
+      .items(_, _, let allocation):
+      return allocation
+    }
+  }
+
+  public func withExtras(
+    _ newExtras: [ItemsExtra],
+    allocation: ExtrasAllocation?
+  ) -> SplitSpec {
+    switch self {
+    case .equal(let members, _, _):
+      return .equal(members: members, extras: newExtras, extrasAllocation: allocation)
+    case .exact(let members, let entries, let remainder, _, _):
+      return .exact(
+        members: members,
+        entries: entries,
+        remainder: remainder,
+        extras: newExtras,
+        extrasAllocation: allocation
+      )
+    case .shares(let entries, _, _):
+      return .shares(entries: entries, extras: newExtras, extrasAllocation: allocation)
+    case .percent(let entries, _, _):
+      return .percent(entries: entries, extras: newExtras, extrasAllocation: allocation)
+    case .items(let items, _, _):
+      return .items(items: items, extras: newExtras, extrasAllocation: allocation)
+    }
+  }
 }
 
 public struct MemberAmount: Sendable, Hashable, Identifiable {
@@ -255,6 +352,7 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
   public var paymentChannel: PaymentChannel?
   public var paymentNote: String?
   public var cycleId: SettlementCycle.ID?
+  public var recurringExpenseId: RecurringExpense.ID?
 
   public init(
     id: ID,
@@ -284,7 +382,8 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     myDelta: Money? = nil,
     paymentChannel: PaymentChannel? = nil,
     paymentNote: String? = nil,
-    cycleId: SettlementCycle.ID? = nil
+    cycleId: SettlementCycle.ID? = nil,
+    recurringExpenseId: RecurringExpense.ID? = nil
   ) {
     self.id = id
     self.type = type
@@ -314,5 +413,6 @@ public struct LedgerTransaction: Sendable, Hashable, Identifiable {
     self.paymentChannel = paymentChannel
     self.paymentNote = paymentNote
     self.cycleId = cycleId
+    self.recurringExpenseId = recurringExpenseId
   }
 }

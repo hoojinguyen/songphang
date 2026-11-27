@@ -152,11 +152,17 @@ public struct BalancesView: View {
         )
       ) { breakdown in
         if let data = model.state.value, let result = data.breakdowns {
+          let hhBreakdown = result.householdBreakdowns.first {
+            $0.memberIds.contains(breakdown.memberId)
+          }
+          let transferMemberIds =
+            hhBreakdown.map { Set($0.memberIds) } ?? Set([breakdown.memberId])
           MemberBreakdownSheetView(
             breakdown: breakdown,
+            householdBreakdown: hhBreakdown,
             focusLabel: result.resolvedFocus.label,
             memberTransfers: data.balances.transfers.filter {
-              $0.fromMemberId == breakdown.memberId
+              transferMemberIds.contains($0.fromMemberId)
             },
             members: data.members,
             onDismiss: { selectedBreakdownMemberId = nil }
@@ -198,13 +204,17 @@ public struct BalancesView: View {
     let hasTransactions = !data.transactions.isEmpty
     let myMemberId = data.group.myMemberId
     let sortedTransfers = data.balances.transfers.sorted { first, second in
-      let firstInvolvesMe = (first.fromMemberId == myMemberId || first.toMemberId == myMemberId)
-      let secondInvolvesMe = (second.fromMemberId == myMemberId || second.toMemberId == myMemberId)
+      let firstInvolvesMe = isTransferOnMySide(first, myMemberId: myMemberId)
+      let secondInvolvesMe = isTransferOnMySide(second, myMemberId: myMemberId)
       if firstInvolvesMe == secondInvolvesMe { return false }
       return firstInvolvesMe && !secondInvolvesMe
     }
-    let ownTransfers = sortedTransfers.filter { $0.fromMemberId == myMemberId }
-    let otherTransfers = sortedTransfers.filter { $0.fromMemberId != myMemberId }
+    let ownTransfers = sortedTransfers.filter {
+      isFromMySide($0, myMemberId: myMemberId)
+    }
+    let otherTransfers = sortedTransfers.filter {
+      !isFromMySide($0, myMemberId: myMemberId)
+    }
     let isOffline = model.refreshError == .offline
     let canWrite = isEmailVerified && data.group.role.canWrite && !isOffline
 
@@ -347,8 +357,17 @@ public struct BalancesView: View {
     if let myMemberId,
       let myBalance = data.balances.balances.first(where: { $0.memberId == myMemberId })
     {
+      let myHousehold = data.balances.households.first(where: {
+        $0.memberIds.contains(myMemberId)
+      })
+      let repName = myHousehold.flatMap { hh in
+        data.members.first(where: { $0.id == hh.representativeMemberId })?.name
+      }
       personalNetHeroCard(
-        balance: myBalance.balance,
+        balance: myHousehold?.netBalance ?? myBalance.balance,
+        individualBalance: myHousehold != nil ? myBalance.balance : nil,
+        householdName: myHousehold?.name,
+        settledThroughName: (myHousehold?.representativeMemberId != myMemberId) ? repName : nil,
         canViewBreakdown: data.breakdowns?.breakdowns.contains(where: { $0.memberId == myMemberId })
           == true,
         onViewBreakdown: { selectedBreakdownMemberId = myMemberId }
@@ -523,6 +542,18 @@ public struct BalancesView: View {
         }
       }
 
+      if !data.balances.households.isEmpty {
+        HouseholdBarsSection(
+          households: data.balances.households,
+          members: data.members,
+          onSelectHousehold: { hh in
+            if hasBreakdowns {
+              selectedBreakdownMemberId = hh.representativeMemberId
+            }
+          }
+        )
+      }
+
       BalanceBarsSection(
         balances: data.balances.balances,
         members: data.members,
@@ -542,6 +573,9 @@ public struct BalancesView: View {
 
   private func personalNetHeroCard(
     balance: Money,
+    individualBalance: Money? = nil,
+    householdName: String? = nil,
+    settledThroughName: String? = nil,
     canViewBreakdown: Bool,
     onViewBreakdown: @escaping () -> Void
   ) -> some View {
@@ -557,7 +591,12 @@ public struct BalancesView: View {
       balance.isPositive ? Tokens.credit : (balance.isNegative ? Tokens.debt : Tokens.ink)
     return SPCard(padding: 16) {
       HStack(spacing: 12) {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
+          if let householdName {
+            Text(householdName)
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.ink)
+          }
           Text(statusLabel)
             .font(Typography.captionBold)
             .foregroundStyle(Tokens.muted)
@@ -567,6 +606,21 @@ public struct BalancesView: View {
             font: Typography.sectionTitle,
             color: tint
           )
+          if let individualBalance {
+            Text(
+              L10n.t(
+                "households.personalShareTemplate",
+                ["amount": MoneyFormat.full(individualBalance)]
+              )
+            )
+            .font(Typography.caption)
+            .foregroundStyle(Tokens.muted)
+          }
+          if let settledThroughName, !settledThroughName.isEmpty {
+            Text(L10n.t("households.settledThroughTemplate", ["name": settledThroughName]))
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.muted)
+          }
         }
         Spacer(minLength: 8)
         if canViewBreakdown {
@@ -735,19 +789,34 @@ public struct BalancesView: View {
   }
 }
 
+private func isFromMySide(_ transfer: SuggestedTransfer, myMemberId: Member.ID?) -> Bool {
+  guard let myMemberId else { return false }
+  if transfer.fromMemberId == myMemberId { return true }
+  return transfer.fromHousehold?.memberIds.contains(myMemberId) == true
+}
+
+private func isTransferOnMySide(_ transfer: SuggestedTransfer, myMemberId: Member.ID?) -> Bool {
+  guard let myMemberId else { return false }
+  if transfer.fromMemberId == myMemberId || transfer.toMemberId == myMemberId { return true }
+  if transfer.fromHousehold?.memberIds.contains(myMemberId) == true { return true }
+  if transfer.toHousehold?.memberIds.contains(myMemberId) == true { return true }
+  return false
+}
+
 private func transferActionLabel(
   transfer: SuggestedTransfer,
   myMemberId: Member.ID?,
   role: Role,
   opensPay: Bool
 ) -> String {
+  let isMineToPay = isFromMySide(transfer, myMemberId: myMemberId)
   if !opensPay {
-    if transfer.fromMemberId == myMemberId { return L10n.tr("balances.paid") }
+    if isMineToPay { return L10n.tr("balances.paid") }
     return transfer.toMemberId == myMemberId
       ? L10n.tr("balances.received")
       : L10n.tr("balances.record")
   }
-  if transfer.fromMemberId == myMemberId {
+  if isMineToPay {
     return L10n.tr("feed.pay")
   }
   return role.canWrite ? L10n.tr("balances.record") : L10n.tr("feed.view")
@@ -770,7 +839,18 @@ private func canCancelPending(
   pending.createdByMe || group.myMemberId == fromMember.id
 }
 
+private func transferPartyLabel(
+  member: Member,
+  household: HouseholdTransferRef?
+) -> String {
+  if let household {
+    return "\(member.name) (\(L10n.t("households.representativeBadge", ["name": household.name])))"
+  }
+  return member.name
+}
+
 private func transferRowCaption(
+  transfer: SuggestedTransfer,
   from: Member,
   to: Member,
   amount: Money,
@@ -785,14 +865,19 @@ private func transferRowCaption(
     return L10n.t(
       "balances.memberContributesToFund", ["from": from.name, "amount": MoneyFormat.full(amount)])
   }
+  let fromLabel = transferPartyLabel(member: from, household: transfer.fromHousehold)
+  let toLabel = transferPartyLabel(member: to, household: transfer.toHousehold)
+  if isFromMySide(transfer, myMemberId: myMemberId) {
+    return L10n.t("balances.youPayMember", ["name": toLabel])
+  }
   if from.id == myMemberId {
-    return L10n.t("balances.youPayMember", ["name": to.name])
+    return L10n.t("balances.youPayMember", ["name": toLabel])
   }
   if to.id == myMemberId {
-    return L10n.t("balances.memberPaysYou", ["name": from.name])
+    return L10n.t("balances.memberPaysYou", ["name": fromLabel])
   }
   _ = includeAmountForFund
-  return L10n.t("balances.memberPaysMember", ["from": from.name, "to": to.name])
+  return L10n.t("balances.memberPaysMember", ["from": fromLabel, "to": toLabel])
 }
 
 private struct OwnSettlementCardView: View {
@@ -822,6 +907,7 @@ private struct OwnSettlementCardView: View {
         )
         Text(
           transferRowCaption(
+            transfer: transfer,
             from: fromMember,
             to: toMember,
             amount: transfer.amount,
@@ -910,8 +996,9 @@ private struct SettlementCardView: View {
         dynamicTypeSize.isAccessibilitySize
         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
         : AnyLayout(HStackLayout(spacing: 16))
-      let other = transfer.fromMemberId == myMemberId ? toMember : fromMember
+      let other = isFromMySide(transfer, myMemberId: myMemberId) ? toMember : fromMember
       let caption = transferRowCaption(
+        transfer: transfer,
         from: fromMember,
         to: toMember,
         amount: transfer.amount,
@@ -1059,6 +1146,7 @@ private struct OtherSettlementsSection: View {
               )
               Text(
                 transferRowCaption(
+                  transfer: transfer,
                   from: fromMember,
                   to: toMember,
                   amount: transfer.amount,
@@ -1264,6 +1352,101 @@ private struct AllSettledSection: View {
         isFullWidth: true,
         action: onBackToGroup
       )
+    }
+  }
+}
+
+private struct HouseholdBarsSection: View {
+  let households: [HouseholdBalance]
+  let members: [Member]
+  var onSelectHousehold: ((HouseholdBalance) -> Void)? = nil
+
+  var body: some View {
+    let largest = max(
+      1,
+      households.map { $0.netBalance.magnitude.amount }.max() ?? 1
+    )
+    let ordered = households.sorted { $0.netBalance > $1.netBalance }
+
+    VStack(alignment: .leading, spacing: 14) {
+      Text(L10n.tr("households.byHouseholdTitle"))
+        .font(Typography.subheadlineBold)
+        .foregroundStyle(Tokens.ink)
+
+      ForEach(ordered) { hh in
+        householdRowView(hh, largest: largest)
+      }
+    }
+    .padding(20)
+    .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+  }
+
+  @ViewBuilder
+  private func householdRowView(_ hh: HouseholdBalance, largest: Int64) -> some View {
+    let rep = members.first(where: { $0.id == hh.representativeMemberId })
+    let barColor = rep.map { Tokens.color(for: $0.color) } ?? Tokens.ink
+    let negativeMagnitude = hh.netBalance.isNegative ? Double(hh.netBalance.magnitude.amount) : 0
+    let positiveMagnitude = !hh.netBalance.isNegative ? Double(hh.netBalance.magnitude.amount) : 0
+    let row = VStack(alignment: .leading, spacing: 6) {
+      HStack {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(hh.name)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.ink)
+          if let rep {
+            Text(L10n.t("households.representativeBadge", ["name": rep.name]))
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.muted)
+          }
+        }
+        Spacer()
+        MoneyText(
+          hh.netBalance,
+          style: .signed,
+          font: Typography.captionBold,
+          color: hh.netBalance.isPositive
+            ? Tokens.credit
+            : (hh.netBalance.isNegative ? Tokens.debt : Tokens.ink)
+        )
+      }
+
+      HStack(spacing: 2) {
+        ProgressView(value: negativeMagnitude, total: Double(largest))
+          .progressViewStyle(HalfBalanceBarStyle(color: barColor, anchor: .trailing))
+
+        ProgressView(value: positiveMagnitude, total: Double(largest))
+          .progressViewStyle(HalfBalanceBarStyle(color: barColor, anchor: .leading))
+      }
+      .frame(height: 14)
+      .background(Tokens.sunken, in: Capsule())
+
+      HStack(spacing: 8) {
+        ForEach(hh.memberBalances) { mb in
+          if let member = members.first(where: { $0.id == mb.memberId }) {
+            HStack(spacing: 2) {
+              Text("\(member.name):")
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+              MoneyText(
+                mb.balance,
+                style: .signed,
+                font: Typography.caption,
+                color: Tokens.muted
+              )
+            }
+          }
+        }
+      }
+    }
+    if let onSelectHousehold {
+      Button {
+        onSelectHousehold(hh)
+      } label: {
+        row
+      }
+      .buttonStyle(.plain)
+    } else {
+      row
     }
   }
 }
