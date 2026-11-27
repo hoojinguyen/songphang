@@ -2,6 +2,7 @@ import { and, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import type { DbExecutor } from "./client.js";
 import { users } from "./schema.js";
 import { groups, groupUsers } from "./schema-groups.js";
+import { households } from "./schema-households.js";
 import { transactions } from "./schema-transactions.js";
 import { deleteGroupSettlementRequests } from "./settlement-requests.js";
 
@@ -126,6 +127,7 @@ export async function lockGroup(executor: DbExecutor, groupId: string) {
 
 export async function deleteGroupRow(executor: DbExecutor, groupId: string) {
 	await deleteGroupSettlementRequests(executor, groupId);
+	await executor.delete(households).where(eq(households.groupId, groupId));
 	await executor.delete(transactions).where(eq(transactions.groupId, groupId));
 	return executor.delete(groups).where(eq(groups.id, groupId));
 }

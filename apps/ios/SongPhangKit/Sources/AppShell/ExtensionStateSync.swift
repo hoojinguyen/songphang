@@ -53,8 +53,8 @@ enum ExtensionStateSync {
             id: group.id.rawValue,
             name: group.name,
             role: group.role.code,
-            receiptReadingEnabled: features?.receiptReading ?? true,
-            hasLinkedMember: group.myMemberId != nil ? true : nil
+            receiptReadingEnabled: features?.receiptReading ?? false,
+            hasLinkedMember: group.myMemberId != nil
           )
         }
       } else {
@@ -63,8 +63,8 @@ enum ExtensionStateSync {
             id: gb.groupId.rawValue,
             name: gb.groupName,
             role: gb.role.code,
-            receiptReadingEnabled: features?.receiptReading ?? true,
-            hasLinkedMember: nil
+            receiptReadingEnabled: features?.receiptReading ?? false,
+            hasLinkedMember: gb.myMemberId != nil
           )
         }
       }

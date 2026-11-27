@@ -154,6 +154,17 @@ public struct RecurringSectionView: View {
               .font(Typography.captionBold)
               .foregroundStyle(Tokens.muted)
             }
+
+            let payerNames = item.payersTemplate.compactMap { entry in
+              members.first(where: { $0.id == entry.memberId })?.name
+            }
+            let payerText =
+              payerNames.isEmpty
+              ? L10n.tr("compose.payerDefault")
+              : L10n.t("compose.payer", ["name": payerNames.joined(separator: " · ")])
+            Text("\(payerText) · \(splitMethodLabel(item.splitTemplate))")
+              .font(Typography.caption)
+              .foregroundStyle(Tokens.muted)
           }
 
           Spacer()
@@ -187,6 +198,7 @@ public struct RecurringSectionView: View {
                 .frame(width: 32, height: 32)
                 .background(Tokens.sunken, in: Circle())
             }
+            .accessibilityLabel(L10n.tr("ios.recurring.actionsMenu"))
           }
         }
 
@@ -246,6 +258,16 @@ public struct RecurringSectionView: View {
           }
         }
       }
+    }
+  }
+
+  private func splitMethodLabel(_ split: SplitSpec) -> String {
+    switch split {
+    case .equal: return L10n.tr("split.methodEqual")
+    case .exact: return L10n.tr("split.methodExact")
+    case .shares: return L10n.tr("split.methodShares")
+    case .percent: return L10n.tr("split.methodPercent")
+    case .items: return L10n.tr("split.methodItems")
     }
   }
 

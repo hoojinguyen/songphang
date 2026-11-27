@@ -448,6 +448,17 @@ export async function createTransactionIn(
 		if (existingRecurring === null) {
 			throw new AppError(404, "NOT_FOUND", "Resource not found");
 		}
+		if (
+			!existingRecurring.active ||
+			existingRecurring.mode !== "variable" ||
+			existingRecurring.pendingDueDate === null
+		) {
+			throw new AppError(
+				409,
+				"REQUEST_NOT_PENDING",
+				"Recurring expense is not awaiting completion",
+			);
+		}
 	}
 	const [group, owner, actor] = await Promise.all([
 		findGroup(executor, input.groupId),
@@ -1024,7 +1035,10 @@ async function computePreviewExtrasWarnings(
 			type: "expense",
 			description: "preview",
 			amount: input.computedAmount,
-			occurredAt: input.now.toISOString(),
+			occurredAt:
+				input.request.occurredAt ??
+				replacing?.occurredAt.toISOString() ??
+				input.now.toISOString(),
 			payers: resolvedPayers,
 			split: fallbackSplit,
 			category: null,

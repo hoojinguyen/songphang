@@ -485,6 +485,9 @@ public func canRemindTransfer(
   guard transfer.pendingSettlement == nil else { return false }
   guard from.kind == .person && from.claimed && to.kind == .person else { return false }
   guard from.id != myMemberId else { return false }
+  if let myMemberId, transfer.fromHousehold?.memberIds.contains(myMemberId) == true {
+    return false
+  }
   return role != .viewer || myMemberId == to.id
 }
 

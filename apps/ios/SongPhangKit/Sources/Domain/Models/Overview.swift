@@ -72,6 +72,7 @@ public struct OverviewGroupBalance: Sendable, Hashable, Identifiable {
   public let myIndividualBalance: Money?
   public let householdName: String?
   public let role: Role
+  public let myMemberId: Member.ID?
   public let archivedAt: Date?
   public let memberCount: Int
   public let previewMembers: [ExpenseGroup.PreviewMember]
@@ -83,6 +84,7 @@ public struct OverviewGroupBalance: Sendable, Hashable, Identifiable {
     myIndividualBalance: Money? = nil,
     householdName: String? = nil,
     role: Role = .editor,
+    myMemberId: Member.ID? = nil,
     archivedAt: Date? = nil,
     memberCount: Int = 0,
     previewMembers: [ExpenseGroup.PreviewMember] = []
@@ -93,6 +95,7 @@ public struct OverviewGroupBalance: Sendable, Hashable, Identifiable {
     self.myIndividualBalance = myIndividualBalance
     self.householdName = householdName
     self.role = role
+    self.myMemberId = myMemberId
     self.archivedAt = archivedAt
     self.memberCount = memberCount
     self.previewMembers = previewMembers

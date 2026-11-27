@@ -438,22 +438,23 @@ enum TransactionMapping {
     _ input: CreateInlineRecurringInput?
   ) -> Components.Schemas.CreateInlineRecurringInput? {
     guard let input else { return nil }
-    let freq: Components.Schemas.CreateInlineRecurringInput.frequencyPayload = {
+    let freq: Components.Schemas.CreateInlineRecurringInput.frequencyPayload? = {
       switch input.frequency {
       case .weekly: return .weekly
       case .monthly: return .monthly
       case .quarterly: return .quarterly
       case .yearly: return .yearly
-      case .unknown: return .monthly
+      case .unknown: return nil
       }
     }()
-    let mode: Components.Schemas.CreateInlineRecurringInput.modePayload = {
+    let mode: Components.Schemas.CreateInlineRecurringInput.modePayload? = {
       switch input.mode {
       case .fixed: return .fixed
       case .variable: return .variable
-      case .unknown: return .fixed
+      case .unknown: return nil
       }
     }()
+    guard let freq, let mode else { return nil }
     return Components.Schemas.CreateInlineRecurringInput(
       dayOfMonth: input.dayOfMonth,
       dayOfWeek: input.dayOfWeek,
@@ -477,6 +478,7 @@ enum TransactionMapping {
         )
       },
       extrasAllocation: input.extrasAllocation.flatMap { .init(rawValue: $0.code) },
+      occurredAt: input.occurredAt,
       payerMemberId: input.payerMemberId?.rawValue,
       payers: input.payers?.map {
         .init(amount: $0.amount.map { Int($0.amount) }, memberId: $0.memberId.rawValue)

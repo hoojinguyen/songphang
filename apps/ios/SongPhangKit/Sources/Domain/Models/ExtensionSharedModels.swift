@@ -76,7 +76,7 @@ public struct ShareGroupItem: Sendable, Hashable, Codable, Identifiable {
       return true
     }
     if role == "viewer" {
-      return hasLinkedMember ?? true
+      return hasLinkedMember ?? false
     }
     return false
   }

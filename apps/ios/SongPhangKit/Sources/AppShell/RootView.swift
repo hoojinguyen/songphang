@@ -62,6 +62,7 @@ public struct RootView: View {
   @State private var activeGuestShare: GuestSharePresentation?
   @State private var statusNotice: String?
   @State private var deletedTransactionId: LedgerTransaction.ID?
+  @State private var recurringRefreshTick = 0
   #if DEBUG
     @State private var isShowingDebugPanel = false
   #endif
@@ -1305,6 +1306,7 @@ public struct RootView: View {
         }
       },
       onExpenseSaved: {
+        recurringRefreshTick &+= 1
         guard case .signedIn(let signedInUser) = sessionModel.state else { return }
         Task {
           let features: ServerFeatures?
@@ -1319,6 +1321,7 @@ public struct RootView: View {
           )
         }
       },
+      recurringRefreshTick: recurringRefreshTick,
       deletedTransactionId: $deletedTransactionId
     )
     .toolbar { keyboardDoneToolbar }

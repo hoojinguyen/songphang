@@ -50,6 +50,7 @@ export const OverviewGroupBalance = z
 		groupName: GroupName,
 		archivedAt: z.iso.datetime().nullable(),
 		role: GroupRole,
+		myMemberId: z.uuid().nullable().optional(),
 		myBalance: z.int(),
 		myIndividualBalance: z.int().optional(),
 		householdName: z.string().nullable().optional(),

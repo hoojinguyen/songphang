@@ -184,15 +184,38 @@ struct OverviewWidgetView: View {
               .lineLimit(1)
           }
           if !entry.snapshot.hideAmounts {
-            HStack(spacing: 8) {
-              Text(MoneyFormat.compact(Money(entry.snapshot.totalOwedToMe)))
-                .font(Typography.captionBold)
-                .monospacedDigit()
-                .foregroundStyle(Tokens.credit)
-              Text(MoneyFormat.compact(Money(entry.snapshot.totalIOwe)))
-                .font(Typography.captionBold)
-                .monospacedDigit()
-                .foregroundStyle(Tokens.debt)
+            HStack(spacing: 12) {
+              VStack(alignment: .trailing, spacing: 1) {
+                Text(L10n.tr("ios.widget.owedToMe"))
+                  .font(Typography.caption)
+                  .foregroundStyle(Tokens.muted)
+                  .lineLimit(1)
+                MoneyText(
+                  Money(entry.snapshot.totalOwedToMe),
+                  style: .full,
+                  font: Typography.captionBold,
+                  color: Tokens.credit
+                )
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+              }
+              .accessibilityElement(children: .combine)
+
+              VStack(alignment: .trailing, spacing: 1) {
+                Text(L10n.tr("ios.widget.iOwe"))
+                  .font(Typography.caption)
+                  .foregroundStyle(Tokens.muted)
+                  .lineLimit(1)
+                MoneyText(
+                  Money(entry.snapshot.totalIOwe),
+                  style: .full,
+                  font: Typography.captionBold,
+                  color: Tokens.debt
+                )
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+              }
+              .accessibilityElement(children: .combine)
             }
           }
         }

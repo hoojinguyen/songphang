@@ -266,11 +266,13 @@ struct ShareExtensionView: View {
     let uploadPurpose: AttachmentUploadPurpose =
       purpose == .expense ? .expense : .transferProof
 
+    let imagesToUpload =
+      purpose == .transferProof ? Array(preparedImages.prefix(1)) : preparedImages
     var uploadedIds: [String] = []
     var localFilenames: [String] = []
 
     do {
-      for (index, jpegData) in preparedImages.enumerated() {
+      for (index, jpegData) in imagesToUpload.enumerated() {
         let uploaded = try await attachmentsRepo.upload(
           groupId: groupId,
           data: jpegData,
@@ -304,11 +306,18 @@ struct ShareExtensionView: View {
         receiptScanId: scanId,
         localImageFilenames: localFilenames
       )
-      ExtensionSharedStore.shared.writeShareInboxManifest(manifest)
+      guard ExtensionSharedStore.shared.writeShareInboxManifest(manifest) else {
+        errorMessage = L10n.tr("common.saveError")
+        return
+      }
     } catch {
+      guard purpose == .expense else {
+        errorMessage = L10n.tr("common.saveError")
+        return
+      }
       if let batchDir = ExtensionSharedStore.shared.shareInboxBatchDirectory(batchId: batchId) {
         try? FileManager.default.createDirectory(at: batchDir, withIntermediateDirectories: true)
-        for (index, jpegData) in preparedImages.enumerated() {
+        for (index, jpegData) in imagesToUpload.enumerated() {
           let filename = "image-\(index + 1).jpg"
           let fileURL = batchDir.appending(path: filename)
           if (try? jpegData.write(
@@ -332,7 +341,11 @@ struct ShareExtensionView: View {
         receiptScanId: nil,
         localImageFilenames: localFilenames
       )
-      ExtensionSharedStore.shared.writeShareInboxManifest(manifest)
+      guard ExtensionSharedStore.shared.writeShareInboxManifest(manifest) else {
+        ExtensionSharedStore.shared.removeShareInboxBatch(batchId: batchId)
+        errorMessage = L10n.tr("common.saveError")
+        return
+      }
     }
 
     if let deepLink = URL(string: "songphang://share-import/\(batchId)") {

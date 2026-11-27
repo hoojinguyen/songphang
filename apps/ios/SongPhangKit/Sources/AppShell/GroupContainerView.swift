@@ -50,6 +50,7 @@ public struct GroupContainerView: View {
   private let onReplaceTop: (Route) -> Void
   private let onPopToRoot: (String?) -> Void
   private let onExpenseSaved: () -> Void
+  private let recurringRefreshTick: Int
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
   @State private var selectedSegment: GroupSegment
@@ -62,6 +63,7 @@ public struct GroupContainerView: View {
   @State private var isArchiving = false
   @State private var paymentSheet: PaymentSheet?
   @State private var pendingProofAttachmentId: Attachment.ID?
+  @State private var completingRecurringId: RecurringExpense.ID?
 
   @State private var feedModel: GroupFeedModel
   @State private var balancesModel: BalancesModel
@@ -84,7 +86,8 @@ public struct GroupContainerView: View {
     onNavigate: @escaping (Route) -> Void,
     onReplaceTop: @escaping (Route) -> Void,
     onPopToRoot: @escaping (String?) -> Void,
-    onExpenseSaved: @escaping () -> Void
+    onExpenseSaved: @escaping () -> Void,
+    recurringRefreshTick: Int = 0
   ) {
     self.groupId = groupId
     self.dependencies = dependencies
@@ -96,6 +99,7 @@ public struct GroupContainerView: View {
     self.onReplaceTop = onReplaceTop
     self.onPopToRoot = onPopToRoot
     self.onExpenseSaved = onExpenseSaved
+    self.recurringRefreshTick = recurringRefreshTick
     self._selectedSegment = State(initialValue: initialSegment)
     self._pendingProofAttachmentId = State(initialValue: initialTransferProofAttachmentId)
     if let initialFundSubTab {
@@ -286,6 +290,13 @@ public struct GroupContainerView: View {
       feedModel.markDeleted(id)
       deletedTransactionId = nil
     }
+    .onChange(of: recurringRefreshTick) { _, _ in
+      if let id = completingRecurringId {
+        recurringExpensesModel.clearPendingDueDate(id: id)
+        completingRecurringId = nil
+      }
+      Task { await recurringExpensesModel.load() }
+    }
     #if DEBUG
       .task {
         if ProcessInfo.processInfo.arguments.contains("--open-share-card") {
@@ -316,76 +327,80 @@ public struct GroupContainerView: View {
         )
       }
     }
-    .sheet(item: $paymentSheet) { selection in
-      let role = balancesModel.state.value?.group.role ?? .editor
-      let myMemberId = balancesModel.state.value?.group.myMemberId
-      let isVerified = currentUser?.emailVerified ?? true
-      let canEdit = role.canWrite
-      let payModel = PayModel(
-        transfer: selection.transfer,
-        fromMember: selection.fromMember,
-        toMember: selection.toMember,
-        groupId: groupId,
-        myMemberId: myMemberId,
-        role: role,
-        isEmailVerified: isVerified,
-        isFromHouseholdMember: {
-          guard let myMemberId else { return false }
-          return selection.transfer.fromHousehold?.memberIds.contains(myMemberId) == true
-        }(),
-        initialProofAttachment: pendingProofAttachmentId.map {
-          Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)
-        },
-        repository: dependencies.settlementRequests,
-        uploadProof: { data, filename, contentType async throws(AppError) in
-          try await dependencies.attachments.upload(
-            groupId: groupId,
-            data: data,
-            filename: filename,
-            contentType: contentType,
-            purpose: .transferProof
-          )
-        },
-        loadAttachment: { attachmentId in
-          try await dependencies.attachments.content(groupId: groupId, attachmentId: attachmentId)
-        },
-        onReload: { await balancesModel.load() },
-        onUnauthorized: {
-          paymentSheet = nil
-          onPopToRoot(nil)
-          Task { await sessionModel.signOut() }
-        }
-      )
-      NavigationStack {
-        PayView(
-          model: payModel,
-          isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
-          onBack: { paymentSheet = nil },
-          onAddDetails: payModel.canAddDetails
-            ? {
-              paymentSheet = nil
-              onNavigate(.groupMembers(groupId: groupId))
-            } : nil,
-          onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
-            ? {
-              paymentSheet = nil
-              onNavigate(
-                .settle(
-                  groupId: groupId,
-                  fromMemberId: selection.transfer.fromMemberId,
-                  toMemberId: selection.transfer.toMemberId,
-                  initialAmount: selection.transfer.amount
-                )
-              )
-            } : nil,
-          onFinished: { _ in
-            pendingProofAttachmentId = nil
+    .sheet(
+      item: $paymentSheet,
+      onDismiss: { pendingProofAttachmentId = nil },
+      content: { selection in
+        let role = balancesModel.state.value?.group.role ?? .editor
+        let myMemberId = balancesModel.state.value?.group.myMemberId
+        let isVerified = currentUser?.emailVerified ?? true
+        let canEdit = role.canWrite
+        let payModel = PayModel(
+          transfer: selection.transfer,
+          fromMember: selection.fromMember,
+          toMember: selection.toMember,
+          groupId: groupId,
+          myMemberId: myMemberId,
+          role: role,
+          isEmailVerified: isVerified,
+          isFromHouseholdMember: {
+            guard let myMemberId else { return false }
+            return selection.transfer.fromHousehold?.memberIds.contains(myMemberId) == true
+          }(),
+          initialProofAttachment: pendingProofAttachmentId.map {
+            Attachment(id: $0, contentType: "image/jpeg", byteSize: 1)
+          },
+          repository: dependencies.settlementRequests,
+          uploadProof: { data, filename, contentType async throws(AppError) in
+            try await dependencies.attachments.upload(
+              groupId: groupId,
+              data: data,
+              filename: filename,
+              contentType: contentType,
+              purpose: .transferProof
+            )
+          },
+          loadAttachment: { attachmentId in
+            try await dependencies.attachments.content(groupId: groupId, attachmentId: attachmentId)
+          },
+          onReload: { await balancesModel.load() },
+          onUnauthorized: {
             paymentSheet = nil
-            onExpenseSaved()
+            onPopToRoot(nil)
+            Task { await sessionModel.signOut() }
           }
         )
+        NavigationStack {
+          PayView(
+            model: payModel,
+            isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
+            onBack: { paymentSheet = nil },
+            onAddDetails: payModel.canAddDetails
+              ? {
+                paymentSheet = nil
+                onNavigate(.groupMembers(groupId: groupId))
+              } : nil,
+            onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
+              ? {
+                paymentSheet = nil
+                onNavigate(
+                  .settle(
+                    groupId: groupId,
+                    fromMemberId: selection.transfer.fromMemberId,
+                    toMemberId: selection.transfer.toMemberId,
+                    initialAmount: selection.transfer.amount
+                  )
+                )
+              } : nil,
+            onFinished: { _ in
+              pendingProofAttachmentId = nil
+              paymentSheet = nil
+              onExpenseSaved()
+            }
+          )
+        }
       }
-    }
+    )
   }
 
   private var persistentHeader: some View {
@@ -677,6 +692,7 @@ public struct GroupContainerView: View {
               onNavigate(.groupFeed(groupId: groupId, initialFilter: filter))
             },
             onCompleteDueRecurring: { item in
+              completingRecurringId = item.id
               onNavigate(.newTransactionForm(groupId: groupId, initialRecurringExpense: item))
             }
           )

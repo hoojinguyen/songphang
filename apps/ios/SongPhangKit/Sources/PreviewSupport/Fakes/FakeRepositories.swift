@@ -329,13 +329,14 @@
       groupId: ExpenseGroup.ID,
       items: [SplitSpec.ItemEntry],
       extras: [SplitSpec.ItemsExtra],
-      extrasAllocation _: ExtrasAllocation?,
+      extrasAllocation: ExtrasAllocation?,
       targetTotal: Money?
     ) async throws(AppError) -> ItemsPreview {
       try await world.previewItems(
         groupId: groupId,
         items: items,
         extras: extras,
+        extrasAllocation: extrasAllocation,
         targetTotal: targetTotal
       )
     }

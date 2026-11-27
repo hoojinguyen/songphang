@@ -2,10 +2,12 @@ import { sql } from "drizzle-orm";
 import {
 	type AnyPgColumn,
 	check,
+	foreignKey,
 	index,
 	pgTable,
 	text,
 	timestamp,
+	unique,
 	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
@@ -31,6 +33,12 @@ export const households = pgTable(
 			.defaultNow(),
 	},
 	(table) => [
+		unique("households_group_id_id_unique").on(table.groupId, table.id),
+		foreignKey({
+			name: "households_group_rep_fk",
+			columns: [table.groupId, table.representativeMemberId],
+			foreignColumns: [members.groupId, members.id],
+		}).onDelete("restrict"),
 		index("households_group_idx").on(table.groupId, table.createdAt),
 		uniqueIndex("households_representative_unique").on(
 			table.representativeMemberId,

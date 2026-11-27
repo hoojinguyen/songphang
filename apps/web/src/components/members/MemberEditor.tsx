@@ -22,20 +22,22 @@ export function MemberEditor({
 	const remove = useDeleteMember(groupId);
 	useSessionGuard(update.error ?? remove.error);
 	const isPending = update.isPending || remove.isPending;
-	const setActive = (active: boolean) =>
+	const setActive = (active: boolean) => {
+		remove.reset();
 		update.mutate(
 			{ memberId: member.id, request: { active } },
 			{ onSuccess: () => setShowsWarning(false) },
 		);
+	};
 	const error =
 		remove.error?.code === "MEMBER_HAS_TRANSACTIONS"
 			? t(vi.members.hasTransactions, { name: member.name })
 			: update.error?.code === "HOUSEHOLD_REPRESENTATIVE_ACTIVE_REQUIRED"
 				? vi.households.repActiveError
-				: (update.error ?? remove.error)?.code === "HOUSEHOLD_MEMBER_CONFLICT"
+				: remove.error?.code === "HOUSEHOLD_MEMBER_CONFLICT"
 					? vi.households.conflictError
 					: update.isError || remove.isError
-						? (update.error ?? remove.error)?.status === 403
+						? (remove.error ?? update.error)?.status === 403
 							? vi.common.forbidden
 							: vi.common.saveError
 						: null;
@@ -53,9 +55,13 @@ export function MemberEditor({
 			<Button
 				variant="primary"
 				disabled={isPending || !name.trim() || name.trim() === member.name}
-				onClick={() =>
-					update.mutate({ memberId: member.id, request: { name: name.trim() } })
-				}
+				onClick={() => {
+					remove.reset();
+					update.mutate({
+						memberId: member.id,
+						request: { name: name.trim() },
+					});
+				}}
 			>
 				{vi.members.saveName}
 			</Button>
@@ -99,7 +105,10 @@ export function MemberEditor({
 					<Button
 						variant="surface"
 						disabled={isPending}
-						onClick={() => remove.mutate(member.id)}
+						onClick={() => {
+							update.reset();
+							remove.mutate(member.id);
+						}}
 					>
 						{vi.members.delete}
 					</Button>

@@ -34,7 +34,7 @@ public final class LiveRecurringExpensesRepository: RecurringExpensesRepository,
     key: IdempotencyKey
   ) async throws(AppError) -> RecurringExpense {
     do {
-      let body = Self.encodeCreateRequest(input)
+      let body = try Self.encodeCreateRequest(input)
       let output = try await environment.client
         .post_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_recurring_hyphen_expenses(
           .init(
@@ -71,7 +71,7 @@ public final class LiveRecurringExpensesRepository: RecurringExpensesRepository,
         || isClear(input.monthOfYear)
 
       if !hasClear {
-        let body = Self.encodeUpdateRequest(input)
+        let body = try Self.encodeUpdateRequest(input)
         let output = try await environment.client
           .patch_sol_api_sol_v1_sol_groups_sol__lcub_groupId_rcub__sol_recurring_hyphen_expenses_sol__lcub_recurringId_rcub_(
             .init(
@@ -87,7 +87,7 @@ public final class LiveRecurringExpensesRepository: RecurringExpensesRepository,
         }
       }
 
-      let body = Self.encodeUpdateRequest(input)
+      let body = try Self.encodeUpdateRequest(input)
       let encoder = JSONEncoder()
       let encoded = try encoder.encode(body)
       guard var json = try JSONSerialization.jsonObject(with: encoded) as? [String: Any] else {
@@ -221,23 +221,23 @@ public final class LiveRecurringExpensesRepository: RecurringExpensesRepository,
 
   private static func encodeCreateRequest(
     _ input: CreateRecurringExpenseInput
-  ) -> Components.Schemas.CreateRecurringExpenseRequest {
-    let freq: Components.Schemas.CreateRecurringExpenseRequest.frequencyPayload = {
-      switch input.frequency {
-      case .weekly: return .weekly
-      case .monthly: return .monthly
-      case .quarterly: return .quarterly
-      case .yearly: return .yearly
-      case .unknown: return .monthly
-      }
-    }()
-    let mode: Components.Schemas.CreateRecurringExpenseRequest.modePayload = {
-      switch input.mode {
-      case .fixed: return .fixed
-      case .variable: return .variable
-      case .unknown: return .fixed
-      }
-    }()
+  ) throws(AppError) -> Components.Schemas.CreateRecurringExpenseRequest {
+    let freq: Components.Schemas.CreateRecurringExpenseRequest.frequencyPayload
+    switch input.frequency {
+    case .weekly: freq = .weekly
+    case .monthly: freq = .monthly
+    case .quarterly: freq = .quarterly
+    case .yearly: freq = .yearly
+    case .unknown:
+      throw .api(code: "VALIDATION_FAILED", status: 400)
+    }
+    let mode: Components.Schemas.CreateRecurringExpenseRequest.modePayload
+    switch input.mode {
+    case .fixed: mode = .fixed
+    case .variable: mode = .variable
+    case .unknown:
+      throw .api(code: "VALIDATION_FAILED", status: 400)
+    }
     let category: Components.Schemas.CreateRecurringExpenseRequest.categoryPayload? =
       input.categoryId == nil
       ? input.category.flatMap { .init(rawValue: $0.code) }
@@ -261,23 +261,30 @@ public final class LiveRecurringExpensesRepository: RecurringExpensesRepository,
 
   private static func encodeUpdateRequest(
     _ input: UpdateRecurringExpenseInput
-  ) -> Components.Schemas.UpdateRecurringExpenseRequest {
-    let freq: Components.Schemas.UpdateRecurringExpenseRequest.frequencyPayload? = input.frequency
-      .map {
-        switch $0 {
-        case .weekly: return .weekly
-        case .monthly: return .monthly
-        case .quarterly: return .quarterly
-        case .yearly: return .yearly
-        case .unknown: return .monthly
-        }
+  ) throws(AppError) -> Components.Schemas.UpdateRecurringExpenseRequest {
+    let freq: Components.Schemas.UpdateRecurringExpenseRequest.frequencyPayload?
+    if let frequency = input.frequency {
+      switch frequency {
+      case .weekly: freq = .weekly
+      case .monthly: freq = .monthly
+      case .quarterly: freq = .quarterly
+      case .yearly: freq = .yearly
+      case .unknown:
+        throw .api(code: "VALIDATION_FAILED", status: 400)
       }
-    let mode: Components.Schemas.UpdateRecurringExpenseRequest.modePayload? = input.mode.map {
-      switch $0 {
-      case .fixed: return .fixed
-      case .variable: return .variable
-      case .unknown: return .fixed
+    } else {
+      freq = nil
+    }
+    let mode: Components.Schemas.UpdateRecurringExpenseRequest.modePayload?
+    if let inputMode = input.mode {
+      switch inputMode {
+      case .fixed: mode = .fixed
+      case .variable: mode = .variable
+      case .unknown:
+        throw .api(code: "VALIDATION_FAILED", status: 400)
       }
+    } else {
+      mode = nil
     }
     let amount: Int? = {
       if case .set(let val) = input.amount { return Int(val.amount) }

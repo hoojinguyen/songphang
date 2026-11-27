@@ -434,6 +434,13 @@ public final class ExpenseFormModel {
 
   public func setType(_ next: TransactionType) {
     transactionType = next
+    if next != .expense {
+      manualExtras = []
+      extrasAllocation = .equal
+      extrasPreview = nil
+      isExtrasPreviewCurrent = false
+      extrasPreviewError = nil
+    }
     if next == .income {
       let defaultId = state.value?.group.myMemberId ?? payerIds.first
       payerIds = defaultId.map { [$0] } ?? []
@@ -564,6 +571,9 @@ public final class ExpenseFormModel {
           extrasAllocation: alloc,
           payers: payersPayload,
           payerMemberId: payerIds.count == 1 ? payerIds.first : nil,
+          occurredAt: state.value?.editingTransaction.flatMap {
+            ISO8601Support.parse($0.occurredAt)
+          } ?? occurredAtDate,
           split: splitSpec,
           transactionId: editingId
         )
@@ -747,7 +757,7 @@ public final class ExpenseFormModel {
     let inlineRecurring: CreateInlineRecurringInput? =
       (isCreatingExpense && recurringExpenseId == nil && isRecurringEnabled)
       ? CreateInlineRecurringInput(
-        mode: recurringMode,
+        mode: canVariableRecurring ? recurringMode : .fixed,
         frequency: recurringFrequency,
         dayOfWeek: recurringFrequency == .weekly ? recurringDayOfWeek : nil,
         dayOfMonth: recurringFrequency != .weekly ? recurringDayOfMonth : nil,
@@ -787,11 +797,19 @@ public final class ExpenseFormModel {
     return true
   }
 
+  public var canVariableRecurring: Bool {
+    payerIds.count == 1
+      && (splitState.method == .equal || splitState.method == .shares
+        || splitState.method == .percent)
+  }
+
   public func schedulePreview() {
     previewTask?.cancel()
     if hasManualExtras {
+      isExtrasPreviewCurrent = false
       isPreviewPending = false
       previewError = nil
+      scheduleExtrasPreview()
       return
     }
     guard transactionType != .transfer, buildDraft() != nil else {

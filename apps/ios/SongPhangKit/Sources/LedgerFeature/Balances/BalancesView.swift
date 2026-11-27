@@ -850,7 +850,7 @@ private func transferPartyLabel(
 }
 
 private func transferRowCaption(
-  transfer: SuggestedTransfer? = nil,
+  transfer: SuggestedTransfer,
   from: Member,
   to: Member,
   amount: Money,
@@ -865,9 +865,9 @@ private func transferRowCaption(
     return L10n.t(
       "balances.memberContributesToFund", ["from": from.name, "amount": MoneyFormat.full(amount)])
   }
-  let fromLabel = transferPartyLabel(member: from, household: transfer?.fromHousehold)
-  let toLabel = transferPartyLabel(member: to, household: transfer?.toHousehold)
-  if let transfer, isFromMySide(transfer, myMemberId: myMemberId) {
+  let fromLabel = transferPartyLabel(member: from, household: transfer.fromHousehold)
+  let toLabel = transferPartyLabel(member: to, household: transfer.toHousehold)
+  if isFromMySide(transfer, myMemberId: myMemberId) {
     return L10n.t("balances.youPayMember", ["name": toLabel])
   }
   if from.id == myMemberId {
@@ -907,6 +907,7 @@ private struct OwnSettlementCardView: View {
         )
         Text(
           transferRowCaption(
+            transfer: transfer,
             from: fromMember,
             to: toMember,
             amount: transfer.amount,

@@ -120,8 +120,9 @@ actor TokenStore {
     }
 
     if UserDefaults.standard.bool(forKey: Self.tombstoneKey) {
+      let targetGroup = accessGroup ?? Self.defaultAccessGroup()
       let sharedStatus: OSStatus =
-        if let group = accessGroup {
+        if let group = targetGroup {
           deleteItem(usingAccessGroup: group)
         } else {
           errSecItemNotFound
@@ -130,7 +131,6 @@ actor TokenStore {
       let sharedOk =
         sharedStatus == errSecSuccess
         || sharedStatus == errSecItemNotFound
-        || sharedStatus == errSecMissingEntitlement
       let legacyOk = legacyStatus == errSecSuccess || legacyStatus == errSecItemNotFound
       if sharedOk && legacyOk {
         UserDefaults.standard.removeObject(forKey: Self.tombstoneKey)
@@ -230,8 +230,9 @@ actor TokenStore {
   @discardableResult
   func clear() -> UInt64 {
     UserDefaults.standard.set(true, forKey: Self.tombstoneKey)
+    let targetGroup = accessGroup ?? Self.defaultAccessGroup()
     let sharedStatus: OSStatus =
-      if let group = accessGroup {
+      if let group = targetGroup {
         deleteItem(usingAccessGroup: group)
       } else {
         errSecItemNotFound
@@ -242,7 +243,6 @@ actor TokenStore {
     let sharedOk =
       sharedStatus == errSecSuccess
       || sharedStatus == errSecItemNotFound
-      || sharedStatus == errSecMissingEntitlement
     let legacyOk = legacyStatus == errSecSuccess || legacyStatus == errSecItemNotFound
     if sharedOk && legacyOk {
       UserDefaults.standard.removeObject(forKey: Self.tombstoneKey)

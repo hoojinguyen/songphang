@@ -97,9 +97,12 @@ struct GuestBreakdownSheet: View {
                   .font(Typography.subheadlineBold)
                   .foregroundStyle(Tokens.ink)
                 ForEach(transfers) { transfer in
+                  let fromName =
+                    members.first(where: { $0.id == transfer.fromMemberId })?.name
+                    ?? breakdown.memberName
                   let toName = members.first(where: { $0.id == transfer.toMemberId })?.name ?? ""
                   HStack {
-                    Text("\(breakdown.memberName) → \(toName)")
+                    Text("\(fromName) → \(toName)")
                       .font(Typography.captionBold)
                       .foregroundStyle(Tokens.ink)
                     Spacer()

@@ -8,12 +8,13 @@ public enum ShareCardMode: String, Sendable, Hashable, CaseIterable {
 
 public struct ShareCardContent: Sendable, Equatable {
   public struct HouseholdRow: Sendable, Equatable, Identifiable {
-    public var id: String { name + "-\(balance.amount)" }
+    public let id: String
     public let name: String
     public let representativeName: String
     public let balance: Money
 
-    public init(name: String, representativeName: String, balance: Money) {
+    public init(id: String, name: String, representativeName: String, balance: Money) {
+      self.id = id
       self.name = name
       self.representativeName = representativeName
       self.balance = balance

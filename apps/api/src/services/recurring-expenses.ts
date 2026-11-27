@@ -444,9 +444,16 @@ export async function editRecurringExpense(
 			input.request.monthOfYear !== undefined;
 		const resumingStale =
 			!before.active && nextActive && before.nextDueDate < todayVN;
+		const lastProcessed = before.lastProcessedDueDate;
 		const nextDueDate =
 			scheduleChanged || resumingStale
-				? computeNextDueDate(schedule, todayVN, true)
+				? computeNextDueDate(
+						schedule,
+						lastProcessed !== null && lastProcessed >= todayVN
+							? lastProcessed
+							: todayVN,
+						lastProcessed === null || lastProcessed < todayVN,
+					)
 				: before.nextDueDate;
 
 		const nextPendingDueDate =
@@ -670,12 +677,13 @@ export async function pauseRecurringTemplatesForMember(
 export async function advanceStaleRecurringDatesOnUnarchive(
 	executor: DbExecutor,
 	input: { groupId: string; now: Date },
-): Promise<void> {
+): Promise<number> {
 	const activeRows = await listActiveRecurringExpensesInGroup(
 		executor,
 		input.groupId,
 	);
 	const todayVN = todayInVietnam(input.now);
+	let advancedCount = 0;
 	for (const row of activeRows) {
 		if (row.nextDueDate >= todayVN) continue;
 		const nextDueDate = computeNextDueDate(
@@ -692,7 +700,9 @@ export async function advanceStaleRecurringDatesOnUnarchive(
 			nextDueDate,
 			updatedAt: input.now,
 		});
+		advancedCount += 1;
 	}
+	return advancedCount;
 }
 
 export async function hasMemberRecurringReferences(

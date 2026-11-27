@@ -102,11 +102,11 @@ public final class ExtensionSharedStore: Sendable {
       .appending(path: safeId, directoryHint: .isDirectory)
   }
 
-  public func writeShareInboxManifest(_ manifest: ShareInboxManifest) {
+  public func writeShareInboxManifest(_ manifest: ShareInboxManifest) -> Bool {
     guard let dir = shareInboxBatchDirectory(batchId: manifest.batchId) else {
-      return
+      return false
     }
-    writeJSON(manifest, to: dir.appending(path: "manifest.json"))
+    return writeJSON(manifest, to: dir.appending(path: "manifest.json"))
   }
 
   public func readShareInboxManifest(batchId: String) -> ShareInboxManifest? {
@@ -196,23 +196,29 @@ public final class ExtensionSharedStore: Sendable {
     return try? decoder.decode(type, from: data)
   }
 
-  private func writeJSON<T: Encodable>(_ value: T, to url: URL) {
+  @discardableResult
+  private func writeJSON<T: Encodable>(_ value: T, to url: URL) -> Bool {
     let encoder = JSONEncoder()
     encoder.dateEncodingStrategy = .iso8601
-    guard let data = try? encoder.encode(value) else { return }
+    guard let data = try? encoder.encode(value) else { return false }
 
     let fm = FileManager.default
     let parent = url.deletingLastPathComponent()
-    try? fm.createDirectory(at: parent, withIntermediateDirectories: true)
-    if let root = sharedStateURL {
-      excludeFromBackup(root)
+    do {
+      try fm.createDirectory(at: parent, withIntermediateDirectories: true)
+      if let root = sharedStateURL {
+        excludeFromBackup(root)
+      }
+      excludeFromBackup(parent)
+      try data.write(
+        to: url,
+        options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
+      )
+      excludeFromBackup(url)
+      return true
+    } catch {
+      return false
     }
-    excludeFromBackup(parent)
-    try? data.write(
-      to: url,
-      options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]
-    )
-    excludeFromBackup(url)
   }
 
   private func excludeFromBackup(_ url: URL) {

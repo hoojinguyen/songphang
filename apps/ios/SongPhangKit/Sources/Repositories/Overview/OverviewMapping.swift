@@ -45,6 +45,7 @@ enum OverviewMapping {
         myIndividualBalance: gb.myIndividualBalance.map { Money(Int64($0)) },
         householdName: gb.householdName,
         role: Role(code: gb.role.rawValue),
+        myMemberId: gb.myMemberId.map(Member.ID.init),
         archivedAt: gb.archivedAt,
         memberCount: gb.memberCount,
         previewMembers: gb.previewMembers.map { p in
@@ -142,6 +143,7 @@ enum OverviewMapping {
     let myIndividualBalance: Int64?
     let householdName: String?
     let role: String
+    let myMemberId: String?
     let archivedAt: String?
     let memberCount: Int
     let previewMembers: [RawPreviewMember]
@@ -154,6 +156,7 @@ enum OverviewMapping {
         myIndividualBalance: myIndividualBalance.map(Money.init),
         householdName: householdName,
         role: Role(code: role),
+        myMemberId: myMemberId.map(Member.ID.init),
         archivedAt: archivedAt.flatMap(ISO8601Support.parse),
         memberCount: memberCount,
         previewMembers: previewMembers.map { p in
@@ -245,6 +248,7 @@ enum OverviewMapping {
           myIndividualBalance: gb.myIndividualBalance?.amount,
           householdName: gb.householdName,
           role: gb.role.code,
+          myMemberId: gb.myMemberId?.rawValue,
           archivedAt: gb.archivedAt.map { formatISO($0) },
           memberCount: gb.memberCount,
           previewMembers: gb.previewMembers.map { p in

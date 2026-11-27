@@ -2,6 +2,24 @@ import DesignSystem
 public import Domain
 public import SwiftUI
 
+private enum RecurringSplitMethod: String, CaseIterable {
+  case equal
+  case shares
+  case percent
+  case exact
+  case items
+
+  var label: String {
+    switch self {
+    case .equal: return L10n.tr("split.modeEqual")
+    case .shares: return L10n.tr("split.modeShares")
+    case .percent: return L10n.tr("split.modePercent")
+    case .exact: return L10n.tr("split.modeExact")
+    case .items: return L10n.tr("split.methodItems")
+    }
+  }
+}
+
 struct RecurringFormSheetView: View {
   let members: [Member]
   let editing: RecurringExpense?
@@ -18,8 +36,11 @@ struct RecurringFormSheetView: View {
   @State private var dayOfWeek: Int
   @State private var dayOfMonth: Int
   @State private var monthOfYear: Int
-  @State private var payerId: Member.ID?
+  @State private var payerIds: [Member.ID]
+  @State private var payerAmountsText: [Member.ID: String]
+  @State private var splitMethod: RecurringSplitMethod
   @State private var sharerIds: [Member.ID]
+  @State private var memberValues: [Member.ID: String]
 
   init(
     members: [Member],
@@ -50,11 +71,52 @@ struct RecurringFormSheetView: View {
     self._dayOfWeek = State(initialValue: editing?.dayOfWeek ?? 1)
     self._dayOfMonth = State(initialValue: editing?.dayOfMonth ?? 1)
     self._monthOfYear = State(initialValue: editing?.monthOfYear ?? 1)
-    self._payerId = State(
-      initialValue: editing?.payersTemplate.first?.memberId ?? activePayers.first?.id
+
+    let initialPayers = editing?.payersTemplate.map(\.memberId) ?? []
+    self._payerIds = State(
+      initialValue: !initialPayers.isEmpty
+        ? initialPayers
+        : (activePayers.first.map { [$0.id] } ?? [])
     )
+    let initialPayerAmounts = Dictionary(
+      uniqueKeysWithValues: (editing?.payersTemplate ?? []).compactMap { entry in
+        entry.amount.map { (entry.memberId, MoneyFormat.amount($0)) }
+      }
+    )
+    self._payerAmountsText = State(initialValue: initialPayerAmounts)
+
+    let initialMethod = Self.method(from: editing?.splitTemplate)
+    self._splitMethod = State(initialValue: initialMethod)
     let defaultSharers = Self.participantIds(from: editing?.splitTemplate) ?? activePeople.map(\.id)
     self._sharerIds = State(initialValue: defaultSharers)
+    self._memberValues = State(initialValue: Self.initialValues(from: editing?.splitTemplate))
+  }
+
+  private static func method(from split: SplitSpec?) -> RecurringSplitMethod {
+    guard let split else { return .equal }
+    switch split {
+    case .equal: return .equal
+    case .shares: return .shares
+    case .percent: return .percent
+    case .exact: return .exact
+    case .items: return .items
+    }
+  }
+
+  private static func initialValues(from split: SplitSpec?) -> [Member.ID: String] {
+    guard let split else { return [:] }
+    switch split {
+    case .equal, .items:
+      return [:]
+    case .shares(let entries, _, _):
+      return Dictionary(uniqueKeysWithValues: entries.map { ($0.memberId, $0.weight) })
+    case .percent(let entries, _, _):
+      return Dictionary(uniqueKeysWithValues: entries.map { ($0.memberId, $0.percent) })
+    case .exact(_, let entries, _, _, _):
+      return Dictionary(
+        uniqueKeysWithValues: entries.map { ($0.memberId, MoneyFormat.amount($0.amount)) }
+      )
+    }
   }
 
   private static func participantIds(from split: SplitSpec?) -> [Member.ID]? {
@@ -79,6 +141,30 @@ struct RecurringFormSheetView: View {
     activePeople + members.filter { $0.active && $0.kind == .fund }
   }
 
+  private var displayedPayerOptions: [Member] {
+    let activeIds = Set(payerOptions.map(\.id))
+    let inactiveSelected = members.filter { !activeIds.contains($0.id) && payerIds.contains($0.id) }
+    return payerOptions + inactiveSelected
+  }
+
+  private var displayedSharerOptions: [Member] {
+    let activeIds = Set(activePeople.map(\.id))
+    let inactiveSelected = members.filter {
+      !activeIds.contains($0.id) && sharerIds.contains($0.id)
+    }
+    return activePeople + inactiveSelected
+  }
+
+  private var availableSplitMethods: [RecurringSplitMethod] {
+    if mode == .variable {
+      return [.equal, .shares, .percent]
+    }
+    if editing?.splitTemplate != nil, case .items = editing?.splitTemplate {
+      return [.equal, .shares, .percent, .exact, .items]
+    }
+    return [.equal, .shares, .percent, .exact]
+  }
+
   private var parsedAmount: Money? {
     let digits = amountText.filter { $0.isWholeNumber && $0.isASCII }
     guard !digits.isEmpty else { return nil }
@@ -87,14 +173,29 @@ struct RecurringFormSheetView: View {
 
   private var canSave: Bool {
     guard !descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-      payerId != nil,
+      !payerIds.isEmpty,
       !sharerIds.isEmpty,
       !isPending
     else { return false }
+    let activeMemberIds = Set(members.filter(\.active).map(\.id))
+    guard payerIds.allSatisfy({ activeMemberIds.contains($0) }),
+      sharerIds.allSatisfy({ activeMemberIds.contains($0) })
+    else { return false }
     if mode == .fixed {
-      return parsedAmount?.isPositive == true
+      guard let total = parsedAmount, total.isPositive else { return false }
+      if payerIds.count > 1 {
+        let sum = payerIds.reduce(Money.zero) { acc, id in
+          acc + (MoneyFormat.parseInput(payerAmountsText[id] ?? "") ?? .zero)
+        }
+        guard
+          payerIds.allSatisfy({
+            (MoneyFormat.parseInput(payerAmountsText[$0] ?? "")?.isPositive) == true
+          }),
+          sum == total
+        else { return false }
+      }
     }
-    return true
+    return buildSplitSpec() != nil
   }
 
   var body: some View {
@@ -125,6 +226,16 @@ struct RecurringFormSheetView: View {
               Text(L10n.tr("recurring.modeVariable")).tag(RecurringMode.variable)
             }
             .pickerStyle(.segmented)
+            .onChange(of: mode) { _, next in
+              if next == .variable {
+                if payerIds.count > 1 {
+                  payerIds = Array(payerIds.prefix(1))
+                }
+                if splitMethod == .exact || splitMethod == .items {
+                  splitMethod = .equal
+                }
+              }
+            }
           }
 
           VStack(alignment: .leading, spacing: 6) {
@@ -208,19 +319,73 @@ struct RecurringFormSheetView: View {
               .foregroundStyle(Tokens.muted)
             ScrollView(.horizontal, showsIndicators: false) {
               HStack(spacing: 8) {
-                ForEach(payerOptions) { member in
-                  let selected = payerId == member.id
+                ForEach(displayedPayerOptions) { member in
+                  let selected = payerIds.contains(member.id)
+                  let chipBg: Color =
+                    !member.active
+                    ? Tokens.debtSoft
+                    : (selected ? Tokens.ink : Tokens.surface)
+                  let chipFg: Color =
+                    !member.active
+                    ? Tokens.coral
+                    : (selected ? Tokens.onInk : Tokens.ink)
                   Button {
-                    payerId = member.id
+                    if mode == .variable {
+                      if member.active {
+                        payerIds = [member.id]
+                      } else if selected {
+                        payerIds = []
+                      }
+                    } else if selected {
+                      if payerIds.count > 1 || !member.active {
+                        payerIds.removeAll { $0 == member.id }
+                      }
+                    } else if member.active {
+                      payerIds.append(member.id)
+                    }
                   } label: {
                     Text(member.name)
                       .font(Typography.captionBold)
-                      .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
+                      .foregroundStyle(chipFg)
                       .padding(.horizontal, 12)
                       .frame(minHeight: 36)
-                      .background(selected ? Tokens.ink : Tokens.surface, in: Capsule())
+                      .background(chipBg, in: Capsule())
                   }
                   .buttonStyle(.plain)
+                }
+              }
+            }
+
+            if mode == .fixed && payerIds.count > 1 {
+              ForEach(displayedPayerOptions.filter { payerIds.contains($0.id) }) { payer in
+                HStack(spacing: 8) {
+                  Text(payer.name)
+                    .font(Typography.subheadlineBold)
+                    .foregroundStyle(Tokens.ink)
+                  Spacer()
+                  TextField(
+                    "0",
+                    text: Binding(
+                      get: { payerAmountsText[payer.id] ?? "" },
+                      set: { next in
+                        let digits = next.filter { $0.isWholeNumber && $0.isASCII }
+                        if digits.isEmpty {
+                          payerAmountsText[payer.id] = ""
+                        } else if let money = MoneyFormat.parseInput(digits) {
+                          payerAmountsText[payer.id] = MoneyFormat.amount(money)
+                        }
+                      }
+                    )
+                  )
+                  .keyboardType(.numberPad)
+                  .multilineTextAlignment(.trailing)
+                  .font(Typography.subheadlineBold)
+                  .monospacedDigit()
+                  .frame(width: 110)
+                  .padding(.horizontal, 10)
+                  .frame(minHeight: 36)
+                  .background(
+                    Tokens.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
               }
             }
@@ -232,16 +397,12 @@ struct RecurringFormSheetView: View {
               .foregroundStyle(Tokens.muted)
             ScrollView(.horizontal, showsIndicators: false) {
               HStack(spacing: 8) {
-                ForEach(activePeople) { member in
-                  let selected = sharerIds.contains(member.id)
+                ForEach(availableSplitMethods, id: \.self) { methodOption in
+                  let selected = splitMethod == methodOption
                   Button {
-                    if selected {
-                      sharerIds.removeAll { $0 == member.id }
-                    } else {
-                      sharerIds.append(member.id)
-                    }
+                    splitMethod = methodOption
                   } label: {
-                    Text(member.name)
+                    Text(methodOption.label)
                       .font(Typography.captionBold)
                       .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
                       .padding(.horizontal, 12)
@@ -249,6 +410,68 @@ struct RecurringFormSheetView: View {
                       .background(selected ? Tokens.ink : Tokens.surface, in: Capsule())
                   }
                   .buttonStyle(.plain)
+                }
+              }
+            }
+            if splitMethod != .items {
+              ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                  ForEach(displayedSharerOptions) { member in
+                    let selected = sharerIds.contains(member.id)
+                    let chipBg: Color =
+                      !member.active
+                      ? Tokens.debtSoft
+                      : (selected ? Tokens.ink : Tokens.surface)
+                    let chipFg: Color =
+                      !member.active
+                      ? Tokens.coral
+                      : (selected ? Tokens.onInk : Tokens.ink)
+                    Button {
+                      if selected {
+                        sharerIds.removeAll { $0 == member.id }
+                      } else if member.active {
+                        sharerIds.append(member.id)
+                      }
+                    } label: {
+                      Text(member.name)
+                        .font(Typography.captionBold)
+                        .foregroundStyle(chipFg)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 36)
+                        .background(chipBg, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                  }
+                }
+              }
+
+              if splitMethod != .equal {
+                ForEach(displayedSharerOptions.filter { sharerIds.contains($0.id) }) { member in
+                  HStack(spacing: 8) {
+                    Text(member.name)
+                      .font(Typography.subheadlineBold)
+                      .foregroundStyle(Tokens.ink)
+                    Spacer()
+                    TextField(
+                      splitMethod == .shares ? member.defaultWeight : "0",
+                      text: Binding(
+                        get: {
+                          memberValues[member.id]
+                            ?? (splitMethod == .shares ? member.defaultWeight : "")
+                        },
+                        set: { memberValues[member.id] = $0 }
+                      )
+                    )
+                    .keyboardType(splitMethod == .exact ? .numberPad : .decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .font(Typography.subheadlineBold)
+                    .monospacedDigit()
+                    .frame(width: 110)
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: 36)
+                    .background(
+                      Tokens.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                  }
                 }
               }
             }
@@ -292,12 +515,83 @@ struct RecurringFormSheetView: View {
     }
   }
 
+  private func buildSplitSpec() -> SplitSpec? {
+    let existingExtras = editing?.splitTemplate.extras ?? []
+    let existingAllocation = editing?.splitTemplate.extrasAllocation
+    let canAttachExistingExtras: Bool = {
+      guard !existingExtras.isEmpty else { return false }
+      if mode == .variable { return true }
+      return parsedAmount != nil && parsedAmount == editing?.amount
+    }()
+
+    let base: SplitSpec? = {
+      switch splitMethod {
+      case .equal:
+        guard !sharerIds.isEmpty else { return nil }
+        return .equal(members: sharerIds)
+      case .shares:
+        let entries = sharerIds.compactMap { id -> SplitSpec.ShareWeightEntry? in
+          let fallbackWeight = members.first(where: { $0.id == id })?.defaultWeight ?? "1"
+          let raw = (memberValues[id] ?? fallbackWeight).trimmingCharacters(
+            in: .whitespacesAndNewlines)
+          guard !raw.isEmpty else { return nil }
+          return SplitSpec.ShareWeightEntry(memberId: id, weight: raw)
+        }
+        guard entries.count == sharerIds.count, !entries.isEmpty else { return nil }
+        return .shares(entries: entries)
+      case .percent:
+        let entries = sharerIds.compactMap { id -> SplitSpec.PercentEntry? in
+          let raw = (memberValues[id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+          guard !raw.isEmpty else { return nil }
+          return SplitSpec.PercentEntry(memberId: id, percent: raw)
+        }
+        guard entries.count == sharerIds.count, !entries.isEmpty else { return nil }
+        return .percent(entries: entries)
+      case .exact:
+        let entries = sharerIds.compactMap { id -> SplitSpec.ExactEntry? in
+          guard let amt = MoneyFormat.parseInput(memberValues[id] ?? ""), amt.isPositive else {
+            return nil
+          }
+          return SplitSpec.ExactEntry(memberId: id, amount: amt)
+        }
+        guard !sharerIds.isEmpty else { return nil }
+        let remainder: ExactRemainderMode =
+          entries.count < sharerIds.count ? .equalAmongBlank : .none
+        return .exact(members: sharerIds, entries: entries, remainder: remainder)
+      case .items:
+        if case .items(let items, let extras, let allocation) = editing?.splitTemplate {
+          return .items(items: items, extras: extras, extrasAllocation: allocation)
+        }
+        return nil
+      }
+    }()
+
+    guard let base else { return nil }
+    if case .items = base { return base }
+    if canAttachExistingExtras {
+      return base.withExtras(existingExtras, allocation: existingAllocation)
+    }
+    return base
+  }
+
   private func submit() async {
-    guard let payerId else { return }
+    guard !payerIds.isEmpty, let split = buildSplitSpec() else { return }
     let trimmed = String(
       descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
-    let split = SplitSpec.equal(members: sharerIds)
-    let payers = [RecurringPayerTemplateEntry(memberId: payerId, amount: nil)]
+    let payers: [RecurringPayerTemplateEntry]
+    if mode == .variable {
+      payers = [RecurringPayerTemplateEntry(memberId: payerIds[0], amount: nil)]
+    } else if payerIds.count == 1 {
+      payers = [RecurringPayerTemplateEntry(memberId: payerIds[0], amount: parsedAmount)]
+    } else {
+      payers = payerIds.compactMap { id in
+        guard let amt = MoneyFormat.parseInput(payerAmountsText[id] ?? ""), amt.isPositive else {
+          return nil
+        }
+        return RecurringPayerTemplateEntry(memberId: id, amount: amt)
+      }
+      guard payers.count == payerIds.count else { return }
+    }
     let resolvedAmount =
       (mode == .variable && parsedAmount?.isPositive != true) ? nil : parsedAmount
     let dow = frequency == .weekly ? dayOfWeek : nil
@@ -347,14 +641,7 @@ struct RecurringFormSheetView: View {
   }
 
   private func dayOfWeekLabel(_ day: Int) -> String {
-    switch day {
-    case 1: return "Thứ 2"
-    case 2: return "Thứ 3"
-    case 3: return "Thứ 4"
-    case 4: return "Thứ 5"
-    case 5: return "Thứ 6"
-    case 6: return "Thứ 7"
-    default: return "Chủ nhật"
-    }
+    let clamped = (1...7).contains(day) ? day : 7
+    return L10n.tr("ios.recurring.weekday.\(clamped)")
   }
 }

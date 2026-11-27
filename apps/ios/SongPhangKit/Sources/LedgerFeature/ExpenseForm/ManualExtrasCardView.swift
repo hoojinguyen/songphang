@@ -34,6 +34,19 @@ public struct EditableManualExtra: Sendable, Equatable, Identifiable {
 
   public static let maxExtras = 6
 
+  public static func isValidRatePercent(_ raw: String) -> Bool {
+    let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.range(of: #"^\d{1,2}(\.\d{1,2})?$"#, options: .regularExpression) != nil else {
+      return false
+    }
+    let parts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
+    let whole = Int(parts[0]) ?? 0
+    let fracStr =
+      parts.count > 1 ? String(parts[1]).padding(toLength: 2, withPad: "0", startingAt: 0) : "00"
+    let frac = Int(fracStr) ?? 0
+    return (whole * 100 + frac) >= 1
+  }
+
   public func toPreviewItem() -> PreviewExtrasItem? {
     let trimmedLabel = String(label.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
     let resolvedLabel = trimmedLabel.isEmpty ? kind.localizedTitle : trimmedLabel
@@ -43,7 +56,7 @@ public struct EditableManualExtra: Sendable, Equatable, Identifiable {
         percentText
         .trimmingCharacters(in: .whitespacesAndNewlines)
         .replacingOccurrences(of: ",", with: ".")
-      guard !normalized.isEmpty else { return nil }
+      guard Self.isValidRatePercent(normalized) else { return nil }
       return PreviewExtrasItem(kind: kind, label: resolvedLabel, ratePercent: normalized)
     case .amount:
       let digits = amountText.filter { $0.isWholeNumber && $0.isASCII }
@@ -110,6 +123,10 @@ public struct ManualExtrasCardView: View {
     .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
   }
 
+  private func supportsPercent(_ kind: ReceiptExtraKind) -> Bool {
+    kind == .tax || kind == .service || kind == .discount
+  }
+
   private var quickChipsRow: some View {
     let presets: [(String, ReceiptExtraKind, String, EditableManualExtra.InputMode, String)] = [
       (L10n.tr("extras.chipVat8"), .tax, L10n.tr("extras.kindTax"), .percent, "8"),
@@ -165,6 +182,10 @@ public struct ManualExtrasCardView: View {
           ForEach(ReceiptExtraKind.allCases, id: \.self) { kind in
             Button(kind.localizedTitle) {
               binding.wrappedValue.kind = kind
+              if !supportsPercent(kind) {
+                binding.wrappedValue.mode = .amount
+                binding.wrappedValue.percentText = ""
+              }
               onChange()
             }
           }
@@ -207,21 +228,23 @@ public struct ManualExtrasCardView: View {
       }
 
       HStack(spacing: 8) {
-        Picker(
-          "",
-          selection: Binding(
-            get: { binding.wrappedValue.mode },
-            set: { next in
-              binding.wrappedValue.mode = next
-              onChange()
-            }
-          )
-        ) {
-          Text(L10n.tr("extras.modePercent")).tag(EditableManualExtra.InputMode.percent)
-          Text(L10n.tr("extras.modeAmount")).tag(EditableManualExtra.InputMode.amount)
+        if supportsPercent(binding.wrappedValue.kind) {
+          Picker(
+            "",
+            selection: Binding(
+              get: { binding.wrappedValue.mode },
+              set: { next in
+                binding.wrappedValue.mode = next
+                onChange()
+              }
+            )
+          ) {
+            Text(L10n.tr("extras.modePercent")).tag(EditableManualExtra.InputMode.percent)
+            Text(L10n.tr("extras.modeAmount")).tag(EditableManualExtra.InputMode.amount)
+          }
+          .pickerStyle(.segmented)
+          .frame(width: 170)
         }
-        .pickerStyle(.segmented)
-        .frame(width: 170)
 
         if binding.wrappedValue.mode == .percent {
           HStack(spacing: 4) {
@@ -230,8 +253,14 @@ public struct ManualExtrasCardView: View {
               text: Binding(
                 get: { binding.wrappedValue.percentText },
                 set: { next in
-                  binding.wrappedValue.percentText = next.replacingOccurrences(of: ",", with: ".")
-                  onChange()
+                  let normalized = next.replacingOccurrences(of: ",", with: ".")
+                  if normalized.isEmpty
+                    || normalized.range(
+                      of: #"^\d{0,2}(\.\d{0,2})?$"#, options: .regularExpression) != nil
+                  {
+                    binding.wrappedValue.percentText = normalized
+                    onChange()
+                  }
                 }
               )
             )

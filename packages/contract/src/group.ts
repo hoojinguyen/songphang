@@ -55,6 +55,7 @@ export const GroupSummaryDto = z
 		householdName: z.string().nullable().optional(),
 		archivedAt: z.iso.datetime().nullable().optional(),
 		role: GroupRole.optional(),
+		myMemberId: z.uuid().nullable().optional(),
 		pendingActionCount: z.int().nonnegative().optional(),
 	})
 	.openapi("GroupSummaryDto");

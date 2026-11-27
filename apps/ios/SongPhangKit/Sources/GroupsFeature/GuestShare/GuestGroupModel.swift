@@ -103,10 +103,12 @@ public final class GuestGroupModel {
           selectedCycleId: next.selectedCycleId,
           currentPeriod: next.currentPeriod,
           balances: next.balances,
+          households: next.households,
           transfers: next.transfers,
           fund: next.fund,
           resolvedFocus: next.resolvedFocus,
           breakdowns: next.breakdowns,
+          householdBreakdowns: next.householdBreakdowns,
           transactions: mergedPage
         )
       )

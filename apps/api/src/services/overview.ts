@@ -93,6 +93,7 @@ function summarizeBalances(input: {
 		groupName: string;
 		archivedAt: string | null;
 		role: UserGroupRow["role"];
+		myMemberId: string | null;
 		myBalance: number;
 		myIndividualBalance?: number;
 		householdName?: string | null;
@@ -135,6 +136,7 @@ function summarizeBalances(input: {
 			groupName: group.name,
 			archivedAt: group.archivedAt?.toISOString() ?? null,
 			role: group.role,
+			myMemberId: group.memberId,
 			myBalance,
 			...(household
 				? {

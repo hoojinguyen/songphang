@@ -1,3 +1,5 @@
+public import Foundation
+
 public struct SharePreview: Sendable, Hashable {
   public let shares: [MemberAmount]
   public let warnings: [TransactionWarning]
@@ -43,6 +45,7 @@ public struct PreviewExtrasInput: Sendable, Hashable {
   public let extrasAllocation: ExtrasAllocation?
   public let payers: [PreviewExtrasPayer]?
   public let payerMemberId: Member.ID?
+  public let occurredAt: Date?
   public let split: SplitSpec?
   public let transactionId: LedgerTransaction.ID?
 
@@ -52,6 +55,7 @@ public struct PreviewExtrasInput: Sendable, Hashable {
     extrasAllocation: ExtrasAllocation? = nil,
     payers: [PreviewExtrasPayer]? = nil,
     payerMemberId: Member.ID? = nil,
+    occurredAt: Date? = nil,
     split: SplitSpec? = nil,
     transactionId: LedgerTransaction.ID? = nil
   ) {
@@ -60,6 +64,7 @@ public struct PreviewExtrasInput: Sendable, Hashable {
     self.extrasAllocation = extrasAllocation
     self.payers = payers
     self.payerMemberId = payerMemberId
+    self.occurredAt = occurredAt
     self.split = split
     self.transactionId = transactionId
   }

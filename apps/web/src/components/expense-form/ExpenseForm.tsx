@@ -187,7 +187,7 @@ export function ExpenseForm({
 						.join(", "),
 				})}
 				shares={
-					request === null || !preview.current
+					!preview.current || (!hasManualExtras && request === null)
 						? []
 						: (preview.data?.shares ?? [])
 				}

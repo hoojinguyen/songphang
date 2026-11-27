@@ -60,7 +60,8 @@ export default function NewExpensePage() {
 	if (
 		(me.isError && !me.data) ||
 		(group.isError && !group.data) ||
-		(members.isError && !members.data)
+		(members.isError && !members.data) ||
+		(Boolean(recurringId) && recurringQuery.isError && !recurringQuery.data)
 	)
 		return (
 			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center px-5">
@@ -69,8 +70,13 @@ export default function NewExpensePage() {
 						void me.refetch();
 						void group.refetch();
 						void members.refetch();
+						if (recurringId) void recurringQuery.refetch();
 					}}
-					isRetrying={group.isFetching || members.isFetching}
+					isRetrying={
+						group.isFetching ||
+						members.isFetching ||
+						(Boolean(recurringId) && recurringQuery.isFetching)
+					}
 				/>
 			</main>
 		);
@@ -78,6 +84,18 @@ export default function NewExpensePage() {
 	const recurringTemplate = recurringId
 		? recurringQuery.data?.find((item) => item.id === recurringId)
 		: undefined;
+	if (recurringId && !recurringTemplate)
+		return (
+			<main className="mx-auto grid min-h-dvh max-w-[430px] content-center gap-4 px-5 text-center">
+				<p role="alert">{vi.common.loadError}</p>
+				<Link
+					href={`/g/${groupId}`}
+					className="flex min-h-11 items-center justify-center"
+				>
+					{vi.common.back}
+				</Link>
+			</main>
+		);
 	return (
 		<main className="mx-auto flex min-h-dvh max-w-[430px] flex-col gap-4 px-5 py-5">
 			{!me.data.emailVerified ? (

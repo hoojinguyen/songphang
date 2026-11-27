@@ -268,6 +268,18 @@ function buildMemberBreakdown(input: {
 	};
 }
 
+function toSafeMoneyInt(value: bigint): number {
+	if (
+		value < BigInt(Number.MIN_SAFE_INTEGER) ||
+		value > BigInt(Number.MAX_SAFE_INTEGER)
+	) {
+		throw new RangeError(
+			"Household breakdown amount exceeds safe integer range",
+		);
+	}
+	return Number(value);
+}
+
 export async function computeMemberBreakdownsIn(
 	executor: DbExecutor,
 	input: {
@@ -336,11 +348,11 @@ export async function computeMemberBreakdownsIn(
 			name: household.name,
 			representativeMemberId: household.representativeMemberId,
 			memberIds: household.memberIds,
-			carryOverBalance: Number(carryOverBalance),
-			focusExpenseDelta: Number(focusExpenseDelta),
-			focusTransferDelta: Number(focusTransferDelta),
-			postCycleDelta: Number(postCycleDelta),
-			netBalance: Number(netBalance),
+			carryOverBalance: toSafeMoneyInt(carryOverBalance),
+			focusExpenseDelta: toSafeMoneyInt(focusExpenseDelta),
+			focusTransferDelta: toSafeMoneyInt(focusTransferDelta),
+			postCycleDelta: toSafeMoneyInt(postCycleDelta),
+			netBalance: toSafeMoneyInt(netBalance),
 		};
 	});
 

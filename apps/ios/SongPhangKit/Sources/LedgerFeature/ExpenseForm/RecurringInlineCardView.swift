@@ -9,6 +9,7 @@ public struct RecurringInlineCardView: View {
   @Binding private var dayOfWeek: Int
   @Binding private var dayOfMonth: Int
   @Binding private var monthOfYear: Int
+  private let canVariable: Bool
 
   public init(
     isEnabled: Binding<Bool>,
@@ -16,7 +17,8 @@ public struct RecurringInlineCardView: View {
     frequency: Binding<RecurringFrequency>,
     dayOfWeek: Binding<Int>,
     dayOfMonth: Binding<Int>,
-    monthOfYear: Binding<Int>
+    monthOfYear: Binding<Int>,
+    canVariable: Bool = true
   ) {
     self._isEnabled = isEnabled
     self._mode = mode
@@ -24,6 +26,7 @@ public struct RecurringInlineCardView: View {
     self._dayOfWeek = dayOfWeek
     self._dayOfMonth = dayOfMonth
     self._monthOfYear = monthOfYear
+    self.canVariable = canVariable
   }
 
   public var body: some View {
@@ -42,8 +45,12 @@ public struct RecurringInlineCardView: View {
             .foregroundStyle(Tokens.muted)
 
           HStack(spacing: 8) {
-            modeChip(title: L10n.tr("recurring.modeFixedDesc"), target: .fixed)
-            modeChip(title: L10n.tr("recurring.modeVariableDesc"), target: .variable)
+            modeChip(title: L10n.tr("recurring.modeFixedDesc"), target: .fixed, disabled: false)
+            modeChip(
+              title: L10n.tr("recurring.modeVariableDesc"),
+              target: .variable,
+              disabled: !canVariable
+            )
           }
         }
 
@@ -98,9 +105,11 @@ public struct RecurringInlineCardView: View {
     .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
   }
 
-  private func modeChip(title: String, target: RecurringMode) -> some View {
-    let selected = mode == target
+  private func modeChip(title: String, target: RecurringMode, disabled: Bool) -> some View {
+    let effectiveMode = canVariable ? mode : .fixed
+    let selected = effectiveMode == target
     return Button {
+      guard !disabled else { return }
       mode = target
     } label: {
       Text(title)
@@ -116,6 +125,8 @@ public struct RecurringInlineCardView: View {
         )
     }
     .buttonStyle(.plain)
+    .disabled(disabled)
+    .opacity(disabled ? 0.45 : 1)
   }
 
   private func freqTitle(_ freq: RecurringFrequency) -> String {
@@ -129,14 +140,7 @@ public struct RecurringInlineCardView: View {
   }
 
   private func dayOfWeekLabel(_ day: Int) -> String {
-    switch day {
-    case 1: return "Thứ 2"
-    case 2: return "Thứ 3"
-    case 3: return "Thứ 4"
-    case 4: return "Thứ 5"
-    case 5: return "Thứ 6"
-    case 6: return "Thứ 7"
-    default: return "Chủ nhật"
-    }
+    let clamped = (1...7).contains(day) ? day : 7
+    return L10n.tr("ios.recurring.weekday.\(clamped)")
   }
 }

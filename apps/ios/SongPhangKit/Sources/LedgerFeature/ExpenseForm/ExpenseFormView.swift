@@ -437,7 +437,8 @@ public struct ExpenseFormView: View {
               frequency: $model.recurringFrequency,
               dayOfWeek: $model.recurringDayOfWeek,
               dayOfMonth: $model.recurringDayOfMonth,
-              monthOfYear: $model.recurringMonthOfYear
+              monthOfYear: $model.recurringMonthOfYear,
+              canVariable: model.canVariableRecurring
             )
           }
 

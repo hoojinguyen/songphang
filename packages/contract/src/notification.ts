@@ -1,4 +1,24 @@
 import { z } from "@hono/zod-openapi";
+import { CalendarDate, MoneyAmount } from "./transaction.ts";
+
+export const RecurringPostedPayload = z.object({
+	kind: z.literal("recurring_posted"),
+	groupName: z.string(),
+	transactionId: z.uuid(),
+	description: z.string(),
+	amount: MoneyAmount,
+	share: z.int().nonnegative(),
+});
+export type RecurringPostedPayload = z.infer<typeof RecurringPostedPayload>;
+
+export const RecurringDuePayload = z.object({
+	kind: z.literal("recurring_due"),
+	groupName: z.string(),
+	recurringExpenseId: z.uuid(),
+	description: z.string(),
+	dueDate: CalendarDate,
+});
+export type RecurringDuePayload = z.infer<typeof RecurringDuePayload>;
 
 export const NotificationPayload = z
 	.discriminatedUnion("kind", [

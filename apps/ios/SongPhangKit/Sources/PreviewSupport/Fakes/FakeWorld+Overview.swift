@@ -131,6 +131,7 @@
             groupName: group.name,
             myBalance: bal,
             role: group.role,
+            myMemberId: group.myMemberId,
             archivedAt: group.archivedAt,
             memberCount: group.memberCount,
             previewMembers: group.previewMembers

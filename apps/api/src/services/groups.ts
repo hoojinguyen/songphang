@@ -209,6 +209,7 @@ export async function listGroups(
 							: {}),
 						archivedAt: group.archivedAt?.toISOString() ?? null,
 						role: group.role,
+						myMemberId: group.memberId,
 						pendingActionCount: pending.countByGroupId.get(group.id) ?? 0,
 					};
 				}),
@@ -275,6 +276,7 @@ export async function setGroupArchived(
 	input: { groupId: string; userId: string; archived: boolean },
 ) {
 	let changed = false;
+	let advancedRecurringCount = 0;
 	const result = await deps.db.transaction(async (transaction) => {
 		const locked = await lockGroup(transaction, input.groupId);
 		const current = await getGroup(transaction, input.groupId, input.userId);
@@ -297,10 +299,13 @@ export async function setGroupArchived(
 			now,
 		});
 		if (!input.archived) {
-			await advanceStaleRecurringDatesOnUnarchive(transaction, {
-				groupId: input.groupId,
-				now,
-			});
+			advancedRecurringCount = await advanceStaleRecurringDatesOnUnarchive(
+				transaction,
+				{
+					groupId: input.groupId,
+					now,
+				},
+			);
 		}
 		await insertActivity(transaction, {
 			groupId: input.groupId,
@@ -315,7 +320,12 @@ export async function setGroupArchived(
 		return getGroup(transaction, input.groupId, input.userId);
 	});
 	if (changed) {
-		deps.events.publishChanged(input.groupId, ["group", "activity"]);
+		deps.events.publishChanged(
+			input.groupId,
+			advancedRecurringCount > 0
+				? ["group", "activity", "recurringExpenses"]
+				: ["group", "activity"],
+		);
 	}
 	return result;
 }

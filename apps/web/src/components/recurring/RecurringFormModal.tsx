@@ -3,9 +3,11 @@ import {
 	type CategoryDto,
 	CreateRecurringExpenseRequest,
 	type MemberDto,
+	PreviewExtrasRequest,
 	type RecurringExpenseDto,
 	type RecurringFrequency,
 	type RecurringMode,
+	type SplitInput,
 	UpdateRecurringExpenseRequest,
 } from "@songphang/contract";
 import { useEffect, useId, useRef, useState } from "react";
@@ -14,13 +16,18 @@ import {
 	useCreateRecurringExpense,
 	useUpdateRecurringExpense,
 } from "../../lib/recurring-expenses";
+import { usePreviewExtras } from "../../lib/transactions";
 import { vi } from "../../messages/vi";
 import { CategoryPicker } from "../expense-form/CategoryPicker";
+import { ManualExtrasCard } from "../expense-form/ManualExtrasCard";
+import { PayerAmounts } from "../expense-form/PayerAmounts";
 import { SplitMemberRow } from "../expense-form/SplitMemberRow";
 import {
 	type SplitMethod,
+	toPreviewExtrasItems,
 	useSplitState,
 } from "../expense-form/use-split-state";
+import { ItemsAssignmentPanel } from "../receipt/ItemsAssignmentPanel";
 import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
@@ -38,6 +45,7 @@ const SPLIT_METHODS: Array<{ value: SplitMethod; label: string }> = [
 	{ value: "shares", label: vi.split.modeShares },
 	{ value: "percent", label: vi.split.modePercent },
 	{ value: "exact", label: vi.split.modeExact },
+	{ value: "items", label: vi.split.modeItems },
 ];
 
 function weekdayLabel(isoDay: number): string {
@@ -100,6 +108,22 @@ export function RecurringFormModal({
 	);
 }
 
+function initialBaseAmountOf(
+	editing: RecurringExpenseDto | null,
+): number | null {
+	if (!editing || editing.amount === null) return null;
+	const extras = editing.splitTemplate.extras ?? [];
+	if (editing.splitTemplate.method !== "items" && extras.length > 0) {
+		const netExtras = extras.reduce(
+			(sum, extra) =>
+				sum + (extra.kind === "discount" ? -extra.amount : extra.amount),
+			0,
+		);
+		return editing.amount - netExtras;
+	}
+	return editing.amount;
+}
+
 function RecurringFormBody({
 	titleId,
 	groupId,
@@ -127,10 +151,13 @@ function RecurringFormBody({
 		? [...activePeople, activeFund]
 		: activePeople;
 
+	const initialBaseAmount = initialBaseAmountOf(editing);
 	const [mode, setMode] = useState<RecurringMode>(editing?.mode ?? "fixed");
 	const [description, setDescription] = useState(editing?.description ?? "");
 	const [amountText, setAmountText] = useState(
-		editing?.amount ? formatAmount(editing.amount) : "",
+		initialBaseAmount !== null && initialBaseAmount > 0
+			? formatAmount(initialBaseAmount)
+			: "",
 	);
 	const [category, setCategory] = useState<RecurringExpenseDto["category"]>(
 		editing?.category ?? null,
@@ -138,11 +165,20 @@ function RecurringFormBody({
 	const [categoryId, setCategoryId] = useState<string | null>(
 		editing?.categoryId ?? null,
 	);
-	const [payerId, setPayerId] = useState<string>(
-		editing?.payersTemplate[0]?.memberId ??
+	const [payerIds, setPayerIds] = useState<string[]>(() => {
+		const existing = editing?.payersTemplate.map((p) => p.memberId) ?? [];
+		if (existing.length > 0) return existing;
+		const fallback =
 			(payerOptions.some((m) => m.id === myMemberId) ? myMemberId : null) ??
-			payerOptions[0]?.id ??
-			"",
+			payerOptions[0]?.id;
+		return fallback ? [fallback] : [];
+	});
+	const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>(
+		Object.fromEntries(
+			(editing?.payersTemplate ?? []).flatMap((p) =>
+				p.amount !== undefined ? [[p.memberId, formatAmount(p.amount)]] : [],
+			),
+		),
 	);
 	const [frequency, setFrequency] = useState<RecurringFrequency>(
 		editing?.frequency ?? "monthly",
@@ -163,6 +199,53 @@ function RecurringFormBody({
 		editing?.splitTemplate ?? null,
 		groupId,
 	);
+	const hasManualExtras = splitState.extras.length > 0;
+	const previewExtrasItems = hasManualExtras
+		? toPreviewExtrasItems(splitState.extras)
+		: null;
+	const extrasBaseAmount =
+		splitState.method === "items"
+			? splitState.itemsBaseAmount
+			: (parsedAmount ?? 0);
+	const parsedExtrasPreview =
+		mode === "fixed" && hasManualExtras && previewExtrasItems !== null
+			? PreviewExtrasRequest.safeParse({
+					baseAmount: extrasBaseAmount,
+					extras: previewExtrasItems,
+					extrasAllocation: splitState.extrasAllocation,
+					...(payerIds.length === 1 && payerIds[0]
+						? { payerMemberId: payerIds[0] }
+						: payerIds.length > 1 &&
+								payerIds.every(
+									(id) => (parseAmountInput(payerAmounts[id] ?? "") ?? 0) > 0,
+								)
+							? {
+									payers: payerIds.map((id) => ({
+										memberId: id,
+										amount: parseAmountInput(payerAmounts[id] ?? "") ?? 0,
+									})),
+								}
+							: {}),
+					...(splitState.baseSplit ? { split: splitState.baseSplit } : {}),
+				})
+			: null;
+	const extrasPreview = usePreviewExtras(
+		groupId,
+		parsedExtrasPreview?.success ? parsedExtrasPreview.data : null,
+	);
+
+	const effectiveFixedAmount = hasManualExtras
+		? extrasPreview.current &&
+			extrasPreview.data &&
+			extrasPreview.data.issues.length === 0 &&
+			extrasPreview.data.computedAmount > 0
+			? extrasPreview.data.computedAmount
+			: null
+		: splitState.method === "items"
+			? splitState.itemsComputedAmount && splitState.itemsComputedAmount > 0
+				? splitState.itemsComputedAmount
+				: null
+			: parsedAmount;
 
 	const createMutation = useCreateRecurringExpense(groupId);
 	const updateMutation = useUpdateRecurringExpense(groupId);
@@ -170,14 +253,28 @@ function RecurringFormBody({
 
 	const changeMode = (next: RecurringMode) => {
 		setMode(next);
-		if (
-			next === "variable" &&
-			splitState.method !== "equal" &&
-			splitState.method !== "shares" &&
-			splitState.method !== "percent"
-		) {
-			splitState.changeMode("equal");
+		if (next === "variable") {
+			setPayerIds((current) => current.slice(0, 1));
+			if (
+				splitState.method !== "equal" &&
+				splitState.method !== "shares" &&
+				splitState.method !== "percent"
+			) {
+				splitState.changeMode("equal");
+			}
 		}
+	};
+
+	const togglePayer = (id: string) => {
+		setPayerIds((current) =>
+			mode === "variable"
+				? [id]
+				: current.includes(id)
+					? current.length > 1
+						? current.filter((item) => item !== id)
+						: current
+					: [...current, id],
+		);
 	};
 
 	const scheduleFields =
@@ -187,22 +284,77 @@ function RecurringFormBody({
 				? { dayOfWeek: null, dayOfMonth, monthOfYear }
 				: { dayOfWeek: null, dayOfMonth, monthOfYear: null };
 
-	const splitTemplate = splitState.baseSplit;
+	const splitTemplate: SplitInput | null = (() => {
+		if (!splitState.baseSplit) return null;
+		if (!hasManualExtras) return splitState.baseSplit;
+		if (mode === "fixed") {
+			if (
+				!extrasPreview.current ||
+				!extrasPreview.data ||
+				extrasPreview.data.issues.length > 0
+			) {
+				return null;
+			}
+			return {
+				...splitState.baseSplit,
+				extras: extrasPreview.data.resolvedExtras,
+				extrasAllocation: splitState.extrasAllocation,
+			};
+		}
+		if (previewExtrasItems === null) return null;
+		return {
+			...splitState.baseSplit,
+			extras: previewExtrasItems.map((item) => ({
+				kind: item.kind,
+				label: item.label,
+				amount: item.ratePercent !== undefined ? 0 : (item.amount ?? 0),
+				...(item.ratePercent !== undefined
+					? { ratePercent: item.ratePercent }
+					: {}),
+			})),
+			extrasAllocation: splitState.extrasAllocation,
+		};
+	})();
+
+	const payersTemplate =
+		mode === "fixed"
+			? payerIds.map((memberId) => ({
+					memberId,
+					amount:
+						payerIds.length === 1
+							? effectiveFixedAmount
+							: parseAmountInput(payerAmounts[memberId] ?? ""),
+				}))
+			: payerIds.slice(0, 1).map((memberId) => ({ memberId }));
+
+	const paidTotal =
+		mode === "fixed"
+			? payerIds.length === 1
+				? (effectiveFixedAmount ?? 0)
+				: payerIds.reduce(
+						(sum, id) => sum + (parseAmountInput(payerAmounts[id] ?? "") ?? 0),
+						0,
+					)
+			: 0;
+
 	const candidate = {
 		mode,
 		description: description.trim(),
-		amount: mode === "fixed" ? parsedAmount : null,
+		amount: mode === "fixed" ? effectiveFixedAmount : null,
 		category,
 		categoryId,
-		payersTemplate:
-			mode === "fixed"
-				? [{ memberId: payerId, amount: parsedAmount }]
-				: [{ memberId: payerId }],
+		payersTemplate,
 		splitTemplate,
 		frequency,
 		...scheduleFields,
 	};
-	const validated = CreateRecurringExpenseRequest.safeParse(candidate);
+	const parsedCandidate = CreateRecurringExpenseRequest.safeParse(candidate);
+	const validated =
+		parsedCandidate.success &&
+		(mode === "variable" ||
+			(effectiveFixedAmount !== null && paidTotal === effectiveFixedAmount))
+			? parsedCandidate
+			: ({ success: false } as const);
 	const errorMessage = mutation.isError
 		? mutation.error.code === "RECURRING_MEMBER_INACTIVE"
 			? vi.recurring.pausedMemberInvalid
@@ -288,9 +440,11 @@ function RecurringFormBody({
 					/>
 				</label>
 
-				{mode === "fixed" && (
+				{mode === "fixed" && splitState.method !== "items" && (
 					<label className="grid gap-1 text-xs font-bold text-muted">
-						{vi.recurring.amountLabel}
+						{hasManualExtras
+							? vi.extras.goodsSubtotal
+							: vi.recurring.amountLabel}
 						<div className="flex h-12 items-center gap-2 rounded-[18px] bg-surface px-4">
 							<input
 								inputMode="numeric"
@@ -313,6 +467,23 @@ function RecurringFormBody({
 						</div>
 					</label>
 				)}
+
+				<ManualExtrasCard
+					extras={splitState.extras}
+					extrasAllocation={splitState.extrasAllocation}
+					resolvedExtras={
+						mode === "fixed" ? extrasPreview.data?.resolvedExtras : undefined
+					}
+					computedAmount={
+						mode === "fixed" ? extrasPreview.data?.computedAmount : undefined
+					}
+					previewCurrent={mode === "fixed" && extrasPreview.current}
+					onChangeAllocation={splitState.setExtrasAllocation}
+					onTogglePreset={splitState.onTogglePresetExtra}
+					onAddExtra={splitState.onAddManualExtra}
+					onChangeExtra={splitState.onChangeManualExtra}
+					onRemoveExtra={splitState.onRemoveExtra}
+				/>
 
 				<CategoryPicker
 					groupId={groupId}
@@ -421,10 +592,10 @@ function RecurringFormBody({
 								key={member.id}
 								type="button"
 								allowOffline
-								aria-pressed={payerId === member.id}
-								onClick={() => setPayerId(member.id)}
+								aria-pressed={payerIds.includes(member.id)}
+								onClick={() => togglePayer(member.id)}
 								className={`flex min-h-11 items-center gap-2 rounded-pill px-3 text-xs font-extrabold ${
-									payerId === member.id
+									payerIds.includes(member.id)
 										? "bg-ink text-on-ink"
 										: "bg-surface text-ink"
 								}`}
@@ -436,13 +607,26 @@ function RecurringFormBody({
 					</div>
 				</div>
 
+				{mode === "fixed" && payerIds.length > 1 && (
+					<PayerAmounts
+						members={payerOptions.filter((m) => payerIds.includes(m.id))}
+						values={payerAmounts}
+						amount={effectiveFixedAmount ?? 0}
+						onChange={(id, value) =>
+							setPayerAmounts((current) => ({ ...current, [id]: value }))
+						}
+					/>
+				)}
+
 				<div className="grid gap-2">
 					<p className="text-xs font-bold text-muted">
 						{vi.recurring.splitLabel}
 					</p>
 					<div className="flex flex-wrap gap-1.5">
 						{SPLIT_METHODS.filter(
-							(option) => mode === "fixed" || option.value !== "exact",
+							(option) =>
+								mode === "fixed" ||
+								(option.value !== "exact" && option.value !== "items"),
 						).map((option) => (
 							<OnlineButton
 								key={option.value}
@@ -460,34 +644,70 @@ function RecurringFormBody({
 							</OnlineButton>
 						))}
 					</div>
-					<div className="grid gap-1.5">
-						{splitState.selected.map((member) => (
-							<SplitMemberRow
-								key={member.id}
-								member={member}
-								method={splitState.method}
-								value={
-									splitState.values[member.id] ??
-									(splitState.method === "shares" ? member.defaultWeight : "")
-								}
-								onChange={(value) => splitState.setValue(member.id, value)}
-								onRemove={() => splitState.toggle(member.id)}
-							/>
-						))}
-						{activePeople
-							.filter((member) => !splitState.ids.includes(member.id))
-							.map((member) => (
-								<OnlineButton
+					{splitState.method === "items" ? (
+						<ItemsAssignmentPanel
+							items={splitState.items}
+							extras={splitState.receiptExtras}
+							extrasAllocation={splitState.extrasAllocation}
+							onChangeExtrasAllocation={splitState.setExtrasAllocation}
+							selectedItemId={splitState.selectedItemId}
+							activePeople={activePeople}
+							previewData={
+								hasManualExtras
+									? extrasPreview.data
+									: splitState.itemsPreview.data
+							}
+							previewCurrent={
+								hasManualExtras
+									? extrasPreview.current
+									: splitState.itemsPreview.current
+							}
+							previewError={
+								hasManualExtras
+									? extrasPreview.isError
+									: splitState.itemsPreview.isError
+							}
+							onSelectItem={splitState.setSelectedItemId}
+							onChangeItem={splitState.onChangeItem}
+							onRemoveItem={splitState.onRemoveItem}
+							onAddItem={splitState.onAddItem}
+							onToggleMemberOnSelected={splitState.onToggleMemberOnSelected}
+							onSplitRemainingEqual={splitState.onSplitRemainingEqual}
+							onAddExtra={splitState.onAddExtra}
+							onChangeExtra={splitState.onChangeExtra}
+							onRemoveExtra={splitState.onRemoveExtra}
+							extrasSection={null}
+						/>
+					) : (
+						<div className="grid gap-1.5">
+							{splitState.selected.map((member) => (
+								<SplitMemberRow
 									key={member.id}
-									type="button"
-									allowOffline
-									onClick={() => splitState.toggle(member.id)}
-									className="min-h-11 rounded-[18px] border-2 border-dashed border-muted px-3 text-xs font-bold text-ink"
-								>
-									+ {member.name}
-								</OnlineButton>
+									member={member}
+									method={splitState.method}
+									value={
+										splitState.values[member.id] ??
+										(splitState.method === "shares" ? member.defaultWeight : "")
+									}
+									onChange={(value) => splitState.setValue(member.id, value)}
+									onRemove={() => splitState.toggle(member.id)}
+								/>
 							))}
-					</div>
+							{activePeople
+								.filter((member) => !splitState.ids.includes(member.id))
+								.map((member) => (
+									<OnlineButton
+										key={member.id}
+										type="button"
+										allowOffline
+										onClick={() => splitState.toggle(member.id)}
+										className="min-h-11 rounded-[18px] border-2 border-dashed border-muted px-3 text-xs font-bold text-ink"
+									>
+										+ {member.name}
+									</OnlineButton>
+								))}
+						</div>
+					)}
 				</div>
 
 				{errorMessage && (

@@ -7,6 +7,7 @@ import { Button } from "../ui/Button";
 import { Icon } from "../ui/Icon";
 import { MemberShape } from "../ui/MemberShape";
 import { OnlineButton } from "../ui/OnlineButton";
+import { ManualExtrasCard } from "./ManualExtrasCard";
 import { SplitMemberRow } from "./SplitMemberRow";
 import { SplitModeTabs } from "./SplitModeTabs";
 import { SplitStatus } from "./SplitStatus";
@@ -168,6 +169,20 @@ export function SplitEditor({
 					onAddExtra={state.onAddExtra}
 					onChangeExtra={state.onChangeExtra}
 					onRemoveExtra={state.onRemoveExtra}
+					extrasSection={
+						<ManualExtrasCard
+							extras={state.extras}
+							extrasAllocation={state.extrasAllocation}
+							resolvedExtras={extrasPreviewData?.resolvedExtras}
+							computedAmount={extrasPreviewData?.computedAmount}
+							previewCurrent={extrasPreviewCurrent}
+							onChangeAllocation={state.setExtrasAllocation}
+							onTogglePreset={state.onTogglePresetExtra}
+							onAddExtra={state.onAddManualExtra}
+							onChangeExtra={state.onChangeManualExtra}
+							onRemoveExtra={state.onRemoveExtra}
+						/>
+					}
 				/>
 			) : (
 				<>

@@ -84,9 +84,9 @@ public final class MembersModel {
         }
       }()
       async let fetchedInvite = invitesRepository.invite(groupId: groupId)
-      async let fetchedHouseholds: [Household] = {
+      async let fetchedHouseholds: [Household]? = {
         guard let householdsRepository else { return [] }
-        return (try? await householdsRepository.list(groupId: groupId)) ?? []
+        return try? await householdsRepository.list(groupId: groupId)
       }()
 
       let g = try await fetchedGroup
@@ -94,7 +94,7 @@ public final class MembersModel {
       let u = try await fetchedUsers
       let b = try await fetchedBalances.get()
       let inv = try? await fetchedInvite
-      let hh = await fetchedHouseholds
+      let hh = (await fetchedHouseholds) ?? (state.value?.households ?? [])
       state = .loaded(
         ScreenData(
           group: g,
@@ -303,16 +303,20 @@ public final class MembersModel {
     }
   }
 
+  public func clearHouseholdError() {
+    householdError = nil
+  }
+
   public func deleteHousehold(id: Household.ID) async {
     guard let householdsRepository, !isPerformingAction else { return }
     isPerformingAction = true
-    householdError = nil
+    actionError = nil
     defer { isPerformingAction = false }
     do throws(AppError) {
       try await householdsRepository.delete(groupId: groupId, id: id)
       await load()
     } catch {
-      householdError = error
+      actionError = error
     }
   }
 }

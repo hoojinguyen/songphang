@@ -1545,6 +1545,13 @@
 					"myIndividualBalance": {
 						"type": "integer"
 					},
+					"myMemberId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"name": {
 						"maxLength": 80,
 						"minLength": 1,
@@ -3664,6 +3671,13 @@
 					"myIndividualBalance": {
 						"type": "integer"
 					},
+					"myMemberId": {
+						"format": "uuid",
+						"type": [
+							"string",
+							"null"
+						]
+					},
 					"previewMembers": {
 						"items": {
 							"properties": {
@@ -4489,6 +4503,10 @@
 							"equal",
 							"proportional"
 						],
+						"type": "string"
+					},
+					"occurredAt": {
+						"format": "date-time",
 						"type": "string"
 					},
 					"payerMemberId": {

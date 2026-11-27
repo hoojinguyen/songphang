@@ -104,6 +104,7 @@ export const members = pgTable(
 			.defaultNow(),
 	},
 	(table) => [
+		unique("members_group_id_id_unique").on(table.groupId, table.id),
 		unique("members_group_position_unique").on(table.groupId, table.position),
 		uniqueIndex("members_group_fund_unique")
 			.on(table.groupId)

@@ -150,6 +150,7 @@
       groupId: ExpenseGroup.ID,
       items: [SplitSpec.ItemEntry],
       extras: [SplitSpec.ItemsExtra],
+      extrasAllocation: ExtrasAllocation? = nil,
       targetTotal: Money?
     ) async throws(AppError) -> ItemsPreview {
       try await simulateNetwork()
@@ -181,10 +182,26 @@
         }
       let shares: [MemberAmount]
       if issues.isEmpty, computed == Money(340_000) {
-        shares = [
-          MemberAmount(memberId: TripScenario.minhId, amount: Money(170_000)),
-          MemberAmount(memberId: TripScenario.lanId, amount: Money(170_000)),
-        ]
+        let isUnevenBase =
+          items.count == 2
+          && Set(items.map(\.amount)) == Set([Money(100_000), Money(200_000)])
+        if isUnevenBase, extrasAllocation == .equal,
+          extras == [
+            SplitSpec.ItemsExtra(
+              kind: .tax, label: extras.first?.label ?? "", amount: Money(40_000),
+              ratePercent: extras.first?.ratePercent)
+          ]
+        {
+          shares = [
+            MemberAmount(memberId: TripScenario.minhId, amount: Money(120_000)),
+            MemberAmount(memberId: TripScenario.lanId, amount: Money(220_000)),
+          ]
+        } else {
+          shares = [
+            MemberAmount(memberId: TripScenario.minhId, amount: Money(170_000)),
+            MemberAmount(memberId: TripScenario.lanId, amount: Money(170_000)),
+          ]
+        }
       } else if issues.isEmpty,
         let firstMember = membersByGroup[groupId]?.first(where: { $0.kind == .person })
       {

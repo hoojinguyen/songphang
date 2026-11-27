@@ -365,6 +365,7 @@ export const PreviewExtrasRequest = z
 			)
 			.optional(),
 		payerMemberId: z.uuid().optional(),
+		occurredAt: z.iso.datetime().optional(),
 		split: SplitInput.optional(),
 		transactionId: z.uuid().optional(),
 	})

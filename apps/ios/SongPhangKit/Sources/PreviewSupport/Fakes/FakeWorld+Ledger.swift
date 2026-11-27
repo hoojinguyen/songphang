@@ -122,7 +122,10 @@
               split: split
             )
           )
-          resolvedShares = scriptedShares(for: draft)
+          guard let shares = scriptedShares(for: draft) else {
+            throw .api(code: "FAKE_UNSCRIPTED", status: 422)
+          }
+          resolvedShares = shares
         }
         return PreviewExtrasResult(
           baseAmount: input.baseAmount,
@@ -147,22 +150,33 @@
           amount: Money(27_680),
           ratePercent: "8"
         )
-        let shares: [MemberAmount]? = {
-          guard let split = input.split,
-            case .exact(_, let entries, _, _, _) = split,
-            entries.count == 2
-          else { return nil }
-          if input.extrasAllocation == .proportional {
-            return [
+        let shares: [MemberAmount]?
+        if let split = input.split {
+          guard case .exact(_, let entries, let remainder, _, _) = split,
+            remainder == .none,
+            entries.count == 2,
+            entries[0].amount == Money(168_000),
+            entries[1].amount == Money(178_000)
+          else {
+            throw .api(code: "FAKE_UNSCRIPTED", status: 422)
+          }
+          switch input.extrasAllocation {
+          case .proportional:
+            shares = [
               MemberAmount(memberId: entries[0].memberId, amount: Money(181_440)),
               MemberAmount(memberId: entries[1].memberId, amount: Money(192_240)),
             ]
+          case .equal, nil:
+            shares = [
+              MemberAmount(memberId: entries[0].memberId, amount: Money(181_840)),
+              MemberAmount(memberId: entries[1].memberId, amount: Money(191_840)),
+            ]
+          case .unknown:
+            throw .api(code: "FAKE_UNSCRIPTED", status: 422)
           }
-          return [
-            MemberAmount(memberId: entries[0].memberId, amount: Money(181_840)),
-            MemberAmount(memberId: entries[1].memberId, amount: Money(191_840)),
-          ]
-        }()
+        } else {
+          shares = nil
+        }
         return PreviewExtrasResult(
           baseAmount: Money(346_000),
           resolvedExtras: [resolvedExtra],
@@ -186,22 +200,33 @@
           amount: Money(50_000),
           ratePercent: first.ratePercent
         )
-        let shares: [MemberAmount]? = {
-          guard let split = input.split,
-            case .exact(_, let entries, _, _, _) = split,
-            entries.count == 2
-          else { return nil }
-          if input.extrasAllocation == .proportional {
-            return [
+        let shares: [MemberAmount]?
+        if let split = input.split {
+          guard case .exact(_, let entries, let remainder, _, _) = split,
+            remainder == .none,
+            entries.count == 2,
+            entries[0].amount == Money(20_000),
+            entries[1].amount == Money(200_000)
+          else {
+            throw .api(code: "FAKE_UNSCRIPTED", status: 422)
+          }
+          switch input.extrasAllocation {
+          case .proportional:
+            shares = [
               MemberAmount(memberId: entries[0].memberId, amount: Money(15_455)),
               MemberAmount(memberId: entries[1].memberId, amount: Money(154_545)),
             ]
+          case .equal, nil:
+            shares = [
+              MemberAmount(memberId: entries[0].memberId, amount: .zero),
+              MemberAmount(memberId: entries[1].memberId, amount: Money(170_000)),
+            ]
+          case .unknown:
+            throw .api(code: "FAKE_UNSCRIPTED", status: 422)
           }
-          return [
-            MemberAmount(memberId: entries[0].memberId, amount: .zero),
-            MemberAmount(memberId: entries[1].memberId, amount: Money(170_000)),
-          ]
-        }()
+        } else {
+          shares = nil
+        }
         return PreviewExtrasResult(
           baseAmount: Money(220_000),
           resolvedExtras: [resolvedExtra],

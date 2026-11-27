@@ -15,6 +15,62 @@
       return recurringExpensesByGroup[groupId] ?? []
     }
 
+    private static func nextDueDateVN(
+      frequency: RecurringFrequency,
+      dayOfWeek: Int?,
+      dayOfMonth: Int?,
+      monthOfYear: Int?,
+      afterVN: String,
+      inclusive: Bool
+    ) -> String {
+      var calendar = Calendar(identifier: .gregorian)
+      calendar.timeZone = TimeZone(identifier: "Asia/Ho_Chi_Minh") ?? .gmt
+      let formatter = DateFormatter()
+      formatter.calendar = calendar
+      formatter.timeZone = calendar.timeZone
+      formatter.dateFormat = "yyyy-MM-dd"
+      guard let anchorDate = formatter.date(from: afterVN) else { return afterVN }
+
+      var cursor =
+        inclusive
+        ? anchorDate : (calendar.date(byAdding: .day, value: 1, to: anchorDate) ?? anchorDate)
+      for _ in 0..<800 {
+        let comps = calendar.dateComponents([.month, .day, .weekday], from: cursor)
+        guard let month = comps.month, let day = comps.day,
+          let sysWeekday = comps.weekday
+        else { break }
+        let isoDow = ((sysWeekday + 5) % 7) + 1
+        let daysInMonth = calendar.range(of: .day, in: .month, for: cursor)?.count ?? 30
+        switch frequency {
+        case .weekly:
+          if isoDow == (dayOfWeek ?? 1) {
+            return formatter.string(from: cursor)
+          }
+        case .monthly:
+          let clamped = min(max(1, dayOfMonth ?? 1), daysInMonth)
+          if day == clamped {
+            return formatter.string(from: cursor)
+          }
+        case .quarterly:
+          let clamped = min(max(1, dayOfMonth ?? 1), daysInMonth)
+          if month == 1 || month == 4 || month == 7 || month == 10, day == clamped {
+            return formatter.string(from: cursor)
+          }
+        case .yearly:
+          let targetMonth = min(max(1, monthOfYear ?? 1), 12)
+          let clamped = min(max(1, dayOfMonth ?? 1), daysInMonth)
+          if month == targetMonth, day == clamped {
+            return formatter.string(from: cursor)
+          }
+        case .unknown:
+          return formatter.string(from: cursor)
+        }
+        guard let nextDay = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+        cursor = nextDay
+      }
+      return afterVN
+    }
+
     public func createRecurringExpense(
       groupId: ExpenseGroup.ID,
       input: CreateRecurringExpenseInput,
@@ -35,6 +91,14 @@
         return existing
       }
       seenIdempotencyKeys.insert(key)
+      let nextDue = Self.nextDueDateVN(
+        frequency: input.frequency,
+        dayOfWeek: input.dayOfWeek,
+        dayOfMonth: input.dayOfMonth,
+        monthOfYear: input.monthOfYear,
+        afterVN: "2026-11-26",
+        inclusive: true
+      )
       let created = RecurringExpense(
         id: RecurringExpense.ID(UUID().uuidString.lowercased()),
         groupId: groupId,
@@ -50,7 +114,7 @@
         dayOfWeek: input.dayOfWeek,
         dayOfMonth: input.dayOfMonth,
         monthOfYear: input.monthOfYear,
-        nextDueDate: "2026-12-05"
+        nextDueDate: nextDue
       )
       list.insert(created, at: 0)
       recurringExpensesByGroup[groupId] = list
@@ -76,10 +140,14 @@
       guard let idx = list.firstIndex(where: { $0.id == id }) else {
         throw .api(code: "NOT_FOUND", status: 404)
       }
+      let wasActive = list[idx].active
       if let mode = input.mode { list[idx].mode = mode }
       if let active = input.active {
         list[idx].active = active
         if active { list[idx].pauseReason = nil }
+      }
+      if !list[idx].active || list[idx].mode == .fixed {
+        list[idx].pendingDueDate = nil
       }
       if let desc = input.description { list[idx].description = desc }
       if case .set(let amt) = input.amount {
@@ -99,21 +167,42 @@
       }
       if let payers = input.payersTemplate { list[idx].payersTemplate = payers }
       if let split = input.splitTemplate { list[idx].splitTemplate = split }
-      if let freq = input.frequency { list[idx].frequency = freq }
+      var scheduleChanged = false
+      if let freq = input.frequency {
+        list[idx].frequency = freq
+        scheduleChanged = true
+      }
       if case .set(let dow) = input.dayOfWeek {
         list[idx].dayOfWeek = dow
+        scheduleChanged = true
       } else if case .clear = input.dayOfWeek {
         list[idx].dayOfWeek = nil
+        scheduleChanged = true
       }
       if case .set(let dom) = input.dayOfMonth {
         list[idx].dayOfMonth = dom
+        scheduleChanged = true
       } else if case .clear = input.dayOfMonth {
         list[idx].dayOfMonth = nil
+        scheduleChanged = true
       }
       if case .set(let moy) = input.monthOfYear {
         list[idx].monthOfYear = moy
+        scheduleChanged = true
       } else if case .clear = input.monthOfYear {
         list[idx].monthOfYear = nil
+        scheduleChanged = true
+      }
+      let resumingStale = !wasActive && list[idx].active && list[idx].nextDueDate < "2026-11-26"
+      if scheduleChanged || resumingStale {
+        list[idx].nextDueDate = Self.nextDueDateVN(
+          frequency: list[idx].frequency,
+          dayOfWeek: list[idx].dayOfWeek,
+          dayOfMonth: list[idx].dayOfMonth,
+          monthOfYear: list[idx].monthOfYear,
+          afterVN: "2026-11-26",
+          inclusive: true
+        )
       }
       recurringExpensesByGroup[groupId] = list
       return list[idx]
@@ -159,7 +248,14 @@
       if list[idx].pendingDueDate != nil {
         list[idx].pendingDueDate = nil
       } else {
-        list[idx].nextDueDate = "2027-01-05"
+        list[idx].nextDueDate = Self.nextDueDateVN(
+          frequency: list[idx].frequency,
+          dayOfWeek: list[idx].dayOfWeek,
+          dayOfMonth: list[idx].dayOfMonth,
+          monthOfYear: list[idx].monthOfYear,
+          afterVN: list[idx].nextDueDate,
+          inclusive: false
+        )
       }
       recurringExpensesByGroup[groupId] = list
       return list[idx]
@@ -195,20 +291,28 @@
         return existing
       }
       var members = membersByGroup[groupId] ?? []
+      let trimmedName = input.name.trimmingCharacters(in: .whitespacesAndNewlines)
       let memberIdSet = Set(input.memberIds)
-      if members.contains(where: { memberIdSet.contains($0.id) && $0.householdId != nil }) {
-        throw .householdMemberConflict
-      }
-      guard input.memberIds.count >= 2,
+      let memberById = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
+      guard list.count < 30,
+        !trimmedName.isEmpty,
+        trimmedName.count <= 50,
+        input.memberIds.count >= 2,
+        input.memberIds.count <= 20,
+        memberIdSet.count == input.memberIds.count,
+        input.memberIds.allSatisfy({ memberById[$0]?.kind == .person }),
         input.memberIds.contains(input.representativeMemberId),
-        members.first(where: { $0.id == input.representativeMemberId })?.active == true
+        memberById[input.representativeMemberId]?.active == true
       else {
         throw .api(code: "VALIDATION_FAILED", status: 400)
+      }
+      if members.contains(where: { memberIdSet.contains($0.id) && $0.householdId != nil }) {
+        throw .householdMemberConflict
       }
       seenIdempotencyKeys.insert(key)
       let household = Household(
         id: Household.ID(UUID().uuidString.lowercased()),
-        name: input.name,
+        name: trimmedName,
         representativeMemberId: input.representativeMemberId,
         memberIds: input.memberIds
       )
@@ -241,33 +345,40 @@
         throw .api(code: "NOT_FOUND", status: 404)
       }
       var members = membersByGroup[groupId] ?? []
-      if let newMemberIds = input.memberIds {
-        let newSet = Set(newMemberIds)
-        if members.contains(where: {
-          newSet.contains($0.id) && $0.householdId != nil && $0.householdId != id
-        }) {
-          throw .householdMemberConflict
-        }
+      let memberById = Dictionary(uniqueKeysWithValues: members.map { ($0.id, $0) })
+      let resultingName =
+        input.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? list[idx].name
+      let resultingMemberIds = input.memberIds ?? list[idx].memberIds
+      let resultingRepId = input.representativeMemberId ?? list[idx].representativeMemberId
+      let resultingSet = Set(resultingMemberIds)
+      guard !resultingName.isEmpty,
+        resultingName.count <= 50,
+        resultingMemberIds.count >= 2,
+        resultingMemberIds.count <= 20,
+        resultingSet.count == resultingMemberIds.count,
+        resultingMemberIds.allSatisfy({ memberById[$0]?.kind == .person }),
+        resultingSet.contains(resultingRepId),
+        memberById[resultingRepId]?.active == true
+      else {
+        throw .api(code: "VALIDATION_FAILED", status: 400)
+      }
+      if members.contains(where: {
+        resultingSet.contains($0.id) && $0.householdId != nil && $0.householdId != id
+      }) {
+        throw .householdMemberConflict
+      }
+      if input.memberIds != nil {
         for mIdx in members.indices {
-          if members[mIdx].householdId == id && !newSet.contains(members[mIdx].id) {
+          if members[mIdx].householdId == id && !resultingSet.contains(members[mIdx].id) {
             members[mIdx].householdId = nil
-          } else if newSet.contains(members[mIdx].id) {
+          } else if resultingSet.contains(members[mIdx].id) {
             members[mIdx].householdId = id
           }
         }
-        list[idx].memberIds = newMemberIds
+        list[idx].memberIds = resultingMemberIds
       }
-      if let repId = input.representativeMemberId {
-        guard list[idx].memberIds.contains(repId),
-          members.first(where: { $0.id == repId })?.active == true
-        else {
-          throw .api(code: "VALIDATION_FAILED", status: 400)
-        }
-        list[idx].representativeMemberId = repId
-      }
-      if let name = input.name {
-        list[idx].name = name
-      }
+      list[idx].representativeMemberId = resultingRepId
+      list[idx].name = resultingName
       membersByGroup[groupId] = members
       householdsByGroup[groupId] = list
       return list[idx]

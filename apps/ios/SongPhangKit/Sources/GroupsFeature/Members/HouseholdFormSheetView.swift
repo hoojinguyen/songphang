@@ -60,12 +60,18 @@ struct HouseholdFormSheetView: View {
     members.filter { selectedIds.contains($0.id) }
   }
 
+  private var activeSelectedMembers: [Member] {
+    selectedMembers.filter(\.active)
+  }
+
   private var canSave: Bool {
     let trimmed = nameText.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty,
       selectedIds.count >= 2,
+      selectedIds.count <= 20,
+      selectedMembers.allSatisfy(\.active),
       let repId = representativeId,
-      selectedIds.contains(repId),
+      activeSelectedMembers.contains(where: { $0.id == repId }),
       !isPending
     else { return false }
     return true
@@ -81,7 +87,10 @@ struct HouseholdFormSheetView: View {
               .foregroundStyle(Tokens.muted)
             TextField(
               L10n.tr("households.namePlaceholder"),
-              text: $nameText
+              text: Binding(
+                get: { nameText },
+                set: { nameText = String($0.prefix(50)) }
+              )
             )
             .font(Typography.bodyBold)
             .foregroundStyle(Tokens.ink)
@@ -136,13 +145,13 @@ struct HouseholdFormSheetView: View {
             }
           }
 
-          if !selectedMembers.isEmpty {
+          if !activeSelectedMembers.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
               Text(L10n.tr("households.representativeLabel"))
                 .font(Typography.captionBold)
                 .foregroundStyle(Tokens.muted)
 
-              ForEach(selectedMembers) { member in
+              ForEach(activeSelectedMembers) { member in
                 let isRep = representativeId == member.id
                 Button {
                   representativeId = member.id
@@ -213,9 +222,11 @@ struct HouseholdFormSheetView: View {
     if selectedIds.contains(id) {
       selectedIds.removeAll { $0 == id }
       if representativeId == id {
-        representativeId = selectedIds.first
+        representativeId = activeSelectedMembers.first?.id
       }
-    } else {
+    } else if selectedIds.count < 20,
+      members.first(where: { $0.id == id })?.active == true
+    {
       selectedIds.append(id)
       if representativeId == nil {
         representativeId = id
@@ -225,7 +236,7 @@ struct HouseholdFormSheetView: View {
 
   private func submit() async {
     guard let repId = representativeId else { return }
-    let trimmed = String(nameText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80))
+    let trimmed = String(nameText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(50))
     if let editing {
       await onSaveUpdate(
         editing.id,

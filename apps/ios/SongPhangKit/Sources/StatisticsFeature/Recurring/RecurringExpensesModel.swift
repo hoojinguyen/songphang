@@ -11,6 +11,7 @@ public final class RecurringExpensesModel {
   public private(set) var state: Loadable<[RecurringExpense]> = .loading
   public private(set) var isMutating = false
   public private(set) var mutationError: AppError?
+  private var createIdempotencyKey = IdempotencyKey()
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -51,11 +52,12 @@ public final class RecurringExpensesModel {
       let created = try await repository.create(
         groupId: groupId,
         input: input,
-        key: IdempotencyKey()
+        key: createIdempotencyKey
       )
       var list = state.value ?? []
       list.insert(created, at: 0)
       state = .loaded(list)
+      createIdempotencyKey = IdempotencyKey()
       return true
     } catch {
       if error == .unauthorized {
@@ -95,6 +97,14 @@ public final class RecurringExpensesModel {
       id: item.id,
       input: UpdateRecurringExpenseInput(active: !item.active)
     )
+  }
+
+  public func clearPendingDueDate(id: RecurringExpense.ID) {
+    guard case .loaded(var list) = state,
+      let idx = list.firstIndex(where: { $0.id == id })
+    else { return }
+    list[idx].pendingDueDate = nil
+    state = .loaded(list)
   }
 
   public func skip(_ item: RecurringExpense) async {

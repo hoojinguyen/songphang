@@ -62,7 +62,13 @@ export function canRemindTransfer(input: {
 		input.to.kind !== "person"
 	)
 		return false;
-	if (input.from.id === input.myMemberId) return false;
+	if (
+		input.myMemberId !== null &&
+		(input.from.id === input.myMemberId ||
+			input.transfer.fromHousehold?.memberIds.includes(input.myMemberId))
+	) {
+		return false;
+	}
 	return input.role !== "viewer" || input.myMemberId === input.to.id;
 }
 

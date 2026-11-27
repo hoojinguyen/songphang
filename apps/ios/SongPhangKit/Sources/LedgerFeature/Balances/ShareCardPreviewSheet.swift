@@ -352,6 +352,7 @@ public struct ShareCardPreviewSheet: View {
 
     let householdRows: [ShareCardContent.HouseholdRow] = data.balances.households.map { hh in
       ShareCardContent.HouseholdRow(
+        id: hh.id.rawValue,
         name: hh.name,
         representativeName: membersById[hh.representativeMemberId]?.name ?? "",
         balance: hh.netBalance

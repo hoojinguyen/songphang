@@ -32,6 +32,11 @@ public struct HouseholdsSectionView: View {
     members.filter { $0.active && $0.kind == .person }
   }
 
+  private var unassignedActivePeopleCount: Int {
+    let assignedIds = Set(households.flatMap(\.memberIds))
+    return activePeople.filter { !assignedIds.contains($0.id) }.count
+  }
+
   public var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack {
@@ -39,8 +44,9 @@ public struct HouseholdsSectionView: View {
           .font(Typography.sectionTitle)
           .foregroundStyle(Tokens.ink)
         Spacer()
-        if canWrite && activePeople.count >= 2 {
+        if canWrite && unassignedActivePeopleCount >= 2 && households.count < 30 {
           Button {
+            model.clearHouseholdError()
             isCreating = true
           } label: {
             Text(L10n.tr("households.createAction"))
@@ -90,21 +96,28 @@ public struct HouseholdsSectionView: View {
         onDismiss: { isCreating = false }
       )
     }
-    .sheet(item: $editingHousehold) { household in
-      HouseholdFormSheetView(
-        members: activePeople,
-        existingHouseholds: households,
-        editing: household,
-        isPending: model.isPerformingAction,
-        error: model.householdError,
-        onSaveCreate: { _, _, _ in },
-        onSaveUpdate: { id, input in
-          let ok = await model.updateHousehold(id: id, input: input)
-          if ok { editingHousehold = nil }
-        },
-        onDismiss: { editingHousehold = nil }
-      )
-    }
+    .sheet(
+      item: $editingHousehold,
+      onDismiss: { model.clearHouseholdError() },
+      content: { household in
+        let editableMembers = members.filter {
+          $0.kind == .person && ($0.active || household.memberIds.contains($0.id))
+        }
+        HouseholdFormSheetView(
+          members: editableMembers,
+          existingHouseholds: households,
+          editing: household,
+          isPending: model.isPerformingAction,
+          error: model.householdError,
+          onSaveCreate: { _, _, _ in },
+          onSaveUpdate: { id, input in
+            let ok = await model.updateHousehold(id: id, input: input)
+            if ok { editingHousehold = nil }
+          },
+          onDismiss: { editingHousehold = nil }
+        )
+      }
+    )
     .confirmationDialog(
       L10n.tr("households.ungroupAction"),
       isPresented: Binding(

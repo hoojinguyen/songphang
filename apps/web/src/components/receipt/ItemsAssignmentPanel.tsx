@@ -72,6 +72,7 @@ export function ItemsAssignmentPanel({
 	onAddExtra,
 	onChangeExtra,
 	onRemoveExtra,
+	extrasSection,
 }: {
 	items: EditableReceiptItem[];
 	extras: EditableReceiptExtra[];
@@ -102,6 +103,7 @@ export function ItemsAssignmentPanel({
 		patch: Partial<Pick<EditableReceiptExtra, "kind" | "label" | "amountText">>,
 	) => void;
 	onRemoveExtra: (id: string) => void;
+	extrasSection?: React.ReactNode;
 }) {
 	const selectedItem =
 		items.find((item) => item.id === selectedItemId) ?? items[0];
@@ -160,16 +162,18 @@ export function ItemsAssignmentPanel({
 				))}
 			</div>
 
-			<ExtrasFields
-				extras={extras}
-				{...(extrasAllocation === undefined ? {} : { extrasAllocation })}
-				{...(onChangeExtrasAllocation === undefined
-					? {}
-					: { onChangeAllocation: onChangeExtrasAllocation })}
-				onAdd={onAddExtra}
-				onChange={onChangeExtra}
-				onRemove={onRemoveExtra}
-			/>
+			{extrasSection ?? (
+				<ExtrasFields
+					extras={extras}
+					{...(extrasAllocation === undefined ? {} : { extrasAllocation })}
+					{...(onChangeExtrasAllocation === undefined
+						? {}
+						: { onChangeAllocation: onChangeExtrasAllocation })}
+					onAdd={onAddExtra}
+					onChange={onChangeExtra}
+					onRemove={onRemoveExtra}
+				/>
+			)}
 
 			<section className="grid gap-2 rounded-[26px] bg-surface p-3">
 				<div className="grid grid-cols-4 gap-2">

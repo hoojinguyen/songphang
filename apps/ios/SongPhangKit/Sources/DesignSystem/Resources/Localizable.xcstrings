@@ -10230,6 +10230,149 @@
           }
         }
       }
+    },
+    "ios.recurring.actionsMenu": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuỳ chọn chi tiêu định kỳ"
+          }
+        }
+      }
+    },
+    "ios.recurring.weekday.1": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ 2"
+          }
+        }
+      }
+    },
+    "ios.recurring.weekday.2": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ 3"
+          }
+        }
+      }
+    },
+    "ios.recurring.weekday.3": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ 4"
+          }
+        }
+      }
+    },
+    "ios.recurring.weekday.4": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ 5"
+          }
+        }
+      }
+    },
+    "ios.recurring.weekday.5": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ 6"
+          }
+        }
+      }
+    },
+    "ios.recurring.weekday.6": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thứ 7"
+          }
+        }
+      }
+    },
+    "ios.recurring.weekday.7": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chủ nhật"
+          }
+        }
+      }
+    },
+    "ios.notifications.recurringPostedShare": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoản định kỳ {description} · {amount} (phần bạn {share})"
+          }
+        }
+      }
+    },
+    "ios.notifications.recurringPostedGroup": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khoản định kỳ {description} · {amount} đã được ghi vào {group}"
+          }
+        }
+      }
+    },
+    "ios.notifications.hoursAgo": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count} giờ trước"
+          }
+        }
+      }
+    },
+    "ios.notifications.minutesAgo": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count} phút trước"
+          }
+        }
+      }
+    },
+    "ios.notifications.justNow": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vừa xong"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

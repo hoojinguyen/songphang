@@ -1,9 +1,9 @@
 import {
-	CalendarDate,
 	JOB_NAMES,
-	MoneyAmount,
 	ProcessRecurringPayload,
+	RecurringDuePayload,
 	RecurringPayerTemplateEntry,
+	RecurringPostedPayload,
 	SplitInput,
 } from "@songphang/contract";
 import {
@@ -39,23 +39,6 @@ import { notifyGroup } from "../notify.js";
 import { registerJob, type WorkerDeps } from "../queue.js";
 import { runSendNotificationMail } from "./send-notification-mail.js";
 import { runSendPush } from "./send-push.js";
-
-const RecurringPostedPayload = z.object({
-	kind: z.literal("recurring_posted"),
-	groupName: z.string(),
-	transactionId: z.uuid(),
-	description: z.string(),
-	amount: MoneyAmount,
-	share: z.int().nonnegative(),
-});
-
-const RecurringDuePayload = z.object({
-	kind: z.literal("recurring_due"),
-	groupName: z.string(),
-	recurringExpenseId: z.uuid(),
-	description: z.string(),
-	dueDate: CalendarDate,
-});
 
 function scheduleFromRow(row: RecurringExpenseRow): RecurringSchedule {
 	if (row.frequency === "weekly" && row.dayOfWeek !== null) {

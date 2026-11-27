@@ -239,6 +239,13 @@
 			"when": 1795708718785,
 			"tag": "0033_wave_5_5c_recurring_and_households",
 			"breakpoints": true
+		},
+		{
+			"idx": 34,
+			"version": "7",
+			"when": 1795743413617,
+			"tag": "0034_wave_5_5c_household_composite_fks",
+			"breakpoints": true
 		}
 	]
 }

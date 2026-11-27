@@ -41,8 +41,17 @@ export function localDateTime(value?: string) {
 	return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
+type InitialFormDraft = {
+	amount: number | null;
+	description: string | null;
+	category: SplitTransactionRequest["category"];
+	categoryId: string | null;
+	payers: ReadonlyArray<{ memberId: string; amount?: number | undefined }>;
+	split: SplitInput | null;
+};
+
 function initialBaseAmountOf(
-	draft: TransactionDto | ParseDraft | undefined,
+	draft: InitialFormDraft | undefined,
 ): number | null {
 	if (!draft?.amount) return null;
 	const draftSplit = draft.split;
@@ -110,22 +119,18 @@ export function useExpenseForm(
 				split: parsedFromText.draft.split,
 			})
 		: undefined;
-	const recurringPrefill: ParseDraft | undefined =
+	const recurringPrefill: InitialFormDraft | undefined =
 		!transaction && prefill?.recurringTemplate
-			? ParseDraft.parse({
-					type: "expense",
+			? {
 					description: prefill.recurringTemplate.description,
 					amount: prefill.recurringTemplate.amount,
 					category: prefill.recurringTemplate.category,
 					categoryId: prefill.recurringTemplate.categoryId,
-					payers: prefill.recurringTemplate.payersTemplate.map((p) => ({
-						memberId: p.memberId,
-						amount: p.amount ?? prefill.recurringTemplate?.amount ?? 1,
-					})),
+					payers: prefill.recurringTemplate.payersTemplate,
 					split: prefill.recurringTemplate.splitTemplate,
-				})
+				}
 			: undefined;
-	const draft =
+	const draft: InitialFormDraft | undefined =
 		transaction ?? recurringPrefill ?? memory.draft?.draft ?? prefillDraft;
 	const activeQueue =
 		!transaction &&
@@ -192,7 +197,9 @@ export function useExpenseForm(
 	);
 	const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>(
 		Object.fromEntries(
-			transaction?.payers.map((p) => [p.memberId, String(p.amount)]) ?? [],
+			(draft?.payers ?? []).flatMap((p) =>
+				p.amount !== undefined ? [[p.memberId, String(p.amount)]] : [],
+			),
 		),
 	);
 
@@ -309,6 +316,7 @@ export function useExpenseForm(
 								}
 							: {}),
 					...(splitState.baseSplit ? { split: splitState.baseSplit } : {}),
+					...(timestamp ? { occurredAt: timestamp } : {}),
 					...(transaction?.id ? { transactionId: transaction.id } : {}),
 				})
 			: null;
