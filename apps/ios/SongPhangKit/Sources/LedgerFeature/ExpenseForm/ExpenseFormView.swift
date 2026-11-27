@@ -161,9 +161,11 @@ public struct ExpenseFormView: View {
       if model.state.value == nil {
         await model.load()
       }
-      if ProcessInfo.processInfo.arguments.contains("--simulate-conflict") {
-        model.simulateConflictForExercise()
-      }
+      #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--simulate-conflict") {
+          model.simulateConflictForExercise()
+        }
+      #endif
     }
   }
 
@@ -502,13 +504,13 @@ public struct ExpenseFormView: View {
                 : L10n.tr("common.saveError")
             )
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
           }
 
           if model.previewError != nil {
             Text(L10n.tr("common.loadError"))
               .font(Typography.captionBold)
-              .foregroundStyle(Tokens.coral)
+              .foregroundStyle(Tokens.debt)
           }
 
           if model.transactionType != .transfer, model.amount.isPositive {
@@ -516,14 +518,14 @@ public struct ExpenseFormView: View {
               SPCard(tone: .accent, padding: 14) {
                 Text(L10n.t("fund.overdrawnWarning", ["amount": MoneyFormat.full(overdraft)]))
                   .font(Typography.subheadlineBold)
-                  .foregroundStyle(Tokens.ink)
+                  .foregroundStyle(Tokens.onAccent)
               }
             }
 
             if model.previewWarnings.contains(.budgetOver) {
               Text(L10n.tr("budget.overWarning"))
                 .font(Typography.subheadlineBold)
-                .foregroundStyle(Tokens.ink)
+                .foregroundStyle(Tokens.onAccent)
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
@@ -551,7 +553,7 @@ public struct ExpenseFormView: View {
           if model.deleteError != nil {
             Text(L10n.tr("common.saveError"))
               .font(Typography.captionBold)
-              .foregroundStyle(Tokens.coral)
+              .foregroundStyle(Tokens.debt)
           }
 
           if isEditing {

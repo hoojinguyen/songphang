@@ -132,7 +132,7 @@ public struct RouteDestination: View {
       self._joinModel = State(
         initialValue: JoinModel(
           token: token,
-          accountName: currentUser?.name ?? "Lan",
+          accountName: currentUser?.name ?? L10n.tr("activity.someone"),
           repository: dependencies.invites,
           onJoined: { groupId in
             onReplaceTop(.groupFeed(groupId: groupId))
@@ -414,6 +414,7 @@ public struct RouteDestination: View {
 
   public var body: some View {
     content
+      .toolbar(.hidden, for: .tabBar)
       .onChange(of: deletedTransactionId) { _, id in
         guard let id, let feedModel else { return }
         feedModel.markDeleted(id)
@@ -440,7 +441,7 @@ public struct RouteDestination: View {
       if let createGroupModel {
         CreateGroupView(
           model: createGroupModel,
-          creatorName: currentUser?.name ?? "Minh",
+          creatorName: currentUser?.name ?? L10n.tr("activity.someone"),
           onBack: onPop
         )
       }

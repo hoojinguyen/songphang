@@ -139,7 +139,7 @@ public struct TransactionDetailView: View {
             if let successToast = model.successToast {
               Text(successToast)
                 .font(Typography.captionBold)
-                .foregroundStyle(Tokens.ink)
+                .foregroundStyle(Tokens.onAccent)
                 .padding(12)
                 .frame(maxWidth: .infinity)
                 .background(

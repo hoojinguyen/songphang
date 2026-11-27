@@ -179,7 +179,7 @@ public struct ShareCardCanvasView: View {
       }
     }
     .padding(20)
-    .frame(width: 390, alignment: .leading)
+    .frame(maxWidth: 390, alignment: .leading)
     .background(Tokens.bg)
   }
 

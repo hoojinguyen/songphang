@@ -327,7 +327,7 @@ struct RecurringFormSheetView: View {
                     : (selected ? Tokens.ink : Tokens.surface)
                   let chipFg: Color =
                     !member.active
-                    ? Tokens.coral
+                    ? Tokens.debt
                     : (selected ? Tokens.onInk : Tokens.ink)
                   Button {
                     if mode == .variable {
@@ -380,6 +380,7 @@ struct RecurringFormSheetView: View {
                   .keyboardType(.numberPad)
                   .multilineTextAlignment(.trailing)
                   .font(Typography.subheadlineBold)
+                  .foregroundStyle(Tokens.ink)
                   .monospacedDigit()
                   .frame(width: 110)
                   .padding(.horizontal, 10)
@@ -465,6 +466,7 @@ struct RecurringFormSheetView: View {
                     .keyboardType(splitMethod == .exact ? .numberPad : .decimalPad)
                     .multilineTextAlignment(.trailing)
                     .font(Typography.subheadlineBold)
+                    .foregroundStyle(Tokens.ink)
                     .monospacedDigit()
                     .frame(width: 110)
                     .padding(.horizontal, 10)
@@ -484,7 +486,7 @@ struct RecurringFormSheetView: View {
                 : L10n.tr("common.saveError")
             )
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
           }
 
           SPButton(

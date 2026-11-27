@@ -36,7 +36,7 @@ public struct RecurringInlineCardView: View {
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
       }
-      .tint(Tokens.ink)
+      .tint(Tokens.credit)
 
       if isEnabled {
         VStack(alignment: .leading, spacing: 8) {

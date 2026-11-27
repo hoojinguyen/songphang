@@ -20,11 +20,11 @@ struct DisputeBlockView: View {
       VStack(alignment: .leading, spacing: 12) {
         Text(L10n.t("transactionView.disputedBy", ["name": dispute.openedByName]))
           .font(Typography.bodyBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
 
         Text(dispute.reason)
           .font(Typography.body)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
 
         if verified && (dispute.mine || role == .owner) {
           Button {
@@ -62,50 +62,51 @@ struct DisputeBlockView: View {
       .disabled(isPending)
       .sheet(isPresented: $isDisputeSheetOpen) {
         NavigationStack {
-          VStack(alignment: .leading, spacing: 16) {
-            SPTextField(
-              label: L10n.tr("transactionView.disputeReasonLabel"),
-              text: $disputeReason,
-              error: submissionError,
-              maxLength: 500
-            )
+          ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+              SPTextField(
+                label: L10n.tr("transactionView.disputeReasonLabel"),
+                text: $disputeReason,
+                error: submissionError,
+                maxLength: 500
+              )
 
-            Spacer()
+              HStack(spacing: 12) {
+                SPButton(
+                  L10n.tr("transactionView.disputeCancel"),
+                  variant: .surface,
+                  isFullWidth: true
+                ) {
+                  isDisputeSheetOpen = false
+                }
 
-            HStack(spacing: 12) {
-              SPButton(
-                L10n.tr("transactionView.disputeCancel"),
-                variant: .surface,
-                isFullWidth: true
-              ) {
-                isDisputeSheetOpen = false
-              }
-
-              let trimmed = disputeReason.trimmingCharacters(in: .whitespacesAndNewlines)
-              SPButton(
-                L10n.tr("transactionView.send"),
-                variant: .primary,
-                isFullWidth: true,
-                isDisabled: trimmed.isEmpty || isPending,
-                isPending: isPending
-              ) {
-                Task {
-                  submissionError = nil
-                  if await onOpenDispute(trimmed) {
-                    disputeReason = ""
+                let trimmed = disputeReason.trimmingCharacters(in: .whitespacesAndNewlines)
+                SPButton(
+                  L10n.tr("transactionView.send"),
+                  variant: .primary,
+                  isFullWidth: true,
+                  isDisabled: trimmed.isEmpty || isPending,
+                  isPending: isPending
+                ) {
+                  Task {
                     submissionError = nil
-                    isDisputeSheetOpen = false
-                  } else {
-                    submissionError = L10n.tr("common.saveError")
+                    if await onOpenDispute(trimmed) {
+                      disputeReason = ""
+                      submissionError = nil
+                      isDisputeSheetOpen = false
+                    } else {
+                      submissionError = L10n.tr("common.saveError")
+                    }
                   }
                 }
               }
             }
+            .padding(20)
           }
-          .padding(20)
+          .background(Tokens.bg.ignoresSafeArea())
           .navigationTitle(L10n.tr("transactionView.disputeTitle"))
           .navigationBarTitleDisplayMode(.inline)
-          .presentationDetents([.height(280)])
+          .presentationDetents([.medium, .large])
           .onChange(of: disputeReason) { _, _ in
             if submissionError != nil {
               submissionError = nil

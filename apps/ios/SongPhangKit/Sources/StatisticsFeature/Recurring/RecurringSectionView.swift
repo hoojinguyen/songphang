@@ -57,7 +57,7 @@ public struct RecurringSectionView: View {
             : L10n.tr("common.saveError")
         )
         .font(Typography.captionBold)
-        .foregroundStyle(Tokens.coral)
+        .foregroundStyle(Tokens.debt)
       }
 
       switch model.state {

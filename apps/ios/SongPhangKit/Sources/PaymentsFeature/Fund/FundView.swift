@@ -99,22 +99,23 @@ public struct FundView: View {
 
     VStack(spacing: 8) {
       FundShapeView(name: fund.name, size: 40)
+        .overlay(Capsule().stroke(Tokens.onAccent, lineWidth: 2))
 
       Text(fund.cash.isNegative ? L10n.tr("fund.negativeLabel") : L10n.tr("fund.remainingLabel"))
         .font(Typography.captionBold)
-        .foregroundStyle(Tokens.ink)
+        .foregroundStyle(Tokens.onAccent)
 
       MoneyText(
         fund.cash.magnitude,
         style: .full,
         font: .system(size: 42, weight: .black),
-        color: Tokens.ink
+        color: Tokens.onAccent
       )
 
       if let holder {
         Text(L10n.t("fund.holderLine", ["name": holder.name]))
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent.opacity(0.8))
       }
 
       if !fund.active {

@@ -207,7 +207,7 @@ public struct MembersView: View {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
     }
 
@@ -263,7 +263,7 @@ public struct MembersView: View {
         )
       )
       .labelsHidden()
-      .tint(Tokens.ink)
+      .tint(Tokens.credit)
       .disabled(model.isPerformingAction)
     }
     .padding(20)
@@ -637,10 +637,10 @@ public struct MembersView: View {
         VStack(alignment: .leading, spacing: 4) {
           Text(L10n.tr("invite.title"))
             .font(Typography.sectionTitle)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
           Text(invite.active ? L10n.tr("invite.hint") : L10n.tr("invite.disabled"))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent.opacity(0.8))
         }
       }
 
@@ -669,7 +669,7 @@ public struct MembersView: View {
       if copiedLink {
         Text(L10n.tr("invite.copied"))
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
     }
     .padding(16)

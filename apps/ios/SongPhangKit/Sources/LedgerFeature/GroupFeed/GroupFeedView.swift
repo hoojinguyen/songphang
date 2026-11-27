@@ -363,7 +363,7 @@ public struct GroupFeedView: View {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
       .padding(.horizontal, 20)
       .padding(.bottom, 12)
@@ -450,9 +450,9 @@ public struct GroupFeedView: View {
                   Haptics.medium()
                   onOpenEditTransaction(model.groupId, tx.id)
                 } label: {
-                  Label(L10n.tr("common.edit"), systemImage: "pencil")
+                  Label(L10n.tr("transactionView.editLink"), systemImage: "pencil")
                 }
-                .tint(Tokens.accent)
+                .tint(Color(red: 0.18, green: 0.45, blue: 0.85))
               }
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -467,7 +467,7 @@ public struct GroupFeedView: View {
                     )
                   }
                 } label: {
-                  Label(L10n.tr("common.delete"), systemImage: "trash")
+                  Label(L10n.tr("members.delete"), systemImage: "trash")
                 }
               }
               Button {
@@ -478,9 +478,9 @@ public struct GroupFeedView: View {
                   onOpenEditTransaction(model.groupId, tx.id)
                 }
               } label: {
-                Label(L10n.tr("common.detail"), systemImage: "info.circle")
+                Label(L10n.tr("ios.common.detail"), systemImage: "info.circle")
               }
-              .tint(Tokens.ink)
+              .tint(Color(red: 0.32, green: 0.30, blue: 0.38))
             }
             .contextMenu {
               if !data.group.isArchived && !model.isOffline && canEdit
@@ -490,7 +490,7 @@ public struct GroupFeedView: View {
                   Haptics.medium()
                   onOpenEditTransaction(model.groupId, tx.id)
                 } label: {
-                  Label(L10n.tr("common.edit"), systemImage: "pencil")
+                  Label(L10n.tr("transactionView.editLink"), systemImage: "pencil")
                 }
               }
               if !data.group.isArchived && !model.isOffline && canEdit {
@@ -504,7 +504,7 @@ public struct GroupFeedView: View {
                     )
                   }
                 } label: {
-                  Label(L10n.tr("common.delete"), systemImage: "trash")
+                  Label(L10n.tr("members.delete"), systemImage: "trash")
                 }
               }
               Button {
@@ -515,7 +515,7 @@ public struct GroupFeedView: View {
                   onOpenEditTransaction(model.groupId, tx.id)
                 }
               } label: {
-                Label(L10n.tr("common.detail"), systemImage: "info.circle")
+                Label(L10n.tr("ios.common.detail"), systemImage: "info.circle")
               }
             }
             .onAppear {

@@ -190,13 +190,13 @@ public struct QuickEntryView: View {
         if model.parseError != nil {
           Text(L10n.tr("common.loadError"))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
         }
 
         if model.saveError != nil {
           Text(L10n.tr("common.saveError"))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
         }
       }
       .padding(.horizontal, 20)

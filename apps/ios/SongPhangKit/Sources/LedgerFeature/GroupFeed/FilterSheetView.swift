@@ -205,7 +205,7 @@ struct FilterSheetView: View {
             .font(Typography.subheadlineBold)
             .foregroundStyle(Tokens.ink)
         }
-        .tint(Tokens.ink)
+        .tint(Tokens.credit)
 
         if hasFromDate {
           DatePicker(
@@ -230,7 +230,7 @@ struct FilterSheetView: View {
             .font(Typography.subheadlineBold)
             .foregroundStyle(Tokens.ink)
         }
-        .tint(Tokens.ink)
+        .tint(Tokens.credit)
 
         if hasToDate {
           DatePicker(

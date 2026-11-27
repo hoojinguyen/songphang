@@ -420,11 +420,14 @@ public struct GroupContainerView: View {
           .font(Typography.bodyBold)
           .foregroundStyle(Tokens.ink)
           .lineLimit(1)
+          .minimumScaleFactor(0.85)
 
         if isArchived {
           Text(L10n.tr("groups.tabArchived"))
             .font(Typography.captionBold)
             .foregroundStyle(Tokens.muted)
+            .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(Tokens.sunken, in: Capsule())
@@ -434,16 +437,11 @@ public struct GroupContainerView: View {
       Spacer(minLength: 4)
 
       HStack(spacing: 8) {
-        NotificationBellButton(
-          unreadCount: sessionModel.unreadNotificationCount,
-          onOpen: { onNavigate(.notifications) }
-        )
-
         Button {
           onNavigate(.groupMembers(groupId: groupId))
         } label: {
           HStack(spacing: 2) {
-            ForEach(Array(currentMembers.prefix(4))) { member in
+            ForEach(Array(currentMembers.prefix(3))) { member in
               MemberShapeView(
                 shape: member.shape,
                 color: member.color,
@@ -537,8 +535,11 @@ public struct GroupContainerView: View {
         } label: {
           Text(segment.title)
             .font(Typography.captionBold)
-            .foregroundStyle(selectedSegment == segment ? Tokens.surface : Tokens.muted)
-            .frame(maxWidth: .infinity, minHeight: 36)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .padding(.horizontal, 4)
+            .foregroundStyle(selectedSegment == segment ? Tokens.onInk : Tokens.muted)
+            .frame(maxWidth: .infinity, minHeight: 38)
             .background(
               selectedSegment == segment ? Tokens.ink : Color.clear,
               in: RoundedRectangle(cornerRadius: 14, style: .continuous)

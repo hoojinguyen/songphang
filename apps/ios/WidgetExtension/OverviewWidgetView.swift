@@ -83,7 +83,7 @@ struct OverviewWidgetView: View {
   private var smallContent: some View {
     VStack(alignment: .leading, spacing: 6) {
       HStack {
-        Text("SÒNG PHẲNG")
+        Text(L10n.tr("common.appName").uppercased())
           .font(Typography.captionBold)
           .foregroundStyle(Tokens.muted)
           .lineLimit(1)
@@ -257,6 +257,8 @@ struct OverviewWidgetView: View {
         .font(Typography.captionBold)
         .foregroundStyle(highlighted ? Tokens.onAccent : Tokens.ink)
         .lineLimit(1)
+        .minimumScaleFactor(0.75)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, minHeight: 34)
         .background(
           highlighted ? Tokens.accent : Tokens.surface,

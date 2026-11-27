@@ -41,7 +41,7 @@ struct SongPhangOverviewWidget: Widget {
     StaticConfiguration(kind: kind, provider: SongPhangWidgetProvider()) { entry in
       OverviewWidgetView(entry: entry)
     }
-    .configurationDisplayName("Sòng Phẳng")
+    .configurationDisplayName(L10n.tr("common.appName"))
     .description(L10n.tr("ios.widget.galleryDescription"))
     .supportedFamilies([.systemSmall, .systemMedium])
   }

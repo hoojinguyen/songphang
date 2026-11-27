@@ -163,7 +163,7 @@ public struct ReceiptCaptureSheet: View {
             VStack(alignment: .leading, spacing: 10) {
               Text(errorMessage)
                 .font(Typography.subheadlineBold)
-                .foregroundStyle(Tokens.coral)
+                .foregroundStyle(Tokens.debt)
               SPButton(
                 L10n.tr("receipts.manualEntry"),
                 variant: .surface,

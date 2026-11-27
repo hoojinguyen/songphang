@@ -13,12 +13,12 @@ import UIKit
 
 public struct AccountView: View {
   @Bindable private var model: AccountModel
-  private let onBack: () -> Void
+  private let onBack: (() -> Void)?
   @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system
     .rawValue
   @State private var hideWidgetAmounts = ExtensionSharedStore.shared.readWidgetHideAmounts()
 
-  public init(model: AccountModel, onBack: @escaping () -> Void) {
+  public init(model: AccountModel, onBack: (() -> Void)? = nil) {
     self.model = model
     self.onBack = onBack
   }
@@ -178,7 +178,7 @@ public struct AccountView: View {
             .foregroundStyle(Tokens.muted)
         }
       }
-      .tint(Tokens.ink)
+      .tint(Tokens.credit)
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -211,7 +211,7 @@ public struct AccountView: View {
           .font(Typography.subheadline)
           .foregroundStyle(Tokens.ink)
       }
-      .tint(Tokens.ink)
+      .tint(Tokens.credit)
 
       if let passwordError = model.passwordError {
         Text(passwordError)
@@ -291,7 +291,7 @@ public struct AccountView: View {
           .font(Typography.subheadline)
           .foregroundStyle(Tokens.ink)
       }
-      .tint(Tokens.ink)
+      .tint(Tokens.credit)
       .disabled(model.isOffline || model.isSavingPushSettings)
 
       if let pushSettingsError = model.pushSettingsError {
@@ -332,7 +332,7 @@ public struct AccountView: View {
             .font(Typography.subheadline)
             .foregroundStyle(Tokens.ink)
         }
-        .tint(Tokens.ink)
+        .tint(Tokens.credit)
         .disabled(model.isOffline || model.isUpdatingNotificationSettings)
 
         Toggle(
@@ -347,7 +347,7 @@ public struct AccountView: View {
             .font(Typography.subheadline)
             .foregroundStyle(Tokens.ink)
         }
-        .tint(Tokens.ink)
+        .tint(Tokens.credit)
         .disabled(model.isOffline || model.isUpdatingNotificationSettings)
       }
 

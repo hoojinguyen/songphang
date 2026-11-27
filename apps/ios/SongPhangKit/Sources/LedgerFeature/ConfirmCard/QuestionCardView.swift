@@ -193,7 +193,7 @@ public struct QuestionCardView: View {
         if previewError {
           Text(L10n.tr("common.loadError"))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
         }
       }
     }

@@ -136,11 +136,11 @@ public struct ReceiptReviewView: View {
         if let imgErr = model.retakeImageError {
           Text(UploadErrorFormatter.message(for: imgErr))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
         } else if let err = model.retakeError {
           Text(UploadErrorFormatter.message(for: err))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
         }
 
         HStack(spacing: 10) {
@@ -235,7 +235,7 @@ public struct ReceiptReviewView: View {
         .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityLabel(L10n.tr("receipts.descriptionLabel"))
 
-        TextField("YYYY-MM-DD", text: $model.occurredOn)
+        TextField(L10n.tr("ios.receipts.datePlaceholder"), text: $model.occurredOn)
           .font(Typography.body)
           .foregroundStyle(Tokens.ink)
           .padding(.horizontal, 14)
@@ -276,7 +276,7 @@ public struct ReceiptReviewView: View {
           : L10n.tr("common.saveError")
       )
       .font(Typography.captionBold)
-      .foregroundStyle(Tokens.coral)
+      .foregroundStyle(Tokens.debt)
     }
 
     SPButton(

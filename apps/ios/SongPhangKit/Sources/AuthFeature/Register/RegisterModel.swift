@@ -1,3 +1,4 @@
+import DesignSystem
 public import Domain
 import Foundation
 public import Observation
@@ -30,7 +31,7 @@ public final class RegisterModel {
     guard !isSubmitting else { return }
     let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmedName.count > 50 {
-      clientError = "Tên dài tối đa 50 ký tự."
+      clientError = L10n.tr("ios.auth.nameMaxLength")
       return
     }
     if let passwordError = AuthErrorMessages.passwordValidationError(password) {

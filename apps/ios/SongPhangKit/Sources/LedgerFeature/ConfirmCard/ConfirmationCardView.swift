@@ -224,7 +224,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
       if isBudgetOver {
         Text(L10n.tr("budget.overWarning"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
           .padding(14)
           .frame(maxWidth: .infinity, alignment: .leading)
           .background(Tokens.coral, in: RoundedRectangle(cornerRadius: 20, style: .continuous))

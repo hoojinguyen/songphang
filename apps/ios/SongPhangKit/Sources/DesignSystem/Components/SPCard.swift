@@ -23,6 +23,7 @@ public struct SPCard<Content: View>: View {
 
   public var body: some View {
     content
+      .foregroundStyle(tone == .accent ? Tokens.onAccent : Tokens.ink)
       .padding(padding)
       .frame(maxWidth: .infinity, alignment: .leading)
       .background(backgroundColor)

@@ -337,7 +337,7 @@ public struct PayView: View {
             SPCard(tone: .accent, padding: 16) {
               Text(L10n.tr("verify.banner"))
                 .font(Typography.subheadlineBold)
-                .foregroundStyle(Tokens.ink)
+                .foregroundStyle(Tokens.onAccent)
             }
           }
         }

@@ -233,14 +233,14 @@ public struct SettleView: View {
           : L10n.tr("common.saveError")
       )
       .font(Typography.captionBold)
-      .foregroundStyle(Tokens.coral)
+      .foregroundStyle(Tokens.debt)
     }
 
     if !isEmailVerified {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
     }
   }
@@ -289,6 +289,9 @@ private struct SettleAmountField: View {
       .disabled(isDisabled)
       .multilineTextAlignment(.center)
       .font(.system(size: 44, weight: .black))
+      .monospacedDigit()
+      .lineLimit(1)
+      .minimumScaleFactor(0.5)
       .foregroundStyle(Tokens.ink)
       .padding(.horizontal, 16)
       .frame(maxWidth: .infinity, minHeight: 92)

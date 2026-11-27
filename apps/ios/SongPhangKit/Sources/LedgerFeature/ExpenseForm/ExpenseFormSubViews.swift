@@ -191,6 +191,8 @@ struct AmountFieldView: View {
       .multilineTextAlignment(.center)
       .minimumScaleFactor(0.5)
       .font(.system(size: 46, weight: .black))
+      .monospacedDigit()
+      .lineLimit(1)
       .foregroundStyle(Tokens.ink)
       .accessibilityLabel(L10n.tr("expenseForm.amountLabel"))
 

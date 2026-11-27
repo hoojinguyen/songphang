@@ -8,12 +8,12 @@ public import SwiftUI
 
 public struct NotificationsView: View {
   @Bindable private var model: NotificationsModel
-  private let onBack: () -> Void
+  private let onBack: (() -> Void)?
   private let onSelectTarget: (AppNotification.Target) -> Void
 
   public init(
     model: NotificationsModel,
-    onBack: @escaping () -> Void,
+    onBack: (() -> Void)? = nil,
     onSelectTarget: @escaping (AppNotification.Target) -> Void
   ) {
     self.model = model
@@ -108,49 +108,49 @@ public struct NotificationsView: View {
       .padding(.horizontal, 16)
       .padding(.vertical, 20)
     }
-    .background(Tokens.bg)
+    .background(Tokens.bg.ignoresSafeArea())
     .task {
       await model.load()
     }
   }
 
   private var headerView: some View {
-    HStack(alignment: .center) {
-      Button(action: onBack) {
-        HStack(spacing: 4) {
-          Image(systemName: "chevron.left")
-            .font(.system(size: 14, weight: .bold))
-          Text(L10n.tr("common.back"))
-            .font(Typography.bodyBold)
+    HStack(alignment: .center, spacing: 8) {
+      if let onBack {
+        Button(action: onBack) {
+          HStack(spacing: 4) {
+            Image(systemName: "chevron.left")
+              .font(.system(size: 14, weight: .bold))
+            Text(L10n.tr("common.back"))
+              .font(Typography.bodyBold)
+          }
+          .foregroundStyle(Tokens.ink)
+          .frame(minHeight: 44)
         }
-        .foregroundStyle(Tokens.ink)
-        .frame(minHeight: 44)
       }
-
-      Spacer()
 
       Text(L10n.tr("notifications.title"))
         .font(Typography.sectionTitle)
         .foregroundStyle(Tokens.ink)
+        .lineLimit(1)
+        .minimumScaleFactor(0.85)
 
-      Spacer()
+      Spacer(minLength: 8)
 
       if model.hasUnread {
         Button(action: {
           Task { await model.markAllRead() }
         }) {
           Text(L10n.tr("notifications.markAll"))
-            .font(Typography.caption)
-            .foregroundStyle(Tokens.ink)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .font(Typography.captionBold)
+            .foregroundStyle(Tokens.onAccent)
+            .lineLimit(1)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .background(Tokens.accent)
             .clipShape(Capsule())
         }
         .disabled(model.isMarkingAll)
-      } else {
-        Color.clear
-          .frame(width: 44, height: 44)
       }
     }
   }

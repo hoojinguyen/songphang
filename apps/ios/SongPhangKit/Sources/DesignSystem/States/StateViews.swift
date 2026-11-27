@@ -19,7 +19,7 @@ public struct LoadingSkeleton: View {
       }
     }
     .accessibilityElement(children: .ignore)
-    .accessibilityLabel("Đang tải...")
+    .accessibilityLabel(L10n.tr("ios.common.loading"))
   }
 }
 

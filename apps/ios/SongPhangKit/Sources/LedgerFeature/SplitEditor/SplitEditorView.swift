@@ -146,9 +146,12 @@ public struct SplitEditorView: View {
             Text(description)
               .font(Typography.screenHeaderTitle)
               .foregroundStyle(Tokens.ink)
+              .lineLimit(1)
+              .minimumScaleFactor(0.85)
             Text(payerLine)
               .font(Typography.caption)
               .foregroundStyle(Tokens.muted)
+              .lineLimit(1)
           }
           .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -398,6 +401,7 @@ private struct SplitMemberRowView: View {
       Text(member.name)
         .font(Typography.bodyBold)
         .foregroundStyle(Tokens.ink)
+        .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .leading)
 
       if method != .equal {
@@ -424,6 +428,7 @@ private struct SplitMemberRowView: View {
           .keyboardType(method == .exact ? .numberPad : .decimalPad)
           .multilineTextAlignment(.trailing)
           .font(Typography.sectionTitle)
+          .monospacedDigit()
           .lineLimit(1)
           .minimumScaleFactor(0.6)
           .foregroundStyle(Tokens.ink)

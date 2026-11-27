@@ -84,7 +84,7 @@ public struct PhotoViewerSheet: View {
 
   public var body: some View {
     ZStack(alignment: .topTrailing) {
-      Tokens.ink.ignoresSafeArea()
+      Color(red: 0.08, green: 0.075, blue: 0.10).ignoresSafeArea()
 
       VStack {
         Spacer(minLength: 0)
@@ -97,11 +97,11 @@ public struct PhotoViewerSheet: View {
             .padding(20)
         } else if isLoading {
           ProgressView()
-            .tint(Tokens.surface)
+            .tint(.white)
         } else {
           Image(systemName: "photo")
             .font(.system(size: 40, weight: .bold))
-            .foregroundStyle(Tokens.onInkMuted)
+            .foregroundStyle(Color.white.opacity(0.6))
         }
         Spacer(minLength: 0)
       }
@@ -109,9 +109,9 @@ public struct PhotoViewerSheet: View {
       Button(action: onClose) {
         Image(systemName: "xmark")
           .font(.system(size: 16, weight: .bold))
-          .foregroundStyle(Tokens.surface)
+          .foregroundStyle(.white)
           .frame(width: 44, height: 44)
-          .background(Tokens.inkRaised, in: Circle())
+          .background(Color.white.opacity(0.2), in: Circle())
       }
       .buttonStyle(.plain)
       .padding(20)
@@ -219,7 +219,7 @@ public struct PhotoRowView<AddControl: View>: View {
       if let errorMessage {
         Text(errorMessage)
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.coral)
+          .foregroundStyle(Tokens.debt)
       }
     }
     .padding(16)

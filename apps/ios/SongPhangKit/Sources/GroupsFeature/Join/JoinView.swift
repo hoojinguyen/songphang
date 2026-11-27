@@ -162,7 +162,7 @@ public struct JoinView: View {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
     }
   }

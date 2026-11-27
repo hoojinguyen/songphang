@@ -54,7 +54,7 @@ public struct SPScreenHeader<Trailing: View>: View {
   private let subtitle: String?
   private let backLabel: String
   private let backIcon: BackIcon
-  private let onBack: () -> Void
+  private let onBack: (() -> Void)?
   private let trailing: Trailing
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -63,7 +63,7 @@ public struct SPScreenHeader<Trailing: View>: View {
     subtitle: String? = nil,
     backLabel: String = L10n.tr("common.back"),
     backIcon: BackIcon = .back,
-    onBack: @escaping () -> Void,
+    onBack: (() -> Void)? = nil,
     @ViewBuilder trailing: () -> Trailing
   ) {
     self.title = title
@@ -81,21 +81,25 @@ public struct SPScreenHeader<Trailing: View>: View {
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
       : AnyLayout(HStackLayout(spacing: 12))
     layout {
-      Button(action: onBack) {
-        Image(systemName: backIcon == .back ? "chevron.left" : "xmark")
-          .font(.system(size: 18, weight: .bold))
-          .foregroundStyle(Tokens.ink)
-          .frame(width: 48, height: 48)
-          .background(Tokens.surface)
-          .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+      if let onBack {
+        Button(action: onBack) {
+          Image(systemName: backIcon == .back ? "chevron.left" : "xmark")
+            .font(.system(size: 18, weight: .bold))
+            .foregroundStyle(Tokens.ink)
+            .frame(width: 48, height: 48)
+            .background(Tokens.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(backLabel)
       }
-      .buttonStyle(.plain)
-      .accessibilityLabel(backLabel)
 
       VStack(alignment: .leading, spacing: 2) {
         Text(title)
           .font(Typography.screenHeaderTitle)
           .foregroundStyle(Tokens.ink)
+          .lineLimit(1)
+          .minimumScaleFactor(0.72)
         if let subtitle {
           Text(subtitle)
             .font(Typography.caption)
@@ -115,7 +119,7 @@ extension SPScreenHeader where Trailing == EmptyView {
     subtitle: String? = nil,
     backLabel: String = L10n.tr("common.back"),
     backIcon: BackIcon = .back,
-    onBack: @escaping () -> Void
+    onBack: (() -> Void)? = nil
   ) {
     self.init(
       title: title,

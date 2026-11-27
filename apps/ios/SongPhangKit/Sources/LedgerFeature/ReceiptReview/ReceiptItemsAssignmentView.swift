@@ -400,7 +400,7 @@ public struct ReceiptItemsAssignmentView: View {
       if previewError != nil {
         Text(L10n.tr("common.loadError"))
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.coral)
+          .foregroundStyle(Tokens.debt)
       }
       if hasUnassigned {
         Text(L10n.t("receipts.saveBlocked", ["count": String(max(unassignedCount, 1))]))

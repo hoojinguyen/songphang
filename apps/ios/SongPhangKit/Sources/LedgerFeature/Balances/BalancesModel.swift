@@ -520,6 +520,9 @@ func formatReminderNextAt(_ nextAtIso: String, now: Date = Date()) -> String {
   } else {
     let day = String(format: "%02d", targetComponents.day ?? 0)
     let month = String(format: "%02d", targetComponents.month ?? 0)
-    return "\(timeStr) ngày \(day)/\(month)"
+    return L10n.t(
+      "ios.balances.cooldownDate",
+      ["time": timeStr, "day": day, "month": month]
+    )
   }
 }

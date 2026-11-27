@@ -34,16 +34,16 @@ struct FeedBalanceBlockView: View {
           if let householdName {
             Text(householdName)
               .font(Typography.captionBold)
-              .foregroundStyle(Tokens.ink)
+              .foregroundStyle(Tokens.onAccent)
           }
           Text(caption)
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
           MoneyText(
             balance.magnitude,
             style: .full,
             font: Typography.heroNumber,
-            color: Tokens.ink
+            color: Tokens.onAccent
           )
           if let individualBalance {
             Text(
@@ -53,13 +53,13 @@ struct FeedBalanceBlockView: View {
               )
             )
             .font(Typography.caption)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent.opacity(0.8))
           }
         }
         Spacer(minLength: 8)
         Text(actionLabel)
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.surface)
+          .foregroundStyle(Tokens.onInk)
           .padding(.horizontal, 20)
           .frame(minHeight: 48)
           .background(Tokens.ink)
@@ -806,9 +806,13 @@ struct FeedEntryBarView: View {
               .font(.system(size: 20, weight: .bold))
             Text(L10n.tr("feed.manualEntry"))
               .font(Typography.captionBold)
+              .lineLimit(1)
+              .minimumScaleFactor(0.8)
           }
-          .foregroundStyle(Tokens.ink)
-          .frame(width: 84, height: 64)
+          .foregroundStyle(Tokens.onAccent)
+          .padding(.horizontal, 6)
+          .frame(minWidth: 84)
+          .frame(height: 64)
           .background(Tokens.accent)
           .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         }

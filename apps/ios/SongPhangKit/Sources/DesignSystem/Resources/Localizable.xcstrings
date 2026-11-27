@@ -10319,6 +10319,83 @@
         }
       }
     },
+    "ios.auth.nameMaxLength": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên dài tối đa 50 ký tự."
+          }
+        }
+      }
+    },
+    "ios.balances.cooldownDate": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{time} ngày {day}/{month}"
+          }
+        }
+      }
+    },
+    "ios.common.close": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đóng"
+          }
+        }
+      }
+    },
+    "ios.common.detail": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi tiết"
+          }
+        }
+      }
+    },
+    "ios.common.loading": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang tải..."
+          }
+        }
+      }
+    },
+    "ios.groups.cloneSuffix": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (bản sao)"
+          }
+        }
+      }
+    },
+    "ios.receipts.datePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "YYYY-MM-DD"
+          }
+        }
+      }
+    },
     "ios.shareExtension.close": {
       "extractionState": "manual",
       "localizations": {

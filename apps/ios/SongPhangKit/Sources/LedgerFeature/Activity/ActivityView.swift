@@ -186,7 +186,7 @@ private struct ActivityRowView: View {
         if hasRestoreError {
           Text(L10n.tr("common.saveError"))
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
         }
 
         Text(LedgerDateLabels.timeLabel(for: entry.createdAt))

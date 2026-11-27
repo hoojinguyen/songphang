@@ -90,8 +90,7 @@ public struct GroupListView: View {
       await model.load()
     }
     .confirmationDialog(
-      archivingGroup.map { L10n.t("groups.archiveConfirmBody", ["name": $0.name]) }
-        ?? L10n.tr("groups.archiveConfirmBody"),
+      L10n.tr("groups.archiveConfirmBody"),
       isPresented: Binding(
         get: { archivingGroup != nil },
         set: { if !$0 { archivingGroup = nil } }
@@ -278,7 +277,7 @@ public struct GroupListView: View {
 
         Text(group.name)
           .font(Typography.sectionTitle)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
 
         if let householdName = group.householdName {
           Text(householdName)
@@ -286,14 +285,14 @@ public struct GroupListView: View {
             .foregroundStyle(Tokens.ink)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(Tokens.surface.opacity(0.65), in: Capsule())
+            .background(Tokens.surface.opacity(0.85), in: Capsule())
         }
 
         MoneyText(
           group.myBalance,
           style: .signed,
           font: Typography.heroNumber,
-          color: Tokens.ink
+          color: Tokens.onAccent
         )
 
         if let personal = group.myIndividualBalance {
@@ -304,12 +303,12 @@ public struct GroupListView: View {
             )
           )
           .font(Typography.caption)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent.opacity(0.8))
         }
 
         Text(caption)
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
       .padding(.horizontal, 22)
       .padding(.vertical, 20)
@@ -382,7 +381,7 @@ public struct GroupListView: View {
 
             let roleLabel: String = {
               switch group.role {
-              case .owner: return L10n.tr("members.roleOwner")
+              case .owner: return L10n.tr("members.ownerBadge")
               case .editor: return L10n.tr("members.roleEditor")
               case .viewer: return L10n.tr("members.roleViewer")
               case .unknown: return ""
@@ -410,16 +409,17 @@ public struct GroupListView: View {
           }
         }
         Spacer(minLength: 8)
+        let chipInkColor = group.myBalance.isPositive ? Tokens.onAccent : Tokens.ink
         VStack(alignment: .trailing, spacing: 2) {
           MoneyText(
             group.myBalance,
             style: .signed,
             font: Typography.screenHeaderTitle,
-            color: Tokens.ink
+            color: chipInkColor
           )
           Text(chipCaption)
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(chipInkColor)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -445,7 +445,7 @@ public struct GroupListView: View {
         VStack(alignment: .leading, spacing: 12) {
           Text(L10n.tr("verify.banner"))
             .font(Typography.subheadlineBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
 
           SPButton(
             L10n.tr("verify.resend"),

@@ -916,12 +916,14 @@ public final class ExpenseFormModel {
     configureFields(data: data)
   }
 
-  public func simulateConflictForExercise() {
-    guard var current = state.value?.editingTransaction else { return }
-    current.version += 1
-    current.description = "\(current.description) (đã sửa)"
-    conflictTransaction = current
-  }
+  #if DEBUG
+    public func simulateConflictForExercise() {
+      guard var current = state.value?.editingTransaction else { return }
+      current.version += 1
+      current.description = "\(current.description) (đã sửa)"
+      conflictTransaction = current
+    }
+  #endif
 
   public func deleteTransaction() async {
     guard let editingId = state.value?.editingTransaction?.id, !isDeleting else { return }

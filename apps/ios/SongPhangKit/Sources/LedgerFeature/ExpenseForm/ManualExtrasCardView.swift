@@ -243,7 +243,7 @@ public struct ManualExtrasCardView: View {
             Text(L10n.tr("extras.modeAmount")).tag(EditableManualExtra.InputMode.amount)
           }
           .pickerStyle(.segmented)
-          .frame(width: 170)
+          .frame(width: 120)
         }
 
         if binding.wrappedValue.mode == .percent {
@@ -403,7 +403,7 @@ public struct ManualExtrasCardView: View {
       if previewError != nil || (isPreviewCurrent && preview?.issues.isEmpty == false) {
         Text(L10n.tr("receipts.invalidTotal"))
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.coral)
+          .foregroundStyle(Tokens.debt)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
     }

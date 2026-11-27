@@ -60,6 +60,9 @@ struct TransactionSummaryView: View {
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         Text(MoneyFormat.amount(transaction.amount))
           .font(.system(size: 44, weight: .black))
+          .monospacedDigit()
+          .lineLimit(1)
+          .minimumScaleFactor(0.5)
           .foregroundStyle(Tokens.ink)
           .padding(.horizontal, 10)
           .padding(.vertical, 2)

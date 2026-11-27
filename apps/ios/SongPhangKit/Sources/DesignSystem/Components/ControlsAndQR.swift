@@ -135,7 +135,7 @@ public struct SPQRCodeView: View {
     }
     .frame(width: size, height: size)
     .padding(10)
-    .background(Tokens.surface)
+    .background(Color.white)
     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(label)

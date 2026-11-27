@@ -49,7 +49,7 @@ public struct VerifyEmailBannerView: View {
       VStack(alignment: .leading, spacing: 12) {
         Text(L10n.tr("verify.banner"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
 
         SPButton(
           L10n.tr("verify.resend"),
@@ -62,13 +62,13 @@ public struct VerifyEmailBannerView: View {
         if model.isResent {
           Text(L10n.tr("verify.resent"))
             .font(Typography.subheadlineBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
         }
 
         if let errorMessage = model.errorMessage {
           Text(errorMessage)
             .font(Typography.subheadlineBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
         }
       }
     }

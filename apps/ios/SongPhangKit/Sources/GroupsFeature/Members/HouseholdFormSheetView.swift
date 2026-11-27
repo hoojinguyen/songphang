@@ -187,7 +187,7 @@ struct HouseholdFormSheetView: View {
           if let error {
             Text(errorText(for: error))
               .font(Typography.captionBold)
-              .foregroundStyle(Tokens.coral)
+              .foregroundStyle(Tokens.debt)
           }
 
           SPButton(

@@ -151,7 +151,7 @@ public struct GroupSettingsView: View {
       SPCard(tone: .accent, padding: 20) {
         Text(L10n.tr("verify.banner"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       }
     } else {
       let isOffline = model.refreshError == .offline
@@ -250,26 +250,44 @@ public struct GroupSettingsView: View {
           .font(Typography.bodyBold)
           .foregroundStyle(Tokens.ink)
 
-        SPSegmentedControl(
-          label: L10n.tr("reminders.settingTitle"),
-          options: [
-            SPSegmentedControl.Option(value: "off", label: L10n.tr("reminders.intervalOff")),
-            SPSegmentedControl.Option(value: "3", label: L10n.tr("reminders.interval3")),
-            SPSegmentedControl.Option(value: "7", label: L10n.tr("reminders.interval7")),
-            SPSegmentedControl.Option(value: "14", label: L10n.tr("reminders.interval14")),
-          ],
-          value: data.group.reminderIntervalDays.map(String.init) ?? "off",
-          isDisabled: isReadOnly
-        ) { selected in
-          let interval: Int? = {
-            switch selected {
-            case "3": return 3
-            case "7": return 7
-            case "14": return 14
-            default: return nil
+        let intervalOptions: [(value: String, label: String)] = [
+          ("off", L10n.tr("reminders.intervalOff")),
+          ("3", L10n.tr("reminders.interval3")),
+          ("7", L10n.tr("reminders.interval7")),
+          ("14", L10n.tr("reminders.interval14")),
+        ]
+        let currentInterval = data.group.reminderIntervalDays.map(String.init) ?? "off"
+        LazyVGrid(
+          columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+          spacing: 8
+        ) {
+          ForEach(intervalOptions, id: \.value) { option in
+            let selected = currentInterval == option.value
+            Button {
+              let interval: Int? = {
+                switch option.value {
+                case "3": return 3
+                case "7": return 7
+                case "14": return 14
+                default: return nil
+                }
+              }()
+              Task { await model.setReminderInterval(interval) }
+            } label: {
+              Text(option.label)
+                .font(Typography.subheadlineBold)
+                .foregroundStyle(selected ? Tokens.onInk : Tokens.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .background(
+                  selected ? Tokens.ink : Tokens.sunken,
+                  in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
             }
-          }()
-          Task { await model.setReminderInterval(interval) }
+            .buttonStyle(.plain)
+            .disabled(isReadOnly)
+          }
         }
       }
       .padding(20)

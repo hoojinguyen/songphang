@@ -109,7 +109,7 @@ public struct ShareCardPreviewSheet: View {
         Toggle(L10n.tr("shareCard.includeExpenses"), isOn: $includeExpenses)
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
-          .tint(Tokens.ink)
+          .tint(Tokens.credit)
       } else {
         targetPicker
       }
@@ -146,21 +146,26 @@ public struct ShareCardPreviewSheet: View {
         .font(Typography.captionBold)
         .foregroundStyle(Tokens.muted)
 
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 8) {
-          ForEach(["shareCard.preset1", "shareCard.preset2", "shareCard.preset3"], id: \.self) {
-            key in
-            let text = L10n.tr(key)
-            Button(text) {
-              caption = String(text.prefix(100))
-            }
-            .font(Typography.captionBold)
-            .foregroundStyle(caption == text ? Tokens.onInk : Tokens.ink)
-            .padding(.horizontal, 10)
-            .frame(minHeight: 34)
-            .background(caption == text ? Tokens.ink : Tokens.sunken, in: Capsule())
-            .buttonStyle(.plain)
+      VStack(alignment: .leading, spacing: 6) {
+        ForEach(["shareCard.preset1", "shareCard.preset2", "shareCard.preset3"], id: \.self) {
+          key in
+          let text = L10n.tr(key)
+          Button {
+            caption = String(text.prefix(100))
+          } label: {
+            Text(text)
+              .font(Typography.captionBold)
+              .foregroundStyle(caption == text ? Tokens.onInk : Tokens.ink)
+              .multilineTextAlignment(.leading)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.horizontal, 12)
+              .padding(.vertical, 8)
+              .background(
+                caption == text ? Tokens.ink : Tokens.sunken,
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+              )
           }
+          .buttonStyle(.plain)
         }
       }
 

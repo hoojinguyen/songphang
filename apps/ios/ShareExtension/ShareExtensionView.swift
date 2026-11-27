@@ -181,7 +181,7 @@ struct ShareExtensionView: View {
         if let errorMessage {
           Text(errorMessage)
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.coral)
+            .foregroundStyle(Tokens.debt)
         }
 
         SPButton(

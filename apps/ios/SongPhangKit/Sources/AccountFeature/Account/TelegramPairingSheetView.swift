@@ -22,7 +22,7 @@ struct TelegramPairingSheetView: View {
       .background(Tokens.bg.ignoresSafeArea())
       .toolbar {
         ToolbarItem(placement: .topBarTrailing) {
-          Button(L10n.tr("common.close")) {
+          Button(L10n.tr("ios.common.close")) {
             model.resetTelegramPairing()
             dismiss()
           }
@@ -52,7 +52,7 @@ struct TelegramPairingSheetView: View {
         .font(Typography.sectionTitle)
         .foregroundStyle(Tokens.ink)
 
-      SPButton(L10n.tr("common.close"), variant: .primary, isFullWidth: true) {
+      SPButton(L10n.tr("ios.common.close"), variant: .primary, isFullWidth: true) {
         model.resetTelegramPairing()
         dismiss()
       }

@@ -1207,7 +1207,7 @@ public struct RootView: View {
         NavigationStack(path: $notificationsPath) {
           NotificationsView(
             model: notificationsModel,
-            onBack: {},
+            onBack: nil,
             onSelectTarget: { target in
               let route = RouteDestination.notificationDestination(for: target)
               navigate(to: route)
@@ -1235,7 +1235,7 @@ public struct RootView: View {
         NavigationStack(path: $accountPath) {
           AccountView(
             model: accountModel,
-            onBack: {}
+            onBack: nil
           )
           .toolbar {
             #if DEBUG

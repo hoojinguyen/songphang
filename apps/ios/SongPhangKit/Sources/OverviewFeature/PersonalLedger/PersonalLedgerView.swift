@@ -100,10 +100,10 @@ public struct PersonalLedgerView: View {
           if !model.availableGroups.isEmpty {
             groupFilterMenu
           }
-          typeFilterChip(title: L10n.tr("common.all"), type: nil)
-          typeFilterChip(title: L10n.tr("common.expense"), type: .expense)
-          typeFilterChip(title: L10n.tr("common.income"), type: .income)
-          typeFilterChip(title: L10n.tr("common.transfer"), type: .transfer)
+          typeFilterChip(title: L10n.tr("stats.all"), type: nil)
+          typeFilterChip(title: L10n.tr("expenseForm.typeExpense"), type: .expense)
+          typeFilterChip(title: L10n.tr("expenseForm.typeIncome"), type: .income)
+          typeFilterChip(title: L10n.tr("expenseForm.typeTransfer"), type: .transfer)
         }
       }
     }

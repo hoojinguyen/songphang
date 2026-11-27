@@ -29,7 +29,7 @@ public struct CloneGroupSheetView: View {
     self.repository = repository
     self.onDismiss = onDismiss
     self.onCloned = onCloned
-    let suffix = " (bản sao)"
+    let suffix = L10n.tr("ios.groups.cloneSuffix")
     let maxBase = 80 - suffix.count
     let base = String(group.name.prefix(maxBase)).trimmingCharacters(in: .whitespaces)
     self._nameDraft = State(initialValue: "\(base)\(suffix)")
@@ -37,62 +37,62 @@ public struct CloneGroupSheetView: View {
 
   public var body: some View {
     NavigationStack {
-      VStack(alignment: .leading, spacing: 20) {
-        VStack(alignment: .leading, spacing: 8) {
-          Text(L10n.tr("clone.nameLabel"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.muted)
+      ScrollView {
+        VStack(alignment: .leading, spacing: 20) {
+          VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.tr("clone.nameLabel"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
 
-          TextField("", text: $nameDraft)
-            .font(Typography.sectionTitle)
-            .foregroundStyle(Tokens.ink)
-            .padding(.horizontal, 20)
-            .frame(minHeight: 56)
-            .background(Tokens.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .accessibilityLabel(L10n.tr("clone.nameLabel"))
-        }
-
-        VStack(spacing: 16) {
-          Toggle(isOn: $copyPaymentMethods) {
-            Text(L10n.tr("clone.copyPaymentMethods"))
-              .font(Typography.bodyBold)
+            TextField("", text: $nameDraft)
+              .font(Typography.sectionTitle)
               .foregroundStyle(Tokens.ink)
+              .padding(.horizontal, 20)
+              .frame(minHeight: 56)
+              .background(Tokens.surface)
+              .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+              .accessibilityLabel(L10n.tr("clone.nameLabel"))
           }
-          .tint(Tokens.accent)
 
-          Toggle(isOn: $copyCategories) {
-            Text(L10n.tr("clone.copyCategories"))
-              .font(Typography.bodyBold)
-              .foregroundStyle(Tokens.ink)
+          VStack(spacing: 16) {
+            Toggle(isOn: $copyPaymentMethods) {
+              Text(L10n.tr("clone.copyPaymentMethods"))
+                .font(Typography.bodyBold)
+                .foregroundStyle(Tokens.ink)
+            }
+            .tint(Tokens.credit)
+
+            Toggle(isOn: $copyCategories) {
+              Text(L10n.tr("clone.copyCategories"))
+                .font(Typography.bodyBold)
+                .foregroundStyle(Tokens.ink)
+            }
+            .tint(Tokens.credit)
           }
-          .tint(Tokens.accent)
+          .padding(20)
+          .background(Tokens.surface)
+          .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+
+          if let errorMessage {
+            Text(errorMessage)
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.debt)
+          }
+
+          let trimmedDraft = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+          SPButton(
+            L10n.tr("clone.submit"),
+            variant: .primary,
+            size: .lg,
+            isFullWidth: true,
+            isDisabled: isSubmitting || trimmedDraft.isEmpty || trimmedDraft.count > 80,
+            isPending: isSubmitting
+          ) {
+            submitClone()
+          }
         }
         .padding(20)
-        .background(Tokens.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-
-        if let errorMessage {
-          Text(errorMessage)
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.debt)
-        }
-
-        Spacer()
-
-        let trimmedDraft = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        SPButton(
-          L10n.tr("clone.submit"),
-          variant: .primary,
-          size: .lg,
-          isFullWidth: true,
-          isDisabled: isSubmitting || trimmedDraft.isEmpty || trimmedDraft.count > 80,
-          isPending: isSubmitting
-        ) {
-          submitClone()
-        }
       }
-      .padding(20)
       .background(Tokens.bg.ignoresSafeArea())
       .navigationTitle(L10n.tr("clone.title"))
       .navigationBarTitleDisplayMode(.inline)

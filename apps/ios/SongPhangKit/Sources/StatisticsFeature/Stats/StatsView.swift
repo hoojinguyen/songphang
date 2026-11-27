@@ -107,7 +107,7 @@ public struct StatsView: View {
           data.stats.total,
           style: .full,
           font: Typography.heroNumber,
-          color: Tokens.ink
+          color: Tokens.onAccent
         )
         if let budget = data.budget, budget.state == .near || budget.state == .over {
           let periodLabel: String = {
@@ -132,7 +132,7 @@ public struct StatsView: View {
             )
           Text("\(periodLabel) · \(statusLabel)")
             .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -200,7 +200,7 @@ public struct StatsView: View {
           } label: {
             Text(item.label)
               .font(Typography.captionBold)
-              .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
+              .foregroundStyle(isSelected ? Tokens.onInk : Tokens.ink)
               .padding(.horizontal, 16)
               .frame(minHeight: 44)
               .background(isSelected ? Tokens.ink : Tokens.surface, in: Capsule())
@@ -209,7 +209,9 @@ public struct StatsView: View {
           .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
       }
+      .padding(.horizontal, 20)
     }
+    .padding(.horizontal, -20)
   }
 
   private func customDatePickerCard() -> some View {

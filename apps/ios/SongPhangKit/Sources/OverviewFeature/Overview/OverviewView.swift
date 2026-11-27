@@ -126,32 +126,32 @@ public struct OverviewView: View {
       if isAllSettled {
         Text(L10n.tr("overview.allSettled"))
           .font(Typography.sectionTitle)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
       } else {
         Text(L10n.tr("overview.netBalance"))
           .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
 
         MoneyText(
           summary.netBalance,
           style: .signed,
           font: Typography.heroNumber,
-          color: Tokens.ink
+          color: Tokens.onAccent
         )
 
         Divider()
-          .background(Tokens.ink.opacity(0.15))
+          .background(Tokens.onAccent.opacity(0.18))
 
         HStack(spacing: 20) {
           VStack(alignment: .leading, spacing: 4) {
             Text(L10n.tr("overview.totalOwedToMe"))
               .font(Typography.caption)
-              .foregroundStyle(Tokens.muted)
+              .foregroundStyle(Tokens.onAccent.opacity(0.7))
             MoneyText(
               summary.totalOwedToMe,
               style: .full,
               font: Typography.sectionTitle,
-              color: Tokens.ink
+              color: Tokens.onAccent
             )
           }
 
@@ -160,12 +160,12 @@ public struct OverviewView: View {
           VStack(alignment: .trailing, spacing: 4) {
             Text(L10n.tr("overview.totalIOwe"))
               .font(Typography.caption)
-              .foregroundStyle(Tokens.muted)
+              .foregroundStyle(Tokens.onAccent.opacity(0.7))
             MoneyText(
               summary.totalIOwe,
               style: .full,
               font: Typography.sectionTitle,
-              color: Tokens.ink
+              color: Tokens.onAccent
             )
           }
         }

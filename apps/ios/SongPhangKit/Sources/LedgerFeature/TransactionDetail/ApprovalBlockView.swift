@@ -22,12 +22,12 @@ struct ApprovalBlockView: View {
       VStack(alignment: .leading, spacing: 8) {
         Text(L10n.t("approval.rejectedTitle", ["owner": ownerName]))
           .font(Typography.bodyBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
 
         if let note = approval.note, !note.isEmpty {
           Text(note)
             .font(Typography.body)
-            .foregroundStyle(Tokens.ink)
+            .foregroundStyle(Tokens.onAccent)
         }
       }
       .padding(18)
@@ -38,7 +38,7 @@ struct ApprovalBlockView: View {
       VStack(alignment: .leading, spacing: 14) {
         Text(L10n.t("approval.pendingBanner", ["owner": ownerName]))
           .font(Typography.bodyBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(Tokens.onAccent)
 
         if role == .owner && verified {
           HStack(spacing: 10) {
@@ -63,8 +63,8 @@ struct ApprovalBlockView: View {
                 .font(Typography.bodyBold)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(Tokens.surface.opacity(0.4))
-                .foregroundStyle(Tokens.ink)
+                .background(Tokens.onAccent.opacity(0.14))
+                .foregroundStyle(Tokens.onAccent)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
             .disabled(isPending)
@@ -77,41 +77,42 @@ struct ApprovalBlockView: View {
       .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
       .sheet(isPresented: $isRejectSheetOpen) {
         NavigationStack {
-          VStack(alignment: .leading, spacing: 16) {
-            SPTextField(
-              label: L10n.tr("approval.rejectNoteLabel"),
-              text: $rejectNote,
-              maxLength: 300
-            )
+          ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+              SPTextField(
+                label: L10n.tr("approval.rejectNoteLabel"),
+                text: $rejectNote,
+                maxLength: 300
+              )
 
-            Spacer()
+              HStack(spacing: 12) {
+                SPButton(
+                  L10n.tr("approval.rejectCancel"),
+                  variant: .surface,
+                  isFullWidth: true
+                ) {
+                  isRejectSheetOpen = false
+                }
 
-            HStack(spacing: 12) {
-              SPButton(
-                L10n.tr("approval.rejectCancel"),
-                variant: .surface,
-                isFullWidth: true
-              ) {
-                isRejectSheetOpen = false
-              }
-
-              SPButton(
-                L10n.tr("approval.reject"),
-                variant: .surface,
-                isFullWidth: true,
-                isDisabled: isPending,
-                isPending: isPending
-              ) {
-                let note = rejectNote.trimmingCharacters(in: .whitespacesAndNewlines)
-                onReject(note.isEmpty ? nil : note)
-                isRejectSheetOpen = false
+                SPButton(
+                  L10n.tr("approval.reject"),
+                  variant: .surface,
+                  isFullWidth: true,
+                  isDisabled: isPending,
+                  isPending: isPending
+                ) {
+                  let note = rejectNote.trimmingCharacters(in: .whitespacesAndNewlines)
+                  onReject(note.isEmpty ? nil : note)
+                  isRejectSheetOpen = false
+                }
               }
             }
+            .padding(20)
           }
-          .padding(20)
+          .background(Tokens.bg.ignoresSafeArea())
           .navigationTitle(L10n.tr("approval.rejectTitle"))
           .navigationBarTitleDisplayMode(.inline)
-          .presentationDetents([.height(280)])
+          .presentationDetents([.medium, .large])
         }
       }
     }
