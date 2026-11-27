@@ -515,6 +515,31 @@ struct RecurringFormSheetView: View {
     }
   }
 
+  private static func parseHundredths(_ raw: String) -> Int? {
+    let trimmed =
+      raw
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+      .replacingOccurrences(of: ",", with: ".")
+    guard !trimmed.isEmpty else { return nil }
+    let parts = trimmed.split(separator: ".", omittingEmptySubsequences: false)
+    guard parts.count <= 2 else { return nil }
+    let wholePart = String(parts[0])
+    guard !wholePart.isEmpty, wholePart.count <= 3,
+      wholePart.allSatisfy({ $0.isWholeNumber && $0.isASCII })
+    else { return nil }
+    let fracPart = parts.count == 2 ? String(parts[1]) : ""
+    guard fracPart.count <= 2,
+      fracPart.allSatisfy({ $0.isWholeNumber && $0.isASCII })
+    else { return nil }
+    let paddedFrac: String
+    switch fracPart.count {
+    case 0: paddedFrac = "00"
+    case 1: paddedFrac = fracPart + "0"
+    default: paddedFrac = fracPart
+    }
+    return Int(wholePart + paddedFrac)
+  }
+
   private func buildSplitSpec() -> SplitSpec? {
     let existingExtras = editing?.splitTemplate.extras ?? []
     let existingAllocation = editing?.splitTemplate.extrasAllocation
@@ -524,37 +549,67 @@ struct RecurringFormSheetView: View {
       return parsedAmount != nil && parsedAmount == editing?.amount
     }()
 
+    let expectedBaseAmount: Money? = {
+      guard let parsedAmount, parsedAmount.isPositive else { return nil }
+      guard canAttachExistingExtras else { return parsedAmount }
+      let netExtras = existingExtras.reduce(Int64(0)) { acc, extra in
+        acc + (extra.kind == .discount ? -extra.amount.amount : extra.amount.amount)
+      }
+      let base = parsedAmount.amount - netExtras
+      return base > 0 ? Money(base) : nil
+    }()
+
     let base: SplitSpec? = {
       switch splitMethod {
       case .equal:
         guard !sharerIds.isEmpty else { return nil }
         return .equal(members: sharerIds)
       case .shares:
+        var hasPositiveWeight = false
         let entries = sharerIds.compactMap { id -> SplitSpec.ShareWeightEntry? in
           let fallbackWeight = members.first(where: { $0.id == id })?.defaultWeight ?? "1"
-          let raw = (memberValues[id] ?? fallbackWeight).trimmingCharacters(
-            in: .whitespacesAndNewlines)
-          guard !raw.isEmpty else { return nil }
+          let raw = (memberValues[id] ?? fallbackWeight)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+          guard let hundredths = Self.parseHundredths(raw) else { return nil }
+          if hundredths > 0 { hasPositiveWeight = true }
           return SplitSpec.ShareWeightEntry(memberId: id, weight: raw)
         }
-        guard entries.count == sharerIds.count, !entries.isEmpty else { return nil }
+        guard entries.count == sharerIds.count, !entries.isEmpty, hasPositiveWeight else {
+          return nil
+        }
         return .shares(entries: entries)
       case .percent:
+        var sumHundredths = 0
         let entries = sharerIds.compactMap { id -> SplitSpec.PercentEntry? in
-          let raw = (memberValues[id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-          guard !raw.isEmpty else { return nil }
+          let raw = (memberValues[id] ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+          guard let hundredths = Self.parseHundredths(raw) else { return nil }
+          sumHundredths += hundredths
           return SplitSpec.PercentEntry(memberId: id, percent: raw)
         }
-        guard entries.count == sharerIds.count, !entries.isEmpty else { return nil }
+        guard entries.count == sharerIds.count, !entries.isEmpty, sumHundredths == 10_000 else {
+          return nil
+        }
         return .percent(entries: entries)
       case .exact:
-        let entries = sharerIds.compactMap { id -> SplitSpec.ExactEntry? in
-          guard let amt = MoneyFormat.parseInput(memberValues[id] ?? ""), amt.isPositive else {
+        guard !sharerIds.isEmpty else { return nil }
+        var sumAmount: Int64 = 0
+        var entries: [SplitSpec.ExactEntry] = []
+        for id in sharerIds {
+          let raw = (memberValues[id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+          if raw.isEmpty { continue }
+          guard let amt = MoneyFormat.parseInput(raw), !amt.isNegative else { return nil }
+          sumAmount += amt.amount
+          entries.append(SplitSpec.ExactEntry(memberId: id, amount: amt))
+        }
+        if let expectedBaseAmount {
+          guard sumAmount <= expectedBaseAmount.amount else { return nil }
+          if entries.count == sharerIds.count && sumAmount != expectedBaseAmount.amount {
             return nil
           }
-          return SplitSpec.ExactEntry(memberId: id, amount: amt)
         }
-        guard !sharerIds.isEmpty else { return nil }
         let remainder: ExactRemainderMode =
           entries.count < sharerIds.count ? .equalAmongBlank : .none
         return .exact(members: sharerIds, entries: entries, remainder: remainder)

@@ -379,6 +379,25 @@ function RecurringFormBody({
 		);
 	};
 
+	const manualExtrasCard = (
+		<ManualExtrasCard
+			extras={splitState.extras}
+			extrasAllocation={splitState.extrasAllocation}
+			resolvedExtras={
+				mode === "fixed" ? extrasPreview.data?.resolvedExtras : undefined
+			}
+			computedAmount={
+				mode === "fixed" ? extrasPreview.data?.computedAmount : undefined
+			}
+			previewCurrent={mode === "fixed" && extrasPreview.current}
+			onChangeAllocation={splitState.setExtrasAllocation}
+			onTogglePreset={splitState.onTogglePresetExtra}
+			onAddExtra={splitState.onAddManualExtra}
+			onChangeExtra={splitState.onChangeManualExtra}
+			onRemoveExtra={splitState.onRemoveExtra}
+		/>
+	);
+
 	return (
 		<div className="flex max-h-[90dvh] flex-col">
 			<div className="flex items-center justify-between gap-3 border-b border-sunken px-5 py-4">
@@ -468,22 +487,7 @@ function RecurringFormBody({
 					</label>
 				)}
 
-				<ManualExtrasCard
-					extras={splitState.extras}
-					extrasAllocation={splitState.extrasAllocation}
-					resolvedExtras={
-						mode === "fixed" ? extrasPreview.data?.resolvedExtras : undefined
-					}
-					computedAmount={
-						mode === "fixed" ? extrasPreview.data?.computedAmount : undefined
-					}
-					previewCurrent={mode === "fixed" && extrasPreview.current}
-					onChangeAllocation={splitState.setExtrasAllocation}
-					onTogglePreset={splitState.onTogglePresetExtra}
-					onAddExtra={splitState.onAddManualExtra}
-					onChangeExtra={splitState.onChangeManualExtra}
-					onRemoveExtra={splitState.onRemoveExtra}
-				/>
+				{splitState.method !== "items" && manualExtrasCard}
 
 				<CategoryPicker
 					groupId={groupId}
@@ -676,7 +680,7 @@ function RecurringFormBody({
 							onAddExtra={splitState.onAddExtra}
 							onChangeExtra={splitState.onChangeExtra}
 							onRemoveExtra={splitState.onRemoveExtra}
-							extrasSection={null}
+							extrasSection={manualExtrasCard}
 						/>
 					) : (
 						<div className="grid gap-1.5">
