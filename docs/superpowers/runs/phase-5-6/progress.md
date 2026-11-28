@@ -308,6 +308,31 @@
 
 ## Stage D — Data, checks and handoff
 
+- [x] **Task 5.6.D.1 — Scripted scenarios for unreachable screens**
+  - **Approach:**
+    - Files modified: `apps/ios/SongPhangKit/Sources/AppShell/{RootView,SessionModel,Debug/DebugPanel}.swift`, `apps/ios/SongPhangKit/Sources/PreviewSupport/Fakes/{FakeRepositories,FakeWorld,FakeWorld+Ledger,FakeWorld+Payments,FakeWorld+Stats}.swift`, `docs/superpowers/runs/phase-5-6/{decisions,progress}.md`.
+    - Approach: Added `SessionModel.loadFeatures()` called at launch in `RootView` (including `.signedIn` scripted runs), wired `--with-payment-details`, `--with-pending-request`, `--with-fund`, `--with-pending-approval` (+ `--route-tx-pending-approval`), `--feature-telegram`, `--guest-token <token>`, `--upgrade-required`, and `--push-prompt` into `FakeWorld.init` and `RootView`, exposed matching launch-flag documentation and interactive seed actions in `DebugPanel`, and aligned `FakeWorld+Stats.swift` literals (`total = 1_599_999`, matching `1_200_000 + 300_000 + 99_999` across `byCategory`, `byBucket`, and `byMember`).
+    - Why this is the simplest approach: Hydrating literal scenario data synchronously inside `FakeWorld.init` prevents race conditions with child `.task` loads while keeping `Money` arithmetic strictly out of fakes and apps.
+    - Rejected alternative: Mutating `FakeWorld` asynchronously in `RootView.task` — rejected because child views start loading concurrently at launch.
+    - Questions: none (Decision D14 recorded in `decisions.md`).
+  - **Gates (verbatim):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **` (`SongPhangShareExtension.appex` and `SongPhangWidgetExtension.appex` embedded under `SongPhang.app/PlugIns/`)
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `ALLOWED (copy-changes): split.unitMoney`, `groups.youOwe`, `groups.owedToYou` -> `OK: 893 web keys verified, 3 allowlisted via copy-changes.md, 0 missing, 0 differing.`
+    - `pnpm check`: exit `0` (`biome check .`, `pnpm -r typecheck`, `pnpm --filter @songphang/api contract:check` -> `OpenAPI contract snapshot is up to date.`)
+  - **Exercise results & screenshots (`docs/superpowers/runs/phase-5-6/screens/stage-d/scenarios/`):**
+    - `--with-payment-details --route-balances --open-pay-sheet` (`d1-payment-details-pay-sheet.png`): renders `PayView` `.fitted` sheet with `Thu -> Bạn` (`210.000 đ`), VietQR code, `"Lưu mã QR"`, and `"Ngân hàng / Vietcombank / Sao chép"`.
+    - `--with-pending-request --route-balances` (`d1-pending-request-balances.png`): renders `"Thu báo đã chuyển 210.000 đ"` pending confirmation card and `"1"` badge on `"Sổ thanh toán"`.
+    - `--with-fund --route-fund` (`d1-fund.png`): renders `"Quỹ còn 350.000 đ"`, `"Giữ tiền: Minh"`, and `"Đã góp: Minh 200.000 đ, Lan 150.000 đ"`.
+    - `--with-pending-approval --route-tx-pending-approval` (`d1-pending-approval.png`): renders `"Vé máy bay khứ hồi / 850.000 đ / Khoản này chờ duyệt. Chưa tính vào số dư."` with `"Duyệt"` / `"Không duyệt"`.
+    - `--feature-telegram --route-account` (`d1-feature-telegram-account.png`) and `--feature-telegram --route-settings` (`d1-feature-telegram-settings.png`): loads `features.telegram == true` via `SessionModel.loadFeatures()`.
+    - `--guest-token demo-guest-token` (`d1-guest-token-loaded.png`) & `--guest-token invalid` (`d1-guest-token-invalid.png`): loaded read-only `"Chế độ khách chỉ xem / Đà Lạt 3N2Đ"` vs invalid-token message `"Liên kết xem chung không tồn tại hoặc đã được thu hồi."`.
+    - `--upgrade-required` (`d1-upgrade-required.png`): renders `UpgradeRequiredView` (`"Hãy cập nhật Sòng Phẳng để tiếp tục."`).
+    - `--push-prompt` (`d1-push-prompt.png`): presents `PushPermissionSheet` (`"Nhận thông báo khi có khoản chi mới"`) over Overview.
+    - `--route-stats` (`d1-stats-consistent.png`): renders total `1.599.999 đ` equal to `1.200.000 đ + 300.000 đ + 99.999 đ`.
+    - Security review: checked `git diff` against relevant checklist items; `#if DEBUG`-only scenario flags with hardcoded local fake data, zero secrets, zero network calls, zero `Money` division/multiplication, no issues found.
+  - **Findings closed:** `F4-32` (`FakeWorld+Stats` consistent literals), plus unblocked scripted Simulator access to all Stage D scenario screens.
+
 ## Findings record
 
 ## Not verified

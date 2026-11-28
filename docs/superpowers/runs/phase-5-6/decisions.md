@@ -304,3 +304,25 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
 
 - **Choice:** Option 2.
 - **Reason:** Keeps geometric avatars bounded cleanly while VoiceOver announces the full name, preserves ADR-044 mirror verification by failing on any unrecorded delta, and tracks every >60-char string for its screen redesign phase (`5.7` or `5.8`).
+
+### D14 — Stage D fake scenario gaps, launch flags, and stats consistency (Task 5.6.D.1)
+
+- **Problem:** Seven review screens/states were unreachable with existing `--scripted` fakes and launch flags, server features did not load on launch when starting `.signedIn` in scripted mode, and `FakeWorld+Stats.swift` reported `total: Money(1_399_999)` while its three categories summed to `1_599_999` (`F4-32`).
+- **Missing literal audit by flag:**
+
+| Flag | Missing literal / behavior found | Resolution |
+|---|---|---|
+| `--with-payment-details` | `TripScenario.members` (`Minh`, `Thu`) and `TripScenario.step4Balances.transfers` have `paymentMethods: []`, so `PayView` has no VietQR/bank methods | Added `sampleMinhPaymentMethods`, `sampleThuPaymentMethods`, and `seedSamplePaymentDetails(groupId:)` in `FakeWorld+Payments.swift` |
+| `--with-pending-request` | `FakeWorld.settlementRequestsByGroup` starts empty (`[:]`) and `SuggestedTransfer.pendingSettlement` is `nil` | Added `seedSamplePendingSettlementRequest(groupId:)` with literal `SettlementRequest` (`Thu -> Minh`, `210_000`) and matching transfer `PendingSettlement` |
+| `--with-fund` | `FakeWorld.init(hasFundAndBudget:)` existed in `FakeWorld+FundBudget.swift`, but `RootView` never exposed a launch flag for it | Wired `hasFundAndBudget: args.contains("--with-fund")` in `RootView` |
+| `--with-pending-approval` | `TripScenario.group` has `approvalThreshold: nil` and all transactions have `approval.status == .none` | Added `seedSamplePendingApproval(groupId:)` in `FakeWorld+Ledger.swift` (`approvalThreshold = 500_000`, literal `850_000` pending expense `tx-pending-approval`, plus `--route-tx-pending-approval`) |
+| `--feature-telegram` | `FakeAuthRepository.serverFeatures()` returned hardcoded `telegram: false`, and `RootView` skipped `SessionModel.loadSession()` when scripted state started `.signedIn` | Moved `ServerFeatures` onto `FakeWorld.features`, added `SessionModel.loadFeatures()` called at launch in `RootView`, and wired `--feature-telegram` |
+| `--guest-token` | `FakeWorld.guestLinksByGroup` started empty (`[:]`), causing both `--route-guest-share` (`demo-guest-token`) and `--guest-token <token>` to return 404 | Seeded `"demo-guest-token"` in `FakeWorld.init` for `.tripStep4`/first group and added `seedGuestToken(_:)` for non-`"invalid"` `--guest-token` values |
+| `--upgrade-required` | `FakeAuthRepository.serverFeatures()` returned `MinAppVersion(ios: "0.0.0")` and scripted launch did not load features | `--upgrade-required` sets `FakeWorld.features.minAppVersion.ios = "99.0.0"` so `SessionModel.loadFeatures()` triggers `UpgradeRequiredView` |
+| `--push-prompt` | `FakeAuthRepository.serverFeatures()` returned `push: false` and `PushPermissionSheet` only appeared after saving an expense with `.notDetermined` permission | `--push-prompt` sets `features.push = true` and opens `pushCoordinator.isPermissionSheetPresented = true` at launch |
+
+- **Options:**
+  1. Seed scenarios asynchronously inside `RootView.task` after child views start loading.
+  2. Seed scenarios synchronously inside `FakeWorld.init(...)` (with `public` seed helpers also callable from `DebugPanel`), load `SessionModel.loadFeatures()` at launch, and fix `FakeWorld+Stats.swift` literals (`total`, `byBucket`, `byMember` paid/share all equal `1_599_999` = `1_200_000 + 300_000 + 99_999`, matching `PreviewSamples.sampleCycle.totalExpenseAmount`).
+- **Choice:** Option 2.
+- **Reason:** Synchronous seeding inside `FakeWorld.init` prevents launch races between `RootView.task` and child view `.task` loads while keeping all fakes strictly literal with zero arithmetic on `Money`.

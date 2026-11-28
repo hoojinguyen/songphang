@@ -3,6 +3,144 @@
   import Foundation
 
   extension FakeWorld {
+    public nonisolated static let sampleMinhPaymentMethods: [PaymentMethod] = [
+      .bank(
+        BankPayment(
+          bin: "970436",
+          name: "Vietcombank",
+          accountNumber: "0123456789",
+          accountName: "NGUYEN VAN MINH",
+          qrPayload:
+            "00020101021238570010A00000072701270006970436011001234567890208QRIBFTTA530370454062100005802VN62180814SP DALAT 3N2D6304ABCD",
+          accountQrPayload:
+            "00020101021138570010A00000072701270006970436011001234567890208QRIBFTTA53037045802VN63041234"
+        )
+      ),
+      .momo(phone: "0901234567"),
+    ]
+
+    public nonisolated static let sampleThuPaymentMethods: [PaymentMethod] = [
+      .bank(
+        BankPayment(
+          bin: "970407",
+          name: "Techcombank",
+          accountNumber: "9876543210",
+          accountName: "TRAN THI THU"
+        )
+      )
+    ]
+
+    public nonisolated static let samplePendingSettlementRequest = SettlementRequest(
+      id: "01a1e4bd-ce20-7000-8000-000000000p01",
+      fromMemberId: TripScenario.thuId,
+      toMemberId: TripScenario.minhId,
+      amount: Money(210_000),
+      status: .pending,
+      channel: .bank,
+      note: "CK Vietcombank",
+      createdByUserId: TripScenario.lanUserId,
+      createdByName: "Thu",
+      createdAt: "2026-11-22T10:00:00.000Z"
+    )
+
+    internal nonisolated static func applySamplePaymentMethods(to members: [Member]) -> [Member] {
+      members.map { member in
+        var updated = member
+        if member.id == TripScenario.minhId || member.isMe {
+          updated.paymentMethods = sampleMinhPaymentMethods
+        } else if member.id == TripScenario.thuId {
+          updated.paymentMethods = sampleThuPaymentMethods
+        }
+        return updated
+      }
+    }
+
+    internal nonisolated static func applySamplePaymentMethods(to bal: GroupBalances)
+      -> GroupBalances
+    {
+      let updatedTransfers = bal.transfers.map { transfer in
+        let methods: [PaymentMethod] =
+          transfer.toMemberId == TripScenario.thuId
+          ? sampleThuPaymentMethods
+          : sampleMinhPaymentMethods
+        return SuggestedTransfer(
+          fromMemberId: transfer.fromMemberId,
+          toMemberId: transfer.toMemberId,
+          fromHousehold: transfer.fromHousehold,
+          toHousehold: transfer.toHousehold,
+          amount: transfer.amount,
+          paymentMethods: methods,
+          purpose: transfer.purpose ?? "SP DALAT 3N2D",
+          pendingSettlement: transfer.pendingSettlement
+        )
+      }
+      return GroupBalances(
+        currency: bal.currency,
+        minimized: bal.minimized,
+        balances: bal.balances,
+        transfers: updatedTransfers,
+        fund: bal.fund
+      )
+    }
+
+    internal nonisolated static func applySamplePendingSettlement(to bal: GroupBalances)
+      -> GroupBalances
+    {
+      let updatedTransfers = bal.transfers.map { transfer in
+        guard transfer.fromMemberId == TripScenario.thuId,
+          transfer.toMemberId == TripScenario.minhId
+        else {
+          return transfer
+        }
+        return SuggestedTransfer(
+          fromMemberId: transfer.fromMemberId,
+          toMemberId: transfer.toMemberId,
+          fromHousehold: transfer.fromHousehold,
+          toHousehold: transfer.toHousehold,
+          amount: transfer.amount,
+          paymentMethods: transfer.paymentMethods,
+          purpose: transfer.purpose,
+          pendingSettlement: PendingSettlement(
+            id: samplePendingSettlementRequest.id,
+            amount: Money(210_000),
+            createdByMe: false,
+            channel: .bank,
+            note: "CK Vietcombank"
+          )
+        )
+      }
+      return GroupBalances(
+        currency: bal.currency,
+        minimized: bal.minimized,
+        balances: bal.balances,
+        transfers: updatedTransfers,
+        fund: bal.fund
+      )
+    }
+
+    public func seedSamplePaymentDetails(groupId: ExpenseGroup.ID = TripScenario.groupId) {
+      let targetGroupId = groupsById[groupId] != nil ? groupId : (groupOrder.first ?? groupId)
+      if let members = membersByGroup[targetGroupId] {
+        membersByGroup[targetGroupId] = Self.applySamplePaymentMethods(to: members)
+      }
+      if let bal = balancesByGroup[targetGroupId] {
+        balancesByGroup[targetGroupId] = Self.applySamplePaymentMethods(to: bal)
+      }
+    }
+
+    public func seedSamplePendingSettlementRequest(groupId: ExpenseGroup.ID = TripScenario.groupId)
+    {
+      let targetGroupId = groupsById[groupId] != nil ? groupId : (groupOrder.first ?? groupId)
+      var list = settlementRequestsByGroup[targetGroupId] ?? []
+      if !list.contains(where: { $0.id == Self.samplePendingSettlementRequest.id }) {
+        list.insert(Self.samplePendingSettlementRequest, at: 0)
+        settlementRequestsByGroup[targetGroupId] = list
+      }
+      if let bal = balancesByGroup[targetGroupId] {
+        balancesByGroup[targetGroupId] = Self.applySamplePendingSettlement(to: bal)
+      }
+    }
+
     public func replacePaymentMethods(
       groupId: ExpenseGroup.ID,
       memberId: Member.ID,

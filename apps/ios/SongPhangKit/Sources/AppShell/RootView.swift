@@ -102,6 +102,14 @@ public struct RootView: View {
         || args.contains("--enter-step4")
         || args.contains("--emit-changed")
         || args.contains("--emit-removed")
+        || args.contains("--with-payment-details")
+        || args.contains("--with-pending-request")
+        || args.contains("--with-fund")
+        || args.contains("--with-pending-approval")
+        || args.contains("--feature-telegram")
+        || args.contains("--guest-token")
+        || args.contains("--upgrade-required")
+        || args.contains("--push-prompt")
       let useScripted = hasScriptedArg || DebugOverrides.useScripted
 
       let resolved: AppDependencies
@@ -142,8 +150,37 @@ public struct RootView: View {
           behavior.failure = .rateLimited
         }
 
+        let guestTokenArg: String? = {
+          guard let idx = args.firstIndex(of: "--guest-token"), idx + 1 < args.count else {
+            return nil
+          }
+          return args[idx + 1]
+        }()
+        let features = ServerFeatures(
+          google: true,
+          apple: true,
+          devLogin: false,
+          push: args.contains("--push-prompt"),
+          receiptReading: true,
+          sentenceAi: true,
+          telegram: args.contains("--feature-telegram"),
+          minAppVersion: ServerFeatures.MinAppVersion(
+            ios: args.contains("--upgrade-required") ? "99.0.0" : "0.0.0",
+            android: "0.0.0"
+          )
+        )
         let debugConfig = configuration ?? Self.resolvedDebugConfiguration()
-        let world = FakeWorld(preset: preset, behavior: behavior, signedIn: signedIn)
+        let world = FakeWorld(
+          preset: preset,
+          behavior: behavior,
+          signedIn: signedIn,
+          hasFundAndBudget: args.contains("--with-fund"),
+          hasPaymentDetails: args.contains("--with-payment-details"),
+          hasPendingRequest: args.contains("--with-pending-request"),
+          hasPendingApproval: args.contains("--with-pending-approval"),
+          guestTokenOverride: guestTokenArg,
+          features: features
+        )
         resolved = .scripted(
           world: world,
           webBaseURL: debugConfig.webBaseURL,
@@ -472,6 +509,13 @@ public struct RootView: View {
             .transactionDetail(
               groupId: targetGroupId, transactionId: TripScenario.t1Transaction.id),
           ]
+        } else if args.contains("--route-tx-pending-approval") {
+          selectedTab = .groups
+          groupsPath = [
+            .groupFeed(groupId: targetGroupId),
+            .transactionDetail(
+              groupId: targetGroupId, transactionId: FakeWorld.samplePendingApprovalTransactionId),
+          ]
         } else if args.contains("--route-ledger") {
           selectedTab = .overview
           overviewPath = [.personalLedger]
@@ -680,6 +724,8 @@ public struct RootView: View {
       }
       if case .loading = sessionModel.state {
         await sessionModel.loadSession()
+      } else {
+        await sessionModel.loadFeatures()
       }
       await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
       await consumePendingPushIfSignedIn()
@@ -693,6 +739,9 @@ public struct RootView: View {
       hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
+        if args.contains("--push-prompt") {
+          pushCoordinator.isPermissionSheetPresented = true
+        }
         if let tokenIdx = args.firstIndex(of: "--guest-token"), tokenIdx + 1 < args.count {
           activeGuestShare = GuestSharePresentation(
             model: GuestGroupModel(

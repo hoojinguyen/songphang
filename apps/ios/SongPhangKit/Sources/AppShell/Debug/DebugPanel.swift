@@ -337,6 +337,70 @@
               }
             }
 
+            Section("Stage D Launch Flags") {
+              ForEach(
+                [
+                  "--with-payment-details",
+                  "--with-pending-request",
+                  "--with-fund",
+                  "--with-pending-approval",
+                  "--feature-telegram",
+                  "--guest-token <token>",
+                  "--upgrade-required",
+                  "--push-prompt",
+                ],
+                id: \.self
+              ) { flag in
+                Text(flag)
+                  .font(.caption.monospaced())
+                  .foregroundStyle(.secondary)
+              }
+
+              Button("Seed Payment Details") {
+                Task {
+                  await world.seedSamplePaymentDetails()
+                  onDismiss()
+                }
+              }
+              Button("Seed Pending Settlement Request") {
+                Task {
+                  await world.seedSamplePendingSettlementRequest()
+                  onDismiss()
+                }
+              }
+              Button("Seed Fund & Budget") {
+                Task {
+                  await world.seedSampleFundAndBudget()
+                  onDismiss()
+                }
+              }
+              Button("Seed Pending Approval") {
+                Task {
+                  await world.seedSamplePendingApproval()
+                  onDismiss()
+                }
+              }
+              Button("Enable Telegram Feature") {
+                Task {
+                  let current = await world.features
+                  await world.setFeatures(
+                    ServerFeatures(
+                      google: current.google,
+                      apple: current.apple,
+                      devLogin: current.devLogin,
+                      push: current.push,
+                      receiptReading: current.receiptReading,
+                      sentenceAi: current.sentenceAi,
+                      telegram: true,
+                      minAppVersion: current.minAppVersion
+                    )
+                  )
+                  await sessionModel.loadFeatures()
+                  onDismiss()
+                }
+              }
+            }
+
             Section("Realtime Group Events") {
               Button("Send .changed([\"transactions\", \"balances\"])") {
                 Task {

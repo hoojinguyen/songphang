@@ -904,6 +904,53 @@
       }
     }
 
+    public nonisolated static let samplePendingApprovalTransactionId = LedgerTransaction.ID(
+      "01a1e4bd-ce0f-7000-8000-000000000a01"
+    )
+
+    public nonisolated static let samplePendingApprovalTransaction = LedgerTransaction(
+      id: samplePendingApprovalTransactionId,
+      type: .expense,
+      description: "Vé máy bay khứ hồi",
+      amount: Money(850_000),
+      currency: "VND",
+      occurredAt: "2026-11-22T09:30:00.000Z",
+      category: .transport,
+      payers: [MemberAmount(memberId: TripScenario.lanId, amount: Money(850_000))],
+      split: .equal(members: [
+        TripScenario.minhId,
+        TripScenario.lanId,
+        TripScenario.hungId,
+        TripScenario.thuId,
+      ]),
+      shares: [
+        MemberAmount(memberId: TripScenario.minhId, amount: Money(212_500)),
+        MemberAmount(memberId: TripScenario.lanId, amount: Money(212_500)),
+        MemberAmount(memberId: TripScenario.hungId, amount: Money(212_500)),
+        MemberAmount(memberId: TripScenario.thuId, amount: Money(212_500)),
+      ],
+      version: 1,
+      updatedBy: LedgerTransaction.ActorRef(id: TripScenario.lanUserId, name: "Lan"),
+      createdBy: LedgerTransaction.ActorRef(id: TripScenario.lanUserId, name: "Lan"),
+      createdAt: "2026-11-22T09:30:00.000Z",
+      updatedAt: "2026-11-22T09:30:00.000Z",
+      approval: LedgerTransaction.TransactionApproval(status: .pending)
+    )
+
+    public func seedSamplePendingApproval(groupId: ExpenseGroup.ID = TripScenario.groupId) {
+      let targetGroupId = groupsById[groupId] != nil ? groupId : (groupOrder.first ?? groupId)
+      if var group = groupsById[targetGroupId] {
+        group.approvalThreshold = Money(500_000)
+        groupsById[targetGroupId] = group
+      }
+      var list = transactionsByGroup[targetGroupId] ?? []
+      guard !list.contains(where: { $0.id == Self.samplePendingApprovalTransactionId }) else {
+        return
+      }
+      list.insert(Self.samplePendingApprovalTransaction, at: 0)
+      transactionsByGroup[targetGroupId] = list
+    }
+
     public func approveTransaction(
       groupId: ExpenseGroup.ID,
       id: LedgerTransaction.ID
