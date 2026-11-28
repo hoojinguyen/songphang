@@ -36,7 +36,7 @@ public struct RemoteAttachmentThumbnail: View {
           ZStack {
             Tokens.sunken
             Image(systemName: "photo")
-              .font(.system(size: 18, weight: .semibold))
+              .spIconFont(size: 18, weight: .semibold, relativeTo: .headline)
               .foregroundStyle(Tokens.muted)
           }
         }
@@ -99,7 +99,7 @@ public struct PhotoViewerSheet: View {
           ShapeLoader()
         } else {
           Image(systemName: "photo")
-            .font(.system(size: 40, weight: .bold))
+            .spIconFont(size: 40, weight: .bold, relativeTo: .largeTitle)
             .foregroundStyle(Color.white.opacity(0.6))
         }
         Spacer(minLength: 0)
@@ -107,7 +107,7 @@ public struct PhotoViewerSheet: View {
 
       Button(action: onClose) {
         Image(systemName: "xmark")
-          .font(.system(size: 16, weight: .bold))
+          .spIconFont(size: 16, weight: .bold, relativeTo: .callout)
           .foregroundStyle(.white)
           .frame(width: 44, height: 44)
           .background(Color.white.opacity(0.2), in: Circle())
@@ -159,11 +159,16 @@ public struct PhotoRowView<AddControl: View>: View {
 
   public var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      HStack {
+      AdaptiveStack(
+        horizontalAlignment: .center,
+        verticalAlignment: .leading,
+        horizontalSpacing: 8,
+        verticalSpacing: 8
+      ) {
         Text(L10n.tr("attachments.label"))
           .font(Typography.captionBold)
           .foregroundStyle(Tokens.ink)
-        Spacer(minLength: 8)
+          .frame(maxWidth: .infinity, alignment: .leading)
         if !readOnly {
           addControl
         }
@@ -188,7 +193,7 @@ public struct PhotoRowView<AddControl: View>: View {
                   onRemove(attachment.id)
                 } label: {
                   Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
+                    .spIconFont(size: 11, weight: .bold, relativeTo: .caption2)
                     .foregroundStyle(Tokens.onInk)
                     .frame(width: 24, height: 24)
                     .background(Tokens.ink, in: Circle())

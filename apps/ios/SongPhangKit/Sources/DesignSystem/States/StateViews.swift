@@ -157,7 +157,7 @@ public struct OfflineBanner: View {
   public var body: some View {
     HStack(spacing: 12) {
       Image(systemName: "wifi.slash")
-        .font(.system(size: 18, weight: .bold))
+        .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
         .foregroundStyle(Tokens.onInk)
         .accessibilityHidden(true)
 

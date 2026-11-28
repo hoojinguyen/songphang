@@ -172,7 +172,6 @@ public struct GroupFeedView: View {
     ) {
       onOpenBalances(model.groupId)
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
 
     if data.budget?.state == .near || data.budget?.state == .over {
@@ -337,7 +336,6 @@ public struct GroupFeedView: View {
         onOpenManualForm: {},
         onOpenQuickEntry: {}
       )
-      .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
       .padding(.horizontal, 20)
       .padding(.bottom, 12)
     } else if isEmailVerified {
@@ -365,7 +363,6 @@ public struct GroupFeedView: View {
             onOpenQuickEntry(model.groupId, nil)
           }
         )
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .padding(.horizontal, 20)
         .padding(.bottom, 12)
       }

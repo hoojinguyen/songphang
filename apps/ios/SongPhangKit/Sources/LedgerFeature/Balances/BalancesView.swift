@@ -626,7 +626,12 @@ public struct BalancesView: View {
     let tint =
       balance.isPositive ? Tokens.credit : (balance.isNegative ? Tokens.debt : Tokens.ink)
     return SPCard(padding: 16) {
-      HStack(spacing: 12) {
+      AdaptiveStack(
+        horizontalAlignment: .center,
+        verticalAlignment: .leading,
+        horizontalSpacing: 12,
+        verticalSpacing: 12
+      ) {
         VStack(alignment: .leading, spacing: 3) {
           if let householdName {
             Text(householdName)
@@ -638,7 +643,7 @@ public struct BalancesView: View {
             .foregroundStyle(Tokens.muted)
           MoneyText(
             balance.magnitude,
-            style: .hero,
+            role: .hero,
             font: Typography.sectionTitle,
             color: tint
           )
@@ -658,7 +663,8 @@ public struct BalancesView: View {
               .foregroundStyle(Tokens.muted)
           }
         }
-        Spacer(minLength: 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         if canViewBreakdown {
           Button(L10n.tr("breakdown.viewAction"), action: onViewBreakdown)
             .font(Typography.captionBold)
@@ -1080,7 +1086,7 @@ private struct SettlementCardView: View {
             verified: isEmailVerified
           )
           if showRemind {
-            HStack(spacing: 8) {
+            AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 8) {
               if canOpenAction {
                 SPButton(
                   transferActionLabel(
@@ -1099,7 +1105,7 @@ private struct SettlementCardView: View {
                 L10n.tr("reminders.remind"),
                 variant: .surface,
                 size: .lg,
-                isFullWidth: !canOpenAction,
+                isFullWidth: true,
                 isDisabled: isOffline || !hasCurrentPaymentDetails,
                 isPending: isSendingReminder,
                 action: { onRemind(fromMember, toMember) }
@@ -1164,68 +1170,77 @@ private struct OtherSettlementsSection: View {
           let toMember = members.first(where: { $0.id == transfer.toMemberId })
         {
           VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-              MemberShapeView(member: fromMember, size: 28)
-              Text(
-                transferRowCaption(
+            AdaptiveStack(
+              horizontalAlignment: .center,
+              verticalAlignment: .leading,
+              horizontalSpacing: 8,
+              verticalSpacing: 8
+            ) {
+              HStack(spacing: 8) {
+                MemberShapeView(member: fromMember, size: 28)
+                Text(
+                  transferRowCaption(
+                    transfer: transfer,
+                    from: fromMember,
+                    to: toMember,
+                    amount: transfer.amount,
+                    myMemberId: group.myMemberId
+                  )
+                )
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+              }
+
+              HStack(spacing: 8) {
+                MoneyText(
+                  transfer.amount,
+                  role: .primary,
+                  font: Typography.subheadlineBold,
+                  color: Tokens.ink
+                )
+
+                let showRemind = canRemindTransfer(
                   transfer: transfer,
                   from: fromMember,
                   to: toMember,
-                  amount: transfer.amount,
-                  myMemberId: group.myMemberId
+                  myMemberId: group.myMemberId,
+                  role: group.role,
+                  verified: isEmailVerified
                 )
-              )
-              .font(Typography.caption)
-              .foregroundStyle(Tokens.ink)
-              .frame(maxWidth: .infinity, alignment: .leading)
 
-              MoneyText(
-                transfer.amount,
-                style: .full,
-                font: Typography.subheadlineBold,
-                color: Tokens.ink
-              )
-
-              let showRemind = canRemindTransfer(
-                transfer: transfer,
-                from: fromMember,
-                to: toMember,
-                myMemberId: group.myMemberId,
-                role: group.role,
-                verified: isEmailVerified
-              )
-
-              if transfer.pendingSettlement == nil {
-                if canOpenAction {
-                  Button(
-                    transferActionLabel(
-                      transfer: transfer,
-                      myMemberId: group.myMemberId,
-                      role: group.role,
-                      opensPay: opensPay
-                    )
-                  ) {
-                    onSettle(transfer)
+                if transfer.pendingSettlement == nil {
+                  if canOpenAction {
+                    Button(
+                      transferActionLabel(
+                        transfer: transfer,
+                        myMemberId: group.myMemberId,
+                        role: group.role,
+                        opensPay: opensPay
+                      )
+                    ) {
+                      onSettle(transfer)
+                    }
+                    .font(Typography.captionBold)
+                    .foregroundStyle(Tokens.ink)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 44)
+                    .background(Tokens.sunken, in: Capsule())
+                    .buttonStyle(.plain)
                   }
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                  .padding(.horizontal, 12)
-                  .frame(minHeight: 44)
-                  .background(Tokens.sunken, in: Capsule())
-                  .buttonStyle(.plain)
-                }
 
-                if showRemind {
-                  Button(L10n.tr("reminders.remind")) {
-                    onRemind(fromMember, toMember)
+                  if showRemind {
+                    Button(L10n.tr("reminders.remind")) {
+                      onRemind(fromMember, toMember)
+                    }
+                    .font(Typography.captionBold)
+                    .foregroundStyle(Tokens.ink)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 44)
+                    .background(Tokens.sunken, in: Capsule())
+                    .buttonStyle(.plain)
+                    .disabled(isOffline || !hasCurrentPaymentDetails || isSendingReminder)
                   }
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                  .padding(.horizontal, 12)
-                  .frame(minHeight: 44)
-                  .background(Tokens.sunken, in: Capsule())
-                  .buttonStyle(.plain)
-                  .disabled(isOffline || !hasCurrentPaymentDetails || isSendingReminder)
                 }
               }
             }
@@ -1316,12 +1331,12 @@ private struct AllSettledSection: View {
         ForEach(members) { member in
           VStack(spacing: 8) {
             MemberShapeView(member: member, size: 72)
-            Text(member.id == myMemberId ? L10n.tr("common.you") : member.name)
+            Text(PersonName.display(member: member, currentMemberId: myMemberId))
               .font(Typography.bodyBold)
               .foregroundStyle(Tokens.ink)
             MoneyText(
               .zero,
-              style: .full,
+              role: .primary,
               font: Typography.body,
               color: Tokens.ink
             )
@@ -1359,15 +1374,17 @@ private struct AllSettledSection: View {
                 }
               }()
 
-              HStack(spacing: 8) {
-                MemberShapeView(member: fromMember, size: 28)
-                Text(text)
-                  .font(Typography.caption)
-                  .foregroundStyle(Tokens.ink)
-                  .frame(maxWidth: .infinity, alignment: .leading)
+              AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 4) {
+                HStack(spacing: 8) {
+                  MemberShapeView(member: fromMember, size: 28)
+                  Text(text)
+                    .font(Typography.caption)
+                    .foregroundStyle(Tokens.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 MoneyText(
                   transaction.amount,
-                  style: .full,
+                  role: .primary,
                   font: Typography.captionBold,
                   color: Tokens.ink
                 )
@@ -1422,7 +1439,7 @@ private struct HouseholdBarsSection: View {
     let negativeMagnitude = hh.netBalance.isNegative ? Double(hh.netBalance.magnitude.amount) : 0
     let positiveMagnitude = !hh.netBalance.isNegative ? Double(hh.netBalance.magnitude.amount) : 0
     let row = VStack(alignment: .leading, spacing: 6) {
-      HStack {
+      AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 4) {
         VStack(alignment: .leading, spacing: 2) {
           Text(hh.name)
             .font(Typography.captionBold)
@@ -1433,7 +1450,7 @@ private struct HouseholdBarsSection: View {
               .foregroundStyle(Tokens.muted)
           }
         }
-        Spacer()
+        .frame(maxWidth: .infinity, alignment: .leading)
         MoneyText(
           hh.netBalance,
           style: .signed,
@@ -1507,7 +1524,7 @@ private struct BalanceBarsSection: View {
           member.active || !item.balance.isZero
         {
           let row = VStack(alignment: .leading, spacing: 4) {
-            HStack {
+            AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 2) {
               HStack(spacing: 4) {
                 Text(member.name)
                   .font(Typography.captionBold)
@@ -1518,7 +1535,7 @@ private struct BalanceBarsSection: View {
                     .foregroundStyle(Tokens.muted)
                 }
               }
-              Spacer()
+              .frame(maxWidth: .infinity, alignment: .leading)
               MoneyText(
                 item.balance,
                 style: .signed,

@@ -59,7 +59,7 @@ struct TransactionSummaryView: View {
 
       HStack(alignment: .firstTextBaseline, spacing: 8) {
         Text(MoneyFormat.amount(transaction.amount))
-          .font(.system(size: 44, weight: .black))
+          .font(Typography.displayNumber)
           .monospacedDigit()
           .lineLimit(1)
           .minimumScaleFactor(0.5)

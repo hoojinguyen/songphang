@@ -12,3 +12,8 @@ Every string added, changed or removed on iOS in this run. Phase 5.9 applies the
 | `ios.memberPicker.selected` | (added) | `{name}, đã chọn` | Task 5.6.A.5: VoiceOver selected label in `MemberPicker` |
 | `ios.copy.announced` | (added) | `Đã sao chép` | Spec §10.3 & Task 5.6.A.6: `CopyButton` VoiceOver announcement and copied state label |
 | `ios.groups.createdToast` | (added) | `Đã tạo {name}` | Spec §4.4 & Task 5.6.B.3: Confirmation toast shown after cloning a group |
+| `groups.owedToYou` | `đồng bạn được nhận` | `bạn được nhận` | Spec §11.2 & Task 5.6.C.4: Remove redundant `"đồng"` next to formatted `MoneyText` amount on featured group card |
+| `groups.youOwe` | `đồng bạn cần trả` | `bạn cần trả` | Spec §11.2 & Task 5.6.C.4: Remove redundant `"đồng"` next to formatted `MoneyText` amount on featured group card |
+| `split.unitMoney` | `đồng` | `đ` | Spec §11.2 & Task 5.6.C.4: Replace `"đồng"` unit suffix in split editor with `"đ"` matching `MoneyFormat` |
+| `ios.common.clear` | (added) | `Xoá` | Task 5.6.C.4: VoiceOver accessibility label for search clear button in `PersonalLedgerView` |
+| `ios.newGroup.namePlaceholder` | (added) | `Đà Lạt cuối tuần` | Spec §11.2 & Task 5.6.C.4: Group name field placeholder in `CreateGroupView` |

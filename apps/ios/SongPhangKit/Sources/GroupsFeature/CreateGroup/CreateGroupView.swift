@@ -38,21 +38,26 @@ public struct CreateGroupView: View {
               .font(Typography.captionBold)
               .foregroundStyle(Tokens.muted)
 
-            TextField("", text: $model.name)
-              .font(Typography.pageTitle)
-              .foregroundStyle(Tokens.ink)
-              .padding(.horizontal, 20)
-              .frame(minHeight: 72)
-              .background(Tokens.surface)
-              .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-              .fieldShake(trigger: nameShakeTick, cornerRadius: 28)
-              .id("groupNameField")
-              .onChange(of: model.name) { _, newValue in
-                if newValue.count > 80 {
-                  model.name = String(newValue.prefix(80))
-                }
+            let namePlaceholder = L10n.tr("ios.newGroup.namePlaceholder")
+            TextField(
+              namePlaceholder,
+              text: $model.name,
+              prompt: Text(namePlaceholder).foregroundStyle(Tokens.placeholder)
+            )
+            .font(Typography.pageTitle)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 20)
+            .frame(minHeight: 72)
+            .background(Tokens.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .fieldShake(trigger: nameShakeTick, cornerRadius: 28)
+            .id("groupNameField")
+            .onChange(of: model.name) { _, newValue in
+              if newValue.count > 80 {
+                model.name = String(newValue.prefix(80))
               }
-              .accessibilityLabel(L10n.tr("newGroup.nameLabel"))
+            }
+            .accessibilityLabel(L10n.tr("newGroup.nameLabel"))
           }
 
           Text(L10n.tr("newGroup.membersTitle"))
@@ -92,7 +97,7 @@ public struct CreateGroupView: View {
                 model.removeMember(at: index)
               } label: {
                 Image(systemName: "xmark")
-                  .font(.system(size: 16, weight: .bold))
+                  .spIconFont(size: 16, weight: .bold, relativeTo: .callout)
                   .foregroundStyle(Tokens.ink)
                   .frame(width: 44, height: 44)
               }
@@ -188,7 +193,6 @@ public struct CreateGroupView: View {
         }
       }
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
     .padding(.vertical, 12)
     .background(Tokens.bg)

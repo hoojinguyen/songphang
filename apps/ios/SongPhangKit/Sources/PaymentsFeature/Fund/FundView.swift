@@ -103,8 +103,8 @@ public struct FundView: View {
 
       MoneyText(
         fund.cash.magnitude,
-        style: .full,
-        font: .system(size: 42, weight: .black),
+        role: .hero,
+        font: Typography.displayNumber,
         color: Tokens.onAccent
       )
 

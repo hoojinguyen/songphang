@@ -3989,7 +3989,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "đồng bạn được nhận"
+            "value": "bạn được nhận"
           }
         }
       }
@@ -4022,7 +4022,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "đồng bạn cần trả"
+            "value": "bạn cần trả"
           }
         }
       }
@@ -5936,7 +5936,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "đồng"
+            "value": "đ"
           }
         }
       }
@@ -10678,6 +10678,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Đã tạo {name}"
+          }
+        }
+      }
+    },
+    "ios.common.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xoá"
+          }
+        }
+      }
+    },
+    "ios.newGroup.namePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đà Lạt cuối tuần"
           }
         }
       }

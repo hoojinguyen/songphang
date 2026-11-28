@@ -8,6 +8,7 @@ public import SwiftUI
 
 public struct SettleView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Bindable private var model: SettleModel
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
@@ -99,7 +100,6 @@ public struct SettleView: View {
     ) {
       Task { await model.submit(reduceMotion: reduceMotion) }
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
     .padding(.vertical, 12)
     .background(Tokens.bg)
@@ -125,21 +125,27 @@ public struct SettleView: View {
     // Read here so the field re-renders when the model reformats the typed digits.
     let amountText = model.amountText
 
-    HStack(spacing: 20) {
+    AdaptiveStack(
+      horizontalAlignment: .center,
+      verticalAlignment: .center,
+      horizontalSpacing: 20,
+      verticalSpacing: 12
+    ) {
       VStack(spacing: 12) {
         MemberShapeView(member: data.fromMember, size: 104)
-        Text(data.fromMember.id == myMemberId ? L10n.tr("common.you") : data.fromMember.name)
+        Text(PersonName.display(member: data.fromMember, currentMemberId: myMemberId))
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
       }
 
-      Image(systemName: "arrow.right")
-        .font(.system(size: 24, weight: .bold))
+      Image(systemName: dynamicTypeSize.isAccessibilitySize ? "arrow.down" : "arrow.right")
+        .spIconFont(size: 24, weight: .bold, relativeTo: .title2)
         .foregroundStyle(Tokens.ink)
+        .accessibilityHidden(true)
 
       VStack(spacing: 12) {
         MemberShapeView(member: data.toMember, size: 104)
-        Text(data.toMember.id == myMemberId ? L10n.tr("common.you") : data.toMember.name)
+        Text(PersonName.display(member: data.toMember, currentMemberId: myMemberId))
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
       }
@@ -165,7 +171,7 @@ public struct SettleView: View {
       .font(Typography.caption)
       .foregroundStyle(Tokens.muted)
 
-    HStack(spacing: 8) {
+    AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 8) {
       dayButton(label: L10n.tr("settle.today"), selection: .today)
       dayButton(label: L10n.tr("settle.yesterday"), selection: .yesterday)
       dayButton(label: L10n.tr("settle.otherDay"), selection: .other)
@@ -281,7 +287,7 @@ private struct SettleAmountField: View {
       .focused($isFocused)
       .disabled(isDisabled)
       .multilineTextAlignment(.center)
-      .font(.system(size: 44, weight: .black))
+      .font(Typography.displayNumber)
       .monospacedDigit()
       .lineLimit(1)
       .minimumScaleFactor(0.5)

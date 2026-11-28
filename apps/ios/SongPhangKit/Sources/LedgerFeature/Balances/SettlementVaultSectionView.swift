@@ -173,8 +173,9 @@ struct SettlementVaultSectionView: View {
         MemberShapeView(member: fromMember, size: 28)
       }
       Image(systemName: "arrow.right")
-        .font(.system(size: 11, weight: .bold))
+        .spIconFont(size: 11, weight: .bold, relativeTo: .caption2)
         .foregroundStyle(Tokens.muted)
+        .accessibilityHidden(true)
       if let toMember {
         MemberShapeView(member: toMember, size: 28)
       }

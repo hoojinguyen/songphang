@@ -250,3 +250,57 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
 
 - **Choice:** Option 2.
 - **Reason:** Matches Spec §5.1–§5.3 and eliminates every nested sheet, sheet back chevron, `"Thôi"`/`"Đóng"`/`"Quay lại"`/`"Xong"` sheet dismiss inconsistency, and unguarded form dismissal while keeping `.fullScreenCover` for camera and photo viewers.
+
+### D13 — Geometric avatar initial font exception, `check-strings.sh` allowlist, and >60-char copy inventory (Task 5.6.C.4)
+
+- **Problem:**
+  1. `MemberShapeView.swift:68` renders the single initial letter inside a fixed `size`-pt geometric avatar shape using `.font(.system(size: initialFontSize, weight: .black))`. Scaling that decorative glyph above the `size`-pt shape would overflow the avatar circle/diamond/squircle/leaf.
+  2. Spec §11.2 removes redundant `"đồng"` next to formatted amounts (`groups.owedToYou`, `groups.youOwe`, `split.unitMoney`) without editing `apps/web/src/messages/vi.ts`, which previously caused `check-strings.sh` to fail on any non-`ios.*` difference.
+  3. Task `5.6.C.4` requires auditing every string longer than 60 characters in `Localizable.xcstrings` and assigning an owning phase (`5.7` or `5.8`), without shortening unrelated copy early.
+- **Options:**
+  1. Wrap `MemberShapeView`'s initial letter in `.spIconFont` (overflowing its fixed `size` badge at AX5), ignore `vi.ts` mismatches in `check-strings.sh`, and leave >60-char strings untracked.
+  2. Keep `MemberShapeView.swift:68` (paired with `.accessibilityHidden(true)` and parent `.accessibilityLabel(name)`) as the sole intentional proportional-to-container font alongside `Typography.swift`'s `@ScaledMetric` implementation; update `apps/ios/Scripts/check-strings.sh` to read `docs/superpowers/runs/phase-5-*/copy-changes.md` markdown tables so only explicitly recorded deltas pass (`ALLOWED (copy-changes): <key>`); and record all 38 strings >60 characters below for `5.7` / `5.8` follow-up without shortening them outside §11.2:
+
+| # | Key | Length | Screen / Component | Owning phase |
+|---|---|---|---|---|
+| 1 | `account.deleteHint` | 106 | Account | 5.8 |
+| 2 | `account.ownerRequired` | 79 | Account | 5.8 |
+| 3 | `balances.pairwiseHint` | 64 | Balances | 5.8 |
+| 4 | `compose.countReason` | 66 | Quick Entry | 5.7 |
+| 5 | `compose.memberReason` | 79 | Quick Entry | 5.7 |
+| 6 | `cycles.carryOverNote` | 73 | Close Cycle / Cycles | 5.8 |
+| 7 | `cycles.reopenConfirmBody` | 69 | Settlement Cycles | 5.8 |
+| 8 | `forgotPassword.submitted` | 83 | Auth / Forgot Password | 5.8 |
+| 9 | `groups.archiveConfirmBody` | 91 | Group Settings | 5.8 |
+| 10 | `guestLink.description` | 97 | Guest Link Sheet | 5.8 |
+| 11 | `households.repActiveError` | 82 | Household Form | 5.8 |
+| 12 | `households.sectionHint` | 85 | Group Members / Households | 5.8 |
+| 13 | `households.ungroupConfirm` | 68 | Group Members / Households | 5.8 |
+| 14 | `ios.notifications.recurringPostedGroup` | 62 | Notifications | 5.8 |
+| 15 | `ios.push.promptBody` | 63 | Push Permission Sheet | 5.8 |
+| 16 | `ios.shareExtension.signInRequired` | 62 | Share Extension | 5.8 |
+| 17 | `join.isOwed` | 82 | Join Group | 5.8 |
+| 18 | `join.owes` | 80 | Join Group | 5.8 |
+| 19 | `login.googleUnverified` | 108 | Sign In | 5.8 |
+| 20 | `members.deactivateWarning` | 70 | Group Members | 5.8 |
+| 21 | `members.hasTransactions` | 67 | Group Members | 5.8 |
+| 22 | `members.removeBody` | 70 | Group Members | 5.8 |
+| 23 | `newGroup.hint` | 89 | Create Group | 5.8 |
+| 24 | `receipts.mismatch` | 80 | Receipt Review | 5.7 |
+| 25 | `register.submittedBody` | 90 | Auth / Register | 5.8 |
+| 26 | `settings.deleteBody` | 89 | Group Settings | 5.8 |
+| 27 | `settle.partialHint` | 61 | Settle | 5.8 |
+| 28 | `shareCard.preset1` | 67 | Share Card | 5.8 |
+| 29 | `shareCard.preset2` | 66 | Share Card | 5.8 |
+| 30 | `shareCard.preset3` | 62 | Share Card | 5.8 |
+| 31 | `telegram.confirmStepBody` | 107 | Telegram Pairing | 5.8 |
+| 32 | `telegram.identityTaken` | 69 | Telegram Pairing | 5.8 |
+| 33 | `telegram.privateStepHint` | 105 | Telegram Pairing | 5.8 |
+| 34 | `telegram.privateStepHintNoBot` | 102 | Telegram Pairing | 5.8 |
+| 35 | `telegram.settingsHint` | 62 | Group Settings / Telegram | 5.8 |
+| 36 | `telegram.stagedWaitingConfirm` | 81 | Telegram Pairing | 5.8 |
+| 37 | `telegram.startPairingHint` | 89 | Telegram Pairing | 5.8 |
+| 38 | `unparsed.sumShort` | 85 | Quick Entry / Expense Form | 5.7 |
+
+- **Choice:** Option 2.
+- **Reason:** Keeps geometric avatars bounded cleanly while VoiceOver announces the full name, preserves ADR-044 mirror verification by failing on any unrecorded delta, and tracks every >60-char string for its screen redesign phase (`5.7` or `5.8`).

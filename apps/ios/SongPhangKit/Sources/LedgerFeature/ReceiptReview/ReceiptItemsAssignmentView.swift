@@ -165,7 +165,7 @@ public struct ReceiptItemsAssignmentView: View {
             onChange()
           } label: {
             Image(systemName: "trash")
-              .font(.system(size: 16, weight: .semibold))
+              .spIconFont(size: 16, weight: .semibold, relativeTo: .callout)
               .foregroundStyle(Tokens.muted)
               .frame(width: 44, height: 44)
           }
@@ -291,7 +291,7 @@ public struct ReceiptItemsAssignmentView: View {
             onChange()
           } label: {
             Image(systemName: "trash")
-              .font(.system(size: 16, weight: .semibold))
+              .spIconFont(size: 16, weight: .semibold, relativeTo: .callout)
               .foregroundStyle(Tokens.muted)
               .frame(width: 44, height: 44)
           }

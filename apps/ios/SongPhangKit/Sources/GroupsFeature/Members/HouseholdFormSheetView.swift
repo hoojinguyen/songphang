@@ -136,7 +136,7 @@ struct HouseholdFormSheetView: View {
                   }
                   Spacer()
                   Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20, weight: .semibold))
+                    .spIconFont(size: 20, weight: .semibold, relativeTo: .title3)
                     .foregroundStyle(selected ? Tokens.ink : Tokens.muted)
                 }
                 .padding(12)
@@ -176,7 +176,7 @@ struct HouseholdFormSheetView: View {
                     }
                     Spacer()
                     Image(systemName: isRep ? "largecircle.fill.circle" : "circle")
-                      .font(.system(size: 18, weight: .semibold))
+                      .spIconFont(size: 18, weight: .semibold, relativeTo: .headline)
                       .foregroundStyle(isRep ? Tokens.ink : Tokens.muted)
                   }
                   .padding(12)

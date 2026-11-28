@@ -78,7 +78,7 @@ public struct PayView: View {
       Spacer(minLength: 0)
       memberBadge(model.fromMember)
       Image(systemName: "arrow.right")
-        .font(.system(size: 18, weight: .bold))
+        .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
         .foregroundStyle(Tokens.ink)
         .accessibilityHidden(true)
       memberBadge(model.toMember)
@@ -96,7 +96,7 @@ public struct PayView: View {
         name: member.name,
         size: 56
       )
-      Text(member.id == model.myMemberId ? L10n.tr("common.you") : member.name)
+      Text(PersonName.display(member: member, currentMemberId: model.myMemberId))
         .font(Typography.subheadlineBold)
         .foregroundStyle(Tokens.ink)
     }

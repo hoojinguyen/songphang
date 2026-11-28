@@ -66,6 +66,7 @@ public struct PersonalLedgerView: View {
       HStack(spacing: 8) {
         Image(systemName: "magnifyingglass")
           .foregroundStyle(Tokens.muted)
+          .accessibilityHidden(true)
 
         TextField(L10n.tr("ledger.searchPlaceholder"), text: $model.query)
           .font(Typography.body)
@@ -82,6 +83,7 @@ public struct PersonalLedgerView: View {
             Image(systemName: "xmark.circle.fill")
               .foregroundStyle(Tokens.muted)
           }
+          .accessibilityLabel(L10n.tr("ios.common.clear"))
         }
       }
       .padding(.horizontal, 16)
@@ -123,8 +125,9 @@ public struct PersonalLedgerView: View {
           .font(Typography.captionBold)
           .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.ink)
         Image(systemName: "chevron.down")
-          .font(.system(size: 10, weight: .bold))
+          .spIconFont(size: 10, weight: .bold, relativeTo: .caption2)
           .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.muted)
+          .accessibilityHidden(true)
       }
       .padding(.horizontal, 14)
       .padding(.vertical, 8)

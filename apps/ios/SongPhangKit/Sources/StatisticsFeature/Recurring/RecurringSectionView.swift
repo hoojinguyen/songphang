@@ -193,7 +193,7 @@ public struct RecurringSectionView: View {
               }
             } label: {
               Image(systemName: "ellipsis")
-                .font(.system(size: 14, weight: .bold))
+                .spIconFont(size: 14, weight: .bold, relativeTo: .subheadline)
                 .foregroundStyle(Tokens.ink)
                 .frame(width: 32, height: 32)
                 .background(Tokens.sunken, in: Circle())

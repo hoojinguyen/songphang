@@ -209,8 +209,9 @@ struct ShareExtensionView: View {
     } label: {
       HStack(alignment: .top, spacing: 10) {
         Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
-          .font(.system(size: 18, weight: .semibold))
+          .spIconFont(size: 18, weight: .semibold, relativeTo: .headline)
           .foregroundStyle(isSelected ? Tokens.ink : Tokens.muted)
+          .accessibilityHidden(true)
         VStack(alignment: .leading, spacing: 2) {
           Text(title)
             .font(Typography.subheadlineBold)

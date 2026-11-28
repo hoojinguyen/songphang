@@ -12,7 +12,7 @@ public struct SplitStatusBannerView: View {
   public var body: some View {
     HStack(spacing: 8) {
       Image(systemName: status.matched ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-        .font(.system(size: 18, weight: .bold))
+        .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
         .foregroundStyle(Tokens.ink)
       Text(status.text)
         .font(Typography.subheadlineBold)
@@ -417,7 +417,7 @@ private struct SplitMemberRowView: View {
 
       Button(action: onRemove) {
         Image(systemName: "xmark")
-          .font(.system(size: 14, weight: .bold))
+          .spIconFont(size: 14, weight: .bold, relativeTo: .subheadline)
           .foregroundStyle(Tokens.ink)
           .frame(width: 44, height: 44)
           .background(Tokens.bg, in: Circle())

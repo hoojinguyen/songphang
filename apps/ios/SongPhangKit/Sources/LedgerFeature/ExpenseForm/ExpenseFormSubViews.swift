@@ -29,7 +29,7 @@ struct UnparsedBannerView: View {
           Spacer()
           Button(action: onDismiss) {
             Image(systemName: "xmark")
-              .font(.system(size: 16, weight: .bold))
+              .spIconFont(size: 16, weight: .bold, relativeTo: .callout)
               .foregroundStyle(Tokens.ink)
               .frame(width: 44, height: 44)
           }
@@ -143,35 +143,36 @@ struct TypeSwitchView: View {
   ]
 
   var body: some View {
-    HStack(spacing: 4) {
-      ForEach(Array(options.enumerated()), id: \.offset) { _, pair in
-        let isSelected = (value == pair.0)
-        Button {
-          onChange(pair.0)
-        } label: {
-          Text(L10n.tr(pair.1))
-            .font(Typography.captionBold)
-            .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 10)
-            .frame(minWidth: 44, minHeight: 44)
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: 4) {
+        ForEach(Array(options.enumerated()), id: \.offset) { _, pair in
+          let isSelected = (value == pair.0)
+          Button {
+            onChange(pair.0)
+          } label: {
+            Text(L10n.tr(pair.1))
+              .font(Typography.captionBold)
+              .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
+              .lineLimit(1)
+              .fixedSize(horizontal: true, vertical: false)
+              .padding(.horizontal, 10)
+              .frame(minWidth: 44, minHeight: 44)
+          }
+          .buttonStyle(.plain)
+          .matchedGeometryEffect(id: pair.0, in: namespace)
         }
-        .buttonStyle(.plain)
-        .matchedGeometryEffect(id: pair.0, in: namespace)
       }
+      .background {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+          .fill(Tokens.ink)
+          .matchedGeometryEffect(id: value, in: namespace, properties: .frame, isSource: false)
+      }
+      .spAnimation(Motion.quick, value: value)
+      .spFeedback(.selection, trigger: value)
+      .padding(4)
+      .fixedSize(horizontal: true, vertical: false)
+      .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
-    .background {
-      RoundedRectangle(cornerRadius: 18, style: .continuous)
-        .fill(Tokens.ink)
-        .matchedGeometryEffect(id: value, in: namespace, properties: .frame, isSource: false)
-    }
-    .spAnimation(Motion.quick, value: value)
-    .spFeedback(.selection, trigger: value)
-    .padding(4)
-    .fixedSize(horizontal: true, vertical: false)
-    .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .accessibilityLabel(L10n.tr("expenseForm.typeLabel"))
   }
 }
@@ -183,27 +184,29 @@ struct AmountFieldView: View {
   @FocusState private var isFocused: Bool
 
   var body: some View {
-    HStack(spacing: 8) {
-      TextField(
-        "0",
-        text: Binding(
-          get: { value },
-          set: { onChange($0) }
+    AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 10) {
+      HStack(spacing: 8) {
+        TextField(
+          "0",
+          text: Binding(
+            get: { value },
+            set: { onChange($0) }
+          )
         )
-      )
-      .keyboardType(.numberPad)
-      .focused($isFocused)
-      .multilineTextAlignment(.center)
-      .minimumScaleFactor(0.5)
-      .font(.system(size: 46, weight: .black))
-      .monospacedDigit()
-      .lineLimit(1)
-      .foregroundStyle(Tokens.ink)
-      .accessibilityLabel(L10n.tr("expenseForm.amountLabel"))
+        .keyboardType(.numberPad)
+        .focused($isFocused)
+        .multilineTextAlignment(.center)
+        .minimumScaleFactor(0.5)
+        .font(Typography.displayNumber)
+        .monospacedDigit()
+        .lineLimit(1)
+        .foregroundStyle(Tokens.ink)
+        .accessibilityLabel(L10n.tr("expenseForm.amountLabel"))
 
-      Text(L10n.tr("common.currency"))
-        .font(Typography.sectionTitle)
-        .foregroundStyle(Tokens.muted)
+        Text(L10n.tr("common.currency"))
+          .font(Typography.sectionTitle)
+          .foregroundStyle(Tokens.muted)
+      }
 
       Button(action: onAddThousands) {
         Text(L10n.tr("expenseForm.addThousands"))
@@ -225,7 +228,6 @@ struct AmountFieldView: View {
             .strokeBorder(Tokens.ink, lineWidth: 3)
         )
     )
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
     .onTapGesture { isFocused = true }
   }
@@ -318,12 +320,14 @@ struct PayerAmountsView: View {
 
     VStack(alignment: .leading, spacing: 8) {
       ForEach(members) { member in
-        HStack(spacing: 8) {
-          MemberShapeView(member: member, size: 32)
-          Text(member.name)
-            .font(Typography.bodyBold)
-            .foregroundStyle(Tokens.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 8) {
+          HStack(spacing: 8) {
+            MemberShapeView(member: member, size: 32)
+            Text(member.name)
+              .font(Typography.bodyBold)
+              .foregroundStyle(Tokens.ink)
+              .frame(maxWidth: .infinity, alignment: .leading)
+          }
 
           TextField(
             "0",
@@ -337,7 +341,7 @@ struct PayerAmountsView: View {
           .font(Typography.sectionTitle)
           .foregroundStyle(Tokens.ink)
           .padding(.horizontal, 12)
-          .frame(width: 120, height: 48)
+          .frame(minWidth: 120, minHeight: 48)
           .background(Tokens.bg, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
           .accessibilityLabel(L10n.t("expenseForm.payerAmountLabel", ["name": member.name]))
         }

@@ -186,8 +186,6 @@ public struct ExpenseFormView: View {
     let isEditing = (data.editingTransaction != nil)
 
     scrollingForm(data: data, active: active, myMemberId: myMemberId, isEditing: isEditing)
-      // The member grids are four columns wide and cannot reflow at accessibility sizes.
-      .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
   }
 
   @ViewBuilder
@@ -197,365 +195,385 @@ public struct ExpenseFormView: View {
     myMemberId: Member.ID?,
     isEditing: Bool
   ) -> some View {
-    ScrollViewReader { proxy in
-      ScrollView {
-        VStack(alignment: .leading, spacing: 14) {
-          if !isEditing {
-            TypeSwitchView(
-              value: model.transactionType,
-              onChange: { model.setType($0) }
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-          }
-
-          if !isEditing, let reading = model.initialReading, !model.isUnparsedBannerDismissed {
-            UnparsedBannerView(
-              reading: reading,
-              activeCount: active.count,
-              onDismiss: { model.isUnparsedBannerDismissed = true }
-            )
-          }
-
-          if model.hasManualExtras {
-            Text(L10n.tr("extras.goodsSubtotal"))
-              .font(Typography.captionBold)
-              .foregroundStyle(Tokens.muted)
-              .padding(.leading, 4)
-          }
-
-          AmountFieldView(
-            value: model.amountText,
-            onChange: { model.updateAmountText($0) },
-            onAddThousands: { model.appendThousands() }
-          )
-          .fieldShake(trigger: amountShakeTick, cornerRadius: 32)
-
-          TextField(
-            model.transactionType == .transfer
-              ? L10n.tr("expenseForm.descriptionTransferPlaceholder")
-              : L10n.tr("expenseForm.descriptionPlaceholder"),
-            text: $model.descriptionText
-          )
-          .focused($isDescriptionFocused)
-          .font(Typography.bodyBold)
-          .foregroundStyle(Tokens.ink)
-          .padding(.horizontal, 16)
-          .frame(height: 56)
-          .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-          .fieldShake(trigger: descriptionShakeTick, cornerRadius: 26)
-          .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-          .onTapGesture { isDescriptionFocused = true }
-          .accessibilityLabel(L10n.tr("expenseForm.descriptionLabel"))
-
-          if model.transactionType == .transfer {
-            TransferFieldsView(
-              members: model.transferMembers,
-              fromId: model.transferFrom,
-              toId: model.transferTo,
-              onFrom: { model.setTransferFrom($0) },
-              onTo: { model.transferTo = $0 }
-            )
-
-            VStack(alignment: .leading, spacing: 12) {
-              VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.tr("settlementProof.channelLabel"))
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                ChannelPillPicker(
-                  selection: $model.paymentChannel,
-                  isDisabled: model.isSubmitting
-                )
-              }
-
-              VStack(alignment: .leading, spacing: 6) {
-                Text(L10n.tr("settlementProof.noteLabel"))
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                let notePlaceholder = L10n.tr("settlementProof.notePlaceholder")
-                TextField(
-                  notePlaceholder,
-                  text: Binding(
-                    get: { model.paymentNote ?? "" },
-                    set: { next in
-                      let clamped = next.clampedToUTF16Length(120)
-                      model.paymentNote = clamped.isEmpty ? nil : clamped
-                    }
-                  ),
-                  prompt: Text(notePlaceholder).foregroundStyle(Tokens.placeholder)
-                )
-                .font(Typography.subheadline)
-                .foregroundStyle(Tokens.ink)
-                .disabled(model.isSubmitting)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 44)
-                .background(Tokens.bg, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-              }
+    GeometryReader { geometry in
+      let contentWidth = max(0, geometry.size.width - 40)
+      ScrollViewReader { proxy in
+        ScrollView {
+          VStack(alignment: .leading, spacing: 14) {
+            if !isEditing {
+              TypeSwitchView(
+                value: model.transactionType,
+                onChange: { model.setType($0) }
+              )
+              .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-          } else {
-            CategoryPickerView(
-              categories: data.categories,
-              selected: model.category,
-              selectedCustomId: model.categoryId,
-              onSelect: { model.selectBuiltinCategory($0) },
-              onSelectCustom: { model.selectCustomCategory($0) },
-              onManageCategories: { isManagingCategories = true }
-            )
 
-            MemberPicker(
-              title: model.transactionType == .income
-                ? L10n.tr("expenseForm.receiverTitle")
-                : L10n.tr("expenseForm.payerTitle"),
-              members: model.payerMembers,
-              selection: Binding(
-                get: { Set(model.payerIds) },
-                set: { model.setPayers($0) }
-              ),
-              mode: model.transactionType == .income ? .single : .multiple,
-              currentMemberId: myMemberId,
-              allowsEmptySelection: true
-            )
-            .padding(12)
-            .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-
-            if model.payerIds.count > 1 {
-              PayerAmountsView(
-                members: model.payerMembers.filter { model.payerIds.contains($0.id) },
-                values: model.payerAmounts,
-                totalAmount: model.effectiveAmount,
-                onChange: { id, val in model.setPayerAmount(val, for: id) }
+            if !isEditing, let reading = model.initialReading, !model.isUnparsedBannerDismissed {
+              UnparsedBannerView(
+                reading: reading,
+                activeCount: active.count,
+                onDismiss: { model.isUnparsedBannerDismissed = true }
               )
             }
 
-            if model.transactionType == .expense && model.splitState.method != .items {
-              ManualExtrasCardView(
-                extras: $model.manualExtras,
-                allocation: $model.extrasAllocation,
-                baseAmount: model.amount,
-                preview: model.extrasPreview,
-                isPreviewCurrent: model.isExtrasPreviewCurrent,
-                previewError: model.extrasPreviewError,
-                onChange: { model.scheduleExtrasPreview() }
-              )
+            if model.hasManualExtras {
+              Text(L10n.tr("extras.goodsSubtotal"))
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.muted)
+                .padding(.leading, 4)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-              HStack {
-                Text(L10n.tr("expenseForm.sharersTitle"))
-                  .font(Typography.subheadlineBold)
-                  .foregroundStyle(Tokens.ink)
-                Spacer()
-                Button {
-                  model.isSplitEditorOpen = true
-                } label: {
-                  Text(
-                    L10n.t(
-                      "split.change",
-                      ["method": model.splitState.method.methodName]
-                    )
-                  )
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                  .padding(.horizontal, 12)
-                  .frame(minHeight: 44)
-                  .background(
-                    Tokens.phraseSplit,
-                    in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+            AmountFieldView(
+              value: model.amountText,
+              onChange: { model.updateAmountText($0) },
+              onAddThousands: { model.appendThousands() }
+            )
+            .fieldShake(trigger: amountShakeTick, cornerRadius: 32)
+
+            TextField(
+              model.transactionType == .transfer
+                ? L10n.tr("expenseForm.descriptionTransferPlaceholder")
+                : L10n.tr("expenseForm.descriptionPlaceholder"),
+              text: $model.descriptionText,
+              axis: .vertical
+            )
+            .lineLimit(1...2)
+            .focused($isDescriptionFocused)
+            .font(Typography.bodyBold)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(minHeight: 56)
+            .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .fieldShake(trigger: descriptionShakeTick, cornerRadius: 26)
+            .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .onTapGesture { isDescriptionFocused = true }
+            .accessibilityLabel(L10n.tr("expenseForm.descriptionLabel"))
+
+            if model.transactionType == .transfer {
+              TransferFieldsView(
+                members: model.transferMembers,
+                fromId: model.transferFrom,
+                toId: model.transferTo,
+                onFrom: { model.setTransferFrom($0) },
+                onTo: { model.transferTo = $0 }
+              )
+
+              VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                  Text(L10n.tr("settlementProof.channelLabel"))
+                    .font(Typography.captionBold)
+                    .foregroundStyle(Tokens.ink)
+                  ChannelPillPicker(
+                    selection: $model.paymentChannel,
+                    isDisabled: model.isSubmitting
                   )
                 }
-                .buttonStyle(.plain)
+
+                VStack(alignment: .leading, spacing: 6) {
+                  Text(L10n.tr("settlementProof.noteLabel"))
+                    .font(Typography.captionBold)
+                    .foregroundStyle(Tokens.ink)
+                  let notePlaceholder = L10n.tr("settlementProof.notePlaceholder")
+                  TextField(
+                    notePlaceholder,
+                    text: Binding(
+                      get: { model.paymentNote ?? "" },
+                      set: { next in
+                        let clamped = next.clampedToUTF16Length(120)
+                        model.paymentNote = clamped.isEmpty ? nil : clamped
+                      }
+                    ),
+                    prompt: Text(notePlaceholder).foregroundStyle(Tokens.placeholder)
+                  )
+                  .font(Typography.subheadline)
+                  .foregroundStyle(Tokens.ink)
+                  .disabled(model.isSubmitting)
+                  .padding(.horizontal, 14)
+                  .frame(minHeight: 44)
+                  .background(Tokens.bg, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
               }
+              .padding(14)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(
+                Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            } else {
+              CategoryPickerView(
+                categories: data.categories,
+                selected: model.category,
+                selectedCustomId: model.categoryId,
+                onSelect: { model.selectBuiltinCategory($0) },
+                onSelectCustom: { model.selectCustomCategory($0) },
+                onManageCategories: { isManagingCategories = true }
+              )
 
               MemberPicker(
-                title: "",
-                members: active,
+                title: model.transactionType == .income
+                  ? L10n.tr("expenseForm.receiverTitle")
+                  : L10n.tr("expenseForm.payerTitle"),
+                members: model.payerMembers,
                 selection: Binding(
-                  get: { Set(model.splitState.ids) },
-                  set: { model.setSharers($0) }
+                  get: { Set(model.payerIds) },
+                  set: { model.setPayers($0) }
                 ),
-                mode: .multiple,
+                mode: model.transactionType == .income ? .single : .multiple,
                 currentMemberId: myMemberId,
                 allowsEmptySelection: true
               )
+              .padding(12)
+              .background(
+                Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
 
-              if model.splitState.ids.isEmpty {
-                Text(L10n.tr("expenseForm.needSharer"))
-                  .font(Typography.caption)
-                  .foregroundStyle(Tokens.muted)
+              if model.payerIds.count > 1 {
+                PayerAmountsView(
+                  members: model.payerMembers.filter { model.payerIds.contains($0.id) },
+                  values: model.payerAmounts,
+                  totalAmount: model.effectiveAmount,
+                  onChange: { id, val in model.setPayerAmount(val, for: id) }
+                )
               }
-            }
-            .padding(12)
-            .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-          }
 
-          VStack(alignment: .leading, spacing: 4) {
-            Text(L10n.tr("expenseForm.occurredAtLabel"))
-              .font(Typography.caption)
-              .foregroundStyle(Tokens.muted)
-            DatePicker(
-              L10n.tr("expenseForm.occurredAtLabel"),
-              selection: $model.occurredAtDate,
-              displayedComponents: [.date, .hourAndMinute]
-            )
-            .labelsHidden()
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-            .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-          }
+              if model.transactionType == .expense && model.splitState.method != .items {
+                ManualExtrasCardView(
+                  extras: $model.manualExtras,
+                  allocation: $model.extrasAllocation,
+                  baseAmount: model.amount,
+                  preview: model.extrasPreview,
+                  isPreviewCurrent: model.isExtrasPreviewCurrent,
+                  previewError: model.extrasPreviewError,
+                  onChange: { model.scheduleExtrasPreview() }
+                )
+              }
 
-          if !isEditing
-            && model.transactionType == .expense
-            && model.initialRecurringExpense == nil
-            && model.initialRecurringDueAction == nil
-          {
-            RecurringInlineCardView(
-              isEnabled: $model.isRecurringEnabled,
-              mode: $model.recurringMode,
-              frequency: $model.recurringFrequency,
-              dayOfWeek: $model.recurringDayOfWeek,
-              dayOfMonth: $model.recurringDayOfMonth,
-              monthOfYear: $model.recurringMonthOfYear,
-              canVariable: model.canVariableRecurring
-            )
-          }
-
-          PhotoRowView(
-            attachments: model.attachments,
-            readOnly: false,
-            isUploading: model.isUploadingAttachment,
-            errorMessage: photoRowErrorMessage,
-            loadContent: { attachmentId in
-              try await model.attachmentsRepository.content(
-                groupId: model.groupId,
-                attachmentId: attachmentId
-              )
-            },
-            onRemove: { attachmentId in
-              model.removeAttachment(id: attachmentId)
-            }
-          ) {
-            if model.attachments.count >= 3 {
-              Text("+ \(L10n.tr("attachments.add"))")
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.muted)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 44)
-                .background(Tokens.sunken, in: Capsule())
-                .opacity(0.5)
-            } else {
-              PhotosPicker(
-                selection: $pickedPhotoItem,
-                matching: .images,
-                photoLibrary: .shared()
-              ) {
-                HStack(spacing: 6) {
-                  Image(systemName: "plus")
-                    .font(.system(size: 13, weight: .bold))
-                  Text(L10n.tr("attachments.add"))
+              VStack(alignment: .leading, spacing: 8) {
+                AdaptiveStack(horizontalSpacing: 12, verticalSpacing: 8) {
+                  Text(L10n.tr("expenseForm.sharersTitle"))
+                    .font(Typography.subheadlineBold)
+                    .foregroundStyle(Tokens.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                  Button {
+                    model.isSplitEditorOpen = true
+                  } label: {
+                    Text(
+                      L10n.t(
+                        "split.change",
+                        ["method": model.splitState.method.methodName]
+                      )
+                    )
                     .font(Typography.captionBold)
+                    .foregroundStyle(Tokens.ink)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 44)
+                    .background(
+                      Tokens.phraseSplit,
+                      in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    )
+                  }
+                  .buttonStyle(.plain)
                 }
-                .foregroundStyle(Tokens.ink)
-                .padding(.horizontal, 14)
-                .frame(minHeight: 44)
-                .background(Tokens.sunken, in: Capsule())
-              }
-              .disabled(model.isUploadingAttachment)
-            }
-          }
-          .onChange(of: pickedPhotoItem) { _, item in
-            guard let item else { return }
-            pickedPhotoItem = nil
-            Task {
-              if let rawData = try? await item.loadTransferable(type: Data.self) {
-                await model.uploadAttachment(rawImageData: rawData)
-              }
-            }
-          }
 
-          if let submitError = model.submitError {
-            Text(
-              submitError == .api(code: "FORBIDDEN", status: 403)
-                ? L10n.tr("common.forbidden")
-                : L10n.tr("common.saveError")
-            )
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.debt)
-          }
+                MemberPicker(
+                  title: "",
+                  members: active,
+                  selection: Binding(
+                    get: { Set(model.splitState.ids) },
+                    set: { model.setSharers($0) }
+                  ),
+                  mode: .multiple,
+                  currentMemberId: myMemberId,
+                  allowsEmptySelection: true
+                )
 
-          if model.previewError != nil {
-            Text(L10n.tr("common.loadError"))
+                if model.splitState.ids.isEmpty {
+                  Text(L10n.tr("expenseForm.needSharer"))
+                    .font(Typography.caption)
+                    .foregroundStyle(Tokens.muted)
+                }
+              }
+              .padding(12)
+              .background(
+                Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+              Text(L10n.tr("expenseForm.occurredAtLabel"))
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.muted)
+              AdaptiveStack(horizontalSpacing: 12, verticalSpacing: 8) {
+                DatePicker(
+                  L10n.tr("expenseForm.occurredAtLabel"),
+                  selection: $model.occurredAtDate,
+                  displayedComponents: [.date]
+                )
+                .labelsHidden()
+                DatePicker(
+                  L10n.tr("expenseForm.occurredAtLabel"),
+                  selection: $model.occurredAtDate,
+                  displayedComponents: [.hourAndMinute]
+                )
+                .labelsHidden()
+              }
+              .padding(.horizontal, 16)
+              .padding(.vertical, 8)
+              .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+              .background(
+                Tokens.surface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            }
+
+            if !isEditing
+              && model.transactionType == .expense
+              && model.initialRecurringExpense == nil
+              && model.initialRecurringDueAction == nil
+            {
+              RecurringInlineCardView(
+                isEnabled: $model.isRecurringEnabled,
+                mode: $model.recurringMode,
+                frequency: $model.recurringFrequency,
+                dayOfWeek: $model.recurringDayOfWeek,
+                dayOfMonth: $model.recurringDayOfMonth,
+                monthOfYear: $model.recurringMonthOfYear,
+                canVariable: model.canVariableRecurring
+              )
+            }
+
+            PhotoRowView(
+              attachments: model.attachments,
+              readOnly: false,
+              isUploading: model.isUploadingAttachment,
+              errorMessage: photoRowErrorMessage,
+              loadContent: { attachmentId in
+                try await model.attachmentsRepository.content(
+                  groupId: model.groupId,
+                  attachmentId: attachmentId
+                )
+              },
+              onRemove: { attachmentId in
+                model.removeAttachment(id: attachmentId)
+              }
+            ) {
+              if model.attachments.count >= 3 {
+                Text("+ \(L10n.tr("attachments.add"))")
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.muted)
+                  .padding(.horizontal, 14)
+                  .frame(minHeight: 44)
+                  .background(Tokens.sunken, in: Capsule())
+                  .opacity(0.5)
+              } else {
+                PhotosPicker(
+                  selection: $pickedPhotoItem,
+                  matching: .images,
+                  photoLibrary: .shared()
+                ) {
+                  HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                      .font(Typography.captionBold)
+                    Text(L10n.tr("attachments.add"))
+                      .font(Typography.captionBold)
+                  }
+                  .foregroundStyle(Tokens.ink)
+                  .padding(.horizontal, 14)
+                  .frame(minHeight: 44)
+                  .background(Tokens.sunken, in: Capsule())
+                }
+                .disabled(model.isUploadingAttachment)
+              }
+            }
+            .onChange(of: pickedPhotoItem) { _, item in
+              guard let item else { return }
+              pickedPhotoItem = nil
+              Task {
+                if let rawData = try? await item.loadTransferable(type: Data.self) {
+                  await model.uploadAttachment(rawImageData: rawData)
+                }
+              }
+            }
+
+            if let submitError = model.submitError {
+              Text(
+                submitError == .api(code: "FORBIDDEN", status: 403)
+                  ? L10n.tr("common.forbidden")
+                  : L10n.tr("common.saveError")
+              )
               .font(Typography.captionBold)
               .foregroundStyle(Tokens.debt)
-          }
+            }
 
-          if model.transactionType != .transfer, model.amount.isPositive {
-            if let overdraft = model.fundOverdrawnAmount() {
-              SPCard(tone: .accent, padding: 14) {
-                Text(L10n.t("fund.overdrawnWarning", ["amount": MoneyFormat.full(overdraft)]))
+            if model.previewError != nil {
+              Text(L10n.tr("common.loadError"))
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.debt)
+            }
+
+            if model.transactionType != .transfer, model.amount.isPositive {
+              if let overdraft = model.fundOverdrawnAmount() {
+                SPCard(tone: .accent, padding: 14) {
+                  Text(L10n.t("fund.overdrawnWarning", ["amount": MoneyFormat.full(overdraft)]))
+                    .font(Typography.subheadlineBold)
+                    .foregroundStyle(Tokens.onAccent)
+                }
+              }
+
+              if model.previewWarnings.contains(.budgetOver) {
+                Text(L10n.tr("budget.overWarning"))
                   .font(Typography.subheadlineBold)
                   .foregroundStyle(Tokens.onAccent)
+                  .padding(14)
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .background(
+                    Tokens.coral, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
               }
-            }
 
-            if model.previewWarnings.contains(.budgetOver) {
-              Text(L10n.tr("budget.overWarning"))
-                .font(Typography.subheadlineBold)
-                .foregroundStyle(Tokens.onAccent)
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                  Tokens.coral, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            }
-
-            SplitStatusBannerView(
-              status: model.splitState.status(
-                from: active,
-                totalAmount: model.hasManualExtras ? model.amount : model.effectiveAmount,
-                itemsPreview: model.itemsPreview,
-                isItemsPreviewCurrent: model.isItemsPreviewCurrent
+              SplitStatusBannerView(
+                status: model.splitState.status(
+                  from: active,
+                  totalAmount: model.hasManualExtras ? model.amount : model.effectiveAmount,
+                  itemsPreview: model.itemsPreview,
+                  isItemsPreviewCurrent: model.isItemsPreviewCurrent
+                )
               )
-            )
-          }
-
-          if let conflict = model.conflictTransaction {
-            ConflictNoticeView(
-              current: conflict,
-              onReload: { model.reloadWithConflict() }
-            )
-            .id("conflict-notice")
-          }
-
-          if model.deleteError != nil {
-            Text(L10n.tr("common.saveError"))
-              .font(Typography.captionBold)
-              .foregroundStyle(Tokens.debt)
-          }
-
-          if isEditing {
-            Button {
-              Task { await model.deleteTransaction() }
-            } label: {
-              Text(L10n.tr("expenseForm.delete"))
-                .font(Typography.bodyBold)
-                .foregroundStyle(Tokens.ink)
-                .frame(maxWidth: .infinity, minHeight: 52)
-                .background(Tokens.debtSoft, in: Capsule())
             }
-            .buttonStyle(.plain)
-            .disabled(model.isDeleting)
+
+            if let conflict = model.conflictTransaction {
+              ConflictNoticeView(
+                current: conflict,
+                onReload: { model.reloadWithConflict() }
+              )
+              .id("conflict-notice")
+            }
+
+            if model.deleteError != nil {
+              Text(L10n.tr("common.saveError"))
+                .font(Typography.captionBold)
+                .foregroundStyle(Tokens.debt)
+            }
+
+            if isEditing {
+              Button {
+                Task { await model.deleteTransaction() }
+              } label: {
+                Text(L10n.tr("expenseForm.delete"))
+                  .font(Typography.bodyBold)
+                  .foregroundStyle(Tokens.ink)
+                  .frame(maxWidth: .infinity, minHeight: 52)
+                  .background(Tokens.debtSoft, in: Capsule())
+              }
+              .buttonStyle(.plain)
+              .disabled(model.isDeleting)
+            }
           }
+          .frame(width: contentWidth, alignment: .leading)
+          .padding(.horizontal, 20)
+          .padding(.vertical, 12)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-      }
-      .safeAreaInset(edge: .bottom, spacing: 0) {
-        saveButton
-      }
-      .onChange(of: model.conflictTransaction) { _, newValue in
-        if newValue != nil {
-          proxy.scrollTo("conflict-notice", anchor: .bottom)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+          saveButton
+        }
+        .onChange(of: model.conflictTransaction) { _, newValue in
+          if newValue != nil {
+            proxy.scrollTo("conflict-notice", anchor: .bottom)
+          }
         }
       }
     }
@@ -599,7 +617,6 @@ extension ExpenseFormView {
         }
       }
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
     .padding(.vertical, 12)
     .background(Tokens.bg)

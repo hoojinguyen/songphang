@@ -169,7 +169,7 @@ public struct HouseholdsSectionView: View {
               ungroupTarget = household
             } label: {
               Image(systemName: "trash")
-                .font(.system(size: 13, weight: .semibold))
+                .spIconFont(size: 13, weight: .semibold, relativeTo: .footnote)
                 .foregroundStyle(Tokens.muted)
                 .frame(width: 32, height: 32)
             }

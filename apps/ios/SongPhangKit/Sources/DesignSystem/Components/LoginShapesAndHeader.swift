@@ -84,7 +84,7 @@ public struct SPScreenHeader<Trailing: View>: View {
       if let onBack {
         Button(action: onBack) {
           Image(systemName: backIcon == .back ? "chevron.left" : "xmark")
-            .font(.system(size: 18, weight: .bold))
+            .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
             .foregroundStyle(Tokens.ink)
             .frame(width: 48, height: 48)
             .background(Tokens.surface)

@@ -100,7 +100,7 @@ public struct ConfirmationCardView<ExtraContent: View>: View {
       if let amount = draft.amount {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
           Text(MoneyFormat.amount(amount))
-            .font(.system(size: 48, weight: .black))
+            .font(Typography.displayNumber)
             .foregroundStyle(Tokens.ink)
             .monospacedDigit()
             .lineLimit(1)

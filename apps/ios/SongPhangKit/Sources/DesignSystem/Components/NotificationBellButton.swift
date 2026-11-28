@@ -14,7 +14,7 @@ public struct NotificationBellButton: View {
     Button(action: onOpen) {
       ZStack(alignment: .topTrailing) {
         Image(systemName: "bell")
-          .font(.system(size: 20, weight: .semibold))
+          .spIconFont(size: 20, weight: .semibold, relativeTo: .title3)
           .foregroundStyle(Tokens.ink)
           .frame(width: 44, height: 44)
           .background(Tokens.surface)
@@ -22,7 +22,7 @@ public struct NotificationBellButton: View {
 
         if unreadCount > 0 {
           Text(unreadCount > 9 ? "9+" : "\(unreadCount)")
-            .font(.system(size: 11, weight: .black))
+            .font(Typography.microBold)
             .foregroundStyle(Tokens.onAccent)
             .padding(.horizontal, 4)
             .frame(minWidth: 18, minHeight: 18)

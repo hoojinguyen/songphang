@@ -199,6 +199,7 @@ public struct NewMemberInputRow: View {
   private let isDisabled: Bool
   private let onAdd: (String) -> Void
 
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @State private var name = ""
   @FocusState private var isFocused: Bool
 
@@ -217,37 +218,41 @@ public struct NewMemberInputRow: View {
   }
 
   public var body: some View {
-    HStack(spacing: 8) {
-      MemberShapeView(
-        shape: appearance.shape,
-        color: appearance.color,
-        name: name,
-        size: 44
-      )
+    AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 10) {
+      HStack(spacing: 8) {
+        MemberShapeView(
+          shape: appearance.shape,
+          color: appearance.color,
+          name: name,
+          size: 44
+        )
 
-      TextField(label, text: $name, prompt: Text(label).foregroundStyle(Tokens.placeholder))
-        .focused($isFocused)
-        .submitLabel(.done)
-        .font(Typography.screenHeaderTitle)
-        .foregroundStyle(Tokens.ink)
-        .disabled(isDisabled)
-        .onChange(of: name) { _, newValue in
-          if newValue.count > 50 {
-            name = String(newValue.prefix(50))
+        TextField(label, text: $name, prompt: Text(label).foregroundStyle(Tokens.placeholder))
+          .focused($isFocused)
+          .submitLabel(.done)
+          .font(Typography.screenHeaderTitle)
+          .foregroundStyle(Tokens.ink)
+          .disabled(isDisabled)
+          .onChange(of: name) { _, newValue in
+            if newValue.count > 50 {
+              name = String(newValue.prefix(50))
+            }
           }
-        }
-        .onSubmit {
-          submit()
-        }
-        .accessibilityLabel(label)
+          .onSubmit {
+            submit()
+          }
+          .accessibilityLabel(label)
+      }
 
       SPButton(
         addLabel,
         variant: .surface,
+        isFullWidth: dynamicTypeSize.isAccessibilitySize,
         isDisabled: isDisabled || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       ) {
         submit()
       }
+      .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 120)
     }
     .padding(8)
     .background(Tokens.surface)
@@ -256,7 +261,6 @@ public struct NewMemberInputRow: View {
       RoundedRectangle(cornerRadius: 30, style: .continuous)
         .stroke(Tokens.ink, lineWidth: 3)
     )
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
     .onTapGesture { isFocused = true }
   }

@@ -207,11 +207,13 @@ public struct GuestGroupView: View {
     } label: {
       HStack(spacing: 6) {
         Image(systemName: "calendar")
-          .font(.system(size: 12, weight: .semibold))
+          .spIconFont(size: 12, weight: .semibold, relativeTo: .caption)
+          .accessibilityHidden(true)
         Text(snapshot.resolvedFocus.label)
           .font(Typography.captionBold)
         Image(systemName: "chevron.down")
-          .font(.system(size: 10, weight: .bold))
+          .spIconFont(size: 10, weight: .bold, relativeTo: .caption2)
+          .accessibilityHidden(true)
       }
       .foregroundStyle(Tokens.ink)
       .padding(.horizontal, 12)
@@ -497,7 +499,7 @@ public struct GuestGroupView: View {
                     }
                     if !tx.attachments.isEmpty {
                       Image(systemName: "photo")
-                        .font(.system(size: 11, weight: .semibold))
+                        .spIconFont(size: 11, weight: .semibold, relativeTo: .caption2)
                         .foregroundStyle(Tokens.muted)
                     }
                   }

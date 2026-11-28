@@ -371,7 +371,12 @@ public struct GroupListView: View {
     return Button {
       onOpenGroup(group.id)
     } label: {
-      HStack(spacing: 12) {
+      AdaptiveStack(
+        horizontalAlignment: .center,
+        verticalAlignment: .leading,
+        horizontalSpacing: 12,
+        verticalSpacing: 10
+      ) {
         VStack(alignment: .leading, spacing: 6) {
           HStack(spacing: 4) {
             ForEach(group.previewMembers) { member in
@@ -439,7 +444,8 @@ public struct GroupListView: View {
             .foregroundStyle(Tokens.muted)
           }
         }
-        Spacer(minLength: 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         let chipInkColor = group.myBalance.isPositive ? Tokens.onAccent : Tokens.ink
         VStack(alignment: .trailing, spacing: 2) {
           MoneyText(

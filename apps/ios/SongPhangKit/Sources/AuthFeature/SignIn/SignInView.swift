@@ -64,7 +64,7 @@ public struct SignInView: View {
         } label: {
           HStack(spacing: 8) {
             Image(systemName: "apple.logo")
-              .font(.system(size: 18, weight: .bold))
+              .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
               .accessibilityHidden(true)
             Text(L10n.tr("ios.login.apple"))
               .font(Typography.bodyBold)

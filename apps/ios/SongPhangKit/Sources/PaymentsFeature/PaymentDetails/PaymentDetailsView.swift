@@ -136,7 +136,7 @@ public struct PaymentDetailsView: View {
               .foregroundStyle(selectedBank == nil ? Tokens.muted : Tokens.ink)
             Spacer(minLength: 0)
             Image(systemName: "chevron.down")
-              .font(.system(size: 14, weight: .bold))
+              .spIconFont(size: 14, weight: .bold, relativeTo: .subheadline)
               .foregroundStyle(Tokens.muted)
               .accessibilityHidden(true)
           }
@@ -153,7 +153,7 @@ public struct PaymentDetailsView: View {
             model.bin = ""
           } label: {
             Image(systemName: "xmark")
-              .font(.system(size: 14, weight: .bold))
+              .spIconFont(size: 14, weight: .bold, relativeTo: .subheadline)
               .foregroundStyle(Tokens.ink)
               .frame(width: 44, height: 56)
               .background(Tokens.sunken)

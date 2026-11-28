@@ -244,7 +244,7 @@ public struct QuickEntryView: View {
         }
       } label: {
         Image(systemName: "arrow.up")
-          .font(.system(size: 20, weight: .bold))
+          .spIconFont(size: 20, weight: .bold, relativeTo: .title3)
           .foregroundStyle(Tokens.surface)
           .frame(width: 52, height: 52)
           .background(
@@ -257,7 +257,6 @@ public struct QuickEntryView: View {
       .buttonStyle(.plain)
       .accessibilityLabel(L10n.tr("compose.send"))
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(12)
     .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
     .onTapGesture { isSentenceFocused = true }

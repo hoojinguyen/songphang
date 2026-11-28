@@ -24,12 +24,13 @@ struct FeedBalanceBlockView: View {
         ? L10n.tr("feed.pay")
         : L10n.tr("feed.view")
 
-    let layout =
-      dynamicTypeSize.isAccessibilitySize
-      ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-      : AnyLayout(HStackLayout(spacing: 12))
     Button(action: onOpenBalances) {
-      layout {
+      AdaptiveStack(
+        horizontalAlignment: .center,
+        verticalAlignment: .leading,
+        horizontalSpacing: 12,
+        verticalSpacing: 12
+      ) {
         VStack(alignment: .leading, spacing: 2) {
           if let householdName {
             Text(householdName)
@@ -41,7 +42,7 @@ struct FeedBalanceBlockView: View {
             .foregroundStyle(Tokens.onAccent)
           MoneyText(
             balance.magnitude,
-            style: .hero,
+            role: .hero,
             font: Typography.heroNumber,
             color: Tokens.onAccent
           )
@@ -56,7 +57,8 @@ struct FeedBalanceBlockView: View {
             .foregroundStyle(Tokens.onAccent.opacity(0.8))
           }
         }
-        Spacer(minLength: 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         Text(actionLabel)
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.onInk)
@@ -127,9 +129,8 @@ struct FeedTransactionRowView: View {
   private var payerNames: String {
     transaction.payers
       .map { entry in
-        entry.memberId == myMemberId
-          ? L10n.tr("common.you")
-          : members.first(where: { $0.id == entry.memberId })?.name ?? ""
+        guard let member = members.first(where: { $0.id == entry.memberId }) else { return "" }
+        return PersonName.display(member: member, currentMemberId: myMemberId)
       }
       .joined(separator: ", ")
   }
@@ -190,7 +191,7 @@ struct FeedTransactionRowView: View {
           if transaction.commentCount > 0 {
             HStack(spacing: 3) {
               Image(systemName: "bubble.left")
-                .font(.system(size: 11, weight: .semibold))
+                .spIconFont(size: 11, weight: .semibold, relativeTo: .caption2)
               Text(String(transaction.commentCount))
                 .font(Typography.captionBold)
             }
@@ -200,7 +201,7 @@ struct FeedTransactionRowView: View {
           if transaction.attachmentCount > 0 {
             HStack(spacing: 3) {
               Image(systemName: "photo")
-                .font(.system(size: 11, weight: .semibold))
+                .spIconFont(size: 11, weight: .semibold, relativeTo: .caption2)
               if transaction.attachmentCount > 1 {
                 Text(String(transaction.attachmentCount))
                   .font(Typography.captionBold)
@@ -237,7 +238,12 @@ struct FeedTransactionRowView: View {
       }
 
       // Row 2: Middle row
-      HStack(alignment: .top, spacing: 12) {
+      AdaptiveStack(
+        horizontalAlignment: .top,
+        verticalAlignment: .leading,
+        horizontalSpacing: 12,
+        verticalSpacing: 8
+      ) {
         VStack(alignment: .leading, spacing: 6) {
           Text(transaction.description)
             .font(Typography.bodyBold)
@@ -265,8 +271,7 @@ struct FeedTransactionRowView: View {
             .background(Tokens.sunken, in: Capsule())
           }
         }
-
-        Spacer(minLength: 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
 
         VStack(alignment: .trailing, spacing: 2) {
           MoneyText(
@@ -389,8 +394,9 @@ struct FeedTransactionRowView: View {
           MemberShapeView(member: from, size: 24)
         }
         Image(systemName: "arrow.right")
-          .font(.system(size: 11, weight: .bold))
+          .spIconFont(size: 11, weight: .bold, relativeTo: .caption2)
           .foregroundStyle(Tokens.muted)
+          .accessibilityHidden(true)
         if let to {
           MemberShapeView(member: to, size: 24)
         }
@@ -454,7 +460,7 @@ struct FeedTransactionRowView: View {
         if transaction.commentCount > 0 {
           HStack(spacing: 3) {
             Image(systemName: "bubble.left")
-              .font(.system(size: 11, weight: .semibold))
+              .spIconFont(size: 11, weight: .semibold, relativeTo: .caption2)
             Text(String(transaction.commentCount))
               .font(Typography.captionBold)
           }
@@ -599,8 +605,9 @@ struct FeedFilterChipsView: View {
                   .font(Typography.captionBold)
                   .foregroundStyle(Tokens.surface)
                 Image(systemName: "xmark")
-                  .font(.system(size: 10, weight: .bold))
+                  .spIconFont(size: 10, weight: .bold, relativeTo: .caption2)
                   .foregroundStyle(Tokens.surface)
+                  .accessibilityHidden(true)
               }
               .padding(.horizontal, 12)
               .frame(minHeight: 36)
@@ -754,6 +761,7 @@ struct FeedEntryBarView: View {
   var onOpenReceiptCapture: (() -> Void)? = nil
   let onOpenManualForm: () -> Void
   let onOpenQuickEntry: () -> Void
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     if isOffline && !isPendingLoad {
@@ -771,54 +779,92 @@ struct FeedEntryBarView: View {
         .background(Tokens.sunken)
         .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
     } else {
-      HStack(spacing: 12) {
-        Button(action: onOpenManualForm) {
-          VStack(spacing: 2) {
+      Group {
+        if dynamicTypeSize.isAccessibilitySize {
+          VStack(spacing: 10) {
+            quickEntryButton
+            HStack(spacing: 12) {
+              manualEntryButton(fullWidth: true)
+              receiptCaptureButton
+            }
+          }
+        } else {
+          HStack(spacing: 12) {
+            manualEntryButton(fullWidth: false)
+            receiptCaptureButton
+            quickEntryButton
+          }
+        }
+      }
+      .disabled(isPendingLoad)
+      .opacity(isPendingLoad ? 0.6 : 1)
+      .fixedSize(horizontal: false, vertical: true)
+    }
+  }
+
+  private func manualEntryButton(fullWidth: Bool) -> some View {
+    Button(action: onOpenManualForm) {
+      Group {
+        if dynamicTypeSize.isAccessibilitySize {
+          HStack(spacing: 6) {
             Image(systemName: "plus")
-              .font(.system(size: 20, weight: .bold))
+              .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
             Text(L10n.tr("feed.manualEntry"))
               .font(Typography.captionBold)
               .lineLimit(1)
               .minimumScaleFactor(0.8)
           }
-          .foregroundStyle(Tokens.onAccent)
-          .padding(.horizontal, 6)
-          .frame(minWidth: 84)
-          .frame(height: 64)
-          .background(Tokens.accent)
-          .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-        }
-        .buttonStyle(.plain)
-
-        if let onOpenReceiptCapture {
-          Button(action: onOpenReceiptCapture) {
-            Image(systemName: "camera.fill")
-              .font(.system(size: 20, weight: .bold))
-              .foregroundStyle(Tokens.ink)
-              .frame(width: 64, height: 64)
-              .background(Tokens.surface)
-              .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        } else {
+          VStack(spacing: 2) {
+            Image(systemName: "plus")
+              .spIconFont(size: 20, weight: .bold, relativeTo: .title3)
+            Text(L10n.tr("feed.manualEntry"))
+              .font(Typography.captionBold)
+              .lineLimit(1)
+              .minimumScaleFactor(0.8)
           }
-          .buttonStyle(.plain)
-          .accessibilityLabel(L10n.tr("receipts.cameraLabel"))
         }
-
-        Button(action: onOpenQuickEntry) {
-          HStack {
-            Text(L10n.tr("feed.entryPlaceholder"))
-              .font(Typography.body)
-              .foregroundStyle(Tokens.placeholder)
-            Spacer()
-          }
-          .padding(.horizontal, 16)
-          .frame(maxWidth: .infinity, minHeight: 64)
-          .background(Tokens.surface)
-          .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-        }
-        .buttonStyle(.plain)
       }
-      .disabled(isPendingLoad)
-      .opacity(isPendingLoad ? 0.6 : 1)
+      .foregroundStyle(Tokens.onAccent)
+      .padding(.horizontal, 10)
+      .padding(.vertical, 8)
+      .frame(minWidth: 84, maxWidth: fullWidth ? .infinity : nil)
+      .frame(minHeight: 64)
+      .background(Tokens.accent)
+      .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
     }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  private var receiptCaptureButton: some View {
+    if let onOpenReceiptCapture {
+      Button(action: onOpenReceiptCapture) {
+        Image(systemName: "camera.fill")
+          .spIconFont(size: 20, weight: .bold, relativeTo: .title3)
+          .foregroundStyle(Tokens.ink)
+          .frame(width: 64, height: 64)
+          .background(Tokens.surface)
+          .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel(L10n.tr("receipts.cameraLabel"))
+    }
+  }
+
+  private var quickEntryButton: some View {
+    Button(action: onOpenQuickEntry) {
+      HStack {
+        Text(L10n.tr("feed.entryPlaceholder"))
+          .font(Typography.body)
+          .foregroundStyle(Tokens.placeholder)
+        Spacer()
+      }
+      .padding(.horizontal, 16)
+      .frame(maxWidth: .infinity, minHeight: 64)
+      .background(Tokens.surface)
+      .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+    }
+    .buttonStyle(.plain)
   }
 }

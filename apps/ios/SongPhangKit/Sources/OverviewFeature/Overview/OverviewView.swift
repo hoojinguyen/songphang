@@ -144,7 +144,7 @@ public struct OverviewView: View {
 
         MoneyText(
           summary.netBalance,
-          style: .hero,
+          role: .hero,
           font: Typography.heroNumber,
           color: Tokens.onAccent,
           showsPositiveSign: true
@@ -153,28 +153,27 @@ public struct OverviewView: View {
         Divider()
           .background(Tokens.onAccent.opacity(0.18))
 
-        HStack(spacing: 20) {
+        AdaptiveStack(horizontalSpacing: 20, verticalSpacing: 12) {
           VStack(alignment: .leading, spacing: 4) {
             Text(L10n.tr("overview.totalOwedToMe"))
               .font(Typography.caption)
               .foregroundStyle(Tokens.onAccent.opacity(0.7))
             MoneyText(
               summary.totalOwedToMe,
-              style: .full,
+              role: .primary,
               font: Typography.sectionTitle,
               color: Tokens.onAccent
             )
           }
+          .frame(maxWidth: .infinity, alignment: .leading)
 
-          Spacer()
-
-          VStack(alignment: .trailing, spacing: 4) {
+          VStack(alignment: .leading, spacing: 4) {
             Text(L10n.tr("overview.totalIOwe"))
               .font(Typography.caption)
               .foregroundStyle(Tokens.onAccent.opacity(0.7))
             MoneyText(
               summary.totalIOwe,
-              style: .full,
+              role: .primary,
               font: Typography.sectionTitle,
               color: Tokens.onAccent
             )
@@ -301,7 +300,12 @@ public struct OverviewView: View {
         Button {
           onOpenGroup(gb.groupId)
         } label: {
-          HStack(spacing: 12) {
+          AdaptiveStack(
+            horizontalAlignment: .center,
+            verticalAlignment: .leading,
+            horizontalSpacing: 12,
+            verticalSpacing: 8
+          ) {
             VStack(alignment: .leading, spacing: 6) {
               HStack(spacing: 4) {
                 ForEach(gb.previewMembers) { p in
@@ -339,8 +343,7 @@ public struct OverviewView: View {
                 .foregroundStyle(Tokens.muted)
               }
             }
-
-            Spacer(minLength: 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             MoneyText(
               gb.myBalance,
