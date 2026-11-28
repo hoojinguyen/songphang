@@ -247,3 +247,20 @@ Approved by the project owner on 2026-11-24. Where this section differs from the
 4. **References:**
    - Master overview: `docs/superpowers/specs/2026-11-24-ui-ux-v2-and-5-5-overview-design.md`
    - Wave 5.5A spec: `docs/superpowers/specs/2026-11-24-phase-5-5a-ui-ux-v2-design.md`
+
+## 9. Amendment 2026-11-28 — UI/UX v3 before the Server Step (Phases 5.6–5.9)
+
+Approved by the project owner on 2026-11-28. Where this section differs from section 8 or earlier sections, this section applies.
+
+1. **Baseline status:** Phase 5.5 (Waves 5.5A–5.5C) is merged on `main` (last merge `b6ad8cd`, PR #5). A UI/UX review of the iOS app on 2026-11-28 found the main screens overloaded, the language too close to accounting, almost no motion or feedback, custom navigation that breaks native behaviour, and 21 defects.
+2. **Revised execution sequence:**
+   - **Phase 5.6 — iOS foundations (`phase-5-6`):** native navigation, sheet rules, motion, haptic and sound tokens, typography and Dynamic Type, copy rules, shared states, fake data for unverified screens.
+   - **Phase 5.7 — iOS core screens (`phase-5-7`):** 3-tab app shell with a cross-group home that answers "whom do I pay", one group screen with a "who pays whom" sheet and a group info page (superseding the 4-tab shell and 3-segment group detail of ADR-034), expense list, Settle in three layers, history merge, expense form as a large sheet with duplication, instant "Đã nhận" with undo, debt simplification on by default.
+   - **Phase 5.8 — iOS money and secondary screens (`phase-5-8`):** account-level payment profile with QR import, VietQR on pay and share cards, the remaining secondary screens, iPhone SE and VoiceOver passes.
+   - **Phase 5.9 — Web v3 (`phase-5-9`):** the v3 design on Web.
+   - **Server Step → Phase 7 → Phase 6:** unchanged and on hold. Nothing is deployed to production until the owner decides; development stays local.
+3. **Scope rules:**
+   - iOS and API first. Phases 5.6–5.8 change iOS and the API only; Phase 5.9 then updates Web to follow the finished iOS app. This replaces, for v3, the per-wave Web parity rule of section 8.
+   - Additive API v1 only, so Web v2 keeps working until Phase 5.9.
+   - VND-only, server-authoritative and no cross-group netting of debts.
+4. **References:** `docs/superpowers/specs/2026-11-28-ui-ux-v3-roadmap-overview-design.md` (owner decisions, direction per phase, open questions) and `docs/superpowers/research/2026-11-28-ui-ux-v3-review/` (the full review and `findings.md`, the register of 316 findings and 21 defects that each phase must close).
