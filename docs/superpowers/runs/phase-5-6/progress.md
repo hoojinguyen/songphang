@@ -138,6 +138,12 @@
     - Simulator `--gallery-components` on `iPhone 17 Pro` (iOS 26.5): captured `screens/stage-a/gallery-components-light.png`, `screens/stage-a/gallery-components-dark.png`, and `screens/stage-a/gallery-components-ax5.png` at `accessibility-extra-extra-extra-large`; verified `MoneyText` `.hero`/`.primary`/`.secondary` roles (zero `"đồng"`), sound/haptic/sheet demo buttons, `CountBadge` (`0` hidden, `3` & `12` visible), `MemberPicker`, `ChipRow` wrap + horizontal peek, `CopyButton`, `ConfirmationToast`, `FieldShake`, `ShapeLoader`, `ShapeBurst`, and all 5 `SkeletonBlocks`.
     - Security review: checked relevant items 1, 2, 8 on `git diff`; `UIPasteboard.general.string` receives only explicit caller value on user tap, zero dynamic HTML/JS/logging of secrets, no issues found.
   - **Findings closed:** `F2-54` (component), `F4-06` (component), `F1-52` (component), `F1-59` (component), `F1-51` and `F2-55` (modifier), `F2-119`, `F2-120` (component part).
+  - **Coordinator Stage A Gate (`16ee165`, verified while `ios` idle):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build` (target-level `SWIFT_TREAT_WARNINGS_AS_ERRORS = YES` per D1): `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+    - `pnpm check`: exit `0` (`Checked 595 files in 187ms. No fixes applied. Found 9 warnings.`; 8 workspace `tsc --noEmit` projects passed; `OpenAPI contract snapshot is up to date.`)
+    - Stage A gallery captures (`screens/stage-a/gallery-components-{light,dark,ax5}.png`): verified on disk and visually inspected (light, dark, and `AX5` Dynamic Type).
 
 ## Stage B — Navigation
 
