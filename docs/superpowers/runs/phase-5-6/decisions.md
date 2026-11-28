@@ -4,4 +4,69 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
 
 ## Re-baseline
 
+### Earlier phases on `main` (`6d8f398`)
+
+- Phases 0–4, Phase 5 (`ios-ui` + live API integration), and Phase 5.5 Waves 5.5A–5.5C (`b6ad8cd`, PR #5) are merged on `main`, followed by the UI/UX v3 roadmap/review (`a2964a8`), Phase 5.6 spec and ADRs 042–044 (`c42055f`), Phase 5.6 plan (`f638cd5`), and swarm handoff prompt (`6d8f398`).
+- Branch `phase-5-6` starts cleanly at `6d8f398` (matching `main`). No tasks in Phase 5.6 are skipped.
+
+### File and symbol re-baseline
+
+| Plan's name | Real name and location | Status |
+|---|---|---|
+| `AppShell/RootView.swift` | `apps/ios/SongPhangKit/Sources/AppShell/RootView.swift` | Exists |
+| `AppShell/RouteDestination.swift` | `apps/ios/SongPhangKit/Sources/AppShell/RouteDestination.swift` | Exists |
+| `AppShell/GroupContainerView.swift` | `apps/ios/SongPhangKit/Sources/AppShell/GroupContainerView.swift` | Exists |
+| `AppShell/PopGestureEnabler.swift` | `apps/ios/SongPhangKit/Sources/AppShell/PopGestureEnabler.swift` | Exists |
+| `AppShell/StatusBarCover.swift` | `apps/ios/SongPhangKit/Sources/AppShell/StatusBarCover.swift` | Exists |
+| `AppShell/Route.swift` | `apps/ios/SongPhangKit/Sources/AppShell/Route.swift` | Exists |
+| `AppShell/SessionModel.swift` | `apps/ios/SongPhangKit/Sources/AppShell/SessionModel.swift` | Exists |
+| `AppShell/Push/PushPermissionSheet.swift` | `apps/ios/SongPhangKit/Sources/AppShell/Push/PushPermissionSheet.swift` | Exists |
+| `AppShell/Debug/{DebugGalleryView,DebugPanel}.swift` | `apps/ios/SongPhangKit/Sources/AppShell/Debug/{DebugGalleryView,DebugPanel}.swift` | Exists |
+| `DesignSystem/Tokens/{Tokens,Typography}.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/Tokens/{Tokens,Typography}.swift` | Exists |
+| `DesignSystem/Components/Haptics.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/Components/Haptics.swift` | Exists |
+| `DesignSystem/Components/LoginShapesAndHeader.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/Components/LoginShapesAndHeader.swift` (`LoginShapesView`, `SPScreenHeader`) | Exists |
+| `DesignSystem/Components/MoneyText.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/Components/MoneyText.swift` | Exists |
+| `DesignSystem/Components/MoneyFormat.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/Components/MoneyFormat.swift` | Exists |
+| `DesignSystem/Components/MemberShapeView.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/Components/MemberShapeView.swift` | Exists |
+| `DesignSystem/Components/ControlsAndQR.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/Components/ControlsAndQR.swift` (`SPSegmentedControl`, `SPSwitch`, `SPQRCodeView`, `NewMemberInputRow`) | Exists |
+| `DesignSystem/Components/{ChannelPillPicker,PhotoAttachmentViews}.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/Components/{ChannelPillPicker,PhotoAttachmentViews}.swift` | Exists |
+| `DesignSystem/States/StateViews.swift` | `apps/ios/SongPhangKit/Sources/DesignSystem/States/StateViews.swift` (`LoadingSkeleton`, `LoadError`, `EmptyState`, `OfflineBanner`) | Exists |
+| `DesignSystem/Resources/Localizable.xcstrings` | `apps/ios/SongPhangKit/Sources/DesignSystem/Resources/Localizable.xcstrings` | Exists |
+| `PreviewSupport/Fakes/*` | `apps/ios/SongPhangKit/Sources/PreviewSupport/Fakes/` (`FakeWorld.swift` + 10 `FakeWorld+*.swift` extensions + 6 `Fake*Repository.swift` files, 17 files total) | Exists |
+| `PreviewSupport/{Samples,Scenarios}/*` | `apps/ios/SongPhangKit/Sources/PreviewSupport/Samples/PreviewSamples.swift` and `Scenarios/{EmptyScenario,LargeScenario,QuickEntryFixtures,TripScenario}.swift` | Exists |
+| `apps/ios/Scripts/check-strings.sh` | `apps/ios/Scripts/check-strings.sh` | Exists |
+| Feature views & models named in Stages A–C (45 files across `AccountFeature`, `AuthFeature`, `GroupsFeature`, `LedgerFeature`, `NotificationsFeature`, `OverviewFeature`, `PaymentsFeature`, `StatisticsFeature`) | Same relative paths under `apps/ios/SongPhangKit/Sources/` (`GroupsFeature/CloneGroup/CloneGroupSheetView.swift` for `CloneGroup/*`; `LedgerFeature/TransactionDetail/{TransactionDetailView,TransactionDetailModel,TransactionSummaryView,ApprovalBlockView,DisputeBlockView,CommentThreadView,CommentFieldView}.swift` for `TransactionDetail/*`) | Exists (0 missing) |
+
+### Spec and plan counts re-baseline
+
+| Metric | Spec / Plan count | Real count at `6d8f398` | Notes |
+|---|---|---|---|
+| Screens hiding system back button (`.navigationBarBackButtonHidden(true)`) | 17 | **17** | Exact match. In addition: `TransactionDetailView` uses `SPScreenHeader` without hiding the system back button (defect B01); `NotificationsView` uses `SPScreenHeader(onBack:)` when pushed; `SplitEditorView`, `PayView`, `PaymentDetailsView` draw custom back chevrons. |
+| `.sheet` / `.fullScreenCover` presentations | 32 | **32** | Exact match (`28` `.sheet` + `4` `.fullScreenCover` in `SongPhangKit/Sources/`). |
+| Animation calls (`withAnimation` / `.animation(`) | 17 | **17** | Exact match across 8 files; `accessibilityReduceMotion` read in 4 files. |
+| `Haptics.` calls | 22 | **22** | Exact match across 8 files. |
+| Fixed font calls (`.font(.system(size:`) | 54 | **54** in `SongPhangKit/Sources/` (**55** across `apps/ios/` including `ShareExtension/ShareExtensionView.swift:212`) | Exact match for `SongPhangKit/Sources/`; `ShareExtensionView.swift:212` will also be swept in `5.6.C.4`. |
+| Files using `ProgressView(` | 8 | **8** in `SongPhangKit/Sources/` (plus `ShareExtension/ShareExtensionView.swift`) | Exact match (`PhotoAttachmentViews`, `SPButton`, `BalancesView` [determinate bars], `ReceiptCaptureSheet`, `ReceiptReviewView`, `CommentThreadView`, `TransactionDetailView`, `NotificationsView`). |
+| String catalog keys (`Localizable.xcstrings`) | 963 | **963** | Exact match (`893` web-mirrored keys + `70` `ios.*` keys). |
+| Strings over 60 characters | 38 | **38** | Exact match (38 keys > 60 characters in `Localizable.xcstrings`). |
+| `EmptyState(` call sites | 2 | **2** | Exact match (`FundView.swift:78`, `DebugGalleryView.swift:207`). |
+
 ## Decisions
+
+### D1 — `xcodebuild` warnings-as-errors invocation on Xcode 27.2 (Task 0)
+
+- **Problem:** Passing `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES` as a global command-line override to `xcodebuild` overrides build settings on remote SwiftPM dependencies (`swift-collections`, `swift-http-types`) where Xcode 27.2 passes `-suppress-warnings`, failing with `error: Conflicting options '-warnings-as-errors' and '-suppress-warnings'` (documented in `apps/ios/README.md` line 77 and Phase 5 D5).
+- **Options:**
+  1. Disable warnings-as-errors in project settings.
+  2. Keep `SWIFT_TREAT_WARNINGS_AS_ERRORS = YES` on all 8 build configurations in `apps/ios/SongPhang.xcodeproj/project.pbxproj` and `.treatAllWarnings(as: .error)` on all 13 targets in `apps/ios/SongPhangKit/Package.swift`, and run `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build` without the global CLI override so every first-party file still treats all warnings as errors.
+- **Choice:** Option 2.
+- **Reason:** Enforces warnings-as-errors across 100% of first-party app, extension, and package targets while avoiding Xcode 27.2's flag conflict on third-party SwiftPM dependencies.
+
+### D2 — Add `#if DEBUG` `--route-groups` and `--route-tx-detail` launch flags in `RootView.swift` (Task 0)
+
+- **Problem:** Task 0 Step 4 requires "before" Simulator screenshots of `groups` (`GroupListView` tab root) and `transaction detail` (`TransactionDetailView`, defect B01), and Stages B–D require opening every `Route` case deterministically via `--route-*` flags. `RootView.swift` already defines 20 `#if DEBUG` `--route-*` flags, but lacked `--route-groups` and `--route-tx-detail`, and `Simulator.app` GUI automation is unavailable in headless `simctl` mode.
+- **Options:**
+  1. Leave `groups` and `transaction detail` uncaptured in Task 0.
+  2. Add `--route-groups` (`selectedTab = .groups`) and `--route-tx-detail` (`selectedTab = .groups; groupsPath = [.groupFeed(groupId: targetGroupId), .transactionDetail(groupId: targetGroupId, transactionId: TripScenario.t1Transaction.id)]`) inside `#if DEBUG` in `RootView.swift` without modifying any screen view or production code.
+- **Choice:** Option 2.
+- **Reason:** Zero change to production code or screen layout (preserves unmodified B01 double-back-button defect on `TransactionDetailView`), while enabling deterministic "before" and "after" Simulator captures across all 10 baseline screens.

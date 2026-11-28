@@ -436,6 +436,15 @@ public struct RootView: View {
           selectedTab = .notifications
         } else if args.contains("--route-overview") {
           selectedTab = .overview
+        } else if args.contains("--route-groups") {
+          selectedTab = .groups
+        } else if args.contains("--route-tx-detail") {
+          selectedTab = .groups
+          groupsPath = [
+            .groupFeed(groupId: targetGroupId),
+            .transactionDetail(
+              groupId: targetGroupId, transactionId: TripScenario.t1Transaction.id),
+          ]
         } else if args.contains("--route-ledger") {
           selectedTab = .overview
           overviewPath = [.personalLedger]
