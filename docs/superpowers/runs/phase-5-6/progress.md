@@ -297,6 +297,14 @@
   - Full Stage C Spec §13.1 matrix (`40` PNGs under `screens/stage-c/matrix/` + `6` B07 PNGs): covers `overview`, `groups`, `feed`, `balances`, `settle`, `expense-form`, `create-group`, `quick-entry`, `receipt-review`, `ledger` in `light`/`dark`, `AX5`, `--scenario-large`, and `iPhone SE (3rd generation)` (`SP-SE3-review`). Note: `matrix/settle-se3.png` was captured behind an OS `"Open in 'Sòng Phẳng'?"` system prompt lingering from Safari on `SP-SE3-review` (underlying SE3 Settle layout remains visible and unclipped).
   - Security review: checked `git diff`; `check-strings.sh` fails closed on any unallowlisted catalog change; all input validation, role gating, and `Money` integer paths unchanged.
 - **Findings closed:** `B07` (`F3-27`, `F3-28`), `F4-54`, `F1-38`, `F2-09`, `F2-10` (Stage C foundation).
+- **Coordinator Stage C Gate (`4b3dc99`, verified while `ios` idle):**
+  - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+  - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+  - `./apps/ios/Scripts/check-strings.sh`: `ALLOWED (copy-changes): split.unitMoney`, `groups.youOwe`, `groups.owedToYou` -> `OK: 893 web keys verified, 3 allowlisted via copy-changes.md, 0 missing, 0 differing.`
+  - `pnpm check`: exit `0` (`Checked 595 files in 172ms. No fixes applied. Found 9 warnings.`; 8 workspace `tsc --noEmit` projects passed; `OpenAPI contract snapshot is up to date.`)
+  - `rg -n '\.font\(\.system\(size:' apps/ios/SongPhangKit/Sources apps/ios/ShareExtension apps/ios/WidgetExtension`: only `Typography.swift:174` (`@ScaledMetric`) and `MemberShapeView.swift:68` (proportional avatar initial, D13).
+  - `rg -n 'dynamicTypeSize\(\.\.\.' apps/ios/SongPhangKit/Sources`: `NONE`.
+  - Stage C captures (`66` PNGs under `screens/stage-c/`; `c1-pay-light.png`, `c3-all-settled-burst.png`, `b07-after-{settle,balances,expense-form}-ax5.png`, `matrix/feed-ax5.png` visually inspected).
 
 ## Stage D — Data, checks and handoff
 
