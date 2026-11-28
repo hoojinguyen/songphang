@@ -68,6 +68,7 @@ public struct GroupContainerView: View {
   @State private var paymentSheet: PaymentSheet?
   @State private var pendingProofAttachmentId: Attachment.ID?
   @State private var completingRecurringId: RecurringExpense.ID?
+  @State private var toastMessage: ToastMessage?
 
   @State private var feedModel: GroupFeedModel
   @State private var balancesModel: BalancesModel
@@ -80,6 +81,7 @@ public struct GroupContainerView: View {
     groupId: ExpenseGroup.ID,
     initialSegment: GroupSegment = .expenses,
     initialFilter: TransactionFilter? = nil,
+    initialToast: String? = nil,
     initialFundSubTab: FundSubTab? = nil,
     initialTransferProofAttachmentId: Attachment.ID? = nil,
     dependencies: AppDependencies,
@@ -106,6 +108,9 @@ public struct GroupContainerView: View {
     self.recurringRefreshTick = recurringRefreshTick
     self._selectedSegment = State(initialValue: initialSegment)
     self._pendingProofAttachmentId = State(initialValue: initialTransferProofAttachmentId)
+    if let initialToast, !initialToast.isEmpty {
+      self._toastMessage = State(initialValue: ToastMessage(text: initialToast))
+    }
     if let initialFundSubTab {
       self._fundSubTab = State(initialValue: initialFundSubTab)
     }
@@ -216,34 +221,65 @@ public struct GroupContainerView: View {
     currentGroup?.role == .owner
   }
 
-  public var body: some View {
-    VStack(spacing: 8) {
-      segmentSwitcher
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-
-      if isArchived {
-        Text(L10n.tr("groups.archivedBanner"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.muted)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 8)
-          .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-          .padding(.horizontal, 20)
-      }
-
-      contentView
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+  private var unavailableKind: GroupUnavailableView.Kind? {
+    if balancesModel.isNotFound { return .notFound }
+    let errors: [AppError?] = [
+      loadError(feedModel.state),
+      loadError(balancesModel.state),
+      loadError(statsModel.state),
+      loadError(fundModel.state),
+    ]
+    for error in errors {
+      if case .api(_, 404) = error { return .notFound }
+      if case .api(_, 403) = error { return .forbidden }
     }
-    .background(Tokens.bg.ignoresSafeArea())
+    return nil
+  }
+
+  private func loadError<T>(_ loadable: Loadable<T>) -> AppError? {
+    if case .failed(let error) = loadable { return error }
+    return nil
+  }
+
+  public var body: some View {
+    Group {
+      if let unavailableKind {
+        GroupUnavailableView(kind: unavailableKind) {
+          onPopToRoot(nil)
+        }
+      } else {
+        VStack(spacing: 8) {
+          segmentSwitcher
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+
+          if isArchived {
+            Text(L10n.tr("groups.archivedBanner"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 8)
+              .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+              .padding(.horizontal, 20)
+          }
+
+          contentView
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(Tokens.bg.ignoresSafeArea())
+      }
+    }
+    .confirmationToast($toastMessage)
     .spFeedback(.success, trigger: archiveSuccessTick)
     .spFeedback(.warning, trigger: archiveWarningTick)
-    .navigationTitle(currentGroup?.name ?? "")
+    .navigationTitle(unavailableKind == nil ? (currentGroup?.name ?? "") : "")
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
-      ToolbarItemGroup(placement: .topBarTrailing) {
-        memberCapsuleButton
-        overflowMenu
+      if unavailableKind == nil {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+          memberCapsuleButton
+          overflowMenu
+        }
       }
     }
     .confirmationDialog(
@@ -268,7 +304,12 @@ public struct GroupContainerView: View {
           },
           onCloned: { newGroup in
             isCloneSheetPresented = false
-            onNavigate(.groupFeed(groupId: newGroup.id))
+            onReplaceTop(
+              .groupFeed(
+                groupId: newGroup.id,
+                initialToast: L10n.t("ios.groups.createdToast", ["name": newGroup.name])
+              )
+            )
           }
         )
       }
@@ -443,10 +484,12 @@ public struct GroupContainerView: View {
         Label(L10n.tr("activity.title"), systemImage: "clock.arrow.circlepath")
       }
 
-      Button {
-        onNavigate(.groupSettings(groupId: groupId))
-      } label: {
-        Label(L10n.tr("categories.title"), systemImage: "tag")
+      if isOwner {
+        Button {
+          onNavigate(.groupSettings(groupId: groupId, initialSection: .categories))
+        } label: {
+          Label(L10n.tr("categories.title"), systemImage: "tag")
+        }
       }
 
       if sessionModel.latestFeatures?.telegram == true {

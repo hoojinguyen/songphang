@@ -11,3 +11,4 @@ Every string added, changed or removed on iOS in this run. Phase 5.9 applies the
 | `ios.sheet.discardConfirm` | (added) | `Bỏ` | Task 5.6.A.4: Unsaved-changes destructive confirm action |
 | `ios.memberPicker.selected` | (added) | `{name}, đã chọn` | Task 5.6.A.5: VoiceOver selected label in `MemberPicker` |
 | `ios.copy.announced` | (added) | `Đã sao chép` | Spec §10.3 & Task 5.6.A.6: `CopyButton` VoiceOver announcement and copied state label |
+| `ios.groups.createdToast` | (added) | `Đã tạo {name}` | Spec §4.4 & Task 5.6.B.3: Confirmation toast shown after cloning a group |

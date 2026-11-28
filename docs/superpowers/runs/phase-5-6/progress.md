@@ -166,7 +166,7 @@
     - Security review: checked relevant items 1, 2, 8 on `git diff`; navigation chrome and SwiftUI modifiers only, no issues found.
   - **Findings closed:** `B01` (`F2-01`), `B19` (`F4-40`), `F2-02`, `F2-03`, `F2-126`, `F2-129`.
 
-- [x] **Task 5.6.B.2 — Tab bar visibility and in-tab navigation**
+- [x] **Task 5.6.B.2 — Tab bar visibility and in-tab navigation** (commit `c55a240`)
   - **Approach:**
     - Files modified: `AppShell/RouteDestination.swift`, `AppShell/RootView.swift`, `docs/superpowers/runs/phase-5-6/{decisions,progress}.md`.
     - Approach: Added exhaustive `RouteDestination.hidesTabBar` switch so the tab bar is visible on all content routes and hidden only on `.quickEntry`, `.newTransactionForm`, `.editTransaction`, `.settle`, `.receiptReview`. Added `RootView.appendToCurrentTab(_:)`, switched `OverviewView` callbacks (`onOpenGroup`, `onOpenBalances`, `onOpenTransaction`, `onOpenDueRecurring`) and `navigate(to:)` (used by `NotificationsView` tab root) to append onto the active tab's stack while keeping `openExternalRoute(_:)` (deep links/universal links), `applyPushTap`, and `--route-*` debug flags opening on `.groups` (and explicit tab links switching tabs). Also removed the redundant `onPop()` from `.notifications` `onBack` closure in `RouteDestination.swift` since `NotificationsView.onDisappear` now runs it on system pop.
@@ -183,6 +183,29 @@
     - In-tab vs external routes verified: `Overview` -> group/balances/transaction/due-recurring callbacks now call `appendToCurrentTab`, `Notifications` -> `navigate(to:)` calls `appendToCurrentTab`, and `openExternalRoute` / `applyPushTap` / `--route-*` continue targeting `.groups`. `xcrun simctl openurl` with `songphang://group/01a1e4bd-cc25-70c6-860e-275da20487f1/balances` on `SP-SE3-review` triggered iOS's `Open in "Sòng Phẳng"?` confirmation prompt (`b2-deeplink-balances.png`; tapping system dialog requires interactive UI, listed in `manual-checks.md`).
     - Security review: checked relevant items 1, 2, 8 on `git diff`; `LinkRouter` URL validation untouched, route dispatch strictly typed on `Route`, no issues found.
   - **Findings closed:** `F2-04`, `F2-05`, `F2-06`.
+
+- [x] **Task 5.6.B.3 — Landing, unavailable screens and the categories entry, Stage B gate**
+  - **Approach:**
+    - Files created: `DesignSystem/States/GroupUnavailableView.swift`.
+    - Files modified: `AppShell/{Route,RouteDestination,GroupContainerView,RootView}.swift`, `GroupsFeature/GroupSettings/GroupSettingsView.swift`, `GroupsFeature/GroupList/GroupListView.swift`, `GroupsFeature/GuestShare/GuestGroupView.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
+    - Approach: Added `GroupUnavailableView(kind: .notFound | .forbidden, onBackToGroups:)` in `DesignSystem/States/` and wired both `GroupContainerView` and `GroupSettingsView` to render it full-screen with native Back button and zero group chrome/capsule/segments. Added `Route.associatedGroupId` and `RootView.onReplaceGroup`, `GroupListView.onCreatedGroup`, and `GroupSettingsView.onClonedGroup` so cloning from any of the three entry points replaces the source group in the active path (Back -> group list) and shows `ConfirmationToast` (`"Đã tạo {name}"`). Gated `"Danh mục của nhóm"` in `GroupContainerView.overflowMenu` with `if isOwner` and added `Route.SettingsSectionAnchor.categories` + `ScrollViewReader` scroll anchor on `CategoryManagementSection` in `GroupSettingsView`. Also moved `GuestGroupView`'s `NavigationStack` wrapper to `RootView`'s `.fullScreenCover` so pushed `.guestShare` routes render cleanly without a nested `NavigationStack`.
+    - Why this is the simplest approach: Putting `GroupUnavailableView` in `DesignSystem` avoids module import cycles between `GroupsFeature` and `AppShell`, and `Route.associatedGroupId` guarantees replace-in-stack works uniformly regardless of stack depth.
+    - Rejected alternative: Duplicating unavailable views per feature or manually walking UIKit view controllers — rejected for duplication and fragility.
+    - Questions: none (Decision D11 recorded in `decisions.md`).
+  - **Gates (verbatim — Task 5.6.B.3 + Stage B gate):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'id=607AC652-2E92-4BE7-BA18-1B888D79684B' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+    - `pnpm check`: `biome check .` (595 files, 0 errors, 9 pre-existing `noImgElement` warnings in `apps/web`), `pnpm -r typecheck` (8 workspace projects passed), `pnpm --filter @songphang/api contract:check` (`OpenAPI contract snapshot is up to date.`) — exit `0`.
+    - `grep -rn "PopGestureEnabler\|StatusBarCover" apps/ios/SongPhangKit/Sources/`: `GREP_EMPTY_OK` (exit 0 with zero matches).
+  - **Exercise results:**
+    - Unavailable screens (`B09`, `B18`): `--scripted --unknown-group --route-feed` (`b3-unavailable-notfound.png`) renders `GroupUnavailableView(kind: .notFound)` with native Back, `"Không tìm thấy nhóm này."`, `"Về danh sách nhóm"`, and zero group header/capsule/segments; `--scripted --role-editor --route-settings` (`b3-unavailable-forbidden.png`) renders `.forbidden` cleanly.
+    - Categories entry (`B18`): `--scripted --route-settings --settings-categories` (`b3-settings-categories.png`) opens `GroupSettingsView` scrolled directly to `Danh mục của nhóm`; `--role-editor` and `--role-viewer` omit the menu item (`if isOwner`).
+    - Clone toast (`B10`, `F4-06`): `--scripted --route-feed --created-toast` (`b3-clone-toast.png`) shows `"Đã tạo Đà Lạt 3N2Đ (bản sao)"` in `ConfirmationToast` above the tab bar; all 3 clone entry points (`GroupListView`, `GroupContainerView`, `GroupSettingsView`) wired via `onCreatedGroup` / `onReplaceTop` / `onReplaceGroup` (`manual-checks.md` covers interactive 3-entry-point clone taps).
+    - All 22 `Route.swift` cases opened and captured under `screens/stage-b/routes/` (`22` PNGs verified: `register`, `forgot-password`, `account`, `create-group`, `join-group`, `guest-share`, `group-feed`, `group-balances`, `group-stats`, `group-activity`, `group-members`, `group-fund`, `group-settings`, `quick-entry`, `new-tx`, `edit-tx`, `tx-detail`, `receipt-review`, `settle`, `notifications`, `personal-ledger`, `debug-gallery`).
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; server role enforcement unchanged, client gating (`if isOwner`) hides menu entry and `GroupUnavailableView` displays generic `"common.forbidden"` without exposing group internals, no issues found.
+  - **Findings closed:** `B10` (`F4-10`), `B09` (`F3-48`, `F3-49`), `F3-47`, `B18` (`F4-36`, `F4-51`), `F4-05` and `F4-06` (clone part).
 
 ## Stage C — Apply
 

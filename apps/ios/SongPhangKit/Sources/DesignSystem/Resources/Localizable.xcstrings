@@ -10670,6 +10670,17 @@
           }
         }
       }
+    },
+    "ios.groups.createdToast": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tạo {name}"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

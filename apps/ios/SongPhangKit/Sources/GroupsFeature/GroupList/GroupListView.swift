@@ -12,6 +12,7 @@ public struct GroupListView: View {
   private let statusNotice: String?
   private let unreadNotificationCount: Int
   private let onOpenGroup: (ExpenseGroup.ID) -> Void
+  private let onCreatedGroup: ((ExpenseGroup) -> Void)?
   private let onOpenCreateGroup: () -> Void
   private let onOpenAccount: () -> Void
   private let onOpenNotifications: (() -> Void)?
@@ -29,6 +30,7 @@ public struct GroupListView: View {
     statusNotice: String? = nil,
     unreadNotificationCount: Int = 0,
     onOpenGroup: @escaping (ExpenseGroup.ID) -> Void,
+    onCreatedGroup: ((ExpenseGroup) -> Void)? = nil,
     onOpenCreateGroup: @escaping () -> Void,
     onOpenAccount: @escaping () -> Void,
     onOpenNotifications: (() -> Void)? = nil,
@@ -39,6 +41,7 @@ public struct GroupListView: View {
     self.statusNotice = statusNotice
     self.unreadNotificationCount = unreadNotificationCount
     self.onOpenGroup = onOpenGroup
+    self.onCreatedGroup = onCreatedGroup
     self.onOpenCreateGroup = onOpenCreateGroup
     self.onOpenAccount = onOpenAccount
     self.onOpenNotifications = onOpenNotifications
@@ -120,7 +123,11 @@ public struct GroupListView: View {
           cloningGroup = nil
           Task {
             await model.load()
-            onOpenGroup(newGroup.id)
+            if let onCreatedGroup {
+              onCreatedGroup(newGroup)
+            } else {
+              onOpenGroup(newGroup.id)
+            }
           }
         }
       )

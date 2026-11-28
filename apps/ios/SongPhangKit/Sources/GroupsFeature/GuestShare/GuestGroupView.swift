@@ -9,6 +9,7 @@ import UIKit
 
 public struct GuestGroupView: View {
   @Bindable private var model: GuestGroupModel
+  private let showsCloseButton: Bool
   private let onClose: () -> Void
 
   @State private var expandedTransferId: String?
@@ -19,81 +20,84 @@ public struct GuestGroupView: View {
 
   public init(
     model: GuestGroupModel,
+    showsCloseButton: Bool = false,
     onClose: @escaping () -> Void
   ) {
     self.model = model
+    self.showsCloseButton = showsCloseButton
     self.onClose = onClose
   }
 
   public var body: some View {
-    NavigationStack {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 18) {
-          topReadOnlyBanner
+    ScrollView {
+      VStack(alignment: .leading, spacing: 18) {
+        topReadOnlyBanner
 
-          if model.isNotFound {
-            revokedCard
-          } else {
-            switch model.state {
-            case .loading:
-              LoadingSkeleton(rowCount: 4, rowHeight: 96)
-            case .failed:
-              LoadError {
-                Task { await model.load() }
-              }
-            case .loaded(let snapshot):
-              loadedContent(snapshot: snapshot)
+        if model.isNotFound {
+          revokedCard
+        } else {
+          switch model.state {
+          case .loading:
+            LoadingSkeleton(rowCount: 4, rowHeight: 96)
+          case .failed:
+            LoadError {
+              Task { await model.load() }
             }
+          case .loaded(let snapshot):
+            loadedContent(snapshot: snapshot)
           }
         }
-        .padding(20)
       }
-      .background(Tokens.bg.ignoresSafeArea())
-      .toolbar {
+      .padding(20)
+    }
+    .background(Tokens.bg.ignoresSafeArea())
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      if showsCloseButton {
         ToolbarItem(placement: .cancellationAction) {
           Button(L10n.tr("common.back"), action: onClose)
         }
       }
-      .task {
-        if model.state.value == nil {
-          await model.load()
-        }
+    }
+    .task {
+      if model.state.value == nil {
+        await model.load()
       }
-      .sheet(
-        item: Binding<MemberDebtBreakdown?>(
-          get: {
-            guard let id = selectedBreakdownMemberId else { return nil }
-            return model.state.value?.breakdowns.first { $0.memberId == id }
-          },
-          set: { selectedBreakdownMemberId = $0?.memberId }
+    }
+    .sheet(
+      item: Binding<MemberDebtBreakdown?>(
+        get: {
+          guard let id = selectedBreakdownMemberId else { return nil }
+          return model.state.value?.breakdowns.first { $0.memberId == id }
+        },
+        set: { selectedBreakdownMemberId = $0?.memberId }
+      )
+    ) { breakdown in
+      if let snapshot = model.state.value {
+        let hhBreakdown = snapshot.householdBreakdowns.first {
+          $0.memberIds.contains(breakdown.memberId)
+        }
+        let transferIds = hhBreakdown.map { Set($0.memberIds) } ?? Set([breakdown.memberId])
+        GuestBreakdownSheet(
+          breakdown: breakdown,
+          householdBreakdown: hhBreakdown,
+          focusLabel: snapshot.resolvedFocus.label,
+          transfers: snapshot.transfers.filter { transferIds.contains($0.fromMemberId) },
+          members: snapshot.members,
+          onDismiss: { selectedBreakdownMemberId = nil }
         )
-      ) { breakdown in
-        if let snapshot = model.state.value {
-          let hhBreakdown = snapshot.householdBreakdowns.first {
-            $0.memberIds.contains(breakdown.memberId)
-          }
-          let transferIds = hhBreakdown.map { Set($0.memberIds) } ?? Set([breakdown.memberId])
-          GuestBreakdownSheet(
-            breakdown: breakdown,
-            householdBreakdown: hhBreakdown,
-            focusLabel: snapshot.resolvedFocus.label,
-            transfers: snapshot.transfers.filter { transferIds.contains($0.fromMemberId) },
-            members: snapshot.members,
-            onDismiss: { selectedBreakdownMemberId = nil }
-          )
-        }
       }
-      .sheet(item: $selectedTransaction) { tx in
-        if let snapshot = model.state.value {
-          GuestTransactionDetailSheet(
-            transaction: tx,
-            members: snapshot.members,
-            loadAttachment: { id in
-              try await model.loadAttachment(id: id)
-            },
-            onDismiss: { selectedTransaction = nil }
-          )
-        }
+    }
+    .sheet(item: $selectedTransaction) { tx in
+      if let snapshot = model.state.value {
+        GuestTransactionDetailSheet(
+          transaction: tx,
+          members: snapshot.members,
+          loadAttachment: { id in
+            try await model.loadAttachment(id: id)
+          },
+          onDismiss: { selectedTransaction = nil }
+        )
       }
     }
   }

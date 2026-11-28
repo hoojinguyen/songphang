@@ -193,3 +193,15 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
   2. Centralize tab-bar visibility in one exhaustive `RouteDestination.hidesTabBar` switch over `Route` (hidden only on `.quickEntry`, `.newTransactionForm`, `.editTransaction`, `.settle`, `.receiptReview`; visible on all content routes), add `RootView.appendToCurrentTab(_:)`, keep `navigate(to:)` for in-app navigation (switching tabs only when the route explicitly names `.account`, `.notifications`, or `.personalLedger`, otherwise appending to the active tab's stack), keep explicit tab links (`onOpenNotifications`, `onOpenAccount`) switching tabs, and keep external triggers (`openExternalRoute` from deep links/universal links, `applyPushTap`, `receiveAppAction`, `--route-*` debug flags) targeting `.groups`. Also removed the stale `onPop()` call from `RouteDestination`'s `.notifications` `onBack` closure since `NotificationsView.onDisappear` now runs it on system pop.
 - **Choice:** Option 2.
 - **Reason:** Exhaustive switching guarantees future routes make an explicit tab-bar choice at compile time, Back always returns to the tab where the user started, and external links/pushes continue landing cleanly on `.groups`.
+
+### D11 — Placement of `GroupUnavailableView`, clone landing route, and categories scroll anchor (Task 5.6.B.3)
+
+- **Problem:**
+  1. Both `GroupContainerView` (`AppShell`) and `GroupSettingsView` (`GroupsFeature`) need `GroupUnavailableView`, while `GroupsFeature` cannot import `AppShell`.
+  2. Clone completion can originate from `GroupListView`, `GroupContainerView`, or `GroupSettingsView` (stack depth 1 or 2+) and must replace the source group in the active path and show `"Đã tạo {name}"`.
+  3. `"Danh mục của nhóm"` in `GroupContainerView`'s overflow menu must be shown only to roles allowed to manage categories and must scroll `GroupSettingsView` to the categories section.
+- **Options:**
+  1. Duplicate the unavailable view in `AppShell` and `GroupsFeature`, push cloned groups onto `groupsPath`, or scroll settings manually via `UIScrollView`.
+  2. Place `GroupUnavailableView` in `DesignSystem/States/GroupUnavailableView.swift` (imported by both `AppShell` and `GroupsFeature`); add `Route.SettingsSectionAnchor.categories` (`initialSection: SettingsSectionAnchor? = nil`) on `.groupSettings` and `initialToast: String? = nil` on `.groupFeed` (defaulted to `nil` so deep links stay compatible); add `Route.associatedGroupId` + `RootView.onReplaceGroup` so cloning replaces from the earliest route referencing the source group (Back -> list) and displays `ConfirmationToast` (`"Đã tạo {name}"`); gate `"Danh mục của nhóm"` with `if isOwner` (matching `GroupSettingsView`'s permission rule) and scroll to `CategoryManagementSection` via `ScrollViewReader`.
+- **Choice:** Option 2.
+- **Reason:** Zero duplicated views, zero circular module imports, backwards-compatible `Route` parameters, and guaranteed single-hop Back return after cloning from any entry point.

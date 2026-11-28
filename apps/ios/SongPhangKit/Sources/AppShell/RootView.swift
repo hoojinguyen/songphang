@@ -356,8 +356,12 @@ public struct RootView: View {
         if args.contains("--removed-notice") {
           statusNotice = L10n.tr("common.removed")
         }
-        let targetGroupId =
-          args.contains("--scenario-large") ? LargeScenario.groupId : TripScenario.groupId
+        let targetGroupId: ExpenseGroup.ID = {
+          if args.contains("--unknown-group") {
+            return ExpenseGroup.ID("00000000-0000-0000-0000-000000000404")
+          }
+          return args.contains("--scenario-large") ? LargeScenario.groupId : TripScenario.groupId
+        }()
         if args.contains("--route-register") {
           path = [.register]
         } else if args.contains("--route-forgot") {
@@ -372,7 +376,12 @@ public struct RootView: View {
           groupsPath = [.groupMembers(groupId: targetGroupId)]
         } else if args.contains("--route-settings") {
           selectedTab = .groups
-          groupsPath = [.groupSettings(groupId: targetGroupId)]
+          groupsPath = [
+            .groupSettings(
+              groupId: targetGroupId,
+              initialSection: args.contains("--settings-categories") ? .categories : nil
+            )
+          ]
         } else if args.contains("--route-join") {
           selectedTab = .groups
           groupsPath = [.joinGroup(token: TripScenario.invite.token)]
@@ -381,7 +390,25 @@ public struct RootView: View {
           groupsPath = [.joinGroup(token: "invalid-token")]
         } else if args.contains("--route-feed") {
           selectedTab = .groups
-          groupsPath = [.groupFeed(groupId: targetGroupId)]
+          let initialToast =
+            args.contains("--created-toast")
+            ? L10n.t("ios.groups.createdToast", ["name": "Đà Lạt 3N2Đ (bản sao)"])
+            : nil
+          groupsPath = [.groupFeed(groupId: targetGroupId, initialToast: initialToast)]
+        } else if args.contains("--route-fund") {
+          selectedTab = .groups
+          groupsPath = [.groupFund(groupId: targetGroupId)]
+        } else if args.contains("--route-receipt-review") {
+          selectedTab = .groups
+          groupsPath = [
+            .receiptReview(groupId: targetGroupId, scanId: FakeWorld.sampleReceiptScanId)
+          ]
+        } else if args.contains("--route-debug-gallery") {
+          selectedTab = .groups
+          groupsPath = [.debugGallery]
+        } else if args.contains("--route-guest-share") {
+          selectedTab = .groups
+          groupsPath = [.guestShare(token: "demo-guest-token")]
         } else if args.contains("--route-stats") {
           selectedTab = .groups
           groupsPath = [.groupStats(groupId: targetGroupId)]
@@ -509,10 +536,13 @@ public struct RootView: View {
       _ = handleIncomingURL(url)
     }
     .fullScreenCover(item: $activeGuestShare) { item in
-      GuestGroupView(
-        model: item.model,
-        onClose: { activeGuestShare = nil }
-      )
+      NavigationStack {
+        GuestGroupView(
+          model: item.model,
+          showsCloseButton: true,
+          onClose: { activeGuestShare = nil }
+        )
+      }
     }
     .task {
       for await generation in dependencies.makeSessionInvalidations() {
@@ -1220,6 +1250,15 @@ public struct RootView: View {
               statusNotice = nil
               groupsPath.append(.groupFeed(groupId: groupId))
             },
+            onCreatedGroup: { newGroup in
+              statusNotice = nil
+              groupsPath.append(
+                .groupFeed(
+                  groupId: newGroup.id,
+                  initialToast: L10n.t("ios.groups.createdToast", ["name": newGroup.name])
+                )
+              )
+            },
             onOpenCreateGroup: {
               statusNotice = nil
               groupsPath.append(.createGroup)
@@ -1337,6 +1376,16 @@ public struct RootView: View {
       onNavigate: { path.wrappedValue.append($0) },
       onReplaceTop: { newRoute in
         if path.wrappedValue.isEmpty {
+          path.wrappedValue = [newRoute]
+        } else {
+          path.wrappedValue[path.wrappedValue.count - 1] = newRoute
+        }
+      },
+      onReplaceGroup: { sourceGroupId, newRoute in
+        if let idx = path.wrappedValue.firstIndex(where: { $0.associatedGroupId == sourceGroupId })
+        {
+          path.wrappedValue.replaceSubrange(idx..<path.wrappedValue.count, with: [newRoute])
+        } else if path.wrappedValue.isEmpty {
           path.wrappedValue = [newRoute]
         } else {
           path.wrappedValue[path.wrappedValue.count - 1] = newRoute

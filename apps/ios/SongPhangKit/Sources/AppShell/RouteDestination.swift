@@ -21,6 +21,7 @@ public struct RouteDestination: View {
   private let currentUser: User?
   private let onNavigate: (Route) -> Void
   private let onReplaceTop: (Route) -> Void
+  private let onReplaceGroup: (ExpenseGroup.ID, Route) -> Void
   private let onPop: () -> Void
   private let onPopToRoot: (String?) -> Void
   private let onExpenseSaved: () -> Void
@@ -66,6 +67,7 @@ public struct RouteDestination: View {
     currentUser: User?,
     onNavigate: @escaping (Route) -> Void,
     onReplaceTop: @escaping (Route) -> Void,
+    onReplaceGroup: @escaping (ExpenseGroup.ID, Route) -> Void = { _, _ in },
     onPop: @escaping () -> Void,
     onPopToRoot: @escaping (String?) -> Void,
     onExpenseSaved: @escaping () -> Void = {},
@@ -80,6 +82,7 @@ public struct RouteDestination: View {
     self.currentUser = currentUser
     self.onNavigate = onNavigate
     self.onReplaceTop = onReplaceTop
+    self.onReplaceGroup = onReplaceGroup
     self.onPop = onPop
     self.onPopToRoot = onPopToRoot
     self.onExpenseSaved = onExpenseSaved
@@ -164,7 +167,7 @@ public struct RouteDestination: View {
           }
         )
       )
-    case .groupSettings(let groupId):
+    case .groupSettings(let groupId, _):
       self._settingsModel = State(
         initialValue: GroupSettingsModel(
           groupId: groupId,
@@ -177,7 +180,7 @@ public struct RouteDestination: View {
           telegramFeatureEnabled: sessionModel.latestFeatures?.telegram == true
         )
       )
-    case .groupFeed(let groupId, let initialFilter):
+    case .groupFeed(let groupId, let initialFilter, _):
       #if DEBUG
         let deletedId =
           args.contains("--delete-t4") ? TripScenario.t4Transaction.id : nil
@@ -560,21 +563,34 @@ public struct RouteDestination: View {
         onExpenseSaved: onExpenseSaved,
         recurringRefreshTick: recurringRefreshTick
       )
-    case .groupSettings:
+    case .groupSettings(let groupId, let initialSection):
       if let settingsModel {
+        let mappedSection: GroupSettingsView.SectionAnchor? =
+          initialSection == .categories ? .categories : nil
         GroupSettingsView(
           model: settingsModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
+          initialSection: mappedSection,
           onBack: onPop,
           onBackToGroups: { onPopToRoot(nil) },
-          onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) }
+          onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) },
+          onClonedGroup: { newGroup in
+            onReplaceGroup(
+              groupId,
+              .groupFeed(
+                groupId: newGroup.id,
+                initialToast: L10n.t("ios.groups.createdToast", ["name": newGroup.name])
+              )
+            )
+          }
         )
       }
-    case .groupFeed(let groupId, let initialFilter):
+    case .groupFeed(let groupId, let initialFilter, let initialToast):
       GroupContainerView(
         groupId: groupId,
         initialSegment: .expenses,
         initialFilter: initialFilter,
+        initialToast: initialToast,
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
