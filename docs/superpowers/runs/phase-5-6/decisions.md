@@ -93,3 +93,45 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
   2. Synthesize 22.05 kHz 16-bit mono PCM tones with exponential attack/decay envelopes in `apps/ios/Scripts/generate-sounds.swift` and convert via `/usr/bin/afconvert -f caff -d LEI16` (`coin.caf` 150 ms, `ting.caf` 240 ms, `chord.caf` 360 ms, peak `-14.9` to `-15.4 dBFS`, ~6.6–15.9 KB each) under `DesignSystem/Resources/Sounds/` (already covered by `Package.swift`'s `.process("Resources")`, resolved with `subdirectory: "Sounds"` fallback to `nil`); configure `AVAudioSession.sharedInstance().setCategory(.ambient)` once (confirmed in `iPhoneSimulator27.2.sdk/.../AVAudioSessionTypes.h`: `AVAudioSessionCategoryAmbient` mixes with background music without interrupting it and silences with the Ring/Silent switch); wrap `View.sensoryFeedback(trigger:_:)` (confirmed in `SwiftUI.swiftinterface:2807`) in `.spFeedback(_:trigger:)` gated on `FeedbackSettings`; remove the 2 plain navigation segment/sub-tab haptics in `GroupContainerView` and migrate the remaining 20 call sites to state-driven `.spFeedback`.
 - **Choice:** Option 2.
 - **Reason:** Zero external assets or dependencies, zero `Package.swift` change needed, declarative state-tied sensory feedback that respects the per-device "Rung" setting, and ambient audio playback that never throws or interrupts music.
+
+### D5 — Typography Dynamic Type audit, fixed-font mapping table, and iOS 26 navigation bar appearance (Task 5.6.A.3)
+
+- **Problem:**
+  1. `Typography.heroNumber` previously used a fixed-size fallback `.system(size: 40, weight: .black, design: .default)`, and `Typography` lacked styles for 42–48 pt display amounts, 10–11 pt micro badges/tags, and `@ScaledMetric` SF Symbol icons needed to replace the 54 fixed `.font(.system(size:` calls in `SongPhangKit/Sources/` (plus 1 in `ShareExtensionView.swift`).
+  2. Spec §4.1 and Task 5.6.A.3 require setting `UINavigationBar.appearance()` to `Be Vietnam Pro` inside `Typography.registerFontsIfAvailable()`, checking whether iOS 26 Liquid Glass bars honor or ignore it.
+- **Options:**
+  1. Keep scattered `@ScaledMetric` properties in dozens of view files or replace `UINavigationBar.appearance().standardAppearance` (which risks overriding iOS 26 Liquid Glass scroll-edge backgrounds).
+  2. Change `heroNumber` fallback to `.system(.largeTitle, design: .default, weight: .black)`; add `Typography.displayNumber` (44 pt `.largeTitle`), `Typography.microBold` (11 pt `.caption2` bold), `Typography.micro` (11 pt `.caption2` semibold), and `.spIconFont(size:weight:relativeTo:)` (single `@ScaledMetric`-backed modifier in `Typography.swift`); set `UINavigationBar.appearance().titleTextAttributes` and `largeTitleTextAttributes` using `UIFontMetrics`-scaled `BeVietnamPro-ExtraBold` (17 pt) and `BeVietnamPro-Black` (34 pt) without touching bar background appearances.
+- **Choice:** Option 2.
+- **Reason:** Every `Typography` style and fallback scales to `accessibility5`; icons scale through one `@ScaledMetric` modifier; iOS 26 Liquid Glass bar backgrounds remain untouched. Verified in Simulator (`screens/stage-a/a3-nav-title-font.png`) that iOS 26.5 honors `UINavigationBar.appearance().titleTextAttributes` and `largeTitleTextAttributes` with `BeVietnamPro-ExtraBold` and `BeVietnamPro-Black` (temporary test screen removed before commit).
+
+#### Mapping table for all 55 `.font(.system(size:` occurrences (applied in `5.6.C.4`)
+
+| Location | Current call | Target in `5.6.C.4` |
+|---|---|---|
+| `ConfirmationCardView.swift:103` | `.font(.system(size: 48, weight: .black))` | `Typography.displayNumber` |
+| `ExpenseFormSubViews.swift:193` | `.font(.system(size: 46, weight: .black))` | `Typography.displayNumber` |
+| `SettleView.swift:291` | `.font(.system(size: 44, weight: .black))` | `Typography.displayNumber` |
+| `TransactionSummaryView.swift:62` | `.font(.system(size: 44, weight: .black))` | `Typography.displayNumber` |
+| `FundView.swift:111` | `.font(.system(size: 42, weight: .black))` | `Typography.displayNumber` |
+| `PhotoAttachmentViews.swift:103` | `.font(.system(size: 40, weight: .bold))` | `.spIconFont(size: 40, weight: .bold, relativeTo: .largeTitle)` |
+| `SettleView.swift:139` | `.font(.system(size: 24, weight: .bold))` | `.spIconFont(size: 24, weight: .bold, relativeTo: .title2)` |
+| `NotificationBellButton.swift:17` | `.font(.system(size: 20, weight: .semibold))` | `.spIconFont(size: 20, weight: .semibold, relativeTo: .title3)` |
+| `HouseholdFormSheetView.swift:133` | `.font(.system(size: 20, weight: .semibold))` | `.spIconFont(size: 20, weight: .semibold, relativeTo: .title3)` |
+| `GroupFeedSubViews.swift:806, 824` | `.font(.system(size: 20, weight: .bold))` | `.spIconFont(size: 20, weight: .bold, relativeTo: .title3)` |
+| `QuickEntryView.swift:250` | `.font(.system(size: 20, weight: .bold))` | `.spIconFont(size: 20, weight: .bold, relativeTo: .title3)` |
+| `SignInView.swift:67`, `LoginShapesAndHeader.swift:87`, `StateViews.swift:138`, `SplitEditorView.swift:15, 137`, `PayView.swift:66` | `.font(.system(size: 18, weight: .bold))` | `.spIconFont(size: 18, weight: .bold, relativeTo: .headline)` |
+| `PhotoAttachmentViews.swift:39`, `HouseholdFormSheetView.swift:173`, `ShareExtensionView.swift:212` | `.font(.system(size: 18, weight: .semibold))` | `.spIconFont(size: 18, weight: .semibold, relativeTo: .headline)` |
+| `GroupContainerView.swift:410, 520` | `.font(.system(size: 16, weight: .semibold / .bold))` | Removed in `5.6.B.1` when native toolbar replaces `persistentHeader` (or `.spIconFont` if any icon stays) |
+| `PhotoAttachmentViews.swift:111`, `CreateGroupView.swift:95`, `ExpenseFormSubViews.swift:32`, `CommentFieldView.swift:40` | `.font(.system(size: 16, weight: .bold))` | `.spIconFont(size: 16, weight: .bold, relativeTo: .callout)` |
+| `ReceiptItemsAssignmentView.swift:168, 300` | `.font(.system(size: 16, weight: .semibold))` | `.spIconFont(size: 16, weight: .semibold, relativeTo: .callout)` |
+| `TransferProofInputSection.swift:110`, `ManualExtrasCardView.swift:222` | `.font(.system(size: 15, weight: .semibold))` | `.spIconFont(size: 15, weight: .semibold, relativeTo: .subheadline)` |
+| `FundBlockView.swift:52`, `SplitEditorView.swift:448`, `NotificationsView.swift:123`, `PaymentDetailsView.swift:133, 150`, `RecurringSectionView.swift:196` | `.font(.system(size: 14, weight: .bold))` | `.spIconFont(size: 14, weight: .bold, relativeTo: .subheadline)` |
+| `HouseholdsSectionView.swift:172` | `.font(.system(size: 13, weight: .semibold))` | `.spIconFont(size: 13, weight: .semibold, relativeTo: .footnote)` |
+| `ExpenseFormView.swift:478` | `.font(.system(size: 13, weight: .bold))` | `Typography.captionBold` (or `.spIconFont(size: 13, weight: .bold, relativeTo: .footnote)` if icon) |
+| `GuestGroupView.swift:202`, `CycleFilterChipView.swift:59` | `.font(.system(size: 12, weight: .semibold))` | `.spIconFont(size: 12, weight: .semibold, relativeTo: .caption)` |
+| `NotificationBellButton.swift:25` | `.font(.system(size: 11, weight: .black))` | `Typography.microBold` |
+| `PhotoAttachmentViews.swift:192`, `TransferProofInputSection.swift:83`, `SettlementVaultSectionView.swift:182`, `GroupFeedSubViews.swift:410` | `.font(.system(size: 11, weight: .bold))` | `.spIconFont(size: 11, weight: .bold, relativeTo: .caption2)` / `Typography.microBold` |
+| `ProofBadgeView.swift:32`, `GuestGroupView.swift:500`, `GroupFeedSubViews.swift:199, 209, 481` | `.font(.system(size: 11, weight: .semibold))` | `.spIconFont(size: 11, weight: .semibold, relativeTo: .caption2)` / `Typography.micro` |
+| `GuestGroupView.swift:206`, `CycleFilterChipView.swift:63`, `GroupFeedSubViews.swift:631`, `PersonalLedgerView.swift:132` | `.font(.system(size: 10, weight: .bold))` | `Typography.microBold` / `.spIconFont(size: 10, weight: .bold, relativeTo: .caption2)` |
+| `MemberShapeView.swift:48` | `.font(.system(size: size * 0.36, weight: .black))` | Geometric initial inside fixed `size` shape container (decorative avatar glyph proportional to `size`; recorded per `5.6.C.4`) |

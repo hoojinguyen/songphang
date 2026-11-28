@@ -52,7 +52,7 @@
     - Security review: checked relevant items 1, 2, 8 on `git diff`; UI-only motion/formatting changes and `#if DEBUG` launch flags, no issues found.
   - **Findings closed:** `F2-132`, `F2-57`, `F2-58`, `F2-61`, `F2-62`, `F1-58`, `F1-74`, `F2-63`, `F4-53`, `F1-44`, `F2-59`, `F2-60`, `F2-56` (component part).
 
-- [x] **Task 5.6.A.2 — Haptics, sound and the "Âm thanh và rung" setting**
+- [x] **Task 5.6.A.2 — Haptics, sound and the "Âm thanh và rung" setting** (commit `fc2ddd8`)
   - **Approach:**
     - Files to create/modify/delete: create `apps/ios/Scripts/generate-sounds.swift`, `DesignSystem/Resources/Sounds/{coin,ting,chord}.caf`, `DesignSystem/Components/{Feedback,SoundPlayer}.swift`; delete `DesignSystem/Components/Haptics.swift`; modify `DesignSystem/Components/ChannelPillPicker.swift`, `LedgerFeature/Balances/{ShareCardPreviewSheet,SettlementVaultSectionView}.swift`, `LedgerFeature/GroupFeed/GroupFeedView.swift`, `LedgerFeature/SplitEditor/SplitEditorView.swift`, `AppShell/{GroupContainerView,Debug/DebugGalleryView}.swift`, `GroupsFeature/GuestShare/{GuestLinkSheetView,GuestGroupView}.swift`, `AccountFeature/Account/AccountView.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
     - Approach: Synthesize `coin` (150 ms), `ting` (240 ms), and `chord` (360 ms) locally via `generate-sounds.swift` + `afconvert -f caff -d LEI16`; preload them in `SoundPlayer.shared` on an `AVAudioSession` `.ambient` category gated on `FeedbackSettings.isSoundEnabled`; implement `.spFeedback(_:trigger:)` over `SwiftUI.View.sensoryFeedback(trigger:_:)` gated on `FeedbackSettings.isHapticsEnabled`; migrate all 22 `Haptics.` call sites (removing the 2 plain navigation segment switches in `GroupContainerView`), delete `Haptics.swift`, and add the "Âm thanh và rung" card to `AccountView`.
@@ -71,6 +71,23 @@
     - Simulator (`--scripted --route-account`, light & dark): verified "Âm thanh và rung" card with "Âm thanh" and "Rung" toggles both ON by default (`screens/stage-a/a2-account-feedback-light.png`, `a2-account-feedback-dark.png`).
     - Security review: checked relevant items 1, 2, 8 on `git diff`; local `UserDefaults` booleans and bundled `.caf` assets only, no secrets or external calls, no issues found.
   - **Findings closed:** `F1-60`, `F4-55`, `F2-127`, `F1-54`, `F1-55`, `F1-56`, `F1-57`.
+
+- [x] **Task 5.6.A.3 — Typography foundation**
+  - **Approach:**
+    - Files to create/modify: `DesignSystem/Tokens/Typography.swift`, `DesignSystem/Components/AdaptiveStack.swift` (new), `docs/superpowers/runs/phase-5-6/{decisions,progress}.md`.
+    - Approach: Replace `Typography.heroNumber`'s fixed-size fallback with `.system(.largeTitle, design: .default, weight: .black)`; add `Typography.displayNumber` (44 pt `.largeTitle`), `Typography.microBold` (11 pt `.caption2`), `Typography.micro` (11 pt `.caption2`), and `.spIconFont(size:weight:relativeTo:)` (`@ScaledMetric` modifier); configure `UINavigationBar.appearance()` inline (`BeVietnamPro-ExtraBold`, `.headline` metrics) and large (`BeVietnamPro-Black`, `.largeTitle` metrics) title attributes inside `registerFontsIfAvailable()`; add `AdaptiveStack` (`AnyLayout` switching from `HStackLayout` to `VStackLayout` at `dynamicTypeSize.isAccessibilitySize`) with default and `accessibility5` `#Preview`s; record the 55-entry fixed-font mapping table in `decisions.md` (D5).
+    - Why this is the simplest approach: Keeps all typography tokens and `@ScaledMetric` icon scaling in `Typography.swift` and leaves iOS 26 Liquid Glass bar backgrounds untouched.
+    - Rejected alternative: Replacing `UINavigationBar.appearance().standardAppearance` — rejected because resetting `UINavigationBarAppearance` would override iOS 26's system scroll-edge glass effect.
+    - Questions: none (Decision D5 recorded in `decisions.md`).
+  - **Gates (verbatim):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - **Exercise results:**
+    - Verified in Simulator (`iPhone 17 Pro`, iOS 26.5) on a temporary `NavigationStack` wrapper (removed before commit) that both inline and large navigation titles render in `Be Vietnam Pro` (`screens/stage-a/a3-nav-title-font.png`).
+    - Verified every `Typography` style uses `relativeTo:` with a Dynamic Type text-style fallback (`0` fixed-size `Typography` styles).
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; `DesignSystem` typography/layout views only, no issues found.
+  - **Findings closed:** part of `B07`, `F3-28` (foundation; sweep in `5.6.C.4`).
 
 ## Stage B — Navigation
 
