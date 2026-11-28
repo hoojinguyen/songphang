@@ -28,7 +28,7 @@ public struct TransactionDetailView: View {
       switch model.state {
       case .loading:
         Spacer()
-        ProgressView()
+        ShapeLoader()
         Spacer()
       case .failed(let error):
         Spacer()
@@ -141,6 +141,7 @@ public struct TransactionDetailView: View {
         )
       }
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Tokens.bg.ignoresSafeArea())
     .navigationTitle(model.state.value?.transaction.description ?? "")
     .navigationBarTitleDisplayMode(.inline)

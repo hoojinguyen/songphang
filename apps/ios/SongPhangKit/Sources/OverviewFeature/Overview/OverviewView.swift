@@ -53,7 +53,17 @@ public struct OverviewView: View {
 
         switch model.overview {
         case .loading:
-          LoadingSkeleton(rowCount: 3, rowHeight: 120)
+          VStack(alignment: .leading, spacing: 18) {
+            BalanceCardSkeleton()
+            SkeletonBar(width: 120, height: 18, cornerRadius: 9)
+              .spSkeletonShimmer()
+            MemberRowSkeleton()
+            MemberRowSkeleton()
+            SkeletonBar(width: 140, height: 18, cornerRadius: 9)
+              .spSkeletonShimmer()
+            TransactionRowSkeleton()
+            TransactionRowSkeleton()
+          }
         case .failed:
           LoadError(isRetrying: model.isRefreshing) {
             Task { await model.load() }

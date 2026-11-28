@@ -145,7 +145,7 @@ public struct ReceiptCaptureSheet: View {
 
           if isBusy {
             HStack(spacing: 12) {
-              ProgressView()
+              ShapeLoader(itemSize: 10)
               Text(L10n.tr("receipts.uploading"))
                 .font(Typography.bodyBold)
                 .foregroundStyle(Tokens.ink)

@@ -69,12 +69,21 @@ public struct GroupFeedView: View {
 
       switch model.state {
       case .loading:
-        VStack(spacing: 16) {
-          LoadingSkeleton(rowCount: 3, rowHeight: 110)
-          Spacer()
+        ScrollView {
+          VStack(spacing: 12) {
+            BalanceCardSkeleton()
+            LinkRowSkeleton()
+            SearchFieldSkeleton()
+            TransactionRowSkeleton()
+            TransactionRowSkeleton()
+            TransactionRowSkeleton()
+          }
+          .padding(.horizontal, 20)
+          .padding(.top, 8)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .scrollDisabled(true)
+
+        composerBar(isPendingLoad: true, group: nil)
 
       case .failed(let error):
         if case .api(_, 404) = error {
@@ -309,8 +318,27 @@ public struct GroupFeedView: View {
       streamList(data: data, canEdit: canEdit)
     }
 
-    if isEmailVerified {
-      if data.group.isArchived {
+    composerBar(isPendingLoad: false, group: data.group)
+  }
+
+  @ViewBuilder
+  private func composerBar(isPendingLoad: Bool, group: ExpenseGroup?) -> some View {
+    if isPendingLoad {
+      FeedEntryBarView(
+        isOffline: false,
+        isReadOnly: false,
+        isPendingLoad: true,
+        onOpenReceiptCapture: onOpenReceiptCapture.map { handler in
+          { handler(model.groupId) }
+        },
+        onOpenManualForm: {},
+        onOpenQuickEntry: {}
+      )
+      .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+      .padding(.horizontal, 20)
+      .padding(.bottom, 12)
+    } else if isEmailVerified {
+      if group?.isArchived == true {
         Text(L10n.tr("groups.archivedBanner"))
           .font(Typography.captionBold)
           .foregroundStyle(Tokens.muted)
@@ -323,7 +351,7 @@ public struct GroupFeedView: View {
       } else {
         FeedEntryBarView(
           isOffline: model.isOffline,
-          isReadOnly: !data.group.role.canWrite,
+          isReadOnly: group?.role.canWrite != true,
           onOpenReceiptCapture: onOpenReceiptCapture.map { handler in
             { handler(model.groupId) }
           },

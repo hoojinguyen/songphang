@@ -180,7 +180,31 @@ public struct GroupListView: View {
 
     switch model.groups {
     case .loading:
-      LoadingSkeleton(rowCount: 2, rowHeight: 160)
+      VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
+          HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { _ in
+              Circle()
+                .fill(Tokens.sunken)
+                .frame(width: 30, height: 30)
+            }
+            Spacer()
+          }
+          SkeletonBar(width: 160, height: 22, cornerRadius: 10)
+          SkeletonBar(width: 210, height: 38, cornerRadius: 12)
+          SkeletonBar(width: 120, height: 14, cornerRadius: 7)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 40, style: .continuous))
+        .spSkeletonShimmer()
+
+        MemberRowSkeleton()
+        MemberRowSkeleton()
+      }
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(L10n.tr("ios.common.loading"))
 
     case .failed:
       LoadError(isRetrying: model.isRefreshing) {

@@ -93,8 +93,8 @@ public struct ReceiptReviewView: View {
     RemoteAttachmentThumbnail(attachmentId: attachmentId, size: 96, cornerRadius: 20) { id in
       try await model.attachmentsRepository.content(groupId: model.groupId, attachmentId: id)
     }
-    HStack(spacing: 10) {
-      ProgressView()
+    VStack(spacing: 10) {
+      ShapeLoader()
       Text(L10n.tr("receipts.reading"))
         .font(Typography.bodyBold)
         .foregroundStyle(Tokens.ink)

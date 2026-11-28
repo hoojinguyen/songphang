@@ -21,7 +21,7 @@ struct CommentThreadView: View {
     VStack(alignment: .leading, spacing: 12) {
       if comments.isEmpty {
         if isFetching {
-          ProgressView()
+          ShapeLoader()
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 20)
         } else {

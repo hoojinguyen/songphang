@@ -81,7 +81,14 @@ public struct BalancesView: View {
           } else {
             switch model.state {
             case .loading:
-              LoadingSkeleton(rowCount: 3, rowHeight: 110)
+              VStack(spacing: 16) {
+                BalanceCardSkeleton()
+                SkeletonBar(height: 44, cornerRadius: 22)
+                  .spSkeletonShimmer()
+                MemberRowSkeleton()
+                MemberRowSkeleton()
+                MemberRowSkeleton()
+              }
 
             case .failed:
               LoadError {

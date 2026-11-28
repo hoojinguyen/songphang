@@ -750,19 +750,20 @@ struct FeedNoMatchView: View {
 struct FeedEntryBarView: View {
   let isOffline: Bool
   let isReadOnly: Bool
+  var isPendingLoad: Bool = false
   var onOpenReceiptCapture: (() -> Void)? = nil
   let onOpenManualForm: () -> Void
   let onOpenQuickEntry: () -> Void
 
   var body: some View {
-    if isOffline {
+    if isOffline && !isPendingLoad {
       Text(L10n.tr("offline.entry"))
         .font(Typography.subheadlineBold)
         .foregroundStyle(Tokens.muted)
         .frame(maxWidth: .infinity, minHeight: 64)
         .background(Tokens.sunken)
         .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-    } else if isReadOnly {
+    } else if isReadOnly && !isPendingLoad {
       Text(L10n.tr("members.roleViewer"))
         .font(Typography.subheadlineBold)
         .foregroundStyle(Tokens.muted)
@@ -816,6 +817,8 @@ struct FeedEntryBarView: View {
         }
         .buttonStyle(.plain)
       }
+      .disabled(isPendingLoad)
+      .opacity(isPendingLoad ? 0.6 : 1)
     }
   }
 }

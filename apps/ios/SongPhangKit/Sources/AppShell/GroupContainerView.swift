@@ -21,6 +21,16 @@ public enum GroupSegment: String, Sendable, Hashable, CaseIterable {
   }
 }
 
+public struct GroupHeaderHint: Sendable, Hashable {
+  public let name: String
+  public let previewMembers: [ExpenseGroup.PreviewMember]
+
+  public init(name: String, previewMembers: [ExpenseGroup.PreviewMember]) {
+    self.name = name
+    self.previewMembers = previewMembers
+  }
+}
+
 public struct GroupContainerView: View {
   public enum FundSubTab: String, CaseIterable, Sendable {
     case stats
@@ -42,6 +52,7 @@ public struct GroupContainerView: View {
   }
 
   private let groupId: ExpenseGroup.ID
+  private let initialGroupHint: GroupHeaderHint?
   private let dependencies: AppDependencies
   private let sessionModel: SessionModel
   private let currentUser: User?
@@ -84,6 +95,7 @@ public struct GroupContainerView: View {
     initialToast: String? = nil,
     initialFundSubTab: FundSubTab? = nil,
     initialTransferProofAttachmentId: Attachment.ID? = nil,
+    initialGroupHint: GroupHeaderHint? = nil,
     dependencies: AppDependencies,
     sessionModel: SessionModel,
     currentUser: User?,
@@ -96,6 +108,7 @@ public struct GroupContainerView: View {
     recurringRefreshTick: Int = 0
   ) {
     self.groupId = groupId
+    self.initialGroupHint = initialGroupHint
     self.dependencies = dependencies
     self.sessionModel = sessionModel
     self.currentUser = currentUser
@@ -209,6 +222,14 @@ public struct GroupContainerView: View {
       ?? []
   }
 
+  private var resolvedGroupName: String? {
+    currentGroup?.name ?? initialGroupHint?.name
+  }
+
+  private var previewMembers: [ExpenseGroup.PreviewMember] {
+    initialGroupHint?.previewMembers ?? []
+  }
+
   private var isArchived: Bool {
     currentGroup?.isArchived == true
   }
@@ -272,12 +293,21 @@ public struct GroupContainerView: View {
     .confirmationToast($toastMessage)
     .spFeedback(.success, trigger: archiveSuccessTick)
     .spFeedback(.warning, trigger: archiveWarningTick)
-    .navigationTitle(unavailableKind == nil ? (currentGroup?.name ?? "") : "")
+    .navigationTitle(unavailableKind == nil ? (resolvedGroupName ?? "") : "")
     .navigationBarTitleDisplayMode(.inline)
     .toolbar {
       if unavailableKind == nil {
+        if resolvedGroupName == nil {
+          ToolbarItem(placement: .principal) {
+            SkeletonBar(width: 148, height: 18, cornerRadius: 9)
+              .spSkeletonShimmer()
+              .accessibilityHidden(true)
+          }
+        }
         ToolbarItemGroup(placement: .topBarTrailing) {
-          memberCapsuleButton
+          if !currentMembers.isEmpty || !previewMembers.isEmpty {
+            memberCapsuleButton
+          }
           overflowMenu
         }
       }
@@ -494,8 +524,19 @@ public struct GroupContainerView: View {
       onNavigate(.groupMembers(groupId: groupId))
     } label: {
       HStack(spacing: 2) {
-        ForEach(Array(currentMembers.prefix(3))) { member in
-          MemberShapeView(member: member, size: 22)
+        if !currentMembers.isEmpty {
+          ForEach(Array(currentMembers.prefix(3))) { member in
+            MemberShapeView(member: member, size: 22)
+          }
+        } else {
+          ForEach(Array(previewMembers.prefix(3))) { member in
+            MemberShapeView(
+              shape: member.shape,
+              color: member.color,
+              name: member.name,
+              size: 22
+            )
+          }
         }
       }
     }

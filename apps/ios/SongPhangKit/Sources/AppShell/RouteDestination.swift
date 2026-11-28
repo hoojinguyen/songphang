@@ -19,6 +19,7 @@ public struct RouteDestination: View {
   private let dependencies: AppDependencies
   private let sessionModel: SessionModel
   private let currentUser: User?
+  private let groupSummaryLookup: (ExpenseGroup.ID) -> GroupHeaderHint?
   private let onNavigate: (Route) -> Void
   private let onReplaceTop: (Route) -> Void
   private let onReplaceGroup: (ExpenseGroup.ID, Route) -> Void
@@ -65,6 +66,7 @@ public struct RouteDestination: View {
     dependencies: AppDependencies,
     sessionModel: SessionModel,
     currentUser: User?,
+    groupSummaryLookup: @escaping (ExpenseGroup.ID) -> GroupHeaderHint? = { _ in nil },
     onNavigate: @escaping (Route) -> Void,
     onReplaceTop: @escaping (Route) -> Void,
     onReplaceGroup: @escaping (ExpenseGroup.ID, Route) -> Void = { _, _ in },
@@ -80,6 +82,7 @@ public struct RouteDestination: View {
     self.dependencies = dependencies
     self.sessionModel = sessionModel
     self.currentUser = currentUser
+    self.groupSummaryLookup = groupSummaryLookup
     self.onNavigate = onNavigate
     self.onReplaceTop = onReplaceTop
     self.onReplaceGroup = onReplaceGroup
@@ -552,6 +555,7 @@ public struct RouteDestination: View {
         initialSegment: .fundAndStats,
         initialFilter: nil,
         initialFundSubTab: .fund,
+        initialGroupHint: groupSummaryLookup(groupId),
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
@@ -591,6 +595,7 @@ public struct RouteDestination: View {
         initialSegment: .expenses,
         initialFilter: initialFilter,
         initialToast: initialToast,
+        initialGroupHint: groupSummaryLookup(groupId),
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
@@ -607,6 +612,7 @@ public struct RouteDestination: View {
         groupId: groupId,
         initialSegment: .fundAndStats,
         initialFilter: nil,
+        initialGroupHint: groupSummaryLookup(groupId),
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
@@ -624,6 +630,7 @@ public struct RouteDestination: View {
         initialSegment: .payments,
         initialFilter: nil,
         initialTransferProofAttachmentId: initialTransferProofAttachmentId,
+        initialGroupHint: groupSummaryLookup(groupId),
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,

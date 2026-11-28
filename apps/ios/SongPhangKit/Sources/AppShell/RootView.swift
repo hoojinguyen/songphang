@@ -475,6 +475,17 @@ public struct RootView: View {
         } else if args.contains("--route-ledger") {
           selectedTab = .overview
           overviewPath = [.personalLedger]
+        } else if args.contains("--route-feed-from-list") {
+          selectedTab = .groups
+          Task {
+            while groupListModel.groups.value == nil {
+              try? await Task.sleep(for: .milliseconds(50))
+              if Task.isCancelled { return }
+            }
+            if let first = groupListModel.groups.value?.first {
+              groupsPath = [.groupFeed(groupId: first.id)]
+            }
+          }
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
@@ -1363,6 +1374,18 @@ public struct RootView: View {
     }
   }
 
+  private func groupHeaderHint(for groupId: ExpenseGroup.ID) -> GroupHeaderHint? {
+    if let group = groupListModel.groups.value?.first(where: { $0.id == groupId }) {
+      return GroupHeaderHint(name: group.name, previewMembers: group.previewMembers)
+    }
+    if let balance = overviewModel.overview.value?.groupBalances.first(where: {
+      $0.groupId == groupId
+    }) {
+      return GroupHeaderHint(name: balance.groupName, previewMembers: balance.previewMembers)
+    }
+    return nil
+  }
+
   private func destinationView(
     for route: Route,
     currentUser: User?,
@@ -1373,6 +1396,7 @@ public struct RootView: View {
       dependencies: dependencies,
       sessionModel: sessionModel,
       currentUser: currentUser,
+      groupSummaryLookup: groupHeaderHint(for:),
       onNavigate: { path.wrappedValue.append($0) },
       onReplaceTop: { newRoute in
         if path.wrappedValue.isEmpty {

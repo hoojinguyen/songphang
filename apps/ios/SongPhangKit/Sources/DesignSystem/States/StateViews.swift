@@ -12,10 +12,14 @@ public struct LoadingSkeleton: View {
   public var body: some View {
     VStack(spacing: 12) {
       ForEach(0..<rowCount, id: \.self) { _ in
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-          .fill(Tokens.sunken)
-          .frame(maxWidth: .infinity)
-          .frame(height: rowHeight)
+        VStack(alignment: .leading, spacing: 10) {
+          SkeletonBar(width: 140, height: 14, cornerRadius: 7)
+          SkeletonBar(height: 12, cornerRadius: 6)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: rowHeight, alignment: .leading)
+        .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .spSkeletonShimmer()
       }
     }
     .accessibilityElement(children: .ignore)

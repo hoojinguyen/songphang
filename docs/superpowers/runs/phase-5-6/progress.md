@@ -234,6 +234,25 @@
   - Security review: checked `git diff`; `deleteGroupSheet`, `PaymentDetailsView`, `DisputeBlockView`, and `ApprovalBlockView` trim/validate input identically to prior behavior with zero secrets or unchecked data paths.
 - **Findings closed:** `F2-29`, `F2-30`, `F2-31`, `F2-32`, `F4-03`, `F4-04` (application), `F2-130`.
 
+### Task 5.6.C.2: Loading and states
+- **Status:** Committed (Stage C)
+- **Step 2 (Think):**
+  - Files modified: `AppShell/{GroupContainerView,RootView,RouteDestination}.swift`, `DesignSystem/{Components/PhotoAttachmentViews.swift,States/StateViews.swift}`, `GroupsFeature/GroupList/GroupListView.swift`, `LedgerFeature/{Balances/BalancesView,GroupFeed/GroupFeedSubViews,GroupFeed/GroupFeedView,ReceiptCapture/ReceiptCaptureSheet,ReceiptReview/ReceiptReviewView,TransactionDetail/CommentThreadView,TransactionDetail/TransactionDetailView}.swift`, `OverviewFeature/Overview/OverviewView.swift`, `apps/ios/ShareExtension/ShareExtensionView.swift`, `docs/superpowers/runs/phase-5-6/progress.md`.
+  - Approach: Added `GroupHeaderHint` and a `groupSummaryLookup` closure passed from `RootView` (`groupListModel` / `overviewModel`) -> `RouteDestination` -> `GroupContainerView` so opening a group from Overview or Group List displays its real name and member shapes immediately without changing `Route` or deep links, while cold deep links show a `SkeletonBar` title in `.principal` and omit `memberCapsuleButton` until loaded (never an empty string or empty capsule). Moved `GroupFeedView`'s composer bar (`FeedEntryBarView` with `isPendingLoad: true`) to render disabled from frame 1 during `.loading`. Replaced `LoadingSkeleton` row blocks in `GroupFeedView`, `BalancesView`, `OverviewView`, and `GroupListView` with layout-shaped skeletons (`BalanceCardSkeleton`, `LinkRowSkeleton`, `SearchFieldSkeleton`, `TransactionRowSkeleton`, `MemberRowSkeleton`), updated `LoadingSkeleton` in `StateViews.swift` to use shimmered `SkeletonBar` cards, and replaced whole-area `ProgressView()` spinners across `PhotoAttachmentViews`, `ReceiptCaptureSheet`, `ReceiptReviewView`, `CommentThreadView`, `TransactionDetailView`, and `ShareExtensionView` with `ShapeLoader` (preserving inline button spinners in `SPButton`/`NotificationsView` and determinate bar gauges in `BalancesView`). Added `#if DEBUG` `--route-feed-from-list` flag in `RootView`.
+  - Why this is the simplest approach: A read-only lookup closure from `RootView`'s existing loaded models avoids duplicating or caching group headers in `Route` parameters and leaves all deep-link URLs unchanged.
+  - Rejected alternative: Passing full group snapshots inside `Route` — rejected because `Route` is `Hashable` and shared with deep-link/universal-link parsers.
+  - Questions: none.
+- **Gates (verbatim):**
+  - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+  - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (no output)
+  - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - `grep -rn "ProgressView(" apps/ios/SongPhangKit/Sources apps/ios/ShareExtension`: only `SPButton.swift:49` (inline button), `NotificationsView.swift:90` (inline load-more button), and `BalancesView.swift:{1397,1400,1480,1488}` (determinate bars).
+- **Exercise results:**
+  - Verified with `--scripted --latency-2s --no-snapshot` on `iPhone 17 Pro`: cold deep-link (`--route-feed`, `c2-feed-deeplink-loading.png`) renders `SkeletonBar` title, zero empty capsule, layout-shaped feed skeleton, and disabled bottom composer; from-list open (`--route-feed-from-list`, `c2-feed-from-list-loading.png` -> `c2-feed-loaded.png`) shows `"Đà Lạt 3N2Đ"` + 3 member shapes immediately during loading and loads with zero composer jump; Balances (`c2-balances-loading.png`), Overview (`c2-overview-loading.png`), Group List (`c2-groups-loading.png`) render layout-shaped skeletons; TransactionDetail (`c2-txdetail-shape-loader.png`) shows centered `ShapeLoader` on full-screen `Tokens.bg`.
+  - Verified with snapshot (`--scripted --latency-2s --route-feed`, no `--no-snapshot`, `c2-feed-with-snapshot.png`): stored snapshot content appears immediately before the 2s network refresh finishes (`F4-42`).
+  - Security review: checked `git diff`; `groupSummaryLookup` reads only already-authorized in-memory models; `FeedEntryBarView` remains `.disabled(true)` while loading.
+- **Findings closed:** `B20` (`F4-43`, `F4-44`, `F4-45`), `F4-42`, `F1-52` (adoption), `F2-57` (no entrance motion).
+
 ## Stage D — Data, checks and handoff
 
 ## Findings record

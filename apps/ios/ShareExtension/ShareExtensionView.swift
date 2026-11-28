@@ -40,7 +40,7 @@ struct ShareExtensionView: View {
       Group {
         if isLoading {
           VStack(spacing: 16) {
-            ProgressView()
+            ShapeLoader()
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if !hasSession {

@@ -96,8 +96,7 @@ public struct PhotoViewerSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding(20)
         } else if isLoading {
-          ProgressView()
-            .tint(.white)
+          ShapeLoader()
         } else {
           Image(systemName: "photo")
             .font(.system(size: 40, weight: .bold))
