@@ -42,15 +42,9 @@ public struct FundView: View {
 
         switch model.state {
         case .loading:
-          if showHeader {
-            SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
-          }
           LoadingSkeleton(rowCount: 3, rowHeight: 112)
 
         case .failed(let error):
-          if showHeader {
-            SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
-          }
           if case .api(_, 404) = error {
             VStack(spacing: 12) {
               Text(L10n.tr("common.groupNotFound"))
@@ -67,15 +61,12 @@ public struct FundView: View {
 
         case .loaded(let data):
           if let fund = data.balances.fund {
-            if showHeader {
-              SPScreenHeader(title: fund.name, onBack: onBack)
-            }
             loadedContent(data: data, fund: fund)
           } else {
-            if showHeader {
-              SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
-            }
-            EmptyState(title: L10n.tr("fund.noContributions"))
+            EmptyState(
+              title: L10n.tr("fund.noContributions"),
+              noActionReason: "Fund setup CTA replaces Back in Phase 5.8 (defect B03)"
+            )
             SPButton(L10n.tr("common.back"), variant: .surface, isFullWidth: true, action: onBack)
           }
         }
@@ -85,7 +76,12 @@ public struct FundView: View {
       .padding(.bottom, 28)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .modifier(
+      ConditionalFundNavBar(
+        isEnabled: showHeader,
+        title: model.state.value?.balances.fund?.name ?? L10n.tr("fund.defaultName")
+      )
+    )
     .task {
       await model.load()
     }
@@ -107,8 +103,8 @@ public struct FundView: View {
 
       MoneyText(
         fund.cash.magnitude,
-        style: .full,
-        font: .system(size: 42, weight: .black),
+        role: .hero,
+        font: Typography.displayNumber,
         color: Tokens.onAccent
       )
 
@@ -300,6 +296,21 @@ public struct FundView: View {
     }
     .buttonStyle(.plain)
     .disabled(isDisabled)
+  }
+}
+
+private struct ConditionalFundNavBar: ViewModifier {
+  let isEnabled: Bool
+  let title: String
+
+  func body(content: Content) -> some View {
+    if isEnabled {
+      content
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    } else {
+      content
+    }
   }
 }
 

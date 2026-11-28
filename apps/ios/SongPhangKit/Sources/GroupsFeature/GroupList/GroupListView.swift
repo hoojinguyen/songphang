@@ -12,6 +12,7 @@ public struct GroupListView: View {
   private let statusNotice: String?
   private let unreadNotificationCount: Int
   private let onOpenGroup: (ExpenseGroup.ID) -> Void
+  private let onCreatedGroup: ((ExpenseGroup) -> Void)?
   private let onOpenCreateGroup: () -> Void
   private let onOpenAccount: () -> Void
   private let onOpenNotifications: (() -> Void)?
@@ -29,6 +30,7 @@ public struct GroupListView: View {
     statusNotice: String? = nil,
     unreadNotificationCount: Int = 0,
     onOpenGroup: @escaping (ExpenseGroup.ID) -> Void,
+    onCreatedGroup: ((ExpenseGroup) -> Void)? = nil,
     onOpenCreateGroup: @escaping () -> Void,
     onOpenAccount: @escaping () -> Void,
     onOpenNotifications: (() -> Void)? = nil,
@@ -39,6 +41,7 @@ public struct GroupListView: View {
     self.statusNotice = statusNotice
     self.unreadNotificationCount = unreadNotificationCount
     self.onOpenGroup = onOpenGroup
+    self.onCreatedGroup = onCreatedGroup
     self.onOpenCreateGroup = onOpenCreateGroup
     self.onOpenAccount = onOpenAccount
     self.onOpenNotifications = onOpenNotifications
@@ -120,7 +123,11 @@ public struct GroupListView: View {
           cloningGroup = nil
           Task {
             await model.load()
-            onOpenGroup(newGroup.id)
+            if let onCreatedGroup {
+              onCreatedGroup(newGroup)
+            } else {
+              onOpenGroup(newGroup.id)
+            }
           }
         }
       )
@@ -173,7 +180,31 @@ public struct GroupListView: View {
 
     switch model.groups {
     case .loading:
-      LoadingSkeleton(rowCount: 2, rowHeight: 160)
+      VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
+          HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { _ in
+              Circle()
+                .fill(Tokens.sunken)
+                .frame(width: 30, height: 30)
+            }
+            Spacer()
+          }
+          SkeletonBar(width: 160, height: 22, cornerRadius: 10)
+          SkeletonBar(width: 210, height: 38, cornerRadius: 12)
+          SkeletonBar(width: 120, height: 14, cornerRadius: 7)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 40, style: .continuous))
+        .spSkeletonShimmer()
+
+        MemberRowSkeleton()
+        MemberRowSkeleton()
+      }
+      .accessibilityElement(children: .ignore)
+      .accessibilityLabel(L10n.tr("ios.common.loading"))
 
     case .failed:
       LoadError(isRetrying: model.isRefreshing) {
@@ -340,7 +371,12 @@ public struct GroupListView: View {
     return Button {
       onOpenGroup(group.id)
     } label: {
-      HStack(spacing: 12) {
+      AdaptiveStack(
+        horizontalAlignment: .center,
+        verticalAlignment: .leading,
+        horizontalSpacing: 12,
+        verticalSpacing: 10
+      ) {
         VStack(alignment: .leading, spacing: 6) {
           HStack(spacing: 4) {
             ForEach(group.previewMembers) { member in
@@ -408,7 +444,8 @@ public struct GroupListView: View {
             .foregroundStyle(Tokens.muted)
           }
         }
-        Spacer(minLength: 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         let chipInkColor = group.myBalance.isPositive ? Tokens.onAccent : Tokens.ink
         VStack(alignment: .trailing, spacing: 2) {
           MoneyText(

@@ -140,20 +140,20 @@
         from: from ?? "2026-11-10",
         to: to ?? "2026-11-10",
         bucket: .day,
-        total: Money(1_399_999),
+        total: Money(1_599_999),
         byCategory: [
           CategoryStat(category: .lodging, amount: Money(1_200_000)),
           CategoryStat(category: .food, amount: Money(300_000)),
           CategoryStat(category: .transport, amount: Money(99_999)),
         ],
         byMember: [
-          MemberStat(memberId: TripScenario.minhId, paid: Money(1_100_000), share: Money(600_000)),
-          MemberStat(memberId: TripScenario.lanId, paid: Money(200_000), share: Money(370_000)),
-          MemberStat(memberId: TripScenario.hungId, paid: Money(99_999), share: Money(270_000)),
+          MemberStat(memberId: TripScenario.minhId, paid: Money(1_200_000), share: Money(600_000)),
+          MemberStat(memberId: TripScenario.lanId, paid: Money(300_000), share: Money(370_000)),
+          MemberStat(memberId: TripScenario.hungId, paid: Money(99_999), share: Money(369_999)),
           MemberStat(memberId: TripScenario.thuId, paid: Money(0), share: Money(260_000)),
         ],
         byBucket: [
-          TimeBucketStat(start: "2026-11-10", amount: Money(1_399_999))
+          TimeBucketStat(start: "2026-11-10", amount: Money(1_599_999))
         ]
       )
     }

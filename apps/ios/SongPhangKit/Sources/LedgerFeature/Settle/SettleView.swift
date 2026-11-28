@@ -8,6 +8,7 @@ public import SwiftUI
 
 public struct SettleView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Bindable private var model: SettleModel
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
@@ -62,24 +63,28 @@ public struct SettleView: View {
         }
       }
       .padding(20)
-      .scaleEffect(model.isRecorded ? 0.95 : 1.0)
+      .scaleEffect(Motion.isReduced(reduceMotion) ? 1.0 : (model.isRecorded ? 0.95 : 1.0))
       .opacity(model.isRecorded ? 0.0 : 1.0)
-      .animation(
-        reduceMotion ? nil : .spring(duration: 0.2, bounce: 0.15),
-        value: model.isRecorded
-      )
+      .spAnimation(Motion.quick, value: model.isRecorded)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .spFeedback(.success, trigger: model.isRecorded)
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if isEmailVerified, case .loaded(let data) = model.state, data.group.role != .viewer {
         submitButton
       }
     }
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(settleNavigationTitle)
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.state.value == nil {
         await model.load()
       }
+      #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--exercise-settle-submit") {
+          await model.submit(reduceMotion: reduceMotion)
+        }
+      #endif
     }
   }
 
@@ -95,10 +100,23 @@ public struct SettleView: View {
     ) {
       Task { await model.submit(reduceMotion: reduceMotion) }
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
     .padding(.vertical, 12)
     .background(Tokens.bg)
+  }
+
+  private var settleNavigationTitle: String {
+    guard case .loaded(let data) = model.state else {
+      return L10n.tr("settle.title")
+    }
+    let myMemberId = data.group.myMemberId
+    if data.toMember.id == myMemberId {
+      return L10n.tr("settle.titleReceived")
+    } else if data.fromMember.id == myMemberId {
+      return L10n.tr("settle.titlePaid")
+    } else {
+      return L10n.tr("settle.title")
+    }
   }
 
   @ViewBuilder
@@ -106,47 +124,28 @@ public struct SettleView: View {
     let myMemberId = data.group.myMemberId
     // Read here so the field re-renders when the model reformats the typed digits.
     let amountText = model.amountText
-    let title: String = {
-      if data.toMember.id == myMemberId {
-        return L10n.tr("settle.titleReceived")
-      } else if data.fromMember.id == myMemberId {
-        return L10n.tr("settle.titlePaid")
-      } else {
-        return L10n.tr("settle.title")
-      }
-    }()
 
-    SPScreenHeader(
-      title: title,
-      backLabel: L10n.tr("common.cancel"),
-      onBack: onCancel
-    )
-
-    HStack(spacing: 20) {
+    AdaptiveStack(
+      horizontalAlignment: .center,
+      verticalAlignment: .center,
+      horizontalSpacing: 20,
+      verticalSpacing: 12
+    ) {
       VStack(spacing: 12) {
-        MemberShapeView(
-          shape: data.fromMember.shape,
-          color: data.fromMember.color,
-          name: data.fromMember.name,
-          size: 104
-        )
-        Text(data.fromMember.id == myMemberId ? L10n.tr("common.you") : data.fromMember.name)
+        MemberShapeView(member: data.fromMember, size: 104)
+        Text(PersonName.display(member: data.fromMember, currentMemberId: myMemberId))
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
       }
 
-      Image(systemName: "arrow.right")
-        .font(.system(size: 24, weight: .bold))
+      Image(systemName: dynamicTypeSize.isAccessibilitySize ? "arrow.down" : "arrow.right")
+        .spIconFont(size: 24, weight: .bold, relativeTo: .title2)
         .foregroundStyle(Tokens.ink)
+        .accessibilityHidden(true)
 
       VStack(spacing: 12) {
-        MemberShapeView(
-          shape: data.toMember.shape,
-          color: data.toMember.color,
-          name: data.toMember.name,
-          size: 104
-        )
-        Text(data.toMember.id == myMemberId ? L10n.tr("common.you") : data.toMember.name)
+        MemberShapeView(member: data.toMember, size: 104)
+        Text(PersonName.display(member: data.toMember, currentMemberId: myMemberId))
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
       }
@@ -172,7 +171,7 @@ public struct SettleView: View {
       .font(Typography.caption)
       .foregroundStyle(Tokens.muted)
 
-    HStack(spacing: 8) {
+    AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 8) {
       dayButton(label: L10n.tr("settle.today"), selection: .today)
       dayButton(label: L10n.tr("settle.yesterday"), selection: .yesterday)
       dayButton(label: L10n.tr("settle.otherDay"), selection: .other)
@@ -288,7 +287,7 @@ private struct SettleAmountField: View {
       .focused($isFocused)
       .disabled(isDisabled)
       .multilineTextAlignment(.center)
-      .font(.system(size: 44, weight: .black))
+      .font(Typography.displayNumber)
       .monospacedDigit()
       .lineLimit(1)
       .minimumScaleFactor(0.5)

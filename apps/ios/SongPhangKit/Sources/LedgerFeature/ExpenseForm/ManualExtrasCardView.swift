@@ -219,7 +219,7 @@ public struct ManualExtrasCardView: View {
           onChange()
         } label: {
           Image(systemName: "trash")
-            .font(.system(size: 15, weight: .semibold))
+            .spIconFont(size: 15, weight: .semibold, relativeTo: .subheadline)
             .foregroundStyle(Tokens.muted)
             .frame(width: 40, height: 40)
         }

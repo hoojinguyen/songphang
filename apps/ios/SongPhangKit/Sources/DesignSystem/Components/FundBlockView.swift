@@ -49,7 +49,7 @@ public struct FundBlockView: View {
         }
         Spacer(minLength: 4)
         Image(systemName: "chevron.right")
-          .font(.system(size: 14, weight: .bold))
+          .spIconFont(size: 14, weight: .bold, relativeTo: .subheadline)
           .foregroundStyle(Tokens.muted)
       }
       .padding(20)

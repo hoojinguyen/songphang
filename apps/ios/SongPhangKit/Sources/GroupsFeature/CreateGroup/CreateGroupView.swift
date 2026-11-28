@@ -7,9 +7,12 @@ public import SwiftUI
 #endif
 
 public struct CreateGroupView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Bindable private var model: CreateGroupModel
   private let creatorName: String
   private let onBack: () -> Void
+  @State private var nameShakeTick = 0
+  @State private var scrollToNameTick = 0
 
   public init(
     model: CreateGroupModel,
@@ -30,29 +33,31 @@ public struct CreateGroupView: View {
     ScrollViewReader { proxy in
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          SPScreenHeader(
-            title: L10n.tr("newGroup.title"),
-            onBack: onBack
-          )
-
           VStack(alignment: .leading, spacing: 8) {
             Text(L10n.tr("newGroup.nameLabel"))
               .font(Typography.captionBold)
               .foregroundStyle(Tokens.muted)
 
-            TextField("", text: $model.name)
-              .font(Typography.pageTitle)
-              .foregroundStyle(Tokens.ink)
-              .padding(.horizontal, 20)
-              .frame(minHeight: 72)
-              .background(Tokens.surface)
-              .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-              .onChange(of: model.name) { _, newValue in
-                if newValue.count > 80 {
-                  model.name = String(newValue.prefix(80))
-                }
+            let namePlaceholder = L10n.tr("ios.newGroup.namePlaceholder")
+            TextField(
+              namePlaceholder,
+              text: $model.name,
+              prompt: Text(namePlaceholder).foregroundStyle(Tokens.placeholder)
+            )
+            .font(Typography.pageTitle)
+            .foregroundStyle(Tokens.ink)
+            .padding(.horizontal, 20)
+            .frame(minHeight: 72)
+            .background(Tokens.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .fieldShake(trigger: nameShakeTick, cornerRadius: 28)
+            .id("groupNameField")
+            .onChange(of: model.name) { _, newValue in
+              if newValue.count > 80 {
+                model.name = String(newValue.prefix(80))
               }
-              .accessibilityLabel(L10n.tr("newGroup.nameLabel"))
+            }
+            .accessibilityLabel(L10n.tr("newGroup.nameLabel"))
           }
 
           Text(L10n.tr("newGroup.membersTitle"))
@@ -92,7 +97,7 @@ public struct CreateGroupView: View {
                 model.removeMember(at: index)
               } label: {
                 Image(systemName: "xmark")
-                  .font(.system(size: 16, weight: .bold))
+                  .spIconFont(size: 16, weight: .bold, relativeTo: .callout)
                   .foregroundStyle(Tokens.ink)
                   .frame(width: 44, height: 44)
               }
@@ -135,19 +140,25 @@ public struct CreateGroupView: View {
       .safeAreaInset(edge: .bottom, spacing: 0) {
         submitBar
       }
-      .navigationBarBackButtonHidden(true)
+      .navigationTitle(L10n.tr("newGroup.title"))
+      .navigationBarTitleDisplayMode(.inline)
       .onChange(of: model.addedMembers.count) { oldCount, newCount in
         if newCount > oldCount {
-          withAnimation(.easeInOut(duration: 0.25)) {
+          Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
             proxy.scrollTo("newMemberInputRow", anchor: .bottom)
           }
         }
       }
       .onChange(of: model.submitError != nil) { _, hasError in
         if hasError {
-          withAnimation(.easeInOut(duration: 0.25)) {
+          Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
             proxy.scrollTo("validationErrorBanner", anchor: .bottom)
           }
+        }
+      }
+      .onChange(of: scrollToNameTick) { _, _ in
+        Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
+          proxy.scrollTo("groupNameField", anchor: .top)
         }
       }
     }
@@ -171,13 +182,17 @@ public struct CreateGroupView: View {
         variant: .accent,
         size: .lg,
         isFullWidth: true,
-        isDisabled: !model.canSubmit,
+        isDisabled: model.isSubmitting,
         isPending: model.isSubmitting
       ) {
-        Task { await model.submit() }
+        if model.canSubmit {
+          Task { await model.submit() }
+        } else {
+          nameShakeTick &+= 1
+          scrollToNameTick &+= 1
+        }
       }
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
     .padding(.vertical, 12)
     .background(Tokens.bg)

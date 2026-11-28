@@ -3989,7 +3989,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "đồng bạn được nhận"
+            "value": "bạn được nhận"
           }
         }
       }
@@ -4022,7 +4022,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "đồng bạn cần trả"
+            "value": "bạn cần trả"
           }
         }
       }
@@ -5936,7 +5936,7 @@
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "đồng"
+            "value": "đ"
           }
         }
       }
@@ -10590,6 +10590,116 @@
           "stringUnit": {
             "state": "translated",
             "value": "vừa xong"
+          }
+        }
+      }
+    },
+    "ios.feedback.sectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm thanh và rung"
+          }
+        }
+      }
+    },
+    "ios.feedback.sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm thanh"
+          }
+        }
+      }
+    },
+    "ios.feedback.haptics": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rung"
+          }
+        }
+      }
+    },
+    "ios.sheet.discardTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ thay đổi?"
+          }
+        }
+      }
+    },
+    "ios.sheet.discardConfirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ"
+          }
+        }
+      }
+    },
+    "ios.memberPicker.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{name}, đã chọn"
+          }
+        }
+      }
+    },
+    "ios.copy.announced": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã sao chép"
+          }
+        }
+      }
+    },
+    "ios.groups.createdToast": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã tạo {name}"
+          }
+        }
+      }
+    },
+    "ios.common.clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xoá"
+          }
+        }
+      }
+    },
+    "ios.newGroup.namePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đà Lạt cuối tuần"
           }
         }
       }

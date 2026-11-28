@@ -29,7 +29,7 @@ public struct ProofBadgeView: View {
     } else {
       HStack(spacing: 4) {
         Image(systemName: "photo")
-          .font(.system(size: 11, weight: .semibold))
+          .spIconFont(size: 11, weight: .semibold, relativeTo: .caption2)
         Text(L10n.tr("settlementProof.hasProof"))
           .font(Typography.captionBold)
       }

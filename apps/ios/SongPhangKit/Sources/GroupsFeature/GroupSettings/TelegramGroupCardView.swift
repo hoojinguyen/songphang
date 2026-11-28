@@ -6,7 +6,6 @@ import UIKit
 struct TelegramGroupCardView: View {
   @Bindable var model: GroupSettingsModel
   let isDisabled: Bool
-  @State private var copiedCommand = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -36,7 +35,6 @@ struct TelegramGroupCardView: View {
           isDisabled: isDisabled || model.isPerformingTelegramAction,
           isPending: model.isPerformingTelegramAction
         ) {
-          copiedCommand = false
           Task { await model.generateTelegramLinkCode() }
         }
 
@@ -49,17 +47,10 @@ struct TelegramGroupCardView: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-              Button {
-                UIPasteboard.general.string = code.command
-                copiedCommand = true
-              } label: {
-                Text(copiedCommand ? L10n.tr("telegram.copied") : L10n.tr("telegram.copy"))
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                  .padding(.horizontal, 14)
-                  .frame(minHeight: 44)
-                  .background(Tokens.surface, in: Capsule())
-              }
+              CopyButton(
+                value: code.command,
+                label: L10n.tr("telegram.copy")
+              )
             }
             Text(L10n.tr("telegram.codeTtl"))
               .font(Typography.caption)

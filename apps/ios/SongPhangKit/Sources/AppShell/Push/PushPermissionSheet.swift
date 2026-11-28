@@ -41,8 +41,7 @@ struct PushPermissionSheet: View {
     .padding(24)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .background(Tokens.bg.ignoresSafeArea())
-    .presentationDetents([.medium])
-    .presentationDragIndicator(.visible)
+    .spSheet(.half)
     .interactiveDismissDisabled(true)
   }
 }

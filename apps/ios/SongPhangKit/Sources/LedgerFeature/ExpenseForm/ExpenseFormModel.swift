@@ -83,6 +83,7 @@ public final class ExpenseFormModel {
   public private(set) var submitError: AppError?
   public private(set) var conflictTransaction: LedgerTransaction?
   public private(set) var isDeleting = false
+  public private(set) var didSaveTick = 0
   public private(set) var deleteError: AppError?
 
   private var previewTask: Task<Void, Never>?
@@ -636,6 +637,31 @@ public final class ExpenseFormModel {
     }
   }
 
+  public func setPayers(_ ids: Set<Member.ID>) {
+    let ordered = payerMembers.map(\.id).filter { ids.contains($0) }
+    payerIds = ordered
+    if hasManualExtras {
+      scheduleExtrasPreview()
+    } else {
+      schedulePreview()
+    }
+  }
+
+  public func setSharers(_ ids: Set<Member.ID>) {
+    let current = Set(splitState.ids)
+    for id in current.subtracting(ids) {
+      splitState.toggle(id, members: sharerMembers)
+    }
+    for member in sharerMembers where ids.contains(member.id) && !current.contains(member.id) {
+      splitState.toggle(member.id, members: sharerMembers)
+    }
+    if hasManualExtras {
+      scheduleExtrasPreview()
+    } else {
+      schedulePreview()
+    }
+  }
+
   public func setPayerAmount(_ text: String, for id: Member.ID) {
     let digits = text.filter { $0.isWholeNumber && $0.isASCII }
     if digits.isEmpty {
@@ -889,6 +915,9 @@ public final class ExpenseFormModel {
           key: idempotencyKey
         )
       }
+      didSaveTick &+= 1
+      SoundPlayer.shared.play(.coin)
+      try? await Task.sleep(for: .milliseconds(150))
       onSaved()
     } catch {
       if error == .conflict, let editingId = state.value?.editingTransaction?.id {

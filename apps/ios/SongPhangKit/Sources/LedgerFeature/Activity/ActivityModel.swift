@@ -1,4 +1,4 @@
-import DesignSystem
+public import DesignSystem
 public import Domain
 import Foundation
 public import Observation
@@ -38,7 +38,7 @@ public final class ActivityModel {
   public private(set) var hasNextPageError = false
   public private(set) var restoringEntityId: String?
   public private(set) var restoreErrorEntityId: String?
-  public var toastMessage: String?
+  public var toastMessage: ToastMessage?
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -152,7 +152,7 @@ public final class ActivityModel {
         groupId: groupId,
         id: LedgerTransaction.ID(entityId)
       )
-      toastMessage = L10n.tr("expenseForm.restored")
+      toastMessage = ToastMessage(text: L10n.tr("expenseForm.restored"))
       await load()
     } catch {
       if error == .unauthorized {

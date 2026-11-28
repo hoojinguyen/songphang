@@ -56,11 +56,13 @@ struct CycleFilterChipView: View {
           } label: {
             HStack(spacing: 6) {
               Image(systemName: "calendar")
-                .font(.system(size: 12, weight: .semibold))
+                .spIconFont(size: 12, weight: .semibold, relativeTo: .caption)
+                .accessibilityHidden(true)
               Text(currentLabel)
                 .font(Typography.captionBold)
               Image(systemName: "chevron.down")
-                .font(.system(size: 10, weight: .bold))
+                .spIconFont(size: 10, weight: .bold, relativeTo: .caption2)
+                .accessibilityHidden(true)
             }
             .foregroundStyle(Tokens.ink)
             .padding(.horizontal, 12)

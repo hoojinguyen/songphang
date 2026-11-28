@@ -74,6 +74,12 @@ public final class SessionModel {
     applyUserResult(userResult)
   }
 
+  public func loadFeatures() async {
+    if let features = try? await authRepository.serverFeatures() {
+      applyFeatures(features)
+    }
+  }
+
   public func refreshOnForeground() async {
     if let features = try? await authRepository.serverFeatures() {
       applyFeatures(features)

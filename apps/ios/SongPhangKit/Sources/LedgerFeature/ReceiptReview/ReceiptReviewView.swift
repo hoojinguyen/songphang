@@ -27,19 +27,9 @@ public struct ReceiptReviewView: View {
       VStack(alignment: .leading, spacing: 16) {
         switch model.state {
         case .loading:
-          SPScreenHeader(
-            title: L10n.tr("receipts.title"),
-            backLabel: L10n.tr("common.back"),
-            onBack: onBack
-          )
           LoadingSkeleton(rowCount: 3, rowHeight: 96)
 
         case .failed:
-          SPScreenHeader(
-            title: L10n.tr("receipts.title"),
-            backLabel: L10n.tr("common.back"),
-            onBack: onBack
-          )
           LoadError {
             Task { await model.load(defaultTitle: L10n.tr("receipts.title")) }
           }
@@ -63,7 +53,8 @@ public struct ReceiptReviewView: View {
       .padding(.bottom, 28)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("receipts.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.state.value == nil {
         await model.load(defaultTitle: L10n.tr("receipts.title"))
@@ -99,16 +90,11 @@ public struct ReceiptReviewView: View {
 
   @ViewBuilder
   private func pendingView(attachmentId: Attachment.ID) -> some View {
-    SPScreenHeader(
-      title: L10n.tr("receipts.title"),
-      backLabel: L10n.tr("common.cancel"),
-      onBack: onBack
-    )
     RemoteAttachmentThumbnail(attachmentId: attachmentId, size: 96, cornerRadius: 20) { id in
       try await model.attachmentsRepository.content(groupId: model.groupId, attachmentId: id)
     }
-    HStack(spacing: 10) {
-      ProgressView()
+    VStack(spacing: 10) {
+      ShapeLoader()
       Text(L10n.tr("receipts.reading"))
         .font(Typography.bodyBold)
         .foregroundStyle(Tokens.ink)
@@ -118,11 +104,6 @@ public struct ReceiptReviewView: View {
   @ViewBuilder
   private func failedView(scan: ReceiptScan) -> some View {
     let notAReceipt = scan.errorCode == "NOT_A_RECEIPT"
-    SPScreenHeader(
-      title: L10n.tr("receipts.title"),
-      backLabel: L10n.tr("common.cancel"),
-      onBack: onBack
-    )
     RemoteAttachmentThumbnail(attachmentId: scan.attachmentId, size: 96, cornerRadius: 20) { id in
       try await model.attachmentsRepository.content(groupId: model.groupId, attachmentId: id)
     }
@@ -203,16 +184,9 @@ public struct ReceiptReviewView: View {
     let payers = model.payerOptions(from: data.members)
     let computedAmount = model.isPreviewCurrent ? model.itemsPreview?.computedAmount : nil
 
-    VStack(alignment: .leading, spacing: 4) {
-      SPScreenHeader(
-        title: L10n.tr("receipts.title"),
-        backLabel: L10n.tr("common.cancel"),
-        onBack: onBack
-      )
-      Text(L10n.tr("receipts.aiNote"))
-        .font(Typography.captionBold)
-        .foregroundStyle(Tokens.muted)
-    }
+    Text(L10n.tr("receipts.aiNote"))
+      .font(Typography.captionBold)
+      .foregroundStyle(Tokens.muted)
 
     HStack(alignment: .top, spacing: 12) {
       RemoteAttachmentThumbnail(attachmentId: data.scan.attachmentId, size: 80, cornerRadius: 20) {
@@ -336,39 +310,12 @@ public struct ReceiptReviewView: View {
   }
 
   private func payerPicker(options: [Member]) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text(L10n.tr("receipts.paidBy"))
-        .font(Typography.captionBold)
-        .foregroundStyle(Tokens.muted)
-
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 8) {
-          ForEach(options) { member in
-            let activePayer = model.payerId == member.id
-            Button {
-              model.payerId = member.id
-            } label: {
-              HStack(spacing: 6) {
-                MemberShapeView(
-                  shape: member.shape,
-                  color: member.color,
-                  name: member.name,
-                  size: 22,
-                  showInitial: false
-                )
-                Text(member.name)
-                  .font(Typography.captionBold)
-              }
-              .foregroundStyle(activePayer ? Tokens.surface : Tokens.ink)
-              .padding(.horizontal, 12)
-              .frame(minHeight: 44)
-              .background(activePayer ? Tokens.ink : Tokens.sunken, in: Capsule())
-            }
-            .buttonStyle(.plain)
-          }
-        }
-      }
-    }
+    MemberPicker(
+      title: L10n.tr("receipts.paidBy"),
+      members: options,
+      selectedId: $model.payerId,
+      allowsEmptySelection: false
+    )
     .padding(14)
     .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
   }

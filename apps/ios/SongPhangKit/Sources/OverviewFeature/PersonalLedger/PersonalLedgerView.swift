@@ -23,16 +23,9 @@ public struct PersonalLedgerView: View {
 
   public var body: some View {
     VStack(spacing: 0) {
-      SPScreenHeader(
-        title: L10n.tr("ledger.title"),
-        onBack: onBack
-      )
-      .padding(.horizontal, 20)
-      .padding(.top, 16)
-      .padding(.bottom, 12)
-
       searchAndFiltersBar
         .padding(.horizontal, 20)
+        .padding(.top, 12)
         .padding(.bottom, 12)
 
       ScrollView {
@@ -59,7 +52,8 @@ public struct PersonalLedgerView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("ledger.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.items.isEmpty {
         await model.loadInitial()
@@ -72,6 +66,7 @@ public struct PersonalLedgerView: View {
       HStack(spacing: 8) {
         Image(systemName: "magnifyingglass")
           .foregroundStyle(Tokens.muted)
+          .accessibilityHidden(true)
 
         TextField(L10n.tr("ledger.searchPlaceholder"), text: $model.query)
           .font(Typography.body)
@@ -88,6 +83,7 @@ public struct PersonalLedgerView: View {
             Image(systemName: "xmark.circle.fill")
               .foregroundStyle(Tokens.muted)
           }
+          .accessibilityLabel(L10n.tr("ios.common.clear"))
         }
       }
       .padding(.horizontal, 16)
@@ -129,8 +125,9 @@ public struct PersonalLedgerView: View {
           .font(Typography.captionBold)
           .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.ink)
         Image(systemName: "chevron.down")
-          .font(.system(size: 10, weight: .bold))
+          .spIconFont(size: 10, weight: .bold, relativeTo: .caption2)
           .foregroundStyle(isSelected ? Tokens.onAccent : Tokens.muted)
+          .accessibilityHidden(true)
       }
       .padding(.horizontal, 14)
       .padding(.vertical, 8)

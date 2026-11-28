@@ -9,6 +9,7 @@ public import SwiftUI
 public struct CloneGroupSheetView: View {
   private let group: ExpenseGroup
   private let repository: any GroupsRepository
+  private let initialNameDraft: String
   private let onDismiss: () -> Void
   private let onCloned: (ExpenseGroup) -> Void
 
@@ -32,7 +33,13 @@ public struct CloneGroupSheetView: View {
     let suffix = L10n.tr("ios.groups.cloneSuffix")
     let maxBase = 80 - suffix.count
     let base = String(group.name.prefix(maxBase)).trimmingCharacters(in: .whitespaces)
-    self._nameDraft = State(initialValue: "\(base)\(suffix)")
+    let initial = "\(base)\(suffix)"
+    self.initialNameDraft = initial
+    self._nameDraft = State(initialValue: initial)
+  }
+
+  private var isDirty: Bool {
+    nameDraft != initialNameDraft || !copyPaymentMethods || copyCategories
   }
 
   public var body: some View {
@@ -92,20 +99,32 @@ public struct CloneGroupSheetView: View {
           }
         }
         .padding(20)
+        .spFittedSheetContent()
       }
       .background(Tokens.bg.ignoresSafeArea())
       .navigationTitle(L10n.tr("clone.title"))
       .navigationBarTitleDisplayMode(.inline)
-      .interactiveDismissDisabled(isSubmitting)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button(L10n.tr("common.cancel")) {
-            onDismiss()
+          SheetCancelButton {
+            if !isSubmitting {
+              onDismiss()
+            }
           }
           .disabled(isSubmitting)
         }
       }
     }
+    .spSheet(.fitted, embedsNavigationStack: true)
+    .discardGuard(
+      isDirty: isDirty,
+      isPending: isSubmitting,
+      onDiscard: {
+        if !isSubmitting {
+          onDismiss()
+        }
+      }
+    )
   }
 
   private func submitClone() {

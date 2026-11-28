@@ -53,7 +53,17 @@ public struct OverviewView: View {
 
         switch model.overview {
         case .loading:
-          LoadingSkeleton(rowCount: 3, rowHeight: 120)
+          VStack(alignment: .leading, spacing: 18) {
+            BalanceCardSkeleton()
+            SkeletonBar(width: 120, height: 18, cornerRadius: 9)
+              .spSkeletonShimmer()
+            MemberRowSkeleton()
+            MemberRowSkeleton()
+            SkeletonBar(width: 140, height: 18, cornerRadius: 9)
+              .spSkeletonShimmer()
+            TransactionRowSkeleton()
+            TransactionRowSkeleton()
+          }
         case .failed:
           LoadError(isRetrying: model.isRefreshing) {
             Task { await model.load() }
@@ -134,36 +144,36 @@ public struct OverviewView: View {
 
         MoneyText(
           summary.netBalance,
-          style: .signed,
+          role: .hero,
           font: Typography.heroNumber,
-          color: Tokens.onAccent
+          color: Tokens.onAccent,
+          showsPositiveSign: true
         )
 
         Divider()
           .background(Tokens.onAccent.opacity(0.18))
 
-        HStack(spacing: 20) {
+        AdaptiveStack(horizontalSpacing: 20, verticalSpacing: 12) {
           VStack(alignment: .leading, spacing: 4) {
             Text(L10n.tr("overview.totalOwedToMe"))
               .font(Typography.caption)
               .foregroundStyle(Tokens.onAccent.opacity(0.7))
             MoneyText(
               summary.totalOwedToMe,
-              style: .full,
+              role: .primary,
               font: Typography.sectionTitle,
               color: Tokens.onAccent
             )
           }
+          .frame(maxWidth: .infinity, alignment: .leading)
 
-          Spacer()
-
-          VStack(alignment: .trailing, spacing: 4) {
+          VStack(alignment: .leading, spacing: 4) {
             Text(L10n.tr("overview.totalIOwe"))
               .font(Typography.caption)
               .foregroundStyle(Tokens.onAccent.opacity(0.7))
             MoneyText(
               summary.totalIOwe,
-              style: .full,
+              role: .primary,
               font: Typography.sectionTitle,
               color: Tokens.onAccent
             )
@@ -290,7 +300,12 @@ public struct OverviewView: View {
         Button {
           onOpenGroup(gb.groupId)
         } label: {
-          HStack(spacing: 12) {
+          AdaptiveStack(
+            horizontalAlignment: .center,
+            verticalAlignment: .leading,
+            horizontalSpacing: 12,
+            verticalSpacing: 8
+          ) {
             VStack(alignment: .leading, spacing: 6) {
               HStack(spacing: 4) {
                 ForEach(gb.previewMembers) { p in
@@ -328,8 +343,7 @@ public struct OverviewView: View {
                 .foregroundStyle(Tokens.muted)
               }
             }
-
-            Spacer(minLength: 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             MoneyText(
               gb.myBalance,

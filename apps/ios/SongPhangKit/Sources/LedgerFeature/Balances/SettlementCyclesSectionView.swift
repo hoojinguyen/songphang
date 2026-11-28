@@ -7,6 +7,7 @@ import SwiftUI
 #endif
 
 struct SettlementCyclesSectionView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   private let overview: SettlementCyclesOverview?
   private let isOwner: Bool
   private let isArchived: Bool
@@ -114,7 +115,7 @@ struct SettlementCyclesSectionView: View {
     return SPCard(padding: 16) {
       VStack(alignment: .leading, spacing: 12) {
         Button {
-          withAnimation(.easeInOut(duration: 0.16)) {
+          Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
             if isLatest {
               if isExpanded {
                 expandedCycleId = nil
@@ -188,8 +189,7 @@ struct SettlementCyclesSectionView: View {
                   shape: item.shape,
                   color: item.color,
                   name: item.name,
-                  size: 20,
-                  showInitial: false
+                  size: 20
                 )
                 Text(item.name)
                   .font(Typography.caption)

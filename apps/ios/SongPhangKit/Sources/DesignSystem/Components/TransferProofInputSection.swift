@@ -73,6 +73,7 @@ public struct TransferProofInputSection: View {
                     .overlay {
                       Image(systemName: "photo")
                         .foregroundStyle(Tokens.muted)
+                        .accessibilityHidden(true)
                     }
                 }
 
@@ -80,7 +81,7 @@ public struct TransferProofInputSection: View {
                   onRemoveAttachment(attachment.id)
                 } label: {
                   Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
+                    .spIconFont(size: 11, weight: .bold, relativeTo: .caption2)
                     .foregroundStyle(Tokens.onInk)
                     .frame(width: 24, height: 24)
                     .background(Tokens.ink, in: Circle())
@@ -107,7 +108,7 @@ public struct TransferProofInputSection: View {
           ) {
             HStack(spacing: 8) {
               Image(systemName: "photo.badge.plus")
-                .font(.system(size: 15, weight: .semibold))
+                .font(titleFont)
               Text(attachTitle)
                 .font(titleFont)
             }

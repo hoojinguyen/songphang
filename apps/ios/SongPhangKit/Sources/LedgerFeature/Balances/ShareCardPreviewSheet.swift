@@ -23,8 +23,8 @@ public struct ShareCardPreviewSheet: View {
   @State private var guestLink: GuestLink?
   @State private var exportedImage: UIImage?
   @State private var transferablePNG: ShareCardPNG?
-  @State private var copiedImage = false
   @State private var savedToPhotos = false
+  @State private var saveSuccessTick = 0
   @State private var saveErrorMessage: String?
 
   private var selectedTheme: ColorScheme {
@@ -55,8 +55,8 @@ public struct ShareCardPreviewSheet: View {
       .navigationTitle(L10n.tr("shareCard.openAction"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button(L10n.tr("split.done"), action: onDismiss)
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCloseButton(action: onDismiss)
         }
       }
       .task {
@@ -83,6 +83,7 @@ public struct ShareCardPreviewSheet: View {
       .onChange(of: caption) { _, _ in rerenderImage() }
       .onChange(of: guestLink) { _, _ in rerenderImage() }
     }
+    .spSheet(.form, embedsNavigationStack: true)
   }
 
   private var controlsSection: some View {
@@ -231,19 +232,11 @@ public struct ShareCardPreviewSheet: View {
           Task { await savePNGToPhotos() }
         }
 
-        SPButton(
-          copiedImage ? L10n.tr("shareCard.copiedImage") : L10n.tr("shareCard.copyImage"),
-          variant: .surface,
-          size: .md,
-          isFullWidth: true
-        ) {
-          if let image = exportedImage ?? renderImage() {
-            UIPasteboard.general.image = image
-            Haptics.light()
-            copiedImage = true
-          }
+        CopyButton(label: L10n.tr("shareCard.copyImage")) {
+          exportedImage ?? renderImage()
         }
       }
+      .spFeedback(.selection, trigger: saveSuccessTick)
     }
   }
 
@@ -456,7 +449,6 @@ public struct ShareCardPreviewSheet: View {
 
   @MainActor
   private func rerenderImage() {
-    copiedImage = false
     savedToPhotos = false
     saveErrorMessage = nil
     let image = renderImage()
@@ -493,8 +485,8 @@ public struct ShareCardPreviewSheet: View {
       try await PHPhotoLibrary.shared().performChanges {
         PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: tempURL)
       }
-      Haptics.light()
       savedToPhotos = true
+      saveSuccessTick &+= 1
     } catch {
       saveErrorMessage = L10n.tr("common.saveError")
     }

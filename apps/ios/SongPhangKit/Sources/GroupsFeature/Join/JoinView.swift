@@ -184,7 +184,8 @@ public struct JoinView: View {
           shape: member.shape,
           color: member.color,
           name: member.name,
-          size: 84
+          size: 84,
+          isClaimed: member.claimed
         )
         .opacity(member.claimed ? 0.55 : 1.0)
 

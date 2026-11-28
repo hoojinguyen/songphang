@@ -7,6 +7,7 @@ public import SwiftUI
 #endif
 
 public struct GroupFeedView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Bindable private var model: GroupFeedModel
   private let showHeader: Bool
   private let isEmailVerified: Bool
@@ -23,6 +24,7 @@ public struct GroupFeedView: View {
   private let onOpenNotifications: (() -> Void)?
   private let onRemovedFromGroup: () -> Void
   @State private var isFilterSheetOpen = false
+  @State private var rowActionFeedbackTick = 0
 
   public init(
     model: GroupFeedModel,
@@ -67,12 +69,21 @@ public struct GroupFeedView: View {
 
       switch model.state {
       case .loading:
-        VStack(spacing: 16) {
-          LoadingSkeleton(rowCount: 3, rowHeight: 110)
-          Spacer()
+        ScrollView {
+          VStack(spacing: 12) {
+            BalanceCardSkeleton()
+            LinkRowSkeleton()
+            SearchFieldSkeleton()
+            TransactionRowSkeleton()
+            TransactionRowSkeleton()
+            TransactionRowSkeleton()
+          }
+          .padding(.horizontal, 20)
+          .padding(.top, 8)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
+        .scrollDisabled(true)
+
+        composerBar(isPendingLoad: true, group: nil)
 
       case .failed(let error):
         if case .api(_, 404) = error {
@@ -100,44 +111,19 @@ public struct GroupFeedView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .task(id: model.lastDeletedTransactionId) {
-      guard model.lastDeletedTransactionId != nil else { return }
-      try? await Task.sleep(for: .seconds(6))
-      if !Task.isCancelled { model.lastDeletedTransactionId = nil }
-    }
-    .overlay(alignment: .bottom) {
-      if model.lastDeletedTransactionId != nil {
-        HStack(spacing: 12) {
-          Text(L10n.tr("expenseForm.deleted"))
-            .font(Typography.subheadlineBold)
-            .foregroundStyle(Tokens.surface)
-          Button(L10n.tr("expenseForm.undo")) {
-            Task {
-              await model.undoDelete(
-                restoredMessage: L10n.tr("expenseForm.restored"),
-                errorMessage: L10n.tr("common.saveError")
-              )
-            }
-          }
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.accent)
-          .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .background(Tokens.ink, in: Capsule())
-        .padding(.bottom, 84)
-      } else if let toast = model.toastMessage {
-        Text(toast)
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.surface)
-          .padding(.horizontal, 20)
-          .padding(.vertical, 14)
-          .background(Tokens.ink, in: Capsule())
-          .padding(.bottom, 84)
-      }
-    }
-    .navigationBarBackButtonHidden(true)
+    .spFeedback(.selection, trigger: rowActionFeedbackTick)
+    .confirmationToast(feedToastBinding, bottomPadding: 84)
+    .modifier(
+      ConditionalFeedNavBar(
+        isEnabled: showHeader,
+        title: model.state.value?.group.name ?? "",
+        members: model.state.value?.members ?? [],
+        groupId: model.groupId,
+        unreadNotificationCount: unreadNotificationCount,
+        onOpenNotifications: onOpenNotifications,
+        onOpenMembers: onOpenMembers
+      )
+    )
     .sheet(isPresented: $isFilterSheetOpen) {
       if let data = model.state.value {
         FilterSheetView(
@@ -156,6 +142,11 @@ public struct GroupFeedView: View {
     }
     .task {
       await model.load()
+      #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--open-filter-sheet") {
+          isFilterSheetOpen = true
+        }
+      #endif
     }
     .task {
       await model.listenForEvents(onRemoved: onRemovedFromGroup)
@@ -169,45 +160,6 @@ public struct GroupFeedView: View {
       ?? .zero
     let canEdit = data.group.role.canWrite && isEmailVerified
 
-    if showHeader {
-      SPScreenHeader(
-        title: data.group.name,
-        onBack: onBack
-      ) {
-        HStack(spacing: 8) {
-          if let onOpenNotifications {
-            NotificationBellButton(
-              unreadCount: unreadNotificationCount,
-              onOpen: onOpenNotifications
-            )
-          }
-          Button {
-            onOpenMembers(model.groupId)
-          } label: {
-            HStack(spacing: 2) {
-              ForEach(Array(data.members.prefix(4))) { member in
-                MemberShapeView(
-                  shape: member.shape,
-                  color: member.color,
-                  name: member.name,
-                  size: 24,
-                  showInitial: false
-                )
-              }
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 48)
-            .background(Tokens.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(L10n.tr("feed.membersLink"))
-        }
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 8)
-    }
-
     FeedBalanceBlockView(
       balance: myBalance,
       individualBalance: data.group.myIndividualBalance,
@@ -215,7 +167,6 @@ public struct GroupFeedView: View {
     ) {
       onOpenBalances(model.groupId)
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)
 
     if data.budget?.state == .near || data.budget?.state == .over {
@@ -330,8 +281,60 @@ public struct GroupFeedView: View {
       streamList(data: data, canEdit: canEdit)
     }
 
-    if isEmailVerified {
-      if data.group.isArchived {
+    composerBar(isPendingLoad: false, group: data.group)
+  }
+
+  private var feedToastBinding: Binding<ToastMessage?> {
+    Binding(
+      get: {
+        if let deletedId = model.lastDeletedTransactionId {
+          return ToastMessage(
+            id: model.undoToastPresentationId,
+            text: L10n.tr("expenseForm.deleted"),
+            actionLabel: L10n.tr("expenseForm.undo"),
+            action: {
+              Task {
+                await model.undoDelete(
+                  id: deletedId,
+                  restoredMessage: L10n.tr("expenseForm.restored"),
+                  errorMessage: L10n.tr("common.saveError")
+                )
+              }
+            },
+            autoDismissDelay: .seconds(6)
+          )
+        }
+        if let text = model.toastMessage {
+          return ToastMessage(id: model.toastPresentationId, text: text)
+        }
+        return nil
+      },
+      set: { next in
+        if next == nil {
+          model.lastDeletedTransactionId = nil
+          model.toastMessage = nil
+        }
+      }
+    )
+  }
+
+  @ViewBuilder
+  private func composerBar(isPendingLoad: Bool, group: ExpenseGroup?) -> some View {
+    if isPendingLoad {
+      FeedEntryBarView(
+        isOffline: false,
+        isReadOnly: false,
+        isPendingLoad: true,
+        onOpenReceiptCapture: onOpenReceiptCapture.map { handler in
+          { handler(model.groupId) }
+        },
+        onOpenManualForm: {},
+        onOpenQuickEntry: {}
+      )
+      .padding(.horizontal, 20)
+      .padding(.bottom, 12)
+    } else if isEmailVerified {
+      if group?.isArchived == true {
         Text(L10n.tr("groups.archivedBanner"))
           .font(Typography.captionBold)
           .foregroundStyle(Tokens.muted)
@@ -344,7 +347,7 @@ public struct GroupFeedView: View {
       } else {
         FeedEntryBarView(
           isOffline: model.isOffline,
-          isReadOnly: !data.group.role.canWrite,
+          isReadOnly: group?.role.canWrite != true,
           onOpenReceiptCapture: onOpenReceiptCapture.map { handler in
             { handler(model.groupId) }
           },
@@ -355,7 +358,6 @@ public struct GroupFeedView: View {
             onOpenQuickEntry(model.groupId, nil)
           }
         )
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .padding(.horizontal, 20)
         .padding(.bottom, 12)
       }
@@ -447,7 +449,7 @@ public struct GroupFeedView: View {
                 && tx.approval.status != .rejected
               {
                 Button {
-                  Haptics.medium()
+                  rowActionFeedbackTick &+= 1
                   onOpenEditTransaction(model.groupId, tx.id)
                 } label: {
                   Label(L10n.tr("transactionView.editLink"), systemImage: "pencil")
@@ -458,7 +460,7 @@ public struct GroupFeedView: View {
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
               if !data.group.isArchived && !model.isOffline && canEdit {
                 Button(role: .destructive) {
-                  Haptics.medium()
+                  rowActionFeedbackTick &+= 1
                   Task {
                     await model.deleteTransaction(
                       tx.id,
@@ -471,7 +473,7 @@ public struct GroupFeedView: View {
                 }
               }
               Button {
-                Haptics.light()
+                rowActionFeedbackTick &+= 1
                 if let onOpenTransactionDetail {
                   onOpenTransactionDetail(model.groupId, tx.id)
                 } else {
@@ -487,7 +489,7 @@ public struct GroupFeedView: View {
                 && tx.approval.status != .rejected
               {
                 Button {
-                  Haptics.medium()
+                  rowActionFeedbackTick &+= 1
                   onOpenEditTransaction(model.groupId, tx.id)
                 } label: {
                   Label(L10n.tr("transactionView.editLink"), systemImage: "pencil")
@@ -495,7 +497,7 @@ public struct GroupFeedView: View {
               }
               if !data.group.isArchived && !model.isOffline && canEdit {
                 Button(role: .destructive) {
-                  Haptics.medium()
+                  rowActionFeedbackTick &+= 1
                   Task {
                     await model.deleteTransaction(
                       tx.id,
@@ -508,7 +510,7 @@ public struct GroupFeedView: View {
                 }
               }
               Button {
-                Haptics.light()
+                rowActionFeedbackTick &+= 1
                 if let onOpenTransactionDetail {
                   onOpenTransactionDetail(model.groupId, tx.id)
                 } else {
@@ -555,14 +557,14 @@ public struct GroupFeedView: View {
               let list = Array(rows)
               var idx = 0
               while idx < list.count {
-                withAnimation(.linear(duration: 0.08)) {
+                Motion.withAnimation(Motion.quick, reduceMotion: reduceMotion) {
                   proxy.scrollTo(list[idx].id, anchor: .bottom)
                 }
                 try? await Task.sleep(for: .milliseconds(60))
                 idx += 25
               }
               if let last = list.last {
-                withAnimation(.linear(duration: 0.08)) {
+                Motion.withAnimation(Motion.quick, reduceMotion: reduceMotion) {
                   proxy.scrollTo(last.id, anchor: .bottom)
                 }
               }
@@ -574,7 +576,7 @@ public struct GroupFeedView: View {
           Button {
             model.hasNewItemsPill = false
             if let newest = chronological.last {
-              withAnimation {
+              Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
                 proxy.scrollTo(newest.id, anchor: .bottom)
               }
             }
@@ -591,6 +593,46 @@ public struct GroupFeedView: View {
           .padding(.bottom, 12)
         }
       }
+    }
+  }
+}
+
+private struct ConditionalFeedNavBar: ViewModifier {
+  let isEnabled: Bool
+  let title: String
+  let members: [Member]
+  let groupId: ExpenseGroup.ID
+  let unreadNotificationCount: Int
+  let onOpenNotifications: (() -> Void)?
+  let onOpenMembers: (ExpenseGroup.ID) -> Void
+
+  func body(content: Content) -> some View {
+    if isEnabled {
+      content
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItemGroup(placement: .topBarTrailing) {
+            if let onOpenNotifications {
+              NotificationBellButton(
+                unreadCount: unreadNotificationCount,
+                onOpen: onOpenNotifications
+              )
+            }
+            Button {
+              onOpenMembers(groupId)
+            } label: {
+              HStack(spacing: 2) {
+                ForEach(Array(members.prefix(4))) { member in
+                  MemberShapeView(member: member, size: 22)
+                }
+              }
+            }
+            .accessibilityLabel(L10n.tr("feed.membersLink"))
+          }
+        }
+    } else {
+      content
     }
   }
 }

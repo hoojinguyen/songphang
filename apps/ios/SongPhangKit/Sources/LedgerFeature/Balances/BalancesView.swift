@@ -26,6 +26,9 @@ public struct BalancesView: View {
 
   @State private var isCloseCycleSheetOpen = false
   @State private var selectedBreakdownMemberId: Member.ID?
+  @State private var subTabTapTick = 0
+  @State private var lastPlayedCelebrationTick = 0
+  @Namespace private var subTabNamespace
 
   public init(
     model: BalancesModel,
@@ -81,7 +84,14 @@ public struct BalancesView: View {
           } else {
             switch model.state {
             case .loading:
-              LoadingSkeleton(rowCount: 3, rowHeight: 110)
+              VStack(spacing: 16) {
+                BalanceCardSkeleton()
+                SkeletonBar(height: 44, cornerRadius: 22)
+                  .spSkeletonShimmer()
+                MemberRowSkeleton()
+                MemberRowSkeleton()
+                MemberRowSkeleton()
+              }
 
             case .failed:
               LoadError {
@@ -96,7 +106,12 @@ public struct BalancesView: View {
         .padding(20)
       }
       .background(Tokens.bg.ignoresSafeArea())
-      .navigationBarBackButtonHidden(true)
+      .modifier(
+        ConditionalBalancesNavBar(
+          isEnabled: showHeader,
+          title: model.state.value?.group.name ?? ""
+        )
+      )
       .task {
         if model.state.value == nil {
           await model.load()
@@ -113,6 +128,12 @@ public struct BalancesView: View {
               ?? model.state.value?.breakdowns?.breakdowns.first?.memberId
           {
             selectedBreakdownMemberId = firstDebtor
+          }
+          if args.contains("--open-close-cycle") {
+            isCloseCycleSheetOpen = true
+          }
+          if args.contains("--exercise-all-settled") {
+            model.triggerAllSettledCelebrationForExercise()
           }
         #endif
         if ProcessInfo.processInfo.arguments.contains("--scroll-bars") {
@@ -174,13 +195,6 @@ public struct BalancesView: View {
 
   @ViewBuilder
   private func loadedContent(data: BalancesViewData) -> some View {
-    if showHeader {
-      SPScreenHeader(
-        title: data.group.name,
-        onBack: onBack
-      )
-    }
-
     if let noticeText = model.reminderNotice ?? noticeMessage {
       SPCard(tone: .accent, padding: 14) {
         Text(noticeText)
@@ -291,31 +305,42 @@ public struct BalancesView: View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 8) {
         subTabPill(
+          tab: .toPay,
           title: L10n.tr("balances.subTabs.toPay"),
           badge: nil,
           isSelected: model.selectedSubTab == .toPay
         ) {
+          subTabTapTick &+= 1
           model.selectedSubTab = .toPay
         }
         subTabPill(
+          tab: .vault,
           title: L10n.tr("balances.subTabs.vault"),
           badge: pendingCount > 0 ? pendingCount : nil,
           isSelected: model.selectedSubTab == .vault
         ) {
+          subTabTapTick &+= 1
           model.selectedSubTab = .vault
         }
         subTabPill(
+          tab: .cycles,
           title: L10n.tr("balances.subTabs.cycles"),
           badge: cycleCount > 0 ? cycleCount : nil,
           isSelected: model.selectedSubTab == .cycles
         ) {
+          subTabTapTick &+= 1
           model.selectedSubTab = .cycles
         }
       }
+      .padding(4)
+      .background(Tokens.surface, in: Capsule())
+      .spAnimation(Motion.quick, value: model.selectedSubTab)
+      .spFeedback(.selection, trigger: subTabTapTick)
     }
   }
 
   private func subTabPill(
+    tab: BalancesSubTab,
     title: String,
     badge: Int?,
     isSelected: Bool,
@@ -337,7 +362,13 @@ public struct BalancesView: View {
       }
       .padding(.horizontal, 14)
       .frame(minHeight: 40)
-      .background(isSelected ? Tokens.ink : Tokens.surface, in: Capsule())
+      .background {
+        if isSelected {
+          Capsule()
+            .fill(Tokens.ink)
+            .matchedGeometryEffect(id: "balancesSubTabPill", in: subTabNamespace)
+        }
+      }
     }
     .buttonStyle(.plain)
   }
@@ -376,6 +407,11 @@ public struct BalancesView: View {
 
     quickActionBar(data: data, isOffline: isOffline)
 
+    #if DEBUG
+      let forceAllSettled = ProcessInfo.processInfo.arguments.contains("--exercise-all-settled")
+    #else
+      let forceAllSettled = false
+    #endif
     if !hasTransactions {
       VStack(alignment: .leading, spacing: 12) {
         Text(L10n.tr("balances.emptyTitle"))
@@ -386,11 +422,13 @@ public struct BalancesView: View {
           .foregroundStyle(Tokens.muted)
       }
       .padding(.vertical, 48)
-    } else if sortedTransfers.isEmpty {
+    } else if sortedTransfers.isEmpty || forceAllSettled {
       AllSettledSection(
         recorded: data.transactions.filter { $0.type == .transfer },
         members: data.members,
         myMemberId: myMemberId,
+        celebrationTick: model.allSettledCelebrationTick,
+        lastPlayedCelebrationTick: $lastPlayedCelebrationTick,
         onBackToGroup: onBack
       )
     } else {
@@ -590,7 +628,12 @@ public struct BalancesView: View {
     let tint =
       balance.isPositive ? Tokens.credit : (balance.isNegative ? Tokens.debt : Tokens.ink)
     return SPCard(padding: 16) {
-      HStack(spacing: 12) {
+      AdaptiveStack(
+        horizontalAlignment: .center,
+        verticalAlignment: .leading,
+        horizontalSpacing: 12,
+        verticalSpacing: 12
+      ) {
         VStack(alignment: .leading, spacing: 3) {
           if let householdName {
             Text(householdName)
@@ -602,7 +645,7 @@ public struct BalancesView: View {
             .foregroundStyle(Tokens.muted)
           MoneyText(
             balance.magnitude,
-            style: .full,
+            role: .hero,
             font: Typography.sectionTitle,
             color: tint
           )
@@ -622,7 +665,8 @@ public struct BalancesView: View {
               .foregroundStyle(Tokens.muted)
           }
         }
-        Spacer(minLength: 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
         if canViewBreakdown {
           Button(L10n.tr("breakdown.viewAction"), action: onViewBreakdown)
             .font(Typography.captionBold)
@@ -901,12 +945,7 @@ private struct OwnSettlementCardView: View {
       let toMember = members.first(where: { $0.id == transfer.toMemberId })
     {
       VStack(spacing: 12) {
-        MemberShapeView(
-          shape: toMember.shape,
-          color: toMember.color,
-          name: toMember.name,
-          size: 84
-        )
+        MemberShapeView(member: toMember, size: 84)
         Text(
           transferRowCaption(
             transfer: transfer,
@@ -1009,12 +1048,7 @@ private struct SettlementCardView: View {
 
       VStack(alignment: .leading, spacing: 16) {
         rowLayout {
-          MemberShapeView(
-            shape: other.shape,
-            color: other.color,
-            name: other.name,
-            size: 76
-          )
+          MemberShapeView(member: other, size: 76)
           VStack(alignment: .leading, spacing: 4) {
             Text(caption)
               .font(Typography.captionBold)
@@ -1054,7 +1088,7 @@ private struct SettlementCardView: View {
             verified: isEmailVerified
           )
           if showRemind {
-            HStack(spacing: 8) {
+            AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 8) {
               if canOpenAction {
                 SPButton(
                   transferActionLabel(
@@ -1073,7 +1107,7 @@ private struct SettlementCardView: View {
                 L10n.tr("reminders.remind"),
                 variant: .surface,
                 size: .lg,
-                isFullWidth: !canOpenAction,
+                isFullWidth: true,
                 isDisabled: isOffline || !hasCurrentPaymentDetails,
                 isPending: isSendingReminder,
                 action: { onRemind(fromMember, toMember) }
@@ -1138,74 +1172,77 @@ private struct OtherSettlementsSection: View {
           let toMember = members.first(where: { $0.id == transfer.toMemberId })
         {
           VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-              MemberShapeView(
-                shape: fromMember.shape,
-                color: fromMember.color,
-                name: fromMember.name,
-                size: 28,
-                showInitial: false
-              )
-              Text(
-                transferRowCaption(
+            AdaptiveStack(
+              horizontalAlignment: .center,
+              verticalAlignment: .leading,
+              horizontalSpacing: 8,
+              verticalSpacing: 8
+            ) {
+              HStack(spacing: 8) {
+                MemberShapeView(member: fromMember, size: 28)
+                Text(
+                  transferRowCaption(
+                    transfer: transfer,
+                    from: fromMember,
+                    to: toMember,
+                    amount: transfer.amount,
+                    myMemberId: group.myMemberId
+                  )
+                )
+                .font(Typography.caption)
+                .foregroundStyle(Tokens.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+              }
+
+              HStack(spacing: 8) {
+                MoneyText(
+                  transfer.amount,
+                  role: .primary,
+                  font: Typography.subheadlineBold,
+                  color: Tokens.ink
+                )
+
+                let showRemind = canRemindTransfer(
                   transfer: transfer,
                   from: fromMember,
                   to: toMember,
-                  amount: transfer.amount,
-                  myMemberId: group.myMemberId
+                  myMemberId: group.myMemberId,
+                  role: group.role,
+                  verified: isEmailVerified
                 )
-              )
-              .font(Typography.caption)
-              .foregroundStyle(Tokens.ink)
-              .frame(maxWidth: .infinity, alignment: .leading)
 
-              MoneyText(
-                transfer.amount,
-                style: .full,
-                font: Typography.subheadlineBold,
-                color: Tokens.ink
-              )
-
-              let showRemind = canRemindTransfer(
-                transfer: transfer,
-                from: fromMember,
-                to: toMember,
-                myMemberId: group.myMemberId,
-                role: group.role,
-                verified: isEmailVerified
-              )
-
-              if transfer.pendingSettlement == nil {
-                if canOpenAction {
-                  Button(
-                    transferActionLabel(
-                      transfer: transfer,
-                      myMemberId: group.myMemberId,
-                      role: group.role,
-                      opensPay: opensPay
-                    )
-                  ) {
-                    onSettle(transfer)
+                if transfer.pendingSettlement == nil {
+                  if canOpenAction {
+                    Button(
+                      transferActionLabel(
+                        transfer: transfer,
+                        myMemberId: group.myMemberId,
+                        role: group.role,
+                        opensPay: opensPay
+                      )
+                    ) {
+                      onSettle(transfer)
+                    }
+                    .font(Typography.captionBold)
+                    .foregroundStyle(Tokens.ink)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 44)
+                    .background(Tokens.sunken, in: Capsule())
+                    .buttonStyle(.plain)
                   }
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                  .padding(.horizontal, 12)
-                  .frame(minHeight: 44)
-                  .background(Tokens.sunken, in: Capsule())
-                  .buttonStyle(.plain)
-                }
 
-                if showRemind {
-                  Button(L10n.tr("reminders.remind")) {
-                    onRemind(fromMember, toMember)
+                  if showRemind {
+                    Button(L10n.tr("reminders.remind")) {
+                      onRemind(fromMember, toMember)
+                    }
+                    .font(Typography.captionBold)
+                    .foregroundStyle(Tokens.ink)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 44)
+                    .background(Tokens.sunken, in: Capsule())
+                    .buttonStyle(.plain)
+                    .disabled(isOffline || !hasCurrentPaymentDetails || isSendingReminder)
                   }
-                  .font(Typography.captionBold)
-                  .foregroundStyle(Tokens.ink)
-                  .padding(.horizontal, 12)
-                  .frame(minHeight: 44)
-                  .background(Tokens.sunken, in: Capsule())
-                  .buttonStyle(.plain)
-                  .disabled(isOffline || !hasCurrentPaymentDetails || isSendingReminder)
                 }
               }
             }
@@ -1250,21 +1287,48 @@ private struct AllSettledSection: View {
   let recorded: [LedgerTransaction]
   let members: [Member]
   let myMemberId: Member.ID?
+  let celebrationTick: Int
+  @Binding var lastPlayedCelebrationTick: Int
   let onBackToGroup: () -> Void
+
+  @State private var hapticBeatTick = 0
+  @State private var activeBurstTick = 0
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      VStack(alignment: .leading, spacing: 12) {
-        Text(L10n.tr("balances.allSettledTitle"))
-          .font(Typography.heroNumber)
-          .foregroundStyle(Tokens.onAccent)
-        Text(L10n.tr("balances.allSettledHint"))
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.onAccent)
+      ZStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 12) {
+          Text(L10n.tr("balances.allSettledTitle"))
+            .font(Typography.heroNumber)
+            .foregroundStyle(Tokens.onAccent)
+          Text(L10n.tr("balances.allSettledHint"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.onAccent)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 40, style: .continuous))
+
+        if activeBurstTick > 0 {
+          ShapeBurst(members: members, trigger: activeBurstTick)
+            .allowsHitTesting(false)
+            .padding(.top, -16)
+        }
       }
-      .padding(24)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 40, style: .continuous))
+      .spFeedback(.success, trigger: hapticBeatTick)
+      .task(id: celebrationTick) {
+        guard celebrationTick > lastPlayedCelebrationTick else { return }
+        lastPlayedCelebrationTick = celebrationTick
+        activeBurstTick = celebrationTick
+        SoundPlayer.shared.play(.chord)
+        hapticBeatTick &+= 1
+        try? await Task.sleep(for: .milliseconds(120))
+        guard !Task.isCancelled else { return }
+        hapticBeatTick &+= 1
+        try? await Task.sleep(for: .milliseconds(120))
+        guard !Task.isCancelled else { return }
+        hapticBeatTick &+= 1
+      }
 
       LazyVGrid(
         columns: [GridItem(.flexible()), GridItem(.flexible())],
@@ -1272,18 +1336,13 @@ private struct AllSettledSection: View {
       ) {
         ForEach(members) { member in
           VStack(spacing: 8) {
-            MemberShapeView(
-              shape: member.shape,
-              color: member.color,
-              name: member.name,
-              size: 72
-            )
-            Text(member.id == myMemberId ? L10n.tr("common.you") : member.name)
+            MemberShapeView(member: member, size: 72)
+            Text(PersonName.display(member: member, currentMemberId: myMemberId))
               .font(Typography.bodyBold)
               .foregroundStyle(Tokens.ink)
             MoneyText(
               .zero,
-              style: .full,
+              role: .primary,
               font: Typography.body,
               color: Tokens.ink
             )
@@ -1321,21 +1380,17 @@ private struct AllSettledSection: View {
                 }
               }()
 
-              HStack(spacing: 8) {
-                MemberShapeView(
-                  shape: fromMember.shape,
-                  color: fromMember.color,
-                  name: fromMember.name,
-                  size: 28,
-                  showInitial: false
-                )
-                Text(text)
-                  .font(Typography.caption)
-                  .foregroundStyle(Tokens.ink)
-                  .frame(maxWidth: .infinity, alignment: .leading)
+              AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 4) {
+                HStack(spacing: 8) {
+                  MemberShapeView(member: fromMember, size: 28)
+                  Text(text)
+                    .font(Typography.caption)
+                    .foregroundStyle(Tokens.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 MoneyText(
                   transaction.amount,
-                  style: .full,
+                  role: .primary,
                   font: Typography.captionBold,
                   color: Tokens.ink
                 )
@@ -1390,7 +1445,7 @@ private struct HouseholdBarsSection: View {
     let negativeMagnitude = hh.netBalance.isNegative ? Double(hh.netBalance.magnitude.amount) : 0
     let positiveMagnitude = !hh.netBalance.isNegative ? Double(hh.netBalance.magnitude.amount) : 0
     let row = VStack(alignment: .leading, spacing: 6) {
-      HStack {
+      AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 4) {
         VStack(alignment: .leading, spacing: 2) {
           Text(hh.name)
             .font(Typography.captionBold)
@@ -1401,7 +1456,7 @@ private struct HouseholdBarsSection: View {
               .foregroundStyle(Tokens.muted)
           }
         }
-        Spacer()
+        .frame(maxWidth: .infinity, alignment: .leading)
         MoneyText(
           hh.netBalance,
           style: .signed,
@@ -1475,7 +1530,7 @@ private struct BalanceBarsSection: View {
           member.active || !item.balance.isZero
         {
           let row = VStack(alignment: .leading, spacing: 4) {
-            HStack {
+            AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 2) {
               HStack(spacing: 4) {
                 Text(member.name)
                   .font(Typography.captionBold)
@@ -1486,7 +1541,7 @@ private struct BalanceBarsSection: View {
                     .foregroundStyle(Tokens.muted)
                 }
               }
-              Spacer()
+              .frame(maxWidth: .infinity, alignment: .leading)
               MoneyText(
                 item.balance,
                 style: .signed,
@@ -1543,6 +1598,21 @@ private struct HalfBalanceBarStyle: ProgressViewStyle {
       .fill(color)
       .scaleEffect(x: fraction, y: 1, anchor: anchor)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+}
+
+private struct ConditionalBalancesNavBar: ViewModifier {
+  let isEnabled: Bool
+  let title: String
+
+  func body(content: Content) -> some View {
+    if isEnabled {
+      content
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    } else {
+      content
+    }
   }
 }
 

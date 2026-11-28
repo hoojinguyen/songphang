@@ -29,7 +29,7 @@ struct UnparsedBannerView: View {
           Spacer()
           Button(action: onDismiss) {
             Image(systemName: "xmark")
-              .font(.system(size: 16, weight: .bold))
+              .spIconFont(size: 16, weight: .bold, relativeTo: .callout)
               .foregroundStyle(Tokens.ink)
               .frame(width: 44, height: 44)
           }
@@ -134,6 +134,7 @@ struct ConflictNoticeView: View {
 struct TypeSwitchView: View {
   let value: TransactionType
   let onChange: (TransactionType) -> Void
+  @Namespace private var namespace
 
   private let options: [(TransactionType, String)] = [
     (.expense, "expenseForm.typeExpense"),
@@ -142,31 +143,36 @@ struct TypeSwitchView: View {
   ]
 
   var body: some View {
-    HStack(spacing: 4) {
-      ForEach(Array(options.enumerated()), id: \.offset) { _, pair in
-        let isSelected = (value == pair.0)
-        Button {
-          onChange(pair.0)
-        } label: {
-          Text(L10n.tr(pair.1))
-            .font(Typography.captionBold)
-            .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 10)
-            .frame(minWidth: 44, minHeight: 44)
-            .background(
-              isSelected ? Tokens.ink : Color.clear,
-              in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-            )
+    ScrollView(.horizontal, showsIndicators: false) {
+      HStack(spacing: 4) {
+        ForEach(Array(options.enumerated()), id: \.offset) { _, pair in
+          let isSelected = (value == pair.0)
+          Button {
+            onChange(pair.0)
+          } label: {
+            Text(L10n.tr(pair.1))
+              .font(Typography.captionBold)
+              .foregroundStyle(isSelected ? Tokens.surface : Tokens.ink)
+              .lineLimit(1)
+              .fixedSize(horizontal: true, vertical: false)
+              .padding(.horizontal, 10)
+              .frame(minWidth: 44, minHeight: 44)
+          }
+          .buttonStyle(.plain)
+          .matchedGeometryEffect(id: pair.0, in: namespace)
         }
-        .buttonStyle(.plain)
       }
+      .background {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+          .fill(Tokens.ink)
+          .matchedGeometryEffect(id: value, in: namespace, properties: .frame, isSource: false)
+      }
+      .spAnimation(Motion.quick, value: value)
+      .spFeedback(.selection, trigger: value)
+      .padding(4)
+      .fixedSize(horizontal: true, vertical: false)
+      .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
-    .padding(4)
-    .fixedSize(horizontal: true, vertical: false)
-    .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .accessibilityLabel(L10n.tr("expenseForm.typeLabel"))
   }
 }
@@ -178,27 +184,29 @@ struct AmountFieldView: View {
   @FocusState private var isFocused: Bool
 
   var body: some View {
-    HStack(spacing: 8) {
-      TextField(
-        "0",
-        text: Binding(
-          get: { value },
-          set: { onChange($0) }
+    AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 10) {
+      HStack(spacing: 8) {
+        TextField(
+          "0",
+          text: Binding(
+            get: { value },
+            set: { onChange($0) }
+          )
         )
-      )
-      .keyboardType(.numberPad)
-      .focused($isFocused)
-      .multilineTextAlignment(.center)
-      .minimumScaleFactor(0.5)
-      .font(.system(size: 46, weight: .black))
-      .monospacedDigit()
-      .lineLimit(1)
-      .foregroundStyle(Tokens.ink)
-      .accessibilityLabel(L10n.tr("expenseForm.amountLabel"))
+        .keyboardType(.numberPad)
+        .focused($isFocused)
+        .multilineTextAlignment(.center)
+        .minimumScaleFactor(0.5)
+        .font(Typography.displayNumber)
+        .monospacedDigit()
+        .lineLimit(1)
+        .foregroundStyle(Tokens.ink)
+        .accessibilityLabel(L10n.tr("expenseForm.amountLabel"))
 
-      Text(L10n.tr("common.currency"))
-        .font(Typography.sectionTitle)
-        .foregroundStyle(Tokens.muted)
+        Text(L10n.tr("common.currency"))
+          .font(Typography.sectionTitle)
+          .foregroundStyle(Tokens.muted)
+      }
 
       Button(action: onAddThousands) {
         Text(L10n.tr("expenseForm.addThousands"))
@@ -220,7 +228,6 @@ struct AmountFieldView: View {
             .strokeBorder(Tokens.ink, lineWidth: 3)
         )
     )
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .contentShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
     .onTapGesture { isFocused = true }
   }
@@ -299,61 +306,6 @@ struct CategoryPickerView: View {
   }
 }
 
-struct MemberToggleGridView: View {
-  let members: [Member]
-  let selectedIds: [Member.ID]
-  let disabledIds: [Member.ID]
-  let isCaptionDimmed: Bool
-  let captionFor: (Member) -> String
-  let onToggle: (Member.ID) -> Void
-
-  var body: some View {
-    LazyVGrid(
-      columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4),
-      spacing: 6
-    ) {
-      ForEach(members) { member in
-        let isSelected = selectedIds.contains(member.id)
-        let isDisabled = disabledIds.contains(member.id)
-        Button {
-          onToggle(member.id)
-        } label: {
-          VStack(spacing: 4) {
-            MemberShapeView(
-              shape: member.shape,
-              color: member.color,
-              name: member.name,
-              size: 44
-            )
-            Text(captionFor(member))
-              .font(Typography.captionBold)
-              .foregroundStyle(isSelected ? Tokens.ink : Tokens.muted)
-              .lineLimit(1)
-              .opacity(isSelected && isCaptionDimmed ? 0.45 : 1.0)
-          }
-          .padding(.horizontal, 4)
-          .padding(.vertical, 8)
-          .frame(maxWidth: .infinity, minHeight: 76)
-          .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-              .fill(isSelected ? Tokens.surface : Tokens.bg)
-              .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                  .strokeBorder(
-                    isSelected ? Tokens.ink : Color.clear,
-                    lineWidth: 3
-                  )
-              )
-          )
-          .opacity(isDisabled ? 0.5 : 1.0)
-        }
-        .buttonStyle(.plain)
-        .disabled(isDisabled)
-      }
-    }
-  }
-}
-
 struct PayerAmountsView: View {
   let members: [Member]
   let values: [Member.ID: String]
@@ -368,18 +320,14 @@ struct PayerAmountsView: View {
 
     VStack(alignment: .leading, spacing: 8) {
       ForEach(members) { member in
-        HStack(spacing: 8) {
-          MemberShapeView(
-            shape: member.shape,
-            color: member.color,
-            name: member.name,
-            size: 32,
-            showInitial: false
-          )
-          Text(member.name)
-            .font(Typography.bodyBold)
-            .foregroundStyle(Tokens.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        AdaptiveStack(horizontalSpacing: 8, verticalSpacing: 8) {
+          HStack(spacing: 8) {
+            MemberShapeView(member: member, size: 32)
+            Text(member.name)
+              .font(Typography.bodyBold)
+              .foregroundStyle(Tokens.ink)
+              .frame(maxWidth: .infinity, alignment: .leading)
+          }
 
           TextField(
             "0",
@@ -393,7 +341,7 @@ struct PayerAmountsView: View {
           .font(Typography.sectionTitle)
           .foregroundStyle(Tokens.ink)
           .padding(.horizontal, 12)
-          .frame(width: 120, height: 48)
+          .frame(minWidth: 120, minHeight: 48)
           .background(Tokens.bg, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
           .accessibilityLabel(L10n.t("expenseForm.payerAmountLabel", ["name": member.name]))
         }
@@ -436,35 +384,25 @@ struct TransferFieldsView: View {
 
   var body: some View {
     VStack(spacing: 12) {
-      VStack(alignment: .leading, spacing: 8) {
-        Text(L10n.tr("expenseForm.transferFrom"))
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
-        MemberToggleGridView(
-          members: members,
-          selectedIds: fromId.map { [$0] } ?? [],
-          disabledIds: [],
-          isCaptionDimmed: false,
-          captionFor: \.name,
-          onToggle: onFrom
+      MemberPicker(
+        title: L10n.tr("expenseForm.transferFrom"),
+        members: members,
+        selectedId: Binding(
+          get: { fromId },
+          set: { if let id = $0 { onFrom(id) } }
         )
-      }
+      )
       .padding(12)
       .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
 
-      VStack(alignment: .leading, spacing: 8) {
-        Text(L10n.tr("expenseForm.transferTo"))
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
-        MemberToggleGridView(
-          members: members,
-          selectedIds: toId.map { [$0] } ?? [],
-          disabledIds: fromId.map { [$0] } ?? [],
-          isCaptionDimmed: false,
-          captionFor: \.name,
-          onToggle: onTo
+      MemberPicker(
+        title: L10n.tr("expenseForm.transferTo"),
+        members: members.filter { $0.id != fromId },
+        selectedId: Binding(
+          get: { toId },
+          set: { if let id = $0 { onTo(id) } }
         )
-      }
+      )
       .padding(12)
       .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
     }

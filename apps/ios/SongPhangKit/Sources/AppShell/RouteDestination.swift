@@ -19,11 +19,15 @@ public struct RouteDestination: View {
   private let dependencies: AppDependencies
   private let sessionModel: SessionModel
   private let currentUser: User?
+  private let groupSummaryLookup: (ExpenseGroup.ID) -> GroupHeaderHint?
   private let onNavigate: (Route) -> Void
   private let onReplaceTop: (Route) -> Void
+  private let onReplaceGroup: (ExpenseGroup.ID, Route) -> Void
   private let onPop: () -> Void
   private let onPopToRoot: (String?) -> Void
+  private let onBackToGroups: () -> Void
   private let onExpenseSaved: () -> Void
+  private let onTransactionChanged: () -> Void
   private let recurringRefreshTick: Int
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
@@ -64,11 +68,15 @@ public struct RouteDestination: View {
     dependencies: AppDependencies,
     sessionModel: SessionModel,
     currentUser: User?,
+    groupSummaryLookup: @escaping (ExpenseGroup.ID) -> GroupHeaderHint? = { _ in nil },
     onNavigate: @escaping (Route) -> Void,
     onReplaceTop: @escaping (Route) -> Void,
+    onReplaceGroup: @escaping (ExpenseGroup.ID, Route) -> Void = { _, _ in },
     onPop: @escaping () -> Void,
     onPopToRoot: @escaping (String?) -> Void,
+    onBackToGroups: (() -> Void)? = nil,
     onExpenseSaved: @escaping () -> Void = {},
+    onTransactionChanged: (() -> Void)? = nil,
     recurringRefreshTick: Int = 0,
     deletedTransactionId: Binding<LedgerTransaction.ID?>
   ) {
@@ -78,11 +86,16 @@ public struct RouteDestination: View {
     self.dependencies = dependencies
     self.sessionModel = sessionModel
     self.currentUser = currentUser
+    self.groupSummaryLookup = groupSummaryLookup
     self.onNavigate = onNavigate
     self.onReplaceTop = onReplaceTop
+    self.onReplaceGroup = onReplaceGroup
     self.onPop = onPop
     self.onPopToRoot = onPopToRoot
+    self.onBackToGroups = onBackToGroups ?? { onPopToRoot(nil) }
     self.onExpenseSaved = onExpenseSaved
+    let resolvedTransactionChanged = onTransactionChanged ?? onExpenseSaved
+    self.onTransactionChanged = resolvedTransactionChanged
 
     let args = ProcessInfo.processInfo.arguments
     switch route {
@@ -164,7 +177,7 @@ public struct RouteDestination: View {
           }
         )
       )
-    case .groupSettings(let groupId):
+    case .groupSettings(let groupId, _):
       self._settingsModel = State(
         initialValue: GroupSettingsModel(
           groupId: groupId,
@@ -177,7 +190,7 @@ public struct RouteDestination: View {
           telegramFeatureEnabled: sessionModel.latestFeatures?.telegram == true
         )
       )
-    case .groupFeed(let groupId, let initialFilter):
+    case .groupFeed(let groupId, let initialFilter, _):
       #if DEBUG
         let deletedId =
           args.contains("--delete-t4") ? TripScenario.t4Transaction.id : nil
@@ -320,7 +333,10 @@ public struct RouteDestination: View {
           transactionsRepository: dependencies.transactions,
           categoriesRepository: dependencies.categories,
           attachmentsRepository: dependencies.attachments,
-          onSaved: onPop,
+          onSaved: {
+            onPop()
+            resolvedTransactionChanged()
+          },
           onDeleted: { id in
             deletedTransactionId.wrappedValue = id
             onPop()
@@ -385,7 +401,10 @@ public struct RouteDestination: View {
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           attachmentsRepository: dependencies.attachments,
-          onSaved: onPop
+          onSaved: {
+            onPop()
+            resolvedTransactionChanged()
+          }
         )
       )
     case .notifications:
@@ -414,12 +433,27 @@ public struct RouteDestination: View {
 
   public var body: some View {
     content
-      .toolbar(.hidden, for: .tabBar)
+      .toolbar(hidesTabBar ? .hidden : .visible, for: .tabBar)
       .onChange(of: deletedTransactionId) { _, id in
         guard let id, let feedModel else { return }
         feedModel.markDeleted(id)
         deletedTransactionId = nil
       }
+  }
+
+  private var hidesTabBar: Bool {
+    switch route {
+    case .quickEntry, .newTransactionForm, .editTransaction, .settle, .receiptReview:
+      return true
+    case .register, .forgotPassword, .account, .createGroup, .joinGroup, .guestShare,
+      .groupFeed, .groupBalances, .groupStats, .groupActivity, .groupMembers, .groupFund,
+      .groupSettings, .transactionDetail, .notifications, .personalLedger:
+      return false
+    #if DEBUG
+      case .debugGallery:
+        return false
+    #endif
+    }
   }
 
   @ViewBuilder
@@ -450,7 +484,7 @@ public struct RouteDestination: View {
         JoinView(
           model: joinModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
-          onBackToGroups: { onPopToRoot(nil) }
+          onBackToGroups: onBackToGroups
         )
       }
     case .guestShare(let token):
@@ -534,6 +568,7 @@ public struct RouteDestination: View {
         initialSegment: .fundAndStats,
         initialFilter: nil,
         initialFundSubTab: .fund,
+        initialGroupHint: groupSummaryLookup(groupId),
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
@@ -542,24 +577,39 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved,
+        onBackToGroups: onBackToGroups,
+        onTransactionChanged: onTransactionChanged,
         recurringRefreshTick: recurringRefreshTick
       )
-    case .groupSettings:
+    case .groupSettings(let groupId, let initialSection):
       if let settingsModel {
+        let mappedSection: GroupSettingsView.SectionAnchor? =
+          initialSection == .categories ? .categories : nil
         GroupSettingsView(
           model: settingsModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
+          initialSection: mappedSection,
           onBack: onPop,
-          onBackToGroups: { onPopToRoot(nil) },
-          onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) }
+          onBackToGroups: onBackToGroups,
+          onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) },
+          onClonedGroup: { newGroup in
+            onReplaceGroup(
+              groupId,
+              .groupFeed(
+                groupId: newGroup.id,
+                initialToast: L10n.t("ios.groups.createdToast", ["name": newGroup.name])
+              )
+            )
+          }
         )
       }
-    case .groupFeed(let groupId, let initialFilter):
+    case .groupFeed(let groupId, let initialFilter, let initialToast):
       GroupContainerView(
         groupId: groupId,
         initialSegment: .expenses,
         initialFilter: initialFilter,
+        initialToast: initialToast,
+        initialGroupHint: groupSummaryLookup(groupId),
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
@@ -568,7 +618,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved,
+        onBackToGroups: onBackToGroups,
+        onTransactionChanged: onTransactionChanged,
         recurringRefreshTick: recurringRefreshTick
       )
     case .groupStats(let groupId):
@@ -576,6 +627,7 @@ public struct RouteDestination: View {
         groupId: groupId,
         initialSegment: .fundAndStats,
         initialFilter: nil,
+        initialGroupHint: groupSummaryLookup(groupId),
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
@@ -584,7 +636,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved,
+        onBackToGroups: onBackToGroups,
+        onTransactionChanged: onTransactionChanged,
         recurringRefreshTick: recurringRefreshTick
       )
     case .groupBalances(let groupId, let initialTransferProofAttachmentId):
@@ -593,6 +646,7 @@ public struct RouteDestination: View {
         initialSegment: .payments,
         initialFilter: nil,
         initialTransferProofAttachmentId: initialTransferProofAttachmentId,
+        initialGroupHint: groupSummaryLookup(groupId),
         dependencies: dependencies,
         sessionModel: sessionModel,
         currentUser: currentUser,
@@ -601,7 +655,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved,
+        onBackToGroups: onBackToGroups,
+        onTransactionChanged: onTransactionChanged,
         recurringRefreshTick: recurringRefreshTick
       )
     case .groupActivity:
@@ -657,7 +712,7 @@ public struct RouteDestination: View {
           model: settleModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
           onCancel: onPop,
-          onBackToGroups: { onPopToRoot(nil) }
+          onBackToGroups: onBackToGroups
         )
       }
     case .notifications:
@@ -668,12 +723,13 @@ public struct RouteDestination: View {
             Task {
               await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
             }
-            onPop()
           },
-          onSelectTarget: { target in
+          onUnreadSynced: {
             Task {
               await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
             }
+          },
+          onSelectTarget: { target in
             onNavigate(Self.notificationDestination(for: target))
           }
         )

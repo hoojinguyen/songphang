@@ -169,7 +169,7 @@ public struct HouseholdsSectionView: View {
               ungroupTarget = household
             } label: {
               Image(systemName: "trash")
-                .font(.system(size: 13, weight: .semibold))
+                .spIconFont(size: 13, weight: .semibold, relativeTo: .footnote)
                 .foregroundStyle(Tokens.muted)
                 .frame(width: 32, height: 32)
             }
@@ -182,13 +182,7 @@ public struct HouseholdsSectionView: View {
           HStack(spacing: 8) {
             ForEach(householdMembers) { member in
               HStack(spacing: 6) {
-                MemberShapeView(
-                  shape: member.shape,
-                  color: member.color,
-                  name: member.name,
-                  size: 20,
-                  showInitial: false
-                )
+                MemberShapeView(member: member, size: 20)
                 Text(member.name)
                   .font(Typography.captionBold)
                   .foregroundStyle(Tokens.ink)

@@ -165,7 +165,7 @@ public struct ReceiptItemsAssignmentView: View {
             onChange()
           } label: {
             Image(systemName: "trash")
-              .font(.system(size: 16, weight: .semibold))
+              .spIconFont(size: 16, weight: .semibold, relativeTo: .callout)
               .foregroundStyle(Tokens.muted)
               .frame(width: 44, height: 44)
           }
@@ -181,13 +181,7 @@ public struct ReceiptItemsAssignmentView: View {
             .foregroundStyle(Tokens.muted)
         } else {
           ForEach(assigned) { member in
-            MemberShapeView(
-              shape: member.shape,
-              color: member.color,
-              name: member.name,
-              size: 24,
-              showInitial: false
-            )
+            MemberShapeView(member: member, size: 24)
           }
         }
       }
@@ -297,7 +291,7 @@ public struct ReceiptItemsAssignmentView: View {
             onChange()
           } label: {
             Image(systemName: "trash")
-              .font(.system(size: 16, weight: .semibold))
+              .spIconFont(size: 16, weight: .semibold, relativeTo: .callout)
               .foregroundStyle(Tokens.muted)
               .frame(width: 44, height: 44)
           }
@@ -344,53 +338,44 @@ public struct ReceiptItemsAssignmentView: View {
     hasInvalidTotal: Bool
   ) -> some View {
     VStack(alignment: .leading, spacing: 10) {
-      LazyVGrid(
-        columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4),
-        spacing: 8
-      ) {
-        ForEach(activePeople) { member in
-          let assigned = selectedItem?.memberIds.contains(member.id) == true
-          let share =
-            isPreviewCurrent
-            ? preview?.shares.first(where: { $0.memberId == member.id })?.amount
-            : nil
-          Button {
-            draft.toggleMemberOnSelected(member.id)
-            onChange()
-          } label: {
-            VStack(spacing: 4) {
-              MemberShapeView(
-                shape: member.shape,
-                color: member.color,
-                name: member.name,
-                size: 32
-              )
-              Text(member.name)
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.ink)
-                .lineLimit(1)
-              Text(
-                share.map { MoneyFormat.amount($0) } ?? L10n.tr("common.pendingValue")
-              )
-              .font(Typography.captionBold)
-              .foregroundStyle(Tokens.muted)
+      let assignmentTitle: String = {
+        let name = selectedItem?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? L10n.tr("receipts.itemNameLabel") : name
+      }()
+      let shareByMemberId = Dictionary(
+        uniqueKeysWithValues: (preview?.shares ?? []).map { ($0.memberId, $0.amount) }
+      )
+      MemberPicker(
+        title: assignmentTitle,
+        members: activePeople,
+        selection: Binding(
+          get: { Set(selectedItem?.memberIds ?? []) },
+          set: { next in
+            let current = Set(selectedItem?.memberIds ?? [])
+            let added = next.subtracting(current)
+            let removed = current.subtracting(next)
+            for id in removed {
+              draft.toggleMemberOnSelected(id)
             }
-            .padding(6)
-            .frame(maxWidth: .infinity, minHeight: 76)
-            .background(
-              RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(assigned ? Tokens.sunken : Tokens.bg)
-            )
-            .overlay(
-              RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(assigned ? Tokens.ink : Color.clear, lineWidth: 2)
-            )
-            .opacity(assigned ? 1.0 : ((!assigned && itemMembersFull) ? 0.4 : 0.7))
+            for id in activePeople.map(\.id) where added.contains(id) {
+              if !itemMembersFull {
+                draft.toggleMemberOnSelected(id)
+              }
+            }
+            onChange()
           }
-          .buttonStyle(.plain)
-          .disabled(!assigned && itemMembersFull)
-        }
-      }
+        ),
+        mode: .multiple,
+        allowsEmptySelection: true,
+        isDisabled: groupExceedsCap,
+        captionForMember: { member in
+          if let share = shareByMemberId[member.id] {
+            return MoneyFormat.amount(share)
+          }
+          return !isPreviewCurrent ? L10n.tr("common.pendingValue") : nil
+        },
+        isCaptionDimmed: !isPreviewCurrent
+      )
 
       if groupExceedsCap || itemMembersFull {
         Text(L10n.tr("receipts.maxItemMembers"))

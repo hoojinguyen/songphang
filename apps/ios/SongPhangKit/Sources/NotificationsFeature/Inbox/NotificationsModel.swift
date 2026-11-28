@@ -100,7 +100,10 @@ public final class NotificationsModel {
     }
   }
 
-  public func markOneRead(_ notification: AppNotification) {
+  public func markOneRead(
+    _ notification: AppNotification,
+    onSynced: (@MainActor @Sendable () -> Void)? = nil
+  ) {
     guard !notification.read else { return }
     guard case .loaded(var data) = state else { return }
 
@@ -113,6 +116,7 @@ public final class NotificationsModel {
     Task {
       do throws(AppError) {
         try await repository.markRead(ids: [notification.id])
+        onSynced?()
       } catch {
         if error == .unauthorized {
           onUnauthorized()
@@ -121,7 +125,7 @@ public final class NotificationsModel {
     }
   }
 
-  public func markAllRead() async {
+  public func markAllRead(onSynced: (@MainActor @Sendable () -> Void)? = nil) async {
     guard case .loaded(var data) = state, !isMarkingAll, !isFetchingNextPage else { return }
     isMarkingAll = true
     markError = nil
@@ -142,6 +146,7 @@ public final class NotificationsModel {
       try await repository.markAllRead()
       guard mutationGeneration == gen else { return }
       markError = nil
+      onSynced?()
     } catch {
       guard mutationGeneration == gen else { return }
       if error == .unauthorized {

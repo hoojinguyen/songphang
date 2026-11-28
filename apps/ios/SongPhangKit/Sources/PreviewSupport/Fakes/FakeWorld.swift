@@ -32,6 +32,7 @@
     public private(set) var preset: ScenarioPreset
     public private(set) var behavior: FakeBehavior
     public private(set) var currentUser: User?
+    public private(set) var features: ServerFeatures
     private var activeSessions: [UserSession] = [
       UserSession(
         id: UserSession.ID("00000000-0000-7000-8000-000000000501"),
@@ -139,10 +140,24 @@
       preset: ScenarioPreset = .tripStep4,
       behavior: FakeBehavior = FakeBehavior(),
       signedIn: Bool = true,
-      hasFundAndBudget: Bool = false
+      hasFundAndBudget: Bool = false,
+      hasPaymentDetails: Bool = false,
+      hasPendingRequest: Bool = false,
+      hasPendingApproval: Bool = false,
+      guestTokenOverride: String? = nil,
+      features: ServerFeatures = ServerFeatures(
+        google: true,
+        apple: true,
+        devLogin: false,
+        push: false,
+        receiptReading: true,
+        sentenceAi: true,
+        telegram: false
+      )
     ) {
       self.preset = preset
       self.behavior = behavior
+      self.features = features
       var initial = Self.makePresetState(preset, role: behavior.role, signedIn: signedIn)
       if hasFundAndBudget, let groupId = initial.groupOrder.first {
         let fundMember = Member(
@@ -185,6 +200,66 @@
       self.categoriesByGroup = initial.categoriesByGroup
       self.budgetsByGroup = initial.budgetsByGroup
       self.recurringExpensesByGroup = initial.recurringExpensesByGroup
+      if let groupId = initial.groupOrder.first {
+        let initialToken =
+          (guestTokenOverride != nil && guestTokenOverride != "invalid")
+          ? (guestTokenOverride ?? "demo-guest-token")
+          : "demo-guest-token"
+        if guestTokenOverride != "invalid" {
+          self.guestLinksByGroup[groupId] = (
+            token: initialToken,
+            link: GuestLink(
+              active: true,
+              url: "http://localhost:3000/share/\(initialToken)",
+              createdAt: "2026-11-26T00:00:00.000Z"
+            )
+          )
+        }
+        if hasPaymentDetails {
+          if let members = self.membersByGroup[groupId] {
+            self.membersByGroup[groupId] = Self.applySamplePaymentMethods(to: members)
+          }
+          if let bal = self.balancesByGroup[groupId] {
+            self.balancesByGroup[groupId] = Self.applySamplePaymentMethods(to: bal)
+          }
+        }
+        if hasPendingRequest {
+          var reqs = self.settlementRequestsByGroup[groupId] ?? []
+          reqs.insert(Self.samplePendingSettlementRequest, at: 0)
+          self.settlementRequestsByGroup[groupId] = reqs
+          if let bal = self.balancesByGroup[groupId] {
+            self.balancesByGroup[groupId] = Self.applySamplePendingSettlement(to: bal)
+          }
+        }
+        if hasPendingApproval {
+          if var group = self.groupsById[groupId] {
+            group.approvalThreshold = Money(500_000)
+            self.groupsById[groupId] = group
+          }
+          var txs = self.transactionsByGroup[groupId] ?? []
+          txs.insert(Self.samplePendingApprovalTransaction, at: 0)
+          self.transactionsByGroup[groupId] = txs
+        }
+      }
+    }
+
+    public func setFeatures(_ newFeatures: ServerFeatures) {
+      self.features = newFeatures
+    }
+
+    public func seedGuestToken(
+      _ token: String,
+      groupId: ExpenseGroup.ID = TripScenario.groupId
+    ) {
+      let targetGroupId = groupsById[groupId] != nil ? groupId : (groupOrder.first ?? groupId)
+      guestLinksByGroup[targetGroupId] = (
+        token: token,
+        link: GuestLink(
+          active: true,
+          url: "http://localhost:3000/share/\(token)",
+          createdAt: "2026-11-26T00:00:00.000Z"
+        )
+      )
     }
 
     public func setBehavior(_ newBehavior: FakeBehavior) {

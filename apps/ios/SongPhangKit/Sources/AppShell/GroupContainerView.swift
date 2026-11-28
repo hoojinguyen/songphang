@@ -21,6 +21,16 @@ public enum GroupSegment: String, Sendable, Hashable, CaseIterable {
   }
 }
 
+public struct GroupHeaderHint: Sendable, Hashable {
+  public let name: String
+  public let previewMembers: [ExpenseGroup.PreviewMember]
+
+  public init(name: String, previewMembers: [ExpenseGroup.PreviewMember]) {
+    self.name = name
+    self.previewMembers = previewMembers
+  }
+}
+
 public struct GroupContainerView: View {
   public enum FundSubTab: String, CaseIterable, Sendable {
     case stats
@@ -42,6 +52,7 @@ public struct GroupContainerView: View {
   }
 
   private let groupId: ExpenseGroup.ID
+  private let initialGroupHint: GroupHeaderHint?
   private let dependencies: AppDependencies
   private let sessionModel: SessionModel
   private let currentUser: User?
@@ -49,21 +60,27 @@ public struct GroupContainerView: View {
   private let onNavigate: (Route) -> Void
   private let onReplaceTop: (Route) -> Void
   private let onPopToRoot: (String?) -> Void
-  private let onExpenseSaved: () -> Void
+  private let onBackToGroups: () -> Void
+  private let onTransactionChanged: () -> Void
   private let recurringRefreshTick: Int
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
   @State private var selectedSegment: GroupSegment
   @State private var fundSubTab: FundSubTab = .stats
+  @Namespace private var segmentNamespace
+  @Namespace private var fundSubTabNamespace
   @State private var isCloneSheetPresented = false
   @State private var isArchiveConfirmPresented = false
   @State private var isReceiptCaptureOpen = false
   @State private var isGuestLinkSheetOpen = false
   @State private var isShareCardSheetOpen = false
   @State private var isArchiving = false
+  @State private var archiveSuccessTick = 0
+  @State private var archiveWarningTick = 0
   @State private var paymentSheet: PaymentSheet?
   @State private var pendingProofAttachmentId: Attachment.ID?
   @State private var completingRecurringId: RecurringExpense.ID?
+  @State private var toastMessage: ToastMessage?
 
   @State private var feedModel: GroupFeedModel
   @State private var balancesModel: BalancesModel
@@ -76,8 +93,10 @@ public struct GroupContainerView: View {
     groupId: ExpenseGroup.ID,
     initialSegment: GroupSegment = .expenses,
     initialFilter: TransactionFilter? = nil,
+    initialToast: String? = nil,
     initialFundSubTab: FundSubTab? = nil,
     initialTransferProofAttachmentId: Attachment.ID? = nil,
+    initialGroupHint: GroupHeaderHint? = nil,
     dependencies: AppDependencies,
     sessionModel: SessionModel,
     currentUser: User?,
@@ -86,10 +105,12 @@ public struct GroupContainerView: View {
     onNavigate: @escaping (Route) -> Void,
     onReplaceTop: @escaping (Route) -> Void,
     onPopToRoot: @escaping (String?) -> Void,
-    onExpenseSaved: @escaping () -> Void,
+    onBackToGroups: (() -> Void)? = nil,
+    onTransactionChanged: @escaping () -> Void,
     recurringRefreshTick: Int = 0
   ) {
     self.groupId = groupId
+    self.initialGroupHint = initialGroupHint
     self.dependencies = dependencies
     self.sessionModel = sessionModel
     self.currentUser = currentUser
@@ -98,10 +119,14 @@ public struct GroupContainerView: View {
     self.onNavigate = onNavigate
     self.onReplaceTop = onReplaceTop
     self.onPopToRoot = onPopToRoot
-    self.onExpenseSaved = onExpenseSaved
+    self.onBackToGroups = onBackToGroups ?? { onPopToRoot(nil) }
+    self.onTransactionChanged = onTransactionChanged
     self.recurringRefreshTick = recurringRefreshTick
     self._selectedSegment = State(initialValue: initialSegment)
     self._pendingProofAttachmentId = State(initialValue: initialTransferProofAttachmentId)
+    if let initialToast, !initialToast.isEmpty {
+      self._toastMessage = State(initialValue: ToastMessage(text: initialToast))
+    }
     if let initialFundSubTab {
       self._fundSubTab = State(initialValue: initialFundSubTab)
     }
@@ -200,6 +225,14 @@ public struct GroupContainerView: View {
       ?? []
   }
 
+  private var resolvedGroupName: String? {
+    currentGroup?.name ?? initialGroupHint?.name
+  }
+
+  private var previewMembers: [ExpenseGroup.PreviewMember] {
+    initialGroupHint?.previewMembers ?? []
+  }
+
   private var isArchived: Bool {
     currentGroup?.isArchived == true
   }
@@ -212,30 +245,76 @@ public struct GroupContainerView: View {
     currentGroup?.role == .owner
   }
 
-  public var body: some View {
-    VStack(spacing: 8) {
-      persistentHeader
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-
-      segmentSwitcher
-        .padding(.horizontal, 20)
-
-      if isArchived {
-        Text(L10n.tr("groups.archivedBanner"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.muted)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 8)
-          .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-          .padding(.horizontal, 20)
-      }
-
-      contentView
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+  private var unavailableKind: GroupUnavailableView.Kind? {
+    if balancesModel.isNotFound { return .notFound }
+    let errors: [AppError?] = [
+      loadError(feedModel.state),
+      loadError(balancesModel.state),
+      loadError(statsModel.state),
+      loadError(fundModel.state),
+    ]
+    for error in errors {
+      if case .api(_, 404) = error { return .notFound }
+      if case .api(_, 403) = error { return .forbidden }
     }
-    .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    return nil
+  }
+
+  private func loadError<T>(_ loadable: Loadable<T>) -> AppError? {
+    if case .failed(let error) = loadable { return error }
+    return nil
+  }
+
+  public var body: some View {
+    Group {
+      if let unavailableKind {
+        GroupUnavailableView(kind: unavailableKind) {
+          onBackToGroups()
+        }
+      } else {
+        VStack(spacing: 8) {
+          segmentSwitcher
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+
+          if isArchived {
+            Text(L10n.tr("groups.archivedBanner"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 8)
+              .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+              .padding(.horizontal, 20)
+          }
+
+          contentView
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(Tokens.bg.ignoresSafeArea())
+      }
+    }
+    .confirmationToast($toastMessage)
+    .spFeedback(.success, trigger: archiveSuccessTick)
+    .spFeedback(.warning, trigger: archiveWarningTick)
+    .navigationTitle(unavailableKind == nil ? (resolvedGroupName ?? "") : "")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      if unavailableKind == nil {
+        if resolvedGroupName == nil {
+          ToolbarItem(placement: .principal) {
+            SkeletonBar(width: 148, height: 18, cornerRadius: 9)
+              .spSkeletonShimmer()
+              .accessibilityHidden(true)
+          }
+        }
+        ToolbarItemGroup(placement: .topBarTrailing) {
+          if !currentMembers.isEmpty || !previewMembers.isEmpty {
+            memberCapsuleButton
+          }
+          overflowMenu
+        }
+      }
+    }
     .confirmationDialog(
       L10n.tr("groups.archiveAction"),
       isPresented: $isArchiveConfirmPresented,
@@ -258,7 +337,12 @@ public struct GroupContainerView: View {
           },
           onCloned: { newGroup in
             isCloneSheetPresented = false
-            onNavigate(.groupFeed(groupId: newGroup.id))
+            onReplaceTop(
+              .groupFeed(
+                groupId: newGroup.id,
+                initialToast: L10n.t("ios.groups.createdToast", ["name": newGroup.name])
+              )
+            )
           }
         )
       }
@@ -295,16 +379,57 @@ public struct GroupContainerView: View {
         recurringExpensesModel.clearPendingDueDate(id: id)
         completingRecurringId = nil
       }
-      Task { await recurringExpensesModel.load() }
+      balancesModel.markOwnActionPendingCelebration()
+      Task {
+        await recurringExpensesModel.load()
+        await balancesModel.load()
+      }
     }
     #if DEBUG
       .task {
-        if ProcessInfo.processInfo.arguments.contains("--open-share-card") {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--open-share-card") {
           while balancesModel.state.value == nil {
             try? await Task.sleep(for: .milliseconds(50))
             if Task.isCancelled { return }
           }
           isShareCardSheetOpen = true
+        }
+        if args.contains("--open-guest-link") {
+          while balancesModel.state.value == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+          }
+          isGuestLinkSheetOpen = true
+        }
+        if args.contains("--open-clone-sheet") {
+          while currentGroup == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+          }
+          isCloneSheetPresented = true
+        }
+        if args.contains("--open-pay-sheet") {
+          while balancesModel.state.value == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+          }
+          if let data = balancesModel.state.value,
+            let transfer = data.balances.transfers.first,
+            let fromMember = data.members.first(where: { $0.id == transfer.fromMemberId }),
+            let toMember = data.members.first(where: { $0.id == transfer.toMemberId })
+          {
+            paymentSheet = PaymentSheet(
+              transfer: transfer, fromMember: fromMember, toMember: toMember)
+          }
+        }
+        if args.contains("--exercise-segment-switch") {
+          try? await Task.sleep(for: .milliseconds(800))
+          guard !Task.isCancelled else { return }
+          selectedSegment = .payments
+          try? await Task.sleep(for: .milliseconds(800))
+          guard !Task.isCancelled else { return }
+          selectedSegment = .fundAndStats
         }
       }
     #endif
@@ -370,98 +495,60 @@ public struct GroupContainerView: View {
             Task { await sessionModel.signOut() }
           }
         )
-        NavigationStack {
-          PayView(
-            model: payModel,
-            isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
-            onBack: { paymentSheet = nil },
-            onAddDetails: payModel.canAddDetails
-              ? {
-                paymentSheet = nil
-                onNavigate(.groupMembers(groupId: groupId))
-              } : nil,
-            onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
-              ? {
-                paymentSheet = nil
-                onNavigate(
-                  .settle(
-                    groupId: groupId,
-                    fromMemberId: selection.transfer.fromMemberId,
-                    toMemberId: selection.transfer.toMemberId,
-                    initialAmount: selection.transfer.amount
-                  )
-                )
-              } : nil,
-            onFinished: { _ in
-              pendingProofAttachmentId = nil
+        PayView(
+          model: payModel,
+          isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
+          onBack: { paymentSheet = nil },
+          onAddDetails: payModel.canAddDetails
+            ? {
               paymentSheet = nil
-              onExpenseSaved()
-            }
-          )
-        }
+              onNavigate(.groupMembers(groupId: groupId))
+            } : nil,
+          onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
+            ? {
+              paymentSheet = nil
+              onNavigate(
+                .settle(
+                  groupId: groupId,
+                  fromMemberId: selection.transfer.fromMemberId,
+                  toMemberId: selection.transfer.toMemberId,
+                  initialAmount: selection.transfer.amount
+                )
+              )
+            } : nil,
+          onFinished: { _ in
+            pendingProofAttachmentId = nil
+            paymentSheet = nil
+            balancesModel.markOwnActionPendingCelebration()
+            onTransactionChanged()
+          }
+        )
       }
     )
   }
 
-  private var persistentHeader: some View {
-    HStack(spacing: 8) {
-      Button(action: onBack) {
-        Image(systemName: "chevron.backward")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(Tokens.ink)
-          .frame(width: 44, height: 44)
-          .background(Tokens.surface, in: Circle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel(L10n.tr("common.back"))
-
-      HStack(spacing: 6) {
-        Text(currentGroup?.name ?? "")
-          .font(Typography.bodyBold)
-          .foregroundStyle(Tokens.ink)
-          .lineLimit(1)
-          .minimumScaleFactor(0.85)
-
-        if isArchived {
-          Text(L10n.tr("groups.tabArchived"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.muted)
-            .lineLimit(1)
-            .fixedSize()
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Tokens.sunken, in: Capsule())
-        }
-      }
-
-      Spacer(minLength: 4)
-
-      HStack(spacing: 8) {
-        Button {
-          onNavigate(.groupMembers(groupId: groupId))
-        } label: {
-          HStack(spacing: 2) {
-            ForEach(Array(currentMembers.prefix(3))) { member in
-              MemberShapeView(
-                shape: member.shape,
-                color: member.color,
-                name: member.name,
-                size: 24,
-                showInitial: false
-              )
-            }
+  private var memberCapsuleButton: some View {
+    Button {
+      onNavigate(.groupMembers(groupId: groupId))
+    } label: {
+      HStack(spacing: 2) {
+        if !currentMembers.isEmpty {
+          ForEach(Array(currentMembers.prefix(3))) { member in
+            MemberShapeView(member: member, size: 22)
           }
-          .padding(.horizontal, 10)
-          .frame(minHeight: 44)
-          .background(Tokens.surface)
-          .clipShape(Capsule())
+        } else {
+          ForEach(Array(previewMembers.prefix(3))) { member in
+            MemberShapeView(
+              shape: member.shape,
+              color: member.color,
+              name: member.name,
+              size: 22
+            )
+          }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L10n.tr("feed.membersLink"))
-
-        overflowMenu
       }
     }
+    .accessibilityLabel(L10n.tr("feed.membersLink"))
   }
 
   private var overflowMenu: some View {
@@ -472,10 +559,12 @@ public struct GroupContainerView: View {
         Label(L10n.tr("activity.title"), systemImage: "clock.arrow.circlepath")
       }
 
-      Button {
-        onNavigate(.groupSettings(groupId: groupId))
-      } label: {
-        Label(L10n.tr("categories.title"), systemImage: "tag")
+      if isOwner {
+        Button {
+          onNavigate(.groupSettings(groupId: groupId, initialSection: .categories))
+        } label: {
+          Label(L10n.tr("categories.title"), systemImage: "tag")
+        }
       }
 
       if sessionModel.latestFeatures?.telegram == true {
@@ -517,10 +606,7 @@ public struct GroupContainerView: View {
       }
     } label: {
       Image(systemName: "ellipsis")
-        .font(.system(size: 16, weight: .bold))
-        .foregroundStyle(Tokens.ink)
-        .frame(width: 44, height: 44)
-        .background(Tokens.surface, in: Circle())
+        .accessibilityLabel(L10n.tr("settings.title"))
     }
   }
 
@@ -528,10 +614,7 @@ public struct GroupContainerView: View {
     HStack(spacing: 4) {
       ForEach(GroupSegment.allCases, id: \.self) { segment in
         Button {
-          Haptics.light()
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = segment
-          }
+          selectedSegment = segment
         } label: {
           Text(segment.title)
             .font(Typography.captionBold)
@@ -540,14 +623,22 @@ public struct GroupContainerView: View {
             .padding(.horizontal, 4)
             .foregroundStyle(selectedSegment == segment ? Tokens.onInk : Tokens.muted)
             .frame(maxWidth: .infinity, minHeight: 38)
-            .background(
-              selectedSegment == segment ? Tokens.ink : Color.clear,
-              in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
         }
         .buttonStyle(.plain)
+        .matchedGeometryEffect(id: segment, in: segmentNamespace)
       }
     }
+    .background {
+      RoundedRectangle(cornerRadius: 14, style: .continuous)
+        .fill(Tokens.ink)
+        .matchedGeometryEffect(
+          id: selectedSegment,
+          in: segmentNamespace,
+          properties: .frame,
+          isSource: false
+        )
+    }
+    .spAnimation(Motion.quick, value: selectedSegment)
     .padding(4)
     .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
   }
@@ -564,14 +655,10 @@ public struct GroupContainerView: View {
         onBack: onBack,
         onOpenMembers: { id in onNavigate(.groupMembers(groupId: id)) },
         onOpenBalances: { _ in
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = .payments
-          }
+          selectedSegment = .payments
         },
         onOpenStats: { _ in
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = .fundAndStats
-          }
+          selectedSegment = .fundAndStats
         },
         onOpenQuickEntry: { id, sentence in
           onNavigate(.quickEntry(groupId: id, initialSentence: sentence))
@@ -601,7 +688,7 @@ public struct GroupContainerView: View {
         currentUserId: currentUser?.id,
         isEmailVerified: currentUser?.emailVerified ?? true,
         onBack: onBack,
-        onBackToGroups: { onPopToRoot(nil) },
+        onBackToGroups: onBackToGroups,
         onOpenPay: isArchived
           ? nil
           : { transfer, fromMember, toMember in
@@ -624,10 +711,8 @@ public struct GroupContainerView: View {
             )
           },
         onOpenFund: { _ in
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = .fundAndStats
-            fundSubTab = .fund
-          }
+          selectedSegment = .fundAndStats
+          fundSubTab = .fund
         },
         onCreateFund: isArchived
           ? nil
@@ -647,9 +732,7 @@ public struct GroupContainerView: View {
           onNavigate(.transactionDetail(groupId: groupId, transactionId: txId))
         },
         onViewCycleExpenses: { cycleId in
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = .expenses
-          }
+          selectedSegment = .expenses
           Task { await feedModel.selectCycle(.cycle(cycleId)) }
         }
       )
@@ -659,24 +742,29 @@ public struct GroupContainerView: View {
         HStack(spacing: 4) {
           ForEach(FundSubTab.allCases, id: \.self) { subTab in
             Button {
-              Haptics.light()
-              withAnimation(.easeInOut(duration: 0.15)) {
-                fundSubTab = subTab
-              }
+              fundSubTab = subTab
             } label: {
               Text(subTab.title)
                 .font(Typography.captionBold)
                 .foregroundStyle(fundSubTab == subTab ? Tokens.surface : Tokens.muted)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 32)
-                .background(
-                  fundSubTab == subTab ? Tokens.ink : Color.clear,
-                  in: Capsule()
-                )
             }
             .buttonStyle(.plain)
+            .matchedGeometryEffect(id: subTab, in: fundSubTabNamespace)
           }
         }
+        .background {
+          Capsule()
+            .fill(Tokens.ink)
+            .matchedGeometryEffect(
+              id: fundSubTab,
+              in: fundSubTabNamespace,
+              properties: .frame,
+              isSource: false
+            )
+        }
+        .spAnimation(Motion.quick, value: fundSubTab)
         .padding(3)
         .background(Tokens.sunken, in: Capsule())
         .padding(.horizontal, 20)
@@ -741,13 +829,13 @@ public struct GroupContainerView: View {
     defer { isArchiving = false }
     do throws(AppError) {
       _ = try await dependencies.groups.archive(groupId: groupId)
-      Haptics.success()
+      archiveSuccessTick &+= 1
       await feedModel.load()
       await balancesModel.load()
       await statsModel.load()
       await fundModel.load()
     } catch {
-      Haptics.warning()
+      archiveWarningTick &+= 1
     }
   }
 
@@ -756,13 +844,13 @@ public struct GroupContainerView: View {
     defer { isArchiving = false }
     do throws(AppError) {
       _ = try await dependencies.groups.unarchive(groupId: groupId)
-      Haptics.success()
+      archiveSuccessTick &+= 1
       await feedModel.load()
       await balancesModel.load()
       await statsModel.load()
       await fundModel.load()
     } catch {
-      Haptics.warning()
+      archiveWarningTick &+= 1
     }
   }
 }

@@ -253,6 +253,7 @@ public final class SettleModel {
       )
       capturedOccurredAt = nil
       isRecorded = true
+      SoundPlayer.shared.play(.ting)
       if !reduceMotion {
         try? await Task.sleep(for: .milliseconds(200))
       }

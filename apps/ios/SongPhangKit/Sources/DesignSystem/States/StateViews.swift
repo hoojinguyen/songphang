@@ -12,10 +12,14 @@ public struct LoadingSkeleton: View {
   public var body: some View {
     VStack(spacing: 12) {
       ForEach(0..<rowCount, id: \.self) { _ in
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-          .fill(Tokens.sunken)
-          .frame(maxWidth: .infinity)
-          .frame(height: rowHeight)
+        VStack(alignment: .leading, spacing: 10) {
+          SkeletonBar(width: 140, height: 14, cornerRadius: 7)
+          SkeletonBar(height: 12, cornerRadius: 6)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: rowHeight, alignment: .leading)
+        .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .spSkeletonShimmer()
       }
     }
     .accessibilityElement(children: .ignore)
@@ -100,11 +104,29 @@ public struct EmptyState<Leading: View, Action: View>: View {
 }
 
 extension EmptyState where Leading == EmptyView, Action == EmptyView {
-  public init(title: String, subtitle: String? = nil) {
+  public init(title: String, subtitle: String? = nil, noActionReason: String) {
+    _ = noActionReason
     self.init(
       title: title,
       subtitle: subtitle,
       leading: { EmptyView() },
+      action: { EmptyView() }
+    )
+  }
+}
+
+extension EmptyState where Action == EmptyView {
+  public init(
+    title: String,
+    subtitle: String? = nil,
+    noActionReason: String,
+    @ViewBuilder leading: () -> Leading
+  ) {
+    _ = noActionReason
+    self.init(
+      title: title,
+      subtitle: subtitle,
+      leading: leading,
       action: { EmptyView() }
     )
   }
@@ -135,7 +157,7 @@ public struct OfflineBanner: View {
   public var body: some View {
     HStack(spacing: 12) {
       Image(systemName: "wifi.slash")
-        .font(.system(size: 18, weight: .bold))
+        .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
         .foregroundStyle(Tokens.onInk)
         .accessibilityHidden(true)
 

@@ -32,6 +32,18 @@ public final class PayModel {
   public private(set) var isUploadingProof = false
   public private(set) var proofError: String?
 
+  public var hasUnsavedProofDraft: Bool {
+    guard mayCreate && isEmailVerified && transfer.pendingSettlement == nil && !submitted else {
+      return false
+    }
+    return channel != initialChannel
+      || !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      || proofAttachment != initialProofAttachment
+  }
+
+  private let initialChannel: PaymentChannel?
+  private let initialProofAttachment: Attachment?
+
   private let repository: any SettlementRequestsRepository
   private let uploadProof: (@Sendable (Data, String, String) async throws(AppError) -> Attachment)?
   public let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?
@@ -64,12 +76,15 @@ public final class PayModel {
     self.isEmailVerified = isEmailVerified
     self.isFromHouseholdMember = isFromHouseholdMember
     self.proofAttachment = initialProofAttachment
+    self.initialProofAttachment = initialProofAttachment
     self.repository = repository
     self.uploadProof = uploadProof
     self.loadAttachment = loadAttachment
     self.onReload = onReload
     self.onUnauthorized = onUnauthorized
-    self.channel = Self.defaultChannel(for: transfer.paymentMethods)
+    let defaultChannel = Self.defaultChannel(for: transfer.paymentMethods)
+    self.initialChannel = defaultChannel
+    self.channel = defaultChannel
   }
 
   private static func defaultChannel(for methods: [PaymentMethod]) -> PaymentChannel? {

@@ -35,6 +35,10 @@ struct CloseCycleSheetView: View {
     )
   }
 
+  private var defaultTitle: String {
+    L10n.t("cycles.defaultTitle", ["number": String(nextCycleNumber)])
+  }
+
   public var body: some View {
     NavigationStack {
       ScrollView {
@@ -44,7 +48,7 @@ struct CloseCycleSheetView: View {
               .font(Typography.subheadlineBold)
               .foregroundStyle(Tokens.ink)
             TextField(
-              L10n.t("cycles.defaultTitle", ["number": String(nextCycleNumber)]),
+              defaultTitle,
               text: $title
             )
             .font(Typography.bodyBold)
@@ -100,33 +104,34 @@ struct CloseCycleSheetView: View {
               .font(Typography.captionBold)
               .foregroundStyle(Tokens.muted)
           }
+
+          SPButton(
+            L10n.tr("cycles.closeAction"),
+            variant: .primary,
+            size: .lg,
+            isFullWidth: true,
+            isDisabled: currentPeriod.countedTransactionCount == 0
+              || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            isPending: isClosing
+          ) {
+            Task { await onConfirm(title) }
+          }
         }
         .padding(20)
+        .spFittedSheetContent()
       }
       .background(Tokens.bg.ignoresSafeArea())
       .navigationTitle(L10n.tr("cycles.closeTitle"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button(L10n.tr("common.cancel"), action: onDismiss)
+          SheetCancelButton(action: onDismiss)
+            .disabled(isClosing)
         }
-      }
-      .safeAreaInset(edge: .bottom) {
-        SPButton(
-          L10n.tr("cycles.closeAction"),
-          variant: .primary,
-          size: .lg,
-          isFullWidth: true,
-          isDisabled: currentPeriod.countedTransactionCount == 0
-            || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-          isPending: isClosing
-        ) {
-          Task { await onConfirm(title) }
-        }
-        .padding(20)
-        .background(Tokens.bg)
       }
     }
+    .spSheet(.fitted, embedsNavigationStack: true)
+    .discardGuard(isDirty: title != defaultTitle, isPending: isClosing, onDiscard: onDismiss)
   }
 }
 

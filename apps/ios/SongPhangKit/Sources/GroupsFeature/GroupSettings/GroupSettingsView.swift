@@ -1,5 +1,5 @@
 import DesignSystem
-import Domain
+public import Domain
 public import SwiftUI
 
 #if DEBUG
@@ -7,78 +7,105 @@ public import SwiftUI
 #endif
 
 public struct GroupSettingsView: View {
+  public enum SectionAnchor: Sendable, Hashable {
+    case categories
+  }
+
+  private static let categoriesAnchorId = "settings-categories-section"
+
   @Bindable private var model: GroupSettingsModel
   private let isEmailVerified: Bool
+  private let initialSection: SectionAnchor?
   private let onBack: () -> Void
   private let onBackToGroups: () -> Void
   private let onDeletedGroup: () -> Void
+  private let onClonedGroup: ((ExpenseGroup) -> Void)?
 
   @State private var transferTarget: GroupUser?
   @State private var isShowingDeleteSheet = false
   @State private var isShowingArchiveDialog = false
   @State private var isShowingCloneSheet = false
   @State private var deleteConfirmationText = ""
+  @State private var didScrollToInitialSection = false
 
   public init(
     model: GroupSettingsModel,
     isEmailVerified: Bool = true,
+    initialSection: SectionAnchor? = nil,
     onBack: @escaping () -> Void,
     onBackToGroups: @escaping () -> Void,
-    onDeletedGroup: @escaping () -> Void
+    onDeletedGroup: @escaping () -> Void,
+    onClonedGroup: ((ExpenseGroup) -> Void)? = nil
   ) {
     self.model = model
     self.isEmailVerified = isEmailVerified
+    self.initialSection = initialSection
     self.onBack = onBack
     self.onBackToGroups = onBackToGroups
     self.onDeletedGroup = onDeletedGroup
+    self.onClonedGroup = onClonedGroup
   }
 
   public var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        if model.refreshError != nil {
-          OfflineBanner()
-        }
+    Group {
+      switch model.state {
+      case .failed(let error) where isNotFoundError(error):
+        GroupUnavailableView(kind: .notFound, onBackToGroups: onBackToGroups)
 
-        switch model.state {
-        case .loading:
-          LoadingSkeleton(rowCount: 3, rowHeight: 96)
+      case .failed(let error) where isForbiddenError(error):
+        GroupUnavailableView(kind: .forbidden, onBackToGroups: onBackToGroups)
 
-        case .failed(let error):
-          if case .api(_, 404) = error {
-            VStack(spacing: 16) {
-              Text(L10n.tr("common.groupNotFound"))
-                .font(Typography.bodyBold)
-              SPButton(L10n.tr("common.backToGroups"), variant: .surface, action: onBackToGroups)
+      case .loaded(let data) where !data.group.role.isOwner:
+        GroupUnavailableView(kind: .forbidden, onBackToGroups: onBackToGroups)
+
+      default:
+        ScrollViewReader { proxy in
+          ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+              if model.refreshError != nil {
+                OfflineBanner()
+              }
+
+              switch model.state {
+              case .loading:
+                LoadingSkeleton(rowCount: 3, rowHeight: 96)
+
+              case .failed:
+                LoadError {
+                  Task { await model.load() }
+                }
+
+              case .loaded(let data):
+                loadedContent(data)
+              }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 40)
-          } else {
-            LoadError {
-              Task { await model.load() }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          }
+          .background(Tokens.bg.ignoresSafeArea())
+          .onChange(of: model.state.value != nil) { _, isLoaded in
+            guard isLoaded, initialSection == .categories, !didScrollToInitialSection else {
+              return
+            }
+            didScrollToInitialSection = true
+            DispatchQueue.main.async {
+              proxy.scrollTo(Self.categoriesAnchorId, anchor: .top)
             }
           }
-
-        case .loaded(let data):
-          if !data.group.role.isOwner {
-            VStack(spacing: 16) {
-              Text(L10n.tr("common.forbidden"))
-                .font(Typography.bodyBold)
-              SPButton(L10n.tr("common.backToGroups"), variant: .surface, action: onBackToGroups)
+          .onAppear {
+            if model.state.value != nil, initialSection == .categories, !didScrollToInitialSection {
+              didScrollToInitialSection = true
+              DispatchQueue.main.async {
+                proxy.scrollTo(Self.categoriesAnchorId, anchor: .top)
+              }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 40)
-          } else {
-            loadedContent(data)
           }
         }
       }
-      .padding(.horizontal, 20)
-      .padding(.vertical, 24)
-      .frame(maxWidth: .infinity, alignment: .leading)
     }
-    .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("settings.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if ProcessInfo.processInfo.arguments.contains("--open-delete-sheet") {
         isShowingDeleteSheet = true
@@ -109,7 +136,10 @@ public struct GroupSettingsView: View {
     } message: {
       Text(L10n.tr("settings.transferConfirmBody"))
     }
-    .sheet(isPresented: $isShowingDeleteSheet) {
+    .sheet(
+      isPresented: $isShowingDeleteSheet,
+      onDismiss: { deleteConfirmationText = "" }
+    ) {
       deleteGroupSheet(groupName: model.state.value?.group.name ?? "")
     }
     .confirmationDialog(
@@ -130,9 +160,13 @@ public struct GroupSettingsView: View {
           group: group,
           repository: model.groupsRepository,
           onDismiss: { isShowingCloneSheet = false },
-          onCloned: { _ in
+          onCloned: { newGroup in
             isShowingCloneSheet = false
-            onBackToGroups()
+            if let onClonedGroup {
+              onClonedGroup(newGroup)
+            } else {
+              onBackToGroups()
+            }
           }
         )
       }
@@ -141,11 +175,9 @@ public struct GroupSettingsView: View {
 
   @ViewBuilder
   private func loadedContent(_ data: GroupSettingsModel.ScreenData) -> some View {
-    SPScreenHeader(
-      title: L10n.tr("settings.title"),
-      subtitle: L10n.tr("settings.ownerOnly"),
-      onBack: onBack
-    )
+    Text(L10n.tr("settings.ownerOnly"))
+      .font(Typography.subheadlineBold)
+      .foregroundStyle(Tokens.muted)
 
     if !isEmailVerified {
       SPCard(tone: .accent, padding: 20) {
@@ -302,6 +334,7 @@ public struct GroupSettingsView: View {
         isDisabled: isReadOnly,
         onChanged: { model.updateCategories($0) }
       )
+      .id(Self.categoriesAnchorId)
       BudgetSettingsCard(
         budget: data.budget,
         isDisabled: isReadOnly,
@@ -483,51 +516,61 @@ public struct GroupSettingsView: View {
   }
 
   private func deleteGroupSheet(groupName: String) -> some View {
-    VStack(alignment: .leading, spacing: 20) {
-      Text(L10n.t("settings.deleteTitle", ["name": groupName]))
-        .font(Typography.sectionTitle)
-        .foregroundStyle(Tokens.ink)
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 18) {
+          Text(L10n.tr("settings.deleteBody"))
+            .font(Typography.subheadline)
+            .foregroundStyle(Tokens.ink)
 
-      Text(L10n.tr("settings.deleteBody"))
-        .font(Typography.subheadline)
-        .foregroundStyle(Tokens.ink)
+          SPTextField(
+            label: L10n.tr("settings.nameLabel"),
+            text: $deleteConfirmationText,
+            maxLength: 80
+          )
 
-      SPTextField(
-        label: L10n.tr("settings.nameLabel"),
-        text: $deleteConfirmationText,
-        maxLength: 80
-      )
-
-      HStack(spacing: 12) {
-        SPButton(
-          L10n.tr("members.removeCancel"),
-          variant: .surface,
-          isFullWidth: true,
-          isDisabled: model.isPerformingAction
-        ) {
-          isShowingDeleteSheet = false
-        }
-
-        SPButton(
-          L10n.tr("settings.deleteButton"),
-          variant: .primary,
-          isFullWidth: true,
-          isDisabled: deleteConfirmationText != groupName || model.isPerformingAction,
-          isPending: model.isPerformingAction
-        ) {
-          Task {
-            await model.deleteGroup(confirmName: deleteConfirmationText) {
-              isShowingDeleteSheet = false
-              onDeletedGroup()
+          SPButton(
+            L10n.tr("settings.deleteButton"),
+            variant: .primary,
+            size: .lg,
+            isFullWidth: true,
+            isDisabled: deleteConfirmationText != groupName || model.isPerformingAction,
+            isPending: model.isPerformingAction
+          ) {
+            Task {
+              await model.deleteGroup(confirmName: deleteConfirmationText) {
+                deleteConfirmationText = ""
+                isShowingDeleteSheet = false
+                onDeletedGroup()
+              }
             }
           }
         }
+        .padding(20)
+        .spFittedSheetContent()
       }
-      Spacer()
+      .background(Tokens.bg.ignoresSafeArea())
+      .navigationTitle(L10n.t("settings.deleteTitle", ["name": groupName]))
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCancelButton {
+            deleteConfirmationText = ""
+            isShowingDeleteSheet = false
+          }
+          .disabled(model.isPerformingAction)
+        }
+      }
     }
-    .padding(24)
-    .background(Tokens.bg.ignoresSafeArea())
-    .presentationDetents([.medium])
+    .spSheet(.fitted, embedsNavigationStack: true)
+    .discardGuard(
+      isDirty: !deleteConfirmationText.isEmpty,
+      isPending: model.isPerformingAction,
+      onDiscard: {
+        deleteConfirmationText = ""
+        isShowingDeleteSheet = false
+      }
+    )
   }
 
   private var budgetErrorText: String? {
@@ -536,6 +579,16 @@ public struct GroupSettingsView: View {
       return L10n.tr("common.forbidden")
     }
     return L10n.tr("common.saveError")
+  }
+
+  private func isNotFoundError(_ error: AppError) -> Bool {
+    if case .api(_, 404) = error { return true }
+    return false
+  }
+
+  private func isForbiddenError(_ error: AppError) -> Bool {
+    if case .api(_, 403) = error { return true }
+    return false
   }
 }
 

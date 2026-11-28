@@ -64,13 +64,7 @@
 
     public func serverFeatures() async throws(AppError) -> ServerFeatures {
       try await world.simulateNetwork()
-      return ServerFeatures(
-        google: true,
-        apple: true,
-        devLogin: false,
-        receiptReading: true,
-        sentenceAi: true
-      )
+      return await world.features
     }
 
     public func currentTokenGeneration() async -> UInt64 {

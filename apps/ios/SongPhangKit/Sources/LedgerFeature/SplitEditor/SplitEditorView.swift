@@ -12,7 +12,7 @@ public struct SplitStatusBannerView: View {
   public var body: some View {
     HStack(spacing: 8) {
       Image(systemName: status.matched ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-        .font(.system(size: 18, weight: .bold))
+        .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
         .foregroundStyle(Tokens.ink)
       Text(status.text)
         .font(Typography.subheadlineBold)
@@ -46,6 +46,7 @@ public struct SplitEditorView: View {
   @State private var heldMemberId: Member.ID?
   @State private var holdTask: Task<Void, Never>?
   @State private var didHoldRepeat = false
+  @State private var pumpFeedbackTick = 0
 
   public init(
     splitState: Binding<SplitEditorState>,
@@ -87,14 +88,14 @@ public struct SplitEditorView: View {
       guard !Task.isCancelled else { return }
 
       didHoldRepeat = true
-      Haptics.light()
+      pumpFeedbackTick &+= 1
       splitState.pumpMember(id, members: members, totalAmount: amount)
       onItemsChange()
 
       while !Task.isCancelled {
         try? await Task.sleep(for: .milliseconds(180))
         guard !Task.isCancelled else { break }
-        Haptics.light()
+        pumpFeedbackTick &+= 1
         splitState.pumpMember(id, members: members, totalAmount: amount)
         onItemsChange()
       }
@@ -106,7 +107,7 @@ public struct SplitEditorView: View {
     holdTask = nil
 
     if !didHoldRepeat && heldMemberId == id {
-      Haptics.light()
+      pumpFeedbackTick &+= 1
       splitState.pumpMember(id, members: members, totalAmount: amount)
       onItemsChange()
     }
@@ -131,37 +132,9 @@ public struct SplitEditorView: View {
 
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        HStack(spacing: 12) {
-          Button(action: onDone) {
-            Image(systemName: "chevron.left")
-              .font(.system(size: 18, weight: .bold))
-              .foregroundStyle(Tokens.ink)
-              .frame(width: 44, height: 44)
-              .background(Tokens.surface, in: Circle())
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(L10n.tr("common.back"))
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text(description)
-              .font(Typography.screenHeaderTitle)
-              .foregroundStyle(Tokens.ink)
-              .lineLimit(1)
-              .minimumScaleFactor(0.85)
-            Text(payerLine)
-              .font(Typography.caption)
-              .foregroundStyle(Tokens.muted)
-              .lineLimit(1)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-
-          MoneyText(
-            displayedAmount,
-            style: .full,
-            font: Typography.sectionTitle,
-            color: Tokens.ink
-          )
-        }
+        Text(payerLine)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.muted)
 
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 8) {
@@ -223,17 +196,9 @@ public struct SplitEditorView: View {
                     let isHeld = heldMemberId == member.id
 
                     VStack(spacing: 6) {
-                      MemberShapeView(
-                        shape: member.shape,
-                        color: member.color,
-                        name: member.name,
-                        size: 52
-                      )
-                      .scaleEffect(isHeld ? 1.15 : 1.0)
-                      .animation(
-                        reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.25),
-                        value: isHeld
-                      )
+                      MemberShapeView(member: member, size: 52)
+                        .scaleEffect(Motion.isReduced(reduceMotion) ? 1.0 : (isHeld ? 1.15 : 1.0))
+                        .spAnimation(Motion.bounce, value: isHeld)
 
                       Text(member.name)
                         .font(Typography.captionBold)
@@ -264,7 +229,7 @@ public struct SplitEditorView: View {
                     .accessibilityHint(L10n.tr("split.holdToGrowHint"))
                     .accessibilityAdjustableAction { direction in
                       if direction == .increment {
-                        Haptics.light()
+                        pumpFeedbackTick &+= 1
                         splitState.pumpMember(member.id, members: members, totalAmount: amount)
                         onItemsChange()
                       }
@@ -374,6 +339,19 @@ public struct SplitEditorView: View {
       .padding(20)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .navigationTitle(description)
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        MoneyText(
+          displayedAmount,
+          style: .full,
+          font: Typography.subheadlineBold,
+          color: Tokens.ink
+        )
+      }
+    }
+    .spFeedback(.selection, trigger: pumpFeedbackTick)
     .onDisappear {
       holdTask?.cancel()
       holdTask = nil
@@ -390,13 +368,7 @@ private struct SplitMemberRowView: View {
 
   var body: some View {
     HStack(spacing: 8) {
-      MemberShapeView(
-        shape: member.shape,
-        color: member.color,
-        name: member.name,
-        size: 32,
-        showInitial: false
-      )
+      MemberShapeView(member: member, size: 32)
 
       Text(member.name)
         .font(Typography.bodyBold)
@@ -445,7 +417,7 @@ private struct SplitMemberRowView: View {
 
       Button(action: onRemove) {
         Image(systemName: "xmark")
-          .font(.system(size: 14, weight: .bold))
+          .spIconFont(size: 14, weight: .bold, relativeTo: .subheadline)
           .foregroundStyle(Tokens.ink)
           .frame(width: 44, height: 44)
           .background(Tokens.bg, in: Circle())

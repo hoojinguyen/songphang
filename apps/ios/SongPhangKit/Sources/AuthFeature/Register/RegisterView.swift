@@ -18,11 +18,6 @@ public struct RegisterView: View {
   public var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 24) {
-        SPScreenHeader(
-          title: L10n.tr("register.title"),
-          onBack: onBackToSignIn
-        )
-
         if model.isSubmitted {
           VStack(alignment: .leading, spacing: 16) {
             Text(L10n.tr("register.submittedTitle"))
@@ -95,7 +90,8 @@ public struct RegisterView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("register.title"))
+    .navigationBarTitleDisplayMode(.inline)
   }
 }
 

@@ -32,11 +32,11 @@ public struct ActivityView: View {
           OfflineBanner()
         }
 
-        SPScreenHeader(
-          title: L10n.tr("activity.title"),
-          subtitle: model.state.value?.group.name ?? "",
-          onBack: onBack
-        )
+        if let groupName = model.state.value?.group.name, !groupName.isEmpty {
+          Text(groupName)
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.muted)
+        }
 
         Text(L10n.tr("activity.headline"))
           .font(Typography.pageTitle)
@@ -116,18 +116,9 @@ public struct ActivityView: View {
       .padding(20)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .overlay(alignment: .bottom) {
-      if let toast = model.toastMessage {
-        Text(toast)
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.surface)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 12)
-          .background(Tokens.ink, in: Capsule())
-          .padding(.bottom, 20)
-      }
-    }
-    .navigationBarBackButtonHidden(true)
+    .confirmationToast($model.toastMessage)
+    .navigationTitle(L10n.tr("activity.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.state.value == nil {
         await model.load()
@@ -150,13 +141,7 @@ private struct ActivityRowView: View {
 
     HStack(alignment: .top, spacing: 12) {
       if let actorMember {
-        MemberShapeView(
-          shape: actorMember.shape,
-          color: actorMember.color,
-          name: actorMember.name,
-          size: 40,
-          showInitial: false
-        )
+        MemberShapeView(member: actorMember, size: 40)
       } else {
         Circle()
           .fill(Tokens.sunken)

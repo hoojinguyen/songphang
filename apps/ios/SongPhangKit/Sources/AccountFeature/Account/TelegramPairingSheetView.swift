@@ -8,7 +8,6 @@ struct TelegramPairingSheetView: View {
   let email: String
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openURL) private var openURL
-  @State private var copiedCommand = false
 
   var body: some View {
     NavigationStack {
@@ -18,19 +17,21 @@ struct TelegramPairingSheetView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .spFittedSheetContent()
       }
       .background(Tokens.bg.ignoresSafeArea())
+      .navigationTitle(L10n.tr("telegram.accountTitle"))
+      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button(L10n.tr("ios.common.close")) {
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCloseButton {
             model.resetTelegramPairing()
             dismiss()
           }
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
         }
       }
     }
+    .spSheet(.fitted, embedsNavigationStack: true)
     .task(id: model.currentPairing?.id) {
       while !Task.isCancelled {
         try? await Task.sleep(for: .seconds(2))
@@ -51,11 +52,6 @@ struct TelegramPairingSheetView: View {
       Text(L10n.tr("telegram.linkDone"))
         .font(Typography.sectionTitle)
         .foregroundStyle(Tokens.ink)
-
-      SPButton(L10n.tr("ios.common.close"), variant: .primary, isFullWidth: true) {
-        model.resetTelegramPairing()
-        dismiss()
-      }
     } else if let terminal = model.pairingTerminalStatus {
       Text(
         terminal == .identityTaken
@@ -71,7 +67,6 @@ struct TelegramPairingSheetView: View {
         isDisabled: model.isOffline || model.isStartingPairing,
         isPending: model.isStartingPairing
       ) {
-        copiedCommand = false
         Task { await model.startTelegramPairing() }
       }
     } else if let started = model.startedPairing, let pairing = model.currentPairing {
@@ -184,17 +179,10 @@ struct TelegramPairingSheetView: View {
           .textSelection(.enabled)
           .frame(maxWidth: .infinity, alignment: .leading)
 
-        Button {
-          UIPasteboard.general.string = started.startCommand
-          copiedCommand = true
-        } label: {
-          Text(copiedCommand ? L10n.tr("telegram.copied") : L10n.tr("telegram.copy"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.ink)
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .background(Tokens.surface, in: Capsule())
-        }
+        CopyButton(
+          value: started.startCommand,
+          label: L10n.tr("telegram.copy")
+        )
       }
       Text(L10n.tr("telegram.codeTtl"))
         .font(Typography.caption)

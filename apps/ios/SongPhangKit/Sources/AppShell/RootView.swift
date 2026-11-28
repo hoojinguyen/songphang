@@ -65,6 +65,7 @@ public struct RootView: View {
   @State private var recurringRefreshTick = 0
   #if DEBUG
     @State private var isShowingDebugPanel = false
+    @State private var pendingRouteFeedFromList = false
   #endif
   @State private var hasCompletedInitialAppear = false
   @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system
@@ -102,6 +103,14 @@ public struct RootView: View {
         || args.contains("--enter-step4")
         || args.contains("--emit-changed")
         || args.contains("--emit-removed")
+        || args.contains("--with-payment-details")
+        || args.contains("--with-pending-request")
+        || args.contains("--with-fund")
+        || args.contains("--with-pending-approval")
+        || args.contains("--feature-telegram")
+        || args.contains("--guest-token")
+        || args.contains("--upgrade-required")
+        || args.contains("--push-prompt")
       let useScripted = hasScriptedArg || DebugOverrides.useScripted
 
       let resolved: AppDependencies
@@ -142,8 +151,37 @@ public struct RootView: View {
           behavior.failure = .rateLimited
         }
 
+        let guestTokenArg: String? = {
+          guard let idx = args.firstIndex(of: "--guest-token"), idx + 1 < args.count else {
+            return nil
+          }
+          return args[idx + 1]
+        }()
+        let features = ServerFeatures(
+          google: true,
+          apple: true,
+          devLogin: false,
+          push: args.contains("--push-prompt"),
+          receiptReading: true,
+          sentenceAi: true,
+          telegram: args.contains("--feature-telegram"),
+          minAppVersion: ServerFeatures.MinAppVersion(
+            ios: args.contains("--upgrade-required") ? "99.0.0" : "0.0.0",
+            android: "0.0.0"
+          )
+        )
         let debugConfig = configuration ?? Self.resolvedDebugConfiguration()
-        let world = FakeWorld(preset: preset, behavior: behavior, signedIn: signedIn)
+        let world = FakeWorld(
+          preset: preset,
+          behavior: behavior,
+          signedIn: signedIn,
+          hasFundAndBudget: args.contains("--with-fund"),
+          hasPaymentDetails: args.contains("--with-payment-details"),
+          hasPendingRequest: args.contains("--with-pending-request"),
+          hasPendingApproval: args.contains("--with-pending-approval"),
+          guestTokenOverride: guestTokenArg,
+          features: features
+        )
         resolved = .scripted(
           world: world,
           webBaseURL: debugConfig.webBaseURL,
@@ -356,8 +394,12 @@ public struct RootView: View {
         if args.contains("--removed-notice") {
           statusNotice = L10n.tr("common.removed")
         }
-        let targetGroupId =
-          args.contains("--scenario-large") ? LargeScenario.groupId : TripScenario.groupId
+        let targetGroupId: ExpenseGroup.ID = {
+          if args.contains("--unknown-group") {
+            return ExpenseGroup.ID("00000000-0000-0000-0000-000000000404")
+          }
+          return args.contains("--scenario-large") ? LargeScenario.groupId : TripScenario.groupId
+        }()
         if args.contains("--route-register") {
           path = [.register]
         } else if args.contains("--route-forgot") {
@@ -372,7 +414,12 @@ public struct RootView: View {
           groupsPath = [.groupMembers(groupId: targetGroupId)]
         } else if args.contains("--route-settings") {
           selectedTab = .groups
-          groupsPath = [.groupSettings(groupId: targetGroupId)]
+          groupsPath = [
+            .groupSettings(
+              groupId: targetGroupId,
+              initialSection: args.contains("--settings-categories") ? .categories : nil
+            )
+          ]
         } else if args.contains("--route-join") {
           selectedTab = .groups
           groupsPath = [.joinGroup(token: TripScenario.invite.token)]
@@ -381,7 +428,25 @@ public struct RootView: View {
           groupsPath = [.joinGroup(token: "invalid-token")]
         } else if args.contains("--route-feed") {
           selectedTab = .groups
-          groupsPath = [.groupFeed(groupId: targetGroupId)]
+          let initialToast =
+            args.contains("--created-toast")
+            ? L10n.t("ios.groups.createdToast", ["name": "Đà Lạt 3N2Đ (bản sao)"])
+            : nil
+          groupsPath = [.groupFeed(groupId: targetGroupId, initialToast: initialToast)]
+        } else if args.contains("--route-fund") {
+          selectedTab = .groups
+          groupsPath = [.groupFund(groupId: targetGroupId)]
+        } else if args.contains("--route-receipt-review") {
+          selectedTab = .groups
+          groupsPath = [
+            .receiptReview(groupId: targetGroupId, scanId: FakeWorld.sampleReceiptScanId)
+          ]
+        } else if args.contains("--route-debug-gallery") {
+          selectedTab = .groups
+          groupsPath = [.debugGallery]
+        } else if args.contains("--route-guest-share") {
+          selectedTab = .groups
+          groupsPath = [.guestShare(token: "demo-guest-token")]
         } else if args.contains("--route-stats") {
           selectedTab = .groups
           groupsPath = [.groupStats(groupId: targetGroupId)]
@@ -436,9 +501,45 @@ public struct RootView: View {
           selectedTab = .notifications
         } else if args.contains("--route-overview") {
           selectedTab = .overview
+        } else if args.contains("--route-groups") {
+          selectedTab = .groups
+        } else if args.contains("--route-tx-detail") {
+          selectedTab = .groups
+          groupsPath = [
+            .groupFeed(groupId: targetGroupId),
+            .transactionDetail(
+              groupId: targetGroupId, transactionId: TripScenario.t1Transaction.id),
+          ]
+        } else if args.contains("--route-tx-pending-approval") {
+          selectedTab = .groups
+          groupsPath = [
+            .groupFeed(groupId: targetGroupId),
+            .transactionDetail(
+              groupId: targetGroupId, transactionId: FakeWorld.samplePendingApprovalTransactionId),
+          ]
         } else if args.contains("--route-ledger") {
           selectedTab = .overview
           overviewPath = [.personalLedger]
+        } else if args.contains("--route-feed-from-list") {
+          selectedTab = .groups
+          pendingRouteFeedFromList = true
+        }
+      }
+      .task(id: pendingRouteFeedFromList) {
+        guard pendingRouteFeedFromList else { return }
+        while !Task.isCancelled {
+          if let first = groupListModel.groups.value?.first {
+            if selectedTab == .groups && groupsPath.isEmpty {
+              groupsPath = [.groupFeed(groupId: first.id)]
+            }
+            pendingRouteFeedFromList = false
+            return
+          }
+          if case .failed = groupListModel.groups {
+            pendingRouteFeedFromList = false
+            return
+          }
+          try? await Task.sleep(for: .milliseconds(50))
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
@@ -500,10 +601,13 @@ public struct RootView: View {
       _ = handleIncomingURL(url)
     }
     .fullScreenCover(item: $activeGuestShare) { item in
-      GuestGroupView(
-        model: item.model,
-        onClose: { activeGuestShare = nil }
-      )
+      NavigationStack {
+        GuestGroupView(
+          model: item.model,
+          showsCloseButton: true,
+          onClose: { activeGuestShare = nil }
+        )
+      }
     }
     .task {
       for await generation in dependencies.makeSessionInvalidations() {
@@ -630,6 +734,8 @@ public struct RootView: View {
       }
       if case .loading = sessionModel.state {
         await sessionModel.loadSession()
+      } else {
+        await sessionModel.loadFeatures()
       }
       await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
       await consumePendingPushIfSignedIn()
@@ -643,6 +749,9 @@ public struct RootView: View {
       hasCompletedInitialAppear = true
       let args = ProcessInfo.processInfo.arguments
       #if DEBUG
+        if args.contains("--push-prompt") {
+          pushCoordinator.isPermissionSheetPresented = true
+        }
         if let tokenIdx = args.firstIndex(of: "--guest-token"), tokenIdx + 1 < args.count {
           activeGuestShare = GuestSharePresentation(
             model: GuestGroupModel(
@@ -731,6 +840,22 @@ public struct RootView: View {
             title: "Đợt 1 · Đà Lạt",
             idempotencyKey: IdempotencyKey()
           )
+        }
+        if args.contains("--exercise-record-payment") {
+          try? await Task.sleep(for: .milliseconds(1000))
+          _ = try? await world.createTransaction(
+            groupId: TripScenario.groupId,
+            draft: .transfer(
+              TransactionDraft.TransferPayload(
+                amount: Money(210_000),
+                occurredAt: "2026-11-16T15:05:00.000Z",
+                fromMemberId: TripScenario.thuId,
+                toMemberId: TripScenario.minhId
+              )
+            ),
+            key: IdempotencyKey()
+          )
+          await world.emitEvent(.changed(["balances", "transactions"]))
         }
       #endif
     }
@@ -880,7 +1005,36 @@ public struct RootView: View {
     )
   }
 
+  private func appendToCurrentTab(_ route: Route) {
+    statusNotice = nil
+    switch selectedTab {
+    case .overview:
+      overviewPath.append(route)
+    case .groups:
+      groupsPath.append(route)
+    case .notifications:
+      notificationsPath.append(route)
+    case .account:
+      accountPath.append(route)
+    }
+  }
+
   private func navigate(to route: Route) {
+    statusNotice = nil
+    switch route {
+    case .account:
+      selectedTab = .account
+    case .notifications:
+      selectedTab = .notifications
+    case .personalLedger:
+      selectedTab = .overview
+      overviewPath.append(.personalLedger)
+    default:
+      appendToCurrentTab(route)
+    }
+  }
+
+  private func openExternalRoute(_ route: Route) {
     statusNotice = nil
     switch route {
     case .account:
@@ -908,7 +1062,7 @@ public struct RootView: View {
     }
     if let immediate = pendingInviteState.receiveValidated(route, isSignedIn: isSignedIn) {
       if isSignedIn {
-        navigate(to: immediate)
+        openExternalRoute(immediate)
       } else {
         path.append(immediate)
       }
@@ -917,7 +1071,7 @@ public struct RootView: View {
 
   private func consumePendingRouteIfSignedIn() {
     if let route = pendingInviteState.consumeIfSignedIn(isSignedIn) {
-      navigate(to: route)
+      openExternalRoute(route)
     }
   }
 
@@ -1113,22 +1267,16 @@ public struct RootView: View {
             user: user,
             unreadNotificationCount: sessionModel.unreadNotificationCount,
             onOpenGroup: { groupId in
-              selectedTab = .groups
-              groupsPath = [.groupFeed(groupId: groupId)]
+              appendToCurrentTab(.groupFeed(groupId: groupId))
             },
             onOpenBalances: { groupId in
-              selectedTab = .groups
-              groupsPath = [.groupBalances(groupId: groupId)]
+              appendToCurrentTab(.groupBalances(groupId: groupId))
             },
             onOpenTransaction: { groupId, txId in
-              selectedTab = .groups
-              groupsPath = [
-                .groupFeed(groupId: groupId),
-                .transactionDetail(groupId: groupId, transactionId: txId),
-              ]
+              appendToCurrentTab(.transactionDetail(groupId: groupId, transactionId: txId))
             },
             onOpenPersonalLedger: {
-              overviewPath.append(.personalLedger)
+              appendToCurrentTab(.personalLedger)
             },
             onOpenNotifications: {
               selectedTab = .notifications
@@ -1137,13 +1285,13 @@ public struct RootView: View {
               selectedTab = .account
             },
             onOpenDueRecurring: { action in
-              selectedTab = .groups
-              groupsPath = [
-                .groupFeed(groupId: action.groupId),
-                .newTransactionForm(groupId: action.groupId, initialRecurringDueAction: action),
-              ]
+              appendToCurrentTab(
+                .newTransactionForm(groupId: action.groupId, initialRecurringDueAction: action)
+              )
             }
           )
+          .navigationTitle("")
+          .navigationBarTitleDisplayMode(.inline)
           .toolbar {
             #if DEBUG
               ToolbarItem(placement: .topBarTrailing) {
@@ -1172,6 +1320,15 @@ public struct RootView: View {
               statusNotice = nil
               groupsPath.append(.groupFeed(groupId: groupId))
             },
+            onCreatedGroup: { newGroup in
+              statusNotice = nil
+              groupsPath.append(
+                .groupFeed(
+                  groupId: newGroup.id,
+                  initialToast: L10n.t("ios.groups.createdToast", ["name": newGroup.name])
+                )
+              )
+            },
             onOpenCreateGroup: {
               statusNotice = nil
               groupsPath.append(.createGroup)
@@ -1186,6 +1343,8 @@ public struct RootView: View {
               try await dependencies.auth.resendVerification()
             }
           )
+          .navigationTitle("")
+          .navigationBarTitleDisplayMode(.inline)
           .toolbar {
             #if DEBUG
               ToolbarItem(placement: .topBarTrailing) {
@@ -1208,6 +1367,11 @@ public struct RootView: View {
           NotificationsView(
             model: notificationsModel,
             onBack: nil,
+            onUnreadSynced: {
+              Task {
+                await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+              }
+            },
             onSelectTarget: { target in
               let route = RouteDestination.notificationDestination(for: target)
               navigate(to: route)
@@ -1274,6 +1438,18 @@ public struct RootView: View {
     }
   }
 
+  private func groupHeaderHint(for groupId: ExpenseGroup.ID) -> GroupHeaderHint? {
+    if let group = groupListModel.groups.value?.first(where: { $0.id == groupId }) {
+      return GroupHeaderHint(name: group.name, previewMembers: group.previewMembers)
+    }
+    if let balance = overviewModel.overview.value?.groupBalances.first(where: {
+      $0.groupId == groupId
+    }) {
+      return GroupHeaderHint(name: balance.groupName, previewMembers: balance.previewMembers)
+    }
+    return nil
+  }
+
   private func destinationView(
     for route: Route,
     currentUser: User?,
@@ -1284,9 +1460,20 @@ public struct RootView: View {
       dependencies: dependencies,
       sessionModel: sessionModel,
       currentUser: currentUser,
+      groupSummaryLookup: groupHeaderHint(for:),
       onNavigate: { path.wrappedValue.append($0) },
       onReplaceTop: { newRoute in
         if path.wrappedValue.isEmpty {
+          path.wrappedValue = [newRoute]
+        } else {
+          path.wrappedValue[path.wrappedValue.count - 1] = newRoute
+        }
+      },
+      onReplaceGroup: { sourceGroupId, newRoute in
+        if let idx = path.wrappedValue.firstIndex(where: { $0.associatedGroupId == sourceGroupId })
+        {
+          path.wrappedValue.replaceSubrange(idx..<path.wrappedValue.count, with: [newRoute])
+        } else if path.wrappedValue.isEmpty {
           path.wrappedValue = [newRoute]
         } else {
           path.wrappedValue[path.wrappedValue.count - 1] = newRoute
@@ -1300,6 +1487,15 @@ public struct RootView: View {
           statusNotice = notice
         }
         path.wrappedValue.removeAll()
+        Task {
+          await groupListModel.load()
+          await overviewModel.load()
+        }
+      },
+      onBackToGroups: {
+        path.wrappedValue.removeAll()
+        selectedTab = .groups
+        groupsPath.removeAll()
         Task {
           await groupListModel.load()
           await overviewModel.load()
@@ -1321,12 +1517,13 @@ public struct RootView: View {
           )
         }
       },
+      onTransactionChanged: {
+        recurringRefreshTick &+= 1
+      },
       recurringRefreshTick: recurringRefreshTick,
       deletedTransactionId: $deletedTransactionId
     )
     .toolbar { keyboardDoneToolbar }
-    .overlay { StatusBarCover() }
-    .background(PopGestureEnabler())
     .id(route)
   }
 }

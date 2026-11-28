@@ -16,8 +16,6 @@ public struct PayView: View {
   private let onRecordDirectly: (() -> Void)?
   private let onFinished: (String?) -> Void
 
-  @State private var copiedAmount = false
-  @State private var copiedField: String?
   @State private var photoResult: Bool?
 
   public init(
@@ -37,25 +35,43 @@ public struct PayView: View {
   }
 
   public var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        if isOffline {
-          OfflineBanner()
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 20) {
+          if isOffline {
+            OfflineBanner()
+          }
+
+          membersBanner
+          amountHeader
+          paymentMethodsSection
+          footerSection
         }
-
-        SPScreenHeader(
-          title: L10n.t("pay.title", ["to": model.toMember.name]),
-          onBack: onBack
-        )
-
-        membersBanner
-        amountHeader
-        paymentMethodsSection
-        footerSection
+        .padding(20)
+        .spFittedSheetContent()
       }
-      .padding(20)
+      .background(Tokens.bg.ignoresSafeArea())
+      .navigationTitle(L10n.t("pay.title", ["to": model.toMember.name]))
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          if model.mayCreate && model.isEmailVerified && model.transfer.pendingSettlement == nil
+            && !model.submitted
+          {
+            SheetCancelButton(action: onBack)
+              .disabled(model.isSubmitting)
+          } else {
+            SheetCloseButton(action: onBack)
+          }
+        }
+      }
     }
-    .background(Tokens.bg.ignoresSafeArea())
+    .spSheet(.fitted, expandable: true, embedsNavigationStack: true)
+    .discardGuard(
+      isDirty: model.hasUnsavedProofDraft,
+      isPending: model.isSubmitting,
+      onDiscard: onBack
+    )
   }
 
   private var membersBanner: some View {
@@ -63,7 +79,7 @@ public struct PayView: View {
       Spacer(minLength: 0)
       memberBadge(model.fromMember)
       Image(systemName: "arrow.right")
-        .font(.system(size: 18, weight: .bold))
+        .spIconFont(size: 18, weight: .bold, relativeTo: .headline)
         .foregroundStyle(Tokens.ink)
         .accessibilityHidden(true)
       memberBadge(model.toMember)
@@ -81,7 +97,7 @@ public struct PayView: View {
         name: member.name,
         size: 56
       )
-      Text(member.id == model.myMemberId ? L10n.tr("common.you") : member.name)
+      Text(PersonName.display(member: member, currentMemberId: model.myMemberId))
         .font(Typography.subheadlineBold)
         .foregroundStyle(Tokens.ink)
     }
@@ -95,22 +111,10 @@ public struct PayView: View {
         font: Typography.heroNumber,
         color: Tokens.ink
       )
-      Button {
-        UIPasteboard.general.string = String(model.payAmount.amount)
-        copiedAmount = true
-        Task {
-          try? await Task.sleep(for: .seconds(2))
-          copiedAmount = false
-        }
-      } label: {
-        Text(L10n.tr(copiedAmount ? "pay.copied" : "pay.copyAmount"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
-          .padding(.horizontal, 16)
-          .frame(minHeight: 44)
-          .background(Tokens.surface, in: Capsule())
-      }
-      .buttonStyle(.plain)
+      CopyButton(
+        value: String(model.payAmount.amount),
+        label: L10n.tr("pay.copyAmount")
+      )
 
       if model.isPartial {
         Text(
@@ -349,7 +353,6 @@ public struct PayView: View {
     -> some View
   {
     let targetCopy = copyValue ?? value
-    let isCopied = copiedField == id
     return HStack(alignment: .center, spacing: 12) {
       VStack(alignment: .leading, spacing: 2) {
         if !title.isEmpty {
@@ -363,23 +366,11 @@ public struct PayView: View {
           .textSelection(.enabled)
       }
       Spacer(minLength: 0)
-      Button {
-        UIPasteboard.general.string = targetCopy
-        copiedField = id
-        Task {
-          try? await Task.sleep(for: .seconds(2))
-          if copiedField == id { copiedField = nil }
-        }
-      } label: {
-        Text(L10n.tr(isCopied ? "pay.copied" : "pay.copy"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
-          .padding(.horizontal, 12)
-          .frame(minHeight: 44)
-          .background(Tokens.sunken, in: Capsule())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel(title.isEmpty ? L10n.tr("pay.copy") : "\(L10n.tr("pay.copy")) \(title)")
+      CopyButton(
+        value: targetCopy,
+        label: L10n.tr("pay.copy"),
+        accessibilityLabel: title.isEmpty ? L10n.tr("pay.copy") : "\(L10n.tr("pay.copy")) \(title)"
+      )
     }
   }
 

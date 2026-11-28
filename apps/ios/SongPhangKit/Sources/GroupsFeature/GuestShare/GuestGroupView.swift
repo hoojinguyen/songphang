@@ -9,90 +9,93 @@ import UIKit
 
 public struct GuestGroupView: View {
   @Bindable private var model: GuestGroupModel
+  private let showsCloseButton: Bool
   private let onClose: () -> Void
 
   @State private var expandedTransferId: String?
-  @State private var copiedKey: String?
   @State private var selectedBreakdownMemberId: Member.ID?
   @State private var selectedTransaction: GuestTransaction?
 
   public init(
     model: GuestGroupModel,
+    showsCloseButton: Bool = false,
     onClose: @escaping () -> Void
   ) {
     self.model = model
+    self.showsCloseButton = showsCloseButton
     self.onClose = onClose
   }
 
   public var body: some View {
-    NavigationStack {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 18) {
-          topReadOnlyBanner
+    ScrollView {
+      VStack(alignment: .leading, spacing: 18) {
+        topReadOnlyBanner
 
-          if model.isNotFound {
-            revokedCard
-          } else {
-            switch model.state {
-            case .loading:
-              LoadingSkeleton(rowCount: 4, rowHeight: 96)
-            case .failed:
-              LoadError {
-                Task { await model.load() }
-              }
-            case .loaded(let snapshot):
-              loadedContent(snapshot: snapshot)
+        if model.isNotFound {
+          revokedCard
+        } else {
+          switch model.state {
+          case .loading:
+            LoadingSkeleton(rowCount: 4, rowHeight: 96)
+          case .failed:
+            LoadError {
+              Task { await model.load() }
             }
+          case .loaded(let snapshot):
+            loadedContent(snapshot: snapshot)
           }
         }
-        .padding(20)
       }
-      .background(Tokens.bg.ignoresSafeArea())
-      .toolbar {
+      .padding(20)
+    }
+    .background(Tokens.bg.ignoresSafeArea())
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      if showsCloseButton {
         ToolbarItem(placement: .cancellationAction) {
-          Button(L10n.tr("common.back"), action: onClose)
+          SheetCloseButton(action: onClose)
         }
       }
-      .task {
-        if model.state.value == nil {
-          await model.load()
-        }
+    }
+    .task {
+      if model.state.value == nil {
+        await model.load()
       }
-      .sheet(
-        item: Binding<MemberDebtBreakdown?>(
-          get: {
-            guard let id = selectedBreakdownMemberId else { return nil }
-            return model.state.value?.breakdowns.first { $0.memberId == id }
-          },
-          set: { selectedBreakdownMemberId = $0?.memberId }
+    }
+    .sheet(
+      item: Binding<MemberDebtBreakdown?>(
+        get: {
+          guard let id = selectedBreakdownMemberId else { return nil }
+          return model.state.value?.breakdowns.first { $0.memberId == id }
+        },
+        set: { selectedBreakdownMemberId = $0?.memberId }
+      )
+    ) { breakdown in
+      if let snapshot = model.state.value {
+        let hhBreakdown = snapshot.householdBreakdowns.first {
+          $0.memberIds.contains(breakdown.memberId)
+        }
+        let transferIds = hhBreakdown.map { Set($0.memberIds) } ?? Set([breakdown.memberId])
+        GuestBreakdownSheet(
+          breakdown: breakdown,
+          householdBreakdown: hhBreakdown,
+          focusLabel: snapshot.resolvedFocus.label,
+          transfers: snapshot.transfers.filter { transferIds.contains($0.fromMemberId) },
+          members: snapshot.members,
+          onDismiss: { selectedBreakdownMemberId = nil }
         )
-      ) { breakdown in
-        if let snapshot = model.state.value {
-          let hhBreakdown = snapshot.householdBreakdowns.first {
-            $0.memberIds.contains(breakdown.memberId)
-          }
-          let transferIds = hhBreakdown.map { Set($0.memberIds) } ?? Set([breakdown.memberId])
-          GuestBreakdownSheet(
-            breakdown: breakdown,
-            householdBreakdown: hhBreakdown,
-            focusLabel: snapshot.resolvedFocus.label,
-            transfers: snapshot.transfers.filter { transferIds.contains($0.fromMemberId) },
-            members: snapshot.members,
-            onDismiss: { selectedBreakdownMemberId = nil }
-          )
-        }
       }
-      .sheet(item: $selectedTransaction) { tx in
-        if let snapshot = model.state.value {
-          GuestTransactionDetailSheet(
-            transaction: tx,
-            members: snapshot.members,
-            loadAttachment: { id in
-              try await model.loadAttachment(id: id)
-            },
-            onDismiss: { selectedTransaction = nil }
-          )
-        }
+    }
+    .sheet(item: $selectedTransaction) { tx in
+      if let snapshot = model.state.value {
+        GuestTransactionDetailSheet(
+          transaction: tx,
+          members: snapshot.members,
+          loadAttachment: { id in
+            try await model.loadAttachment(id: id)
+          },
+          onDismiss: { selectedTransaction = nil }
+        )
       }
     }
   }
@@ -115,7 +118,12 @@ public struct GuestGroupView: View {
         Text(L10n.tr("guestLink.invalidOrRevoked"))
           .font(Typography.bodyBold)
           .foregroundStyle(Tokens.ink)
-        SPButton(L10n.tr("common.back"), variant: .primary, isFullWidth: true, action: onClose)
+        SPButton(
+          showsCloseButton ? L10n.tr("ios.common.close") : L10n.tr("common.back"),
+          variant: .primary,
+          isFullWidth: true,
+          action: onClose
+        )
       }
     }
   }
@@ -199,11 +207,13 @@ public struct GuestGroupView: View {
     } label: {
       HStack(spacing: 6) {
         Image(systemName: "calendar")
-          .font(.system(size: 12, weight: .semibold))
+          .spIconFont(size: 12, weight: .semibold, relativeTo: .caption)
+          .accessibilityHidden(true)
         Text(snapshot.resolvedFocus.label)
           .font(Typography.captionBold)
         Image(systemName: "chevron.down")
-          .font(.system(size: 10, weight: .bold))
+          .spIconFont(size: 10, weight: .bold, relativeTo: .caption2)
+          .accessibilityHidden(true)
       }
       .foregroundStyle(Tokens.ink)
       .padding(.horizontal, 12)
@@ -246,8 +256,7 @@ public struct GuestGroupView: View {
               shape: from.shape,
               color: from.color,
               name: from.name,
-              size: 32,
-              showInitial: false
+              size: 32
             )
           }
           VStack(alignment: .leading, spacing: 2) {
@@ -364,17 +373,11 @@ public struct GuestGroupView: View {
           .foregroundStyle(Tokens.ink)
       }
       Spacer(minLength: 8)
-      Button(copiedKey == id ? L10n.tr("pay.copied") : L10n.tr("pay.copy")) {
-        UIPasteboard.general.string = value
-        Haptics.light()
-        copiedKey = id
-      }
-      .font(Typography.captionBold)
-      .foregroundStyle(Tokens.ink)
-      .padding(.horizontal, 10)
-      .frame(minHeight: 32)
-      .background(Tokens.surface, in: Capsule())
-      .buttonStyle(.plain)
+      CopyButton(
+        value: value,
+        label: L10n.tr("pay.copy"),
+        accessibilityLabel: "\(L10n.tr("pay.copy")) \(label)"
+      )
     }
   }
 
@@ -438,8 +441,7 @@ public struct GuestGroupView: View {
                     shape: member.shape,
                     color: member.color,
                     name: member.name,
-                    size: 28,
-                    showInitial: false
+                    size: 28
                   )
                   Text(member.name)
                     .font(Typography.captionBold)
@@ -497,7 +499,7 @@ public struct GuestGroupView: View {
                     }
                     if !tx.attachments.isEmpty {
                       Image(systemName: "photo")
-                        .font(.system(size: 11, weight: .semibold))
+                        .spIconFont(size: 11, weight: .semibold, relativeTo: .caption2)
                         .foregroundStyle(Tokens.muted)
                     }
                   }

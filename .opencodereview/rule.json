@@ -1,0 +1,35 @@
+{
+	"exclude": [
+		".opencodereview/**",
+		".agents/skills/open-code-review/**",
+		".agents/skills/open-code-review-delegate/**",
+		"skills-lock.json"
+	],
+	"rules": [
+		{
+			"path": "apps/ios/**/*.swift",
+			"rule": "Follow Sòng Phẳng iOS rules (AGENTS.md & apps/ios/AGENTS.md): (1) Do not request or suggest automated unit/UI/snapshot tests (the project uses manual checks and Simulator verification instead). (2) Money is integer-only VND supporting only addition, subtraction, and comparison — flag any Float/Double conversion, multiplication/division on Money, or client-side share/balance/settlement/QR calculation; PreviewSupport fakes must return static literals only. (3) Enforce SongPhangKit dependency boundaries: feature targets import only Domain, DesignSystem, and PreviewSupport (never Repositories, GeneratedAPI, or another feature), and nothing slow (networking, decoding, file I/O) may run on @MainActor. (4) Session tokens must stay in Keychain inside Repositories only (never UserDefaults, logs, or URLs); deep links and push targets must map to Route only via LinkRouter; zero third-party SDKs. (5) All animations must route through Motion honoring accessibilityReduceMotion, text/icons must scale via Dynamic Type (Typography/.spIconFont), icon-only buttons need Vietnamese accessibilityLabel, zero emoji, and never silence warnings (!, try!, as!, @unchecked Sendable, nonisolated(unsafe)).",
+			"merge_system_rule": true
+		},
+		{
+			"path": "apps/ios/**/Localizable.xcstrings",
+			"rule": "Under ADR-044 (UI/UX v3 Phases 5.6-5.8), iOS strings may add or differ from apps/web/src/messages/vi.ts only when every delta is documented in docs/superpowers/runs/phase-5-*/copy-changes.md and verified by ./apps/ios/Scripts/check-strings.sh. Do not flag missing apps/web vi.ts updates in iOS-only phases, and ensure zero emoji.",
+			"merge_system_rule": true
+		},
+		{
+			"path": "{apps/api,apps/worker,packages}/**/*.ts",
+			"rule": "Follow Sòng Phẳng backend/core rules (AGENTS.md): (1) Do not request or suggest automated tests (*.test.* / *.spec.*). (2) All monetary calculations use integer-only VND inside packages/core only. (3) Validate all untrusted inputs (body, params, query, headers) with Zod at boundaries; authorize every groupId route through shared middleware returning 404 to group outsiders and 403 for insufficient role; use Drizzle or parameterized queries only (never SQL string concatenation). (4) Never log secrets/tokens/passwords, never reveal account existence in auth endpoints, and never expose stack traces, SQL, or file paths in error responses.",
+			"merge_system_rule": true
+		},
+		{
+			"path": "apps/web/**/*.{ts,tsx}",
+			"rule": "Follow Sòng Phẳng Web rules (AGENTS.md): (1) Do not request or suggest automated tests. (2) Web must never compute official balances, splits, or settlements itself. (3) Never use dangerouslySetInnerHTML, eval, new Function, or unvalidated parameter redirects; never store tokens/secrets in localStorage or sessionStorage; ensure zero emoji.",
+			"merge_system_rule": true
+		},
+		{
+			"path": "**/*",
+			"rule": "Sòng Phẳng repo rules (AGENTS.md): No automated test files or test libraries, zero emoji in UI or code, no secrets or real credentials in committed files/logs, and preserve layer boundaries.",
+			"merge_system_rule": true
+		}
+	]
+}

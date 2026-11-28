@@ -66,11 +66,12 @@ struct GuestTransactionDetailSheet: View {
       .background(Tokens.bg.ignoresSafeArea())
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button(L10n.tr("split.done"), action: onDismiss)
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCloseButton(action: onDismiss)
         }
       }
     }
+    .spSheet(.half, embedsNavigationStack: true)
   }
 
   private var headerCard: some View {

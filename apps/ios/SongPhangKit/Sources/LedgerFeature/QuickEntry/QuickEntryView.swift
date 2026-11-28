@@ -12,6 +12,7 @@ public struct QuickEntryView: View {
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
   @FocusState private var isSentenceFocused: Bool
+  @State private var inputShakeTick = 0
 
   public init(
     model: QuickEntryModel,
@@ -34,7 +35,6 @@ public struct QuickEntryView: View {
       case .failed(let error):
         if case .api(_, 404) = error {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("common.groupNotFound"))
               .font(Typography.bodyBold)
@@ -44,7 +44,6 @@ public struct QuickEntryView: View {
           .padding(20)
         } else {
           VStack {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             LoadError {
               Task { await model.load() }
@@ -57,7 +56,6 @@ public struct QuickEntryView: View {
       case .loaded(let data):
         if data.group.role == .viewer {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("common.forbidden"))
               .font(Typography.bodyBold)
@@ -67,7 +65,6 @@ public struct QuickEntryView: View {
           .padding(20)
         } else if !isEmailVerified {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             SPCard(tone: .accent, padding: 20) {
               Text(L10n.tr("verify.banner"))
                 .font(Typography.subheadlineBold)
@@ -82,7 +79,9 @@ public struct QuickEntryView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .spFeedback(.success, trigger: model.didSaveTick)
+    .navigationTitle(L10n.tr("compose.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.state.value == nil {
         await model.load()
@@ -94,17 +93,13 @@ public struct QuickEntryView: View {
   @ViewBuilder
   private func composeBody(data: QuickEntryModel.ScreenData) -> some View {
     let activeMembers = data.members.filter(\.active)
-    SPScreenHeader(
-      title: L10n.tr("compose.title"),
-      subtitle: data.group.name,
-      backLabel: L10n.tr("common.cancel"),
-      onBack: onCancel
-    )
-    .padding(.horizontal, 20)
-    .padding(.top, 8)
 
     ScrollView {
       VStack(spacing: 16) {
+        Text(data.group.name)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.muted)
+          .frame(maxWidth: .infinity, alignment: .leading)
         if let reading = model.reading,
           !model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         {
@@ -169,16 +164,10 @@ public struct QuickEntryView: View {
               .id("\(reading.text):\(model.currentDraftIndex)")
             }
           }
-          .scaleEffect(model.isCollapsing ? 0.92 : 1.0)
+          .scaleEffect(Motion.isReduced(reduceMotion) ? 1.0 : (model.isCollapsing ? 0.92 : 1.0))
           .opacity(model.isCollapsing ? 0.0 : 1.0)
-          .animation(
-            reduceMotion ? nil : .spring(duration: 0.25, bounce: 0.15),
-            value: model.isCollapsing
-          )
-          .animation(
-            reduceMotion ? nil : .spring(duration: 0.28, bounce: 0.2),
-            value: reading.text
-          )
+          .spAnimation(Motion.quick, value: model.isCollapsing)
+          .spAnimation(Motion.bounce, value: reading.text)
         }
 
         if model.isSlowReading {
@@ -237,17 +226,25 @@ public struct QuickEntryView: View {
         .lineLimit(1...3)
         .focused($isSentenceFocused)
         .onSubmit {
-          model.sendImmediately()
+          if model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            inputShakeTick &+= 1
+          } else {
+            model.sendImmediately()
+          }
         }
         .accessibilityLabel(L10n.tr("compose.inputLabel"))
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
       Button {
-        model.sendImmediately()
+        if model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          inputShakeTick &+= 1
+        } else {
+          model.sendImmediately()
+        }
       } label: {
         Image(systemName: "arrow.up")
-          .font(.system(size: 20, weight: .bold))
+          .spIconFont(size: 20, weight: .bold, relativeTo: .title3)
           .foregroundStyle(Tokens.surface)
           .frame(width: 52, height: 52)
           .background(
@@ -258,10 +255,8 @@ public struct QuickEntryView: View {
           )
       }
       .buttonStyle(.plain)
-      .disabled(model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
       .accessibilityLabel(L10n.tr("compose.send"))
     }
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(12)
     .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
     .onTapGesture { isSentenceFocused = true }
@@ -273,6 +268,7 @@ public struct QuickEntryView: View {
             .strokeBorder(Tokens.ink, lineWidth: 3)
         )
     )
+    .fieldShake(trigger: inputShakeTick, cornerRadius: 30)
     .padding(.horizontal, 20)
     .padding(.bottom, 12)
   }

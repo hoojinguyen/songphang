@@ -18,11 +18,6 @@ public struct ForgotPasswordView: View {
   public var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 24) {
-        SPScreenHeader(
-          title: L10n.tr("forgotPassword.title"),
-          onBack: onBackToSignIn
-        )
-
         if model.isSubmitted {
           Text(L10n.tr("forgotPassword.submitted"))
             .font(Typography.body)
@@ -63,7 +58,8 @@ public struct ForgotPasswordView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("forgotPassword.title"))
+    .navigationBarTitleDisplayMode(.inline)
   }
 }
 

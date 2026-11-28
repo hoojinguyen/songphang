@@ -16,6 +16,8 @@ public struct AccountView: View {
   private let onBack: (() -> Void)?
   @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system
     .rawValue
+  @AppStorage(FeedbackSettings.soundEnabledKey) private var isSoundEnabled = true
+  @AppStorage(FeedbackSettings.hapticsEnabledKey) private var isHapticsEnabled = true
   @State private var hideWidgetAmounts = ExtensionSharedStore.shared.readWidgetHideAmounts()
 
   public init(model: AccountModel, onBack: (() -> Void)? = nil) {
@@ -29,11 +31,6 @@ public struct AccountView: View {
         if model.refreshError != nil {
           OfflineBanner()
         }
-
-        SPScreenHeader(
-          title: L10n.tr("account.title"),
-          onBack: onBack
-        )
 
         switch model.user {
         case .loading:
@@ -53,7 +50,8 @@ public struct AccountView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("account.title"))
+    .navigationBarTitleDisplayMode(.large)
     .task {
       await model.load()
     }
@@ -83,6 +81,8 @@ public struct AccountView: View {
     .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
 
     appearanceCard
+
+    soundAndHapticsCard
 
     widgetPrivacyCard
 
@@ -148,6 +148,32 @@ public struct AccountView: View {
       ) { nextValue in
         appearanceModeRaw = nextValue
       }
+    }
+    .padding(20)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.surface)
+    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+  }
+
+  private var soundAndHapticsCard: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Text(L10n.tr("ios.feedback.sectionTitle"))
+        .font(Typography.sectionTitle)
+        .foregroundStyle(Tokens.ink)
+
+      Toggle(isOn: $isSoundEnabled) {
+        Text(L10n.tr("ios.feedback.sound"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.ink)
+      }
+      .tint(Tokens.credit)
+
+      Toggle(isOn: $isHapticsEnabled) {
+        Text(L10n.tr("ios.feedback.haptics"))
+          .font(Typography.subheadline)
+          .foregroundStyle(Tokens.ink)
+      }
+      .tint(Tokens.credit)
     }
     .padding(20)
     .frame(maxWidth: .infinity, alignment: .leading)

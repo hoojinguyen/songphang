@@ -13,7 +13,6 @@ public struct GuestLinkSheetView: View {
   private let isArchived: Bool
   private let onDismiss: () -> Void
 
-  @State private var copiedLink = false
   @State private var isConfirmingRevoke = false
 
   public init(
@@ -46,13 +45,14 @@ public struct GuestLinkSheetView: View {
           }
         }
         .padding(20)
+        .spFittedSheetContent()
       }
       .background(Tokens.bg.ignoresSafeArea())
       .navigationTitle(L10n.tr("guestLink.fullTitle"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button(L10n.tr("split.done"), action: onDismiss)
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCloseButton(action: onDismiss)
         }
       }
       .task {
@@ -64,11 +64,11 @@ public struct GuestLinkSheetView: View {
         titleVisibility: .visible
       ) {
         Button(L10n.tr("guestLink.revokeAction"), role: .destructive) {
-          copiedLink = false
           Task { await model.revoke() }
         }
       }
     }
+    .spSheet(.fitted, embedsNavigationStack: true)
   }
 
   @ViewBuilder
@@ -105,16 +105,10 @@ public struct GuestLinkSheetView: View {
           .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
         HStack(spacing: 10) {
-          SPButton(
-            copiedLink ? L10n.tr("guestLink.copied") : L10n.tr("guestLink.copyAction"),
-            variant: .primary,
-            size: .md,
-            isFullWidth: true
-          ) {
-            UIPasteboard.general.string = rawURL
-            Haptics.light()
-            copiedLink = true
-          }
+          CopyButton(
+            value: rawURL,
+            label: L10n.tr("guestLink.copyAction")
+          )
 
           if let shareURL = URL(string: rawURL) {
             ShareLink(item: shareURL) {
@@ -139,7 +133,6 @@ public struct GuestLinkSheetView: View {
               isOfflineBlocked: isOffline,
               isPending: model.isPerformingAction
             ) {
-              copiedLink = false
               Task { await model.enableOrRotate(rotate: true) }
             }
           }
@@ -167,7 +160,6 @@ public struct GuestLinkSheetView: View {
         isOfflineBlocked: isOffline,
         isPending: model.isPerformingAction
       ) {
-        copiedLink = false
         Task { await model.enableOrRotate(rotate: false) }
       }
     } else {

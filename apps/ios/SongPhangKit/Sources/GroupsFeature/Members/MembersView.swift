@@ -24,7 +24,6 @@ public struct MembersView: View {
   @State private var deactivateWarningMember: Member?
   @State private var removingUser: GroupUser?
   @State private var isConfirmingLeave = false
-  @State private var copiedLink = false
 
   public init(
     model: MembersModel,
@@ -85,7 +84,8 @@ public struct MembersView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(model.state.value?.group.name ?? L10n.tr("feed.membersLink"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       await model.load()
     }
@@ -131,11 +131,9 @@ public struct MembersView: View {
     let canWrite = isEmailVerified && data.group.role.canWrite && !isOffline
     let people = data.members.filter { $0.kind == .person }
 
-    SPScreenHeader(
-      title: data.group.name,
-      subtitle: L10n.t("members.memberCount", ["count": String(people.count)]),
-      onBack: onBack
-    )
+    Text(L10n.t("members.memberCount", ["count": String(people.count)]))
+      .font(Typography.subheadlineBold)
+      .foregroundStyle(Tokens.muted)
 
     if let fund = data.balances.fund {
       FundBlockView(fund: fund, members: people) {
@@ -346,12 +344,7 @@ public struct MembersView: View {
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
       : AnyLayout(HStackLayout(spacing: 12))
     let content = layout {
-      MemberShapeView(
-        shape: member.shape,
-        color: member.color,
-        name: member.name,
-        size: 52
-      )
+      MemberShapeView(member: member, size: 52)
       VStack(alignment: .leading, spacing: 2) {
         Text(member.name)
           .font(Typography.bodyBold)
@@ -646,10 +639,10 @@ public struct MembersView: View {
 
       if invite.active {
         HStack(spacing: 12) {
-          SPButton(L10n.tr("invite.copy"), variant: .primary) {
-            UIPasteboard.general.string = invite.url
-            copiedLink = true
-          }
+          CopyButton(
+            value: invite.url,
+            label: L10n.tr("invite.copy")
+          )
 
           if let shareURL = URL(string: invite.url) {
             ShareLink(item: shareURL) {
@@ -664,12 +657,6 @@ public struct MembersView: View {
             .buttonStyle(.plain)
           }
         }
-      }
-
-      if copiedLink {
-        Text(L10n.tr("invite.copied"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.onAccent)
       }
     }
     .padding(16)

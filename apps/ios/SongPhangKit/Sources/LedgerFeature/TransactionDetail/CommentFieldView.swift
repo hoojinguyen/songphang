@@ -37,7 +37,7 @@ struct CommentFieldView: View {
           onSend(bodyToSend)
         } label: {
           Image(systemName: "arrow.up")
-            .font(.system(size: 16, weight: .bold))
+            .spIconFont(size: 16, weight: .bold, relativeTo: .callout)
             .foregroundStyle(canSend ? Tokens.surface : Tokens.muted)
             .frame(width: 40, height: 40)
             .background(canSend ? Tokens.ink : Tokens.surface)

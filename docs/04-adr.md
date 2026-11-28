@@ -374,3 +374,33 @@ Hand-writing a queue, accepting model-computed money and sending persistent data
 **Decision.** Share bearer tokens exclusively through a Keychain access group (`TokenStore` with one-time migration from legacy ungrouped entries and Simulator unsigned fallback), store non-secret summaries (`widget-snapshot.json`, `share-groups.json`, `ShareInbox/`) in `ExtensionSharedStore` (`group.vn.songphang.app`, `.completeFileProtectionUntilFirstUserAuthentication`, wiped immediately on sign-out), downsample shared photos with `ImageIO` (`<= 5 MiB`), and pair `songphang://share-import/{batchId}` (`LinkRouter.appActionRoute`) with automatic `RootView` `scenePhase == .active` `ShareInbox` pickup so host apps that suppress `extensionContext?.open` still land cleanly in Sòng Phẳng. `SongPhangWidgetExtension` links only `Domain` and `DesignSystem` and honors `"Ẩn số tiền trên Widget"`.
 
 **Considered.** Storing session tokens in `UserDefaults(suiteName:)` (violates `apps/ios/AGENTS.md` §7); background URLSession polling inside WidgetKit (drains battery and duplicates Repository logic); relying solely on `extensionContext?.open` from Share Extensions (drops imports when host apps like Zalo block URL opening).
+
+## ADR-042 — Native navigation bars on iOS
+
+**Status:** approved by the project owner on 2026-11-28; to be implemented in Phase 5.6 on `phase-5-6`.
+
+**Context.** Since 5.5A, 17 pushed screens hide the system back button and draw `SPScreenHeader` inside their content. Two patches followed: `PopGestureEnabler` to restore swipe-back and `StatusBarCover` to keep text from running under the clock. The UI/UX v3 review traced several defects to this choice (two back buttons on expense detail, a cloned group's header under the clock, the Account tab scrolling under the clock) and found that it forfeits iOS 26 Liquid Glass bars, large titles and the scroll edge effect.
+
+**Decision.** Every pushed screen uses the system navigation bar with `navigationTitle` and `ToolbarItem`s; tab roots also sit under a navigation bar. `SPScreenHeader` remains only where there is no navigation stack. Both patches are deleted. Navigation titles use Be Vietnam Pro through `UINavigationBar.appearance()`, falling back to the system font if iOS 26 bars ignore it. Opening content from a tab pushes inside that tab. Supersedes, for pushed screens, the custom-header part of ADR-034.
+
+**Considered.** Keeping the custom header and fixing each defect (the defects return with every new screen); a custom `UINavigationController` subclass (more code than the patches it replaces).
+
+## ADR-043 — Motion, feedback and sound system on iOS
+
+**Status:** approved by the project owner on 2026-11-28; to be implemented in Phase 5.6 on `phase-5-6`.
+
+**Context.** The iOS app had 17 hand-tuned animation calls, 4 of which honoured Reduce Motion, 22 imperative haptic calls and no sound. UI/UX v3 asks for feedback when money changes hands, without slowing a money app down.
+
+**Decision.** Three spring tokens (`quick`, `bounce`, `smooth`) in `DesignSystem/Tokens/Motion.swift`, applied through one helper that turns motion into an instant or opacity change under Reduce Motion. Haptics through `.sensoryFeedback` behind one wrapper with fixed meanings (selection, success when money changes hands, warning on error). Three sounds of under 400 ms (coin, ting, chord), generated in the repository by a script and bundled as `.caf`, played on an `.ambient` audio session for the user's own actions only. A per-device "Âm thanh và rung" setting, both on by default. No animation or audio library.
+
+**Considered.** A third-party animation library (unneeded on iOS 26); licensed sound packs (licensing and download risk); system sound IDs (undocumented); sound off by default (the owner chose on by default, D12).
+
+## ADR-044 — iOS-first strings during UI/UX v3
+
+**Status:** approved by the project owner on 2026-11-28; applies to Phases 5.6–5.8 and ends with Phase 5.9.
+
+**Context.** `apps/ios/AGENTS.md` §8 requires iOS strings to match `apps/web/src/messages/vi.ts` character for character. In v3 iOS is redesigned first and Web follows in Phase 5.9, so iOS copy must change before Web's.
+
+**Decision.** During Phases 5.6–5.8, iOS may add, change or remove strings without the web file. Each run records every change in its `copy-changes.md` (key, old value, new value, reason). Phase 5.9 applies all of them to `vi.ts`, after which the rule returns to "identical".
+
+**Considered.** Changing Web strings in every iOS phase (breaks the iOS-only write boundary and ships half-redesigned Web screens); freezing copy until 5.9 (blocks the copy fixes that v3 is for).

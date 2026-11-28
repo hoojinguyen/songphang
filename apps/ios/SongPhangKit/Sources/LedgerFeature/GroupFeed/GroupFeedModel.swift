@@ -45,8 +45,22 @@ public final class GroupFeedModel {
   public var searchText: String
   public var hasNewItemsPill = false
   public var isScrolledAwayFromBottom = false
-  public var lastDeletedTransactionId: LedgerTransaction.ID?
-  public var toastMessage: String?
+  public var lastDeletedTransactionId: LedgerTransaction.ID? {
+    didSet {
+      if lastDeletedTransactionId != nil {
+        undoToastPresentationId = UUID()
+      }
+    }
+  }
+  public private(set) var undoToastPresentationId = UUID()
+  public var toastMessage: String? {
+    didSet {
+      if toastMessage != nil {
+        toastPresentationId = UUID()
+      }
+    }
+  }
+  public private(set) var toastPresentationId = UUID()
 
   private let groupsRepository: any GroupsRepository
   private let membersRepository: any MembersRepository
@@ -138,8 +152,12 @@ public final class GroupFeedModel {
     }
   }
 
-  public func undoDelete(restoredMessage: String, errorMessage: String) async {
-    guard !isUndoingDelete, let id = lastDeletedTransactionId else { return }
+  public func undoDelete(
+    id explicitId: LedgerTransaction.ID? = nil,
+    restoredMessage: String,
+    errorMessage: String
+  ) async {
+    guard !isUndoingDelete, let id = explicitId ?? lastDeletedTransactionId else { return }
     isUndoingDelete = true
     defer { isUndoingDelete = false }
     do throws(AppError) {

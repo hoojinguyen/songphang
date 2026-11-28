@@ -12,6 +12,10 @@ struct HouseholdFormSheetView: View {
   let onSaveUpdate: (Household.ID, UpdateHouseholdInput) async -> Void
   let onDismiss: () -> Void
 
+  private let initialNameText: String
+  private let initialSelectedIds: [Member.ID]
+  private let initialRepresentativeId: Member.ID?
+
   @State private var nameText: String
   @State private var selectedIds: [Member.ID]
   @State private var representativeId: Member.ID?
@@ -36,11 +40,19 @@ struct HouseholdFormSheetView: View {
     self.onDismiss = onDismiss
 
     let initialMembers = editing?.memberIds ?? []
-    self._nameText = State(initialValue: editing?.name ?? "")
+    let initName = editing?.name ?? ""
+    let initRep = editing?.representativeMemberId ?? initialMembers.first
+    self.initialNameText = initName
+    self.initialSelectedIds = initialMembers
+    self.initialRepresentativeId = initRep
+    self._nameText = State(initialValue: initName)
     self._selectedIds = State(initialValue: initialMembers)
-    self._representativeId = State(
-      initialValue: editing?.representativeMemberId ?? initialMembers.first
-    )
+    self._representativeId = State(initialValue: initRep)
+  }
+
+  private var isDirty: Bool {
+    nameText != initialNameText || selectedIds != initialSelectedIds
+      || representativeId != initialRepresentativeId
   }
 
   private func conflictingHousehold(for memberId: Member.ID) -> Household? {
@@ -111,13 +123,7 @@ struct HouseholdFormSheetView: View {
                 toggleMember(member.id)
               } label: {
                 HStack(spacing: 10) {
-                  MemberShapeView(
-                    shape: member.shape,
-                    color: member.color,
-                    name: member.name,
-                    size: 28,
-                    showInitial: false
-                  )
+                  MemberShapeView(member: member, size: 28)
                   VStack(alignment: .leading, spacing: 2) {
                     Text(member.name)
                       .font(Typography.subheadlineBold)
@@ -130,7 +136,7 @@ struct HouseholdFormSheetView: View {
                   }
                   Spacer()
                   Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20, weight: .semibold))
+                    .spIconFont(size: 20, weight: .semibold, relativeTo: .title3)
                     .foregroundStyle(selected ? Tokens.ink : Tokens.muted)
                 }
                 .padding(12)
@@ -170,7 +176,7 @@ struct HouseholdFormSheetView: View {
                     }
                     Spacer()
                     Image(systemName: isRep ? "largecircle.fill.circle" : "circle")
-                      .font(.system(size: 18, weight: .semibold))
+                      .spIconFont(size: 18, weight: .semibold, relativeTo: .headline)
                       .foregroundStyle(isRep ? Tokens.ink : Tokens.muted)
                   }
                   .padding(12)
@@ -212,10 +218,13 @@ struct HouseholdFormSheetView: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button(L10n.tr("common.cancel"), action: onDismiss)
+          SheetCancelButton(action: onDismiss)
+            .disabled(isPending)
         }
       }
     }
+    .spSheet(.form, embedsNavigationStack: true)
+    .discardGuard(isDirty: isDirty, isPending: isPending, onDiscard: onDismiss)
   }
 
   private func toggleMember(_ id: Member.ID) {

@@ -17,6 +17,12 @@ public final class PaymentDetailsModel {
   public private(set) var validationError: String?
   public private(set) var saveError: AppError?
 
+  private let initialBin: String
+  private let initialAccountNumber: String
+  private let initialAccountName: String
+  private let initialMomo: String
+  private let initialZalopay: String
+
   private let repository: any MembersRepository
   private let onSaved: () -> Void
   private let onUnauthorized: () -> Void
@@ -34,18 +40,44 @@ public final class PaymentDetailsModel {
     self.onSaved = onSaved
     self.onUnauthorized = onUnauthorized
 
+    var initBin = ""
+    var initAccountNumber = ""
+    var initAccountName = ""
+    var initMomo = ""
+    var initZalopay = ""
+
     for method in member.paymentMethods {
       switch method {
       case .bank(let bank):
-        self.bin = bank.bin
-        self.accountNumber = bank.accountNumber
-        self.accountName = bank.accountName
+        initBin = bank.bin
+        initAccountNumber = bank.accountNumber
+        initAccountName = bank.accountName
       case .momo(let phone):
-        self.momo = phone
+        initMomo = phone
       case .zalopay(let phone):
-        self.zalopay = phone
+        initZalopay = phone
       }
     }
+
+    self.initialBin = initBin
+    self.initialAccountNumber = initAccountNumber
+    self.initialAccountName = initAccountName
+    self.initialMomo = initMomo
+    self.initialZalopay = initZalopay
+    self.bin = initBin
+    self.accountNumber = initAccountNumber
+    self.accountName = initAccountName
+    self.momo = initMomo
+    self.zalopay = initZalopay
+  }
+
+  var hasUnsavedChanges: Bool {
+    !saved
+      && (bin != initialBin
+        || accountNumber != initialAccountNumber
+        || accountName != initialAccountName
+        || momo != initialMomo
+        || zalopay != initialZalopay)
   }
 
   var hasInvalidAccountNumberCharacters: Bool {
