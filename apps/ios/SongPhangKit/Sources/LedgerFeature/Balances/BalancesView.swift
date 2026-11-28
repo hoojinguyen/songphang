@@ -901,12 +901,7 @@ private struct OwnSettlementCardView: View {
       let toMember = members.first(where: { $0.id == transfer.toMemberId })
     {
       VStack(spacing: 12) {
-        MemberShapeView(
-          shape: toMember.shape,
-          color: toMember.color,
-          name: toMember.name,
-          size: 84
-        )
+        MemberShapeView(member: toMember, size: 84)
         Text(
           transferRowCaption(
             transfer: transfer,
@@ -1009,12 +1004,7 @@ private struct SettlementCardView: View {
 
       VStack(alignment: .leading, spacing: 16) {
         rowLayout {
-          MemberShapeView(
-            shape: other.shape,
-            color: other.color,
-            name: other.name,
-            size: 76
-          )
+          MemberShapeView(member: other, size: 76)
           VStack(alignment: .leading, spacing: 4) {
             Text(caption)
               .font(Typography.captionBold)
@@ -1139,13 +1129,7 @@ private struct OtherSettlementsSection: View {
         {
           VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-              MemberShapeView(
-                shape: fromMember.shape,
-                color: fromMember.color,
-                name: fromMember.name,
-                size: 28,
-                showInitial: false
-              )
+              MemberShapeView(member: fromMember, size: 28)
               Text(
                 transferRowCaption(
                   transfer: transfer,
@@ -1272,12 +1256,7 @@ private struct AllSettledSection: View {
       ) {
         ForEach(members) { member in
           VStack(spacing: 8) {
-            MemberShapeView(
-              shape: member.shape,
-              color: member.color,
-              name: member.name,
-              size: 72
-            )
+            MemberShapeView(member: member, size: 72)
             Text(member.id == myMemberId ? L10n.tr("common.you") : member.name)
               .font(Typography.bodyBold)
               .foregroundStyle(Tokens.ink)
@@ -1322,13 +1301,7 @@ private struct AllSettledSection: View {
               }()
 
               HStack(spacing: 8) {
-                MemberShapeView(
-                  shape: fromMember.shape,
-                  color: fromMember.color,
-                  name: fromMember.name,
-                  size: 28,
-                  showInitial: false
-                )
+                MemberShapeView(member: fromMember, size: 28)
                 Text(text)
                   .font(Typography.caption)
                   .foregroundStyle(Tokens.ink)

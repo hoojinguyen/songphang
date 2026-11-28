@@ -189,8 +189,7 @@ struct SettlementCyclesSectionView: View {
                   shape: item.shape,
                   color: item.color,
                   name: item.name,
-                  size: 20,
-                  showInitial: false
+                  size: 20
                 )
                 Text(item.name)
                   .font(Typography.caption)

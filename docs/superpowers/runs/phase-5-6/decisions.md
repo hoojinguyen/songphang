@@ -144,3 +144,15 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
   2. Measure intrinsic vertical height decoupled from the proposed detent height: for plain sheet content, wrap in `ViewThatFits(in: .vertical)` measuring `content.fixedSize(horizontal: false, vertical: true)` via `onGeometryChange` (falling back to a `ScrollView` when `accessibility5` exceeds the 86%-screen cap); for sheets with an inner `NavigationStack` + `ScrollView`, measure the inner `VStack` via `.spFittedSheetContent(chromeAllowance:)` (`PreferenceKey`, since vertical `ScrollView` proposes `.unspecified` height to its child); quantize changes with a `>= 2 pt` deadband, cap at `[.large]` when taller than `0.86 * screenHeight`, set `.presentationDragIndicator(.visible)`, and omit `.presentationBackground` so iOS 26 applies system Liquid Glass. Pair `.discardGuard(isDirty:onDiscard:)` with an `EnvironmentValues.spSheetRequestDismiss` closure consumed by `SheetCancelButton` and `SheetCloseButton`.
 - **Choice:** Option 2.
 - **Reason:** Intrinsic height depends only on content width and Dynamic Type size (never on the sheet detent), eliminating oscillation while preventing clipping at `accessibility5` and preserving iOS 26 Liquid Glass.
+
+### D7 — `ChipRow` half-peek sizing, `MemberShapeView` unclaimed dashed outline, and `EmptyState` API (Task 5.6.A.5)
+
+- **Problem:**
+  1. `ChipRow` must wrap without horizontal scrolling when it has `<= 4` chips, and when scrolling horizontally (`> 4` chips) must never truncate chip labels and must position chips so the chip crossing the trailing edge is roughly half visible (not fully hidden behind a gutter gap).
+  2. `MemberShapeView` previously accepted `showInitial: Bool = true` (with 21 call sites passing `showInitial: false`, rendering plain colored dots) and had no unclaimed visual treatment (`F1-01`, `F2-43`).
+  3. `EmptyState` previously allowed callers to omit an action silently (`F2-122`).
+- **Options:**
+  1. Keep `showInitial` defaulted to `true` and inspect callers manually; use plain `HStack(spacing: 8)` inside `ChipRow` regardless of where the right edge lands.
+  2. Remove `showInitial` from `MemberShapeView` altogether so plain dots are unrepresentable, add `isClaimed: Bool = true` + `init(member: Member, size: CGFloat)` drawing `Tokens.dashed` stroke and `0.45` fill opacity when `!isClaimed`, and migrate `Member`-backed call sites to `MemberShapeView(member:size:)`; implement `ChipWrapLayout` (`<= 4` items) and `PeekingChipHStackLayout` (`> 4` items, adjusting inter-chip spacing >= `spacing` when needed so the trailing boundary chip shows 35%–65% of its natural width); require either `action:` or `noActionReason:` on `EmptyState` initializers.
+- **Choice:** Option 2.
+- **Reason:** Making plain dots and silent actionless `EmptyState`s unrepresentable enforces `AGENTS.md` §6 ("Let the machine catch errors"), while `Layout` subviews keep every chip label untruncated (`fixedSize(horizontal: true)`).

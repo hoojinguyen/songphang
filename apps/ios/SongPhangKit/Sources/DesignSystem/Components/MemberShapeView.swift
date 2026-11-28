@@ -7,45 +7,65 @@ public struct MemberShapeView: View {
   private let color: MemberColor
   private let name: String
   private let size: CGFloat
-  private let showInitial: Bool
+  private let isClaimed: Bool
 
   public init(
     shape: MemberShape,
     color: MemberColor,
     name: String,
     size: CGFloat,
-    showInitial: Bool = true
+    isClaimed: Bool = true
   ) {
     self.shape = shape
     self.color = color
     self.name = name
     self.size = size
-    self.showInitial = showInitial
+    self.isClaimed = isClaimed
   }
 
   public init(
     shape: MemberShape,
     color: MemberColor,
     initial: String,
-    size: CGFloat
+    size: CGFloat,
+    isClaimed: Bool = true
   ) {
     self.shape = shape
     self.color = color
     self.name = initial
     self.size = size
-    self.showInitial = true
+    self.isClaimed = isClaimed
+  }
+
+  public init(member: Member, size: CGFloat) {
+    self.shape = member.shape
+    self.color = member.color
+    self.name = member.name
+    self.size = size
+    self.isClaimed = member.claimed
   }
 
   public var body: some View {
     ZStack {
       drawnShape
-        .fill(Tokens.color(for: color))
+        .fill(Tokens.color(for: color).opacity(isClaimed ? 1.0 : 0.45))
+        .overlay {
+          if !isClaimed {
+            drawnShape.stroke(
+              Tokens.dashed,
+              style: StrokeStyle(
+                lineWidth: max(1.5, size * 0.055),
+                dash: [max(3, size * 0.11), max(2.5, size * 0.08)]
+              )
+            )
+          }
+        }
         .frame(width: size * scaleFactor, height: size * scaleFactor)
         .rotationEffect(.degrees(rotationDegrees))
 
-      if showInitial && size >= 44, let firstLetter = initialLetter {
+      if let firstLetter = initialLetter {
         Text(firstLetter)
-          .font(.system(size: size * 0.36, weight: .black))
+          .font(.system(size: initialFontSize, weight: .black))
           .foregroundStyle(Tokens.onAccent)
           .accessibilityHidden(true)
       }
@@ -53,6 +73,13 @@ public struct MemberShapeView: View {
     .frame(width: size, height: size)
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(name)
+  }
+
+  private var initialFontSize: CGFloat {
+    if size < 32 {
+      return max(9, size * 0.42)
+    }
+    return size * 0.36
   }
 
   private var initialLetter: String? {
@@ -107,3 +134,16 @@ public struct MemberShapeView: View {
     }
   }
 }
+
+#if DEBUG
+  #Preview("Claimed vs Unclaimed Shapes") {
+    HStack(spacing: 16) {
+      MemberShapeView(shape: .circle, color: .mint, name: "Minh", size: 52, isClaimed: true)
+      MemberShapeView(shape: .diamond, color: .sky, name: "Lan", size: 52, isClaimed: false)
+      MemberShapeView(shape: .squircle, color: .coral, name: "Hùng", size: 28, isClaimed: true)
+      MemberShapeView(shape: .leaf, color: .lilac, name: "Thu", size: 24, isClaimed: false)
+    }
+    .padding(20)
+    .background(Tokens.bg)
+  }
+#endif

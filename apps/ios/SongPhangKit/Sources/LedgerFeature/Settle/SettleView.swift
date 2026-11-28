@@ -121,12 +121,7 @@ public struct SettleView: View {
 
     HStack(spacing: 20) {
       VStack(spacing: 12) {
-        MemberShapeView(
-          shape: data.fromMember.shape,
-          color: data.fromMember.color,
-          name: data.fromMember.name,
-          size: 104
-        )
+        MemberShapeView(member: data.fromMember, size: 104)
         Text(data.fromMember.id == myMemberId ? L10n.tr("common.you") : data.fromMember.name)
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)
@@ -137,12 +132,7 @@ public struct SettleView: View {
         .foregroundStyle(Tokens.ink)
 
       VStack(spacing: 12) {
-        MemberShapeView(
-          shape: data.toMember.shape,
-          color: data.toMember.color,
-          name: data.toMember.name,
-          size: 104
-        )
+        MemberShapeView(member: data.toMember, size: 104)
         Text(data.toMember.id == myMemberId ? L10n.tr("common.you") : data.toMember.name)
           .font(Typography.subheadlineBold)
           .foregroundStyle(Tokens.ink)

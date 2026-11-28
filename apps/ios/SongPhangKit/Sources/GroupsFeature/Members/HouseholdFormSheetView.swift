@@ -111,13 +111,7 @@ struct HouseholdFormSheetView: View {
                 toggleMember(member.id)
               } label: {
                 HStack(spacing: 10) {
-                  MemberShapeView(
-                    shape: member.shape,
-                    color: member.color,
-                    name: member.name,
-                    size: 28,
-                    showInitial: false
-                  )
+                  MemberShapeView(member: member, size: 28)
                   VStack(alignment: .leading, spacing: 2) {
                     Text(member.name)
                       .font(Typography.subheadlineBold)

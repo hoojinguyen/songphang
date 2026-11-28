@@ -319,12 +319,7 @@ struct MemberToggleGridView: View {
           onToggle(member.id)
         } label: {
           VStack(spacing: 4) {
-            MemberShapeView(
-              shape: member.shape,
-              color: member.color,
-              name: member.name,
-              size: 44
-            )
+            MemberShapeView(member: member, size: 44)
             Text(captionFor(member))
               .font(Typography.captionBold)
               .foregroundStyle(isSelected ? Tokens.ink : Tokens.muted)
@@ -369,13 +364,7 @@ struct PayerAmountsView: View {
     VStack(alignment: .leading, spacing: 8) {
       ForEach(members) { member in
         HStack(spacing: 8) {
-          MemberShapeView(
-            shape: member.shape,
-            color: member.color,
-            name: member.name,
-            size: 32,
-            showInitial: false
-          )
+          MemberShapeView(member: member, size: 32)
           Text(member.name)
             .font(Typography.bodyBold)
             .foregroundStyle(Tokens.ink)

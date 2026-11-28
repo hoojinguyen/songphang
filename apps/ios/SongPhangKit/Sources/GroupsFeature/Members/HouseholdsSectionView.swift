@@ -182,13 +182,7 @@ public struct HouseholdsSectionView: View {
           HStack(spacing: 8) {
             ForEach(householdMembers) { member in
               HStack(spacing: 6) {
-                MemberShapeView(
-                  shape: member.shape,
-                  color: member.color,
-                  name: member.name,
-                  size: 20,
-                  showInitial: false
-                )
+                MemberShapeView(member: member, size: 20)
                 Text(member.name)
                   .font(Typography.captionBold)
                   .foregroundStyle(Tokens.ink)

@@ -250,8 +250,7 @@ public struct ShareCardCanvasView: View {
               shape: row.shape,
               color: row.color,
               name: row.name,
-              size: 24,
-              showInitial: false
+              size: 24
             )
             Text(row.name)
               .font(Typography.captionBold)

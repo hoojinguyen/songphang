@@ -10648,6 +10648,17 @@
           }
         }
       }
+    },
+    "ios.memberPicker.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{name}, đã chọn"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

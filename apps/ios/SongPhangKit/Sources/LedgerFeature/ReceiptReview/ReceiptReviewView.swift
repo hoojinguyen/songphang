@@ -349,13 +349,7 @@ public struct ReceiptReviewView: View {
               model.payerId = member.id
             } label: {
               HStack(spacing: 6) {
-                MemberShapeView(
-                  shape: member.shape,
-                  color: member.color,
-                  name: member.name,
-                  size: 22,
-                  showInitial: false
-                )
+                MemberShapeView(member: member, size: 22)
                 Text(member.name)
                   .font(Typography.captionBold)
               }

@@ -457,13 +457,7 @@ public struct GroupContainerView: View {
         } label: {
           HStack(spacing: 2) {
             ForEach(Array(currentMembers.prefix(3))) { member in
-              MemberShapeView(
-                shape: member.shape,
-                color: member.color,
-                name: member.name,
-                size: 24,
-                showInitial: false
-              )
+              MemberShapeView(member: member, size: 24)
             }
           }
           .padding(.horizontal, 10)

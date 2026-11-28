@@ -157,13 +157,7 @@ struct FeedTransactionRowView: View {
       // Row 1: Top row
       HStack(alignment: .center, spacing: 8) {
         if let payer {
-          MemberShapeView(
-            shape: payer.shape,
-            color: payer.color,
-            name: payer.name,
-            size: 28,
-            showInitial: false
-          )
+          MemberShapeView(member: payer, size: 28)
         }
         Text(
           transaction.payers.count > 1
@@ -328,16 +322,10 @@ struct FeedTransactionRowView: View {
       HStack(alignment: .center, spacing: 8) {
         HStack(spacing: -6) {
           ForEach(Array(participantMembers.prefix(5))) { member in
-            MemberShapeView(
-              shape: member.shape,
-              color: member.color,
-              name: member.name,
-              size: 20,
-              showInitial: false
-            )
-            .overlay(
-              Circle().stroke(Tokens.surface, lineWidth: 1.5)
-            )
+            MemberShapeView(member: member, size: 20)
+              .overlay(
+                Circle().stroke(Tokens.surface, lineWidth: 1.5)
+              )
           }
           if participantMembers.count > 5 {
             Text("+\(participantMembers.count - 5)")
@@ -398,25 +386,13 @@ struct FeedTransactionRowView: View {
     return HStack(spacing: 12) {
       HStack(spacing: 6) {
         if let from {
-          MemberShapeView(
-            shape: from.shape,
-            color: from.color,
-            name: from.name,
-            size: 24,
-            showInitial: false
-          )
+          MemberShapeView(member: from, size: 24)
         }
         Image(systemName: "arrow.right")
           .font(.system(size: 11, weight: .bold))
           .foregroundStyle(Tokens.muted)
         if let to {
-          MemberShapeView(
-            shape: to.shape,
-            color: to.color,
-            name: to.name,
-            size: 24,
-            showInitial: false
-          )
+          MemberShapeView(member: to, size: 24)
         }
       }
 
@@ -511,12 +487,7 @@ struct FeedEmptyStreamView: View {
 
       HStack(spacing: 4) {
         ForEach(Array(members.prefix(4))) { member in
-          MemberShapeView(
-            shape: member.shape,
-            color: member.color,
-            name: member.name,
-            size: 76
-          )
+          MemberShapeView(member: member, size: 76)
         }
       }
 

@@ -247,8 +247,7 @@ public struct GuestGroupView: View {
               shape: from.shape,
               color: from.color,
               name: from.name,
-              size: 32,
-              showInitial: false
+              size: 32
             )
           }
           VStack(alignment: .leading, spacing: 2) {
@@ -440,8 +439,7 @@ public struct GuestGroupView: View {
                     shape: member.shape,
                     color: member.color,
                     name: member.name,
-                    size: 28,
-                    showInitial: false
+                    size: 28
                   )
                   Text(member.name)
                     .font(Typography.captionBold)

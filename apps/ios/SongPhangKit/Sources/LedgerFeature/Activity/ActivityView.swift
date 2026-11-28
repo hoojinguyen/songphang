@@ -150,13 +150,7 @@ private struct ActivityRowView: View {
 
     HStack(alignment: .top, spacing: 12) {
       if let actorMember {
-        MemberShapeView(
-          shape: actorMember.shape,
-          color: actorMember.color,
-          name: actorMember.name,
-          size: 40,
-          showInitial: false
-        )
+        MemberShapeView(member: actorMember, size: 40)
       } else {
         Circle()
           .fill(Tokens.sunken)

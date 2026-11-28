@@ -346,12 +346,7 @@ public struct MembersView: View {
       ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
       : AnyLayout(HStackLayout(spacing: 12))
     let content = layout {
-      MemberShapeView(
-        shape: member.shape,
-        color: member.color,
-        name: member.name,
-        size: 52
-      )
+      MemberShapeView(member: member, size: 52)
       VStack(alignment: .leading, spacing: 2) {
         Text(member.name)
           .font(Typography.bodyBold)

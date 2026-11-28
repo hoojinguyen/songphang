@@ -9,3 +9,4 @@ Every string added, changed or removed on iOS in this run. Phase 5.9 applies the
 | `ios.feedback.haptics` | (added) | `Rung` | Spec §7.4 & Task 5.6.A.2: Haptics toggle label |
 | `ios.sheet.discardTitle` | (added) | `Bỏ thay đổi?` | Task 5.6.A.4: Unsaved-changes discard confirmation dialog title |
 | `ios.sheet.discardConfirm` | (added) | `Bỏ` | Task 5.6.A.4: Unsaved-changes destructive confirm action |
+| `ios.memberPicker.selected` | (added) | `{name}, đã chọn` | Task 5.6.A.5: VoiceOver selected label in `MemberPicker` |

@@ -170,25 +170,13 @@ struct SettlementVaultSectionView: View {
 
     let headerRow = HStack(spacing: 10) {
       if let fromMember {
-        MemberShapeView(
-          shape: fromMember.shape,
-          color: fromMember.color,
-          name: fromMember.name,
-          size: 28,
-          showInitial: false
-        )
+        MemberShapeView(member: fromMember, size: 28)
       }
       Image(systemName: "arrow.right")
         .font(.system(size: 11, weight: .bold))
         .foregroundStyle(Tokens.muted)
       if let toMember {
-        MemberShapeView(
-          shape: toMember.shape,
-          color: toMember.color,
-          name: toMember.name,
-          size: 28,
-          showInitial: false
-        )
+        MemberShapeView(member: toMember, size: 28)
       }
 
       VStack(alignment: .leading, spacing: 2) {

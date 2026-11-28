@@ -181,13 +181,7 @@ public struct ReceiptItemsAssignmentView: View {
             .foregroundStyle(Tokens.muted)
         } else {
           ForEach(assigned) { member in
-            MemberShapeView(
-              shape: member.shape,
-              color: member.color,
-              name: member.name,
-              size: 24,
-              showInitial: false
-            )
+            MemberShapeView(member: member, size: 24)
           }
         }
       }
@@ -359,12 +353,7 @@ public struct ReceiptItemsAssignmentView: View {
             onChange()
           } label: {
             VStack(spacing: 4) {
-              MemberShapeView(
-                shape: member.shape,
-                color: member.color,
-                name: member.name,
-                size: 32
-              )
+              MemberShapeView(member: member, size: 32)
               Text(member.name)
                 .font(Typography.captionBold)
                 .foregroundStyle(Tokens.ink)

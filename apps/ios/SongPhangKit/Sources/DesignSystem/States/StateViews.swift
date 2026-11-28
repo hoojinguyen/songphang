@@ -100,11 +100,29 @@ public struct EmptyState<Leading: View, Action: View>: View {
 }
 
 extension EmptyState where Leading == EmptyView, Action == EmptyView {
-  public init(title: String, subtitle: String? = nil) {
+  public init(title: String, subtitle: String? = nil, noActionReason: String) {
+    _ = noActionReason
     self.init(
       title: title,
       subtitle: subtitle,
       leading: { EmptyView() },
+      action: { EmptyView() }
+    )
+  }
+}
+
+extension EmptyState where Action == EmptyView {
+  public init(
+    title: String,
+    subtitle: String? = nil,
+    noActionReason: String,
+    @ViewBuilder leading: () -> Leading
+  ) {
+    _ = noActionReason
+    self.init(
+      title: title,
+      subtitle: subtitle,
+      leading: leading,
       action: { EmptyView() }
     )
   }

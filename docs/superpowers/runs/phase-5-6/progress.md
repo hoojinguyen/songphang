@@ -89,7 +89,7 @@
     - Security review: checked relevant items 1, 2, 8 on `git diff`; `DesignSystem` typography/layout views only, no issues found.
   - **Findings closed:** part of `B07`, `F3-28` (foundation; sweep in `5.6.C.4`).
 
-- [x] **Task 5.6.A.4 — Sheet system**
+- [x] **Task 5.6.A.4 — Sheet system** (commit `c4c858b`)
   - **Approach:**
     - Files to create/modify: `DesignSystem/Components/SheetPresentation.swift` (new), `LedgerFeature/GroupFeed/{FilterSheetView,GroupFeedView}.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
     - Approach: Implement `SheetSize` (`.fitted`, `.half`, `.form`), `.spSheet(_:expandable:embedsNavigationStack:)` with intrinsic `fixedSize(vertical: true)` / `PreferenceKey` height measurement capped at `.large` and no custom `presentationBackground` so iOS 26 Liquid Glass applies; implement `.discardGuard(isDirty:onDiscard:)` with `interactiveDismissDisabled` and `"Bỏ thay đổi?"` / `"Bỏ"` / `"Huỷ"` confirmation dialog wired to `SheetCancelButton` and `SheetCloseButton` via `\.spSheetRequestDismiss`; switch `FilterSheetView` to `.spSheet(.half)` + `SheetCancelButton`.
@@ -105,6 +105,22 @@
     - Simulator temporary `.fitted` short and long test sheets at default (`large`) and `accessibility-extra-extra-extra-large` (`AX5`): short sheet hugged content cleanly with Liquid Glass background (`screens/stage-a/a4-fitted-short.png`), long sheet at `AX5` capped cleanly at `.large` and scrolled without jitter or clipping (`screens/stage-a/a4-fitted-long-ax5.png`); temporary test sheet code removed before commit.
     - Security review: checked relevant items 1, 2, 8 on `git diff`; SwiftUI sheet presentation and confirmation dialog only, no issues found.
   - **Findings closed:** `F2-29`, `F2-30`, `F2-31`, `F2-32`, `F4-03`, `F4-04` (component part; applied to all 32 presentations in `5.6.C.1`), `F2-130` (reference).
+
+- [x] **Task 5.6.A.5 — Selection and state components**
+  - **Approach:**
+    - Files to create/modify: `DesignSystem/Components/{MemberPicker,ChipRow,CountBadge,MemberShapeView,ShareCardCanvasView}.swift`, `DesignSystem/States/StateViews.swift`, `DesignSystem/Resources/Localizable.xcstrings`, plus `MemberShapeView`/`EmptyState` call sites across `AppShell`, `GroupsFeature`, `LedgerFeature`, and `PaymentsFeature`, and `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
+    - Approach: Create `MemberPicker` (single/multiple selection, `MemberShapeView(member:size:)`, `"Bạn"` for current member, `.spFeedback(.selection)`, `Motion.quick`, vertical stack at accessibility Dynamic Type sizes, VoiceOver `"{name}, đã chọn"`), `ChipRow` (`<= 4` wrap layout, `> 4` untruncated horizontal scroll leaving ~half of the trailing boundary chip visible), and `CountBadge` (renders nothing when `<= 0`); require either `action:` or `noActionReason:` on `EmptyState` (updating `FundView.swift`); remove `showInitial` from `MemberShapeView` so plain dots cannot be rendered anywhere and add `isClaimed` dashed border (`Tokens.dashed`) + `init(member:size:)`.
+    - Why this is the simplest approach: Making plain dots and silent actionless empty states unrepresentable at compile time prevents regression across all 13 targets.
+    - Rejected alternative: Keeping `showInitial: Bool = true` — rejected because existing call sites could continue passing `false`.
+    - Questions: none (Decision D7 recorded in `decisions.md`).
+  - **Gates (verbatim):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - **Exercise results:**
+    - Simulator (`--scripted --route-members` and `--scripted --route-feed` on `iPhone 17 Pro`): verified every `MemberShapeView` draws its member initial (`0` plain dots remaining across feed cards, compact transfer rows, and header pills) and unclaimed members render `Tokens.dashed` outlines (`screens/stage-a/a5-members-unclaimed.png`, `screens/stage-a/a5-feed-initials.png`).
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; UI selection/state components and avatar rendering only, no issues found.
+  - **Findings closed:** `F4-01`, `F4-02` (component part), `F2-125`, `F2-44` (component part), `F2-123` (component part), `F2-122`, `F2-43`, `F1-01`.
 
 ## Stage B — Navigation
 

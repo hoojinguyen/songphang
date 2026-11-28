@@ -224,14 +224,9 @@ public struct SplitEditorView: View {
                     let isHeld = heldMemberId == member.id
 
                     VStack(spacing: 6) {
-                      MemberShapeView(
-                        shape: member.shape,
-                        color: member.color,
-                        name: member.name,
-                        size: 52
-                      )
-                      .scaleEffect(Motion.isReduced(reduceMotion) ? 1.0 : (isHeld ? 1.15 : 1.0))
-                      .spAnimation(Motion.bounce, value: isHeld)
+                      MemberShapeView(member: member, size: 52)
+                        .scaleEffect(Motion.isReduced(reduceMotion) ? 1.0 : (isHeld ? 1.15 : 1.0))
+                        .spAnimation(Motion.bounce, value: isHeld)
 
                       Text(member.name)
                         .font(Typography.captionBold)
@@ -389,13 +384,7 @@ private struct SplitMemberRowView: View {
 
   var body: some View {
     HStack(spacing: 8) {
-      MemberShapeView(
-        shape: member.shape,
-        color: member.color,
-        name: member.name,
-        size: 32,
-        showInitial: false
-      )
+      MemberShapeView(member: member, size: 32)
 
       Text(member.name)
         .font(Typography.bodyBold)

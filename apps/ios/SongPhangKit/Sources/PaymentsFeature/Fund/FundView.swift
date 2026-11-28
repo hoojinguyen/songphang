@@ -75,7 +75,10 @@ public struct FundView: View {
             if showHeader {
               SPScreenHeader(title: L10n.tr("fund.defaultName"), onBack: onBack)
             }
-            EmptyState(title: L10n.tr("fund.noContributions"))
+            EmptyState(
+              title: L10n.tr("fund.noContributions"),
+              noActionReason: "Fund setup CTA replaces Back in Phase 5.8 (defect B03)"
+            )
             SPButton(L10n.tr("common.back"), variant: .surface, isFullWidth: true, action: onBack)
           }
         }
