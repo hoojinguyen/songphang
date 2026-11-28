@@ -10626,6 +10626,28 @@
           }
         }
       }
+    },
+    "ios.sheet.discardTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ thay đổi?"
+          }
+        }
+      }
+    },
+    "ios.sheet.discardConfirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -68,7 +68,7 @@ struct FilterSheetView: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button(L10n.tr("common.cancel")) { onDismiss() }
+          SheetCancelButton(action: onDismiss)
         }
       }
       .safeAreaInset(edge: .bottom) {
@@ -103,7 +103,7 @@ struct FilterSheetView: View {
         .background(Tokens.bg)
       }
     }
-    .presentationDetents([.medium, .large])
+    .spSheet(.half)
   }
 
   private func memberSection() -> some View {

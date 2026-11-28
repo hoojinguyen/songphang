@@ -159,6 +159,11 @@ public struct GroupFeedView: View {
     }
     .task {
       await model.load()
+      #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--open-filter-sheet") {
+          isFilterSheetOpen = true
+        }
+      #endif
     }
     .task {
       await model.listenForEvents(onRemoved: onRemovedFromGroup)

@@ -72,7 +72,7 @@
     - Security review: checked relevant items 1, 2, 8 on `git diff`; local `UserDefaults` booleans and bundled `.caf` assets only, no secrets or external calls, no issues found.
   - **Findings closed:** `F1-60`, `F4-55`, `F2-127`, `F1-54`, `F1-55`, `F1-56`, `F1-57`.
 
-- [x] **Task 5.6.A.3 — Typography foundation**
+- [x] **Task 5.6.A.3 — Typography foundation** (commit `91af6b9`)
   - **Approach:**
     - Files to create/modify: `DesignSystem/Tokens/Typography.swift`, `DesignSystem/Components/AdaptiveStack.swift` (new), `docs/superpowers/runs/phase-5-6/{decisions,progress}.md`.
     - Approach: Replace `Typography.heroNumber`'s fixed-size fallback with `.system(.largeTitle, design: .default, weight: .black)`; add `Typography.displayNumber` (44 pt `.largeTitle`), `Typography.microBold` (11 pt `.caption2`), `Typography.micro` (11 pt `.caption2`), and `.spIconFont(size:weight:relativeTo:)` (`@ScaledMetric` modifier); configure `UINavigationBar.appearance()` inline (`BeVietnamPro-ExtraBold`, `.headline` metrics) and large (`BeVietnamPro-Black`, `.largeTitle` metrics) title attributes inside `registerFontsIfAvailable()`; add `AdaptiveStack` (`AnyLayout` switching from `HStackLayout` to `VStackLayout` at `dynamicTypeSize.isAccessibilitySize`) with default and `accessibility5` `#Preview`s; record the 55-entry fixed-font mapping table in `decisions.md` (D5).
@@ -88,6 +88,23 @@
     - Verified every `Typography` style uses `relativeTo:` with a Dynamic Type text-style fallback (`0` fixed-size `Typography` styles).
     - Security review: checked relevant items 1, 2, 8 on `git diff`; `DesignSystem` typography/layout views only, no issues found.
   - **Findings closed:** part of `B07`, `F3-28` (foundation; sweep in `5.6.C.4`).
+
+- [x] **Task 5.6.A.4 — Sheet system**
+  - **Approach:**
+    - Files to create/modify: `DesignSystem/Components/SheetPresentation.swift` (new), `LedgerFeature/GroupFeed/{FilterSheetView,GroupFeedView}.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
+    - Approach: Implement `SheetSize` (`.fitted`, `.half`, `.form`), `.spSheet(_:expandable:embedsNavigationStack:)` with intrinsic `fixedSize(vertical: true)` / `PreferenceKey` height measurement capped at `.large` and no custom `presentationBackground` so iOS 26 Liquid Glass applies; implement `.discardGuard(isDirty:onDiscard:)` with `interactiveDismissDisabled` and `"Bỏ thay đổi?"` / `"Bỏ"` / `"Huỷ"` confirmation dialog wired to `SheetCancelButton` and `SheetCloseButton` via `\.spSheetRequestDismiss`; switch `FilterSheetView` to `.spSheet(.half)` + `SheetCancelButton`.
+    - Why this is the simplest approach: Measuring inside `fixedSize(vertical: true)` or inside a vertical `ScrollView` decouples content height from detent height so oscillation cannot occur, and `\.spSheetRequestDismiss` avoids per-sheet confirmation dialog boilerplate in `5.6.C.1`.
+    - Rejected alternative: Measuring the outer sheet container directly — rejected because container height tracks the active detent and can loop.
+    - Questions: none (Decision D6 recorded in `decisions.md`).
+  - **Gates (verbatim):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - **Exercise results:**
+    - Simulator (`--scripted --route-feed --open-filter-sheet`): `FilterSheetView` rendered at `.half` (`[.medium, .large]`) with drag indicator, `"Huỷ"` top-left via `SheetCancelButton`, and iOS 26 Liquid Glass chrome (`screens/stage-a/a4-filter-sheet-half.png`).
+    - Simulator temporary `.fitted` short and long test sheets at default (`large`) and `accessibility-extra-extra-extra-large` (`AX5`): short sheet hugged content cleanly with Liquid Glass background (`screens/stage-a/a4-fitted-short.png`), long sheet at `AX5` capped cleanly at `.large` and scrolled without jitter or clipping (`screens/stage-a/a4-fitted-long-ax5.png`); temporary test sheet code removed before commit.
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; SwiftUI sheet presentation and confirmation dialog only, no issues found.
+  - **Findings closed:** `F2-29`, `F2-30`, `F2-31`, `F2-32`, `F4-03`, `F4-04` (component part; applied to all 32 presentations in `5.6.C.1`), `F2-130` (reference).
 
 ## Stage B — Navigation
 
