@@ -46,6 +46,7 @@ public struct SplitEditorView: View {
   @State private var heldMemberId: Member.ID?
   @State private var holdTask: Task<Void, Never>?
   @State private var didHoldRepeat = false
+  @State private var pumpFeedbackTick = 0
 
   public init(
     splitState: Binding<SplitEditorState>,
@@ -87,14 +88,14 @@ public struct SplitEditorView: View {
       guard !Task.isCancelled else { return }
 
       didHoldRepeat = true
-      Haptics.light()
+      pumpFeedbackTick &+= 1
       splitState.pumpMember(id, members: members, totalAmount: amount)
       onItemsChange()
 
       while !Task.isCancelled {
         try? await Task.sleep(for: .milliseconds(180))
         guard !Task.isCancelled else { break }
-        Haptics.light()
+        pumpFeedbackTick &+= 1
         splitState.pumpMember(id, members: members, totalAmount: amount)
         onItemsChange()
       }
@@ -106,7 +107,7 @@ public struct SplitEditorView: View {
     holdTask = nil
 
     if !didHoldRepeat && heldMemberId == id {
-      Haptics.light()
+      pumpFeedbackTick &+= 1
       splitState.pumpMember(id, members: members, totalAmount: amount)
       onItemsChange()
     }
@@ -261,7 +262,7 @@ public struct SplitEditorView: View {
                     .accessibilityHint(L10n.tr("split.holdToGrowHint"))
                     .accessibilityAdjustableAction { direction in
                       if direction == .increment {
-                        Haptics.light()
+                        pumpFeedbackTick &+= 1
                         splitState.pumpMember(member.id, members: members, totalAmount: amount)
                         onItemsChange()
                       }
@@ -371,6 +372,7 @@ public struct SplitEditorView: View {
       .padding(20)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .spFeedback(.selection, trigger: pumpFeedbackTick)
     .onDisappear {
       holdTask?.cancel()
       holdTask = nil

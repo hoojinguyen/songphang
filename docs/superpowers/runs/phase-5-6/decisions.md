@@ -82,3 +82,14 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
 - **Choice:** Option 2.
 - **Reason:** Keeps `Money` 100% integer-only (`apps/ios/AGENTS.md` §5), rolls hero numbers in the right direction only when `money` changes (`F1-44`, `F2-59`, `F2-60`), slides the segment pill smoothly with `Motion.quick`, switches content below without fading (`F2-56`), and falls back to instant updates under Reduce Motion (`F2-63`, `F4-53`).
 - **Debug launch helpers (`#if DEBUG`):** Added `--reduce-motion` (injects `\.accessibilityReduceMotion = true` at `RootView`), `--exercise-segment-switch`, and `--exercise-record-payment` so Reduce Motion and motion moments are deterministically verifiable in headless `simctl`.
+
+### D4 — Sound synthesis, `AVAudioSession` `.ambient` behavior, and `Haptics.` migration (Task 5.6.A.2)
+
+- **Problem:**
+  1. Generate three short `.caf` sound files (`coin`, `ting`, `chord`) locally without downloads or new packages, bundle them in `DesignSystem`, and confirm `.ambient` session behavior in the installed iOS 27.2 SDK.
+  2. Migrate all 22 `Haptics.` calls across 8 files to `.spFeedback(_:trigger:)` while honoring Spec §7.1 ("Nothing on tab switches or navigation") and Task 5.6.A.2 Step 3 ("Remove any haptic that fires on a plain tab or segment switch").
+- **Options:**
+  1. Keep imperative `UIImpactFeedbackGenerator` calls or add a new SwiftPM resource rule.
+  2. Synthesize 22.05 kHz 16-bit mono PCM tones with exponential attack/decay envelopes in `apps/ios/Scripts/generate-sounds.swift` and convert via `/usr/bin/afconvert -f caff -d LEI16` (`coin.caf` 150 ms, `ting.caf` 240 ms, `chord.caf` 360 ms, peak `-14.9` to `-15.4 dBFS`, ~6.6–15.9 KB each) under `DesignSystem/Resources/Sounds/` (already covered by `Package.swift`'s `.process("Resources")`, resolved with `subdirectory: "Sounds"` fallback to `nil`); configure `AVAudioSession.sharedInstance().setCategory(.ambient)` once (confirmed in `iPhoneSimulator27.2.sdk/.../AVAudioSessionTypes.h`: `AVAudioSessionCategoryAmbient` mixes with background music without interrupting it and silences with the Ring/Silent switch); wrap `View.sensoryFeedback(trigger:_:)` (confirmed in `SwiftUI.swiftinterface:2807`) in `.spFeedback(_:trigger:)` gated on `FeedbackSettings`; remove the 2 plain navigation segment/sub-tab haptics in `GroupContainerView` and migrate the remaining 20 call sites to state-driven `.spFeedback`.
+- **Choice:** Option 2.
+- **Reason:** Zero external assets or dependencies, zero `Package.swift` change needed, declarative state-tied sensory feedback that respects the per-device "Rung" setting, and ambient audio playback that never throws or interrupts music.

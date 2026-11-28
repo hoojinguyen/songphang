@@ -45,7 +45,6 @@ public struct ChannelPillPicker: View {
         ForEach(PaymentChannel.allCases, id: \.self) { channel in
           let isSelected = selection == channel
           Button {
-            Haptics.light()
             selection = isSelected ? nil : channel
           } label: {
             Text(channel.localizedTitle)
@@ -64,5 +63,6 @@ public struct ChannelPillPicker: View {
         }
       }
     }
+    .spFeedback(.selection, trigger: selection)
   }
 }

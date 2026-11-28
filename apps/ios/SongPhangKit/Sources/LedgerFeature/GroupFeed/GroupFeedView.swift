@@ -24,6 +24,7 @@ public struct GroupFeedView: View {
   private let onOpenNotifications: (() -> Void)?
   private let onRemovedFromGroup: () -> Void
   @State private var isFilterSheetOpen = false
+  @State private var rowActionFeedbackTick = 0
 
   public init(
     model: GroupFeedModel,
@@ -101,6 +102,7 @@ public struct GroupFeedView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .spFeedback(.selection, trigger: rowActionFeedbackTick)
     .task(id: model.lastDeletedTransactionId) {
       guard model.lastDeletedTransactionId != nil else { return }
       try? await Task.sleep(for: .seconds(6))
@@ -448,7 +450,7 @@ public struct GroupFeedView: View {
                 && tx.approval.status != .rejected
               {
                 Button {
-                  Haptics.medium()
+                  rowActionFeedbackTick &+= 1
                   onOpenEditTransaction(model.groupId, tx.id)
                 } label: {
                   Label(L10n.tr("transactionView.editLink"), systemImage: "pencil")
@@ -459,7 +461,7 @@ public struct GroupFeedView: View {
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
               if !data.group.isArchived && !model.isOffline && canEdit {
                 Button(role: .destructive) {
-                  Haptics.medium()
+                  rowActionFeedbackTick &+= 1
                   Task {
                     await model.deleteTransaction(
                       tx.id,
@@ -472,7 +474,7 @@ public struct GroupFeedView: View {
                 }
               }
               Button {
-                Haptics.light()
+                rowActionFeedbackTick &+= 1
                 if let onOpenTransactionDetail {
                   onOpenTransactionDetail(model.groupId, tx.id)
                 } else {
@@ -488,7 +490,7 @@ public struct GroupFeedView: View {
                 && tx.approval.status != .rejected
               {
                 Button {
-                  Haptics.medium()
+                  rowActionFeedbackTick &+= 1
                   onOpenEditTransaction(model.groupId, tx.id)
                 } label: {
                   Label(L10n.tr("transactionView.editLink"), systemImage: "pencil")
@@ -496,7 +498,7 @@ public struct GroupFeedView: View {
               }
               if !data.group.isArchived && !model.isOffline && canEdit {
                 Button(role: .destructive) {
-                  Haptics.medium()
+                  rowActionFeedbackTick &+= 1
                   Task {
                     await model.deleteTransaction(
                       tx.id,
@@ -509,7 +511,7 @@ public struct GroupFeedView: View {
                 }
               }
               Button {
-                Haptics.light()
+                rowActionFeedbackTick &+= 1
                 if let onOpenTransactionDetail {
                   onOpenTransactionDetail(model.groupId, tx.id)
                 } else {

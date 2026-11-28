@@ -239,11 +239,12 @@ public struct ShareCardPreviewSheet: View {
         ) {
           if let image = exportedImage ?? renderImage() {
             UIPasteboard.general.image = image
-            Haptics.light()
             copiedImage = true
           }
         }
       }
+      .spFeedback(.selection, trigger: copiedImage)
+      .spFeedback(.selection, trigger: savedToPhotos)
     }
   }
 
@@ -493,7 +494,6 @@ public struct ShareCardPreviewSheet: View {
       try await PHPhotoLibrary.shared().performChanges {
         PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: tempURL)
       }
-      Haptics.light()
       savedToPhotos = true
     } catch {
       saveErrorMessage = L10n.tr("common.saveError")

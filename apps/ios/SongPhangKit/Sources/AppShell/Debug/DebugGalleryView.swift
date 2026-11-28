@@ -12,6 +12,7 @@
     }
 
     @State private var selectedTab: SectionTab
+    @State private var debugFeedbackTick = 0
 
     public init() {
       let args = ProcessInfo.processInfo.arguments
@@ -55,6 +56,18 @@
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(Tokens.bg.ignoresSafeArea())
+      .spFeedback(.selection, trigger: debugFeedbackTick)
+      .task {
+        if ProcessInfo.processInfo.arguments.contains("--exercise-feedback") {
+          try? await Task.sleep(for: .milliseconds(300))
+          SoundPlayer.shared.play(.coin)
+          debugFeedbackTick &+= 1
+          try? await Task.sleep(for: .milliseconds(250))
+          SoundPlayer.shared.play(.ting)
+          try? await Task.sleep(for: .milliseconds(300))
+          SoundPlayer.shared.play(.chord)
+        }
+      }
     }
 
     private var tokensSection: some View {

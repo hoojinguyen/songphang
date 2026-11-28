@@ -14,6 +14,7 @@ public struct GuestLinkSheetView: View {
   private let onDismiss: () -> Void
 
   @State private var copiedLink = false
+  @State private var copyFeedbackTick = 0
   @State private var isConfirmingRevoke = false
 
   public init(
@@ -112,9 +113,10 @@ public struct GuestLinkSheetView: View {
             isFullWidth: true
           ) {
             UIPasteboard.general.string = rawURL
-            Haptics.light()
             copiedLink = true
+            copyFeedbackTick &+= 1
           }
+          .spFeedback(.selection, trigger: copyFeedbackTick)
 
           if let shareURL = URL(string: rawURL) {
             ShareLink(item: shareURL) {

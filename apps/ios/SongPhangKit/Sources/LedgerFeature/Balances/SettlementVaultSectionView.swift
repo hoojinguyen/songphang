@@ -141,7 +141,6 @@ struct SettlementVaultSectionView: View {
         ForEach(SettlementVaultFilter.allCases, id: \.self) { filter in
           let isSelected = selectedFilter == filter
           Button {
-            Haptics.light()
             onSelectFilter(filter)
           } label: {
             Text(filterLabel(filter))
@@ -159,6 +158,7 @@ struct SettlementVaultSectionView: View {
         }
       }
     }
+    .spFeedback(.selection, trigger: selectedFilter)
   }
 
   private func vaultRow(_ item: SettlementVaultItem) -> some View {

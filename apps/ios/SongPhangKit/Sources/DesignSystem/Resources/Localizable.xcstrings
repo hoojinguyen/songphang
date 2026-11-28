@@ -10593,6 +10593,39 @@
           }
         }
       }
+    },
+    "ios.feedback.sectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm thanh và rung"
+          }
+        }
+      }
+    },
+    "ios.feedback.sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Âm thanh"
+          }
+        }
+      }
+    },
+    "ios.feedback.haptics": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rung"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -4,3 +4,6 @@ Every string added, changed or removed on iOS in this run. Phase 5.9 applies the
 
 | Key | Old value | New value | Reason |
 |---|---|---|---|
+| `ios.feedback.sectionTitle` | (added) | `Âm thanh và rung` | Spec §7.4 & Task 5.6.A.2: Account setting section title |
+| `ios.feedback.sound` | (added) | `Âm thanh` | Spec §7.4 & Task 5.6.A.2: Sound toggle label |
+| `ios.feedback.haptics` | (added) | `Rung` | Spec §7.4 & Task 5.6.A.2: Haptics toggle label |

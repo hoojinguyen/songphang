@@ -63,6 +63,8 @@ public struct GroupContainerView: View {
   @State private var isGuestLinkSheetOpen = false
   @State private var isShareCardSheetOpen = false
   @State private var isArchiving = false
+  @State private var archiveSuccessTick = 0
+  @State private var archiveWarningTick = 0
   @State private var paymentSheet: PaymentSheet?
   @State private var pendingProofAttachmentId: Attachment.ID?
   @State private var completingRecurringId: RecurringExpense.ID?
@@ -237,6 +239,8 @@ public struct GroupContainerView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .spFeedback(.success, trigger: archiveSuccessTick)
+    .spFeedback(.warning, trigger: archiveWarningTick)
     .navigationBarBackButtonHidden(true)
     .confirmationDialog(
       L10n.tr("groups.archiveAction"),
@@ -539,7 +543,6 @@ public struct GroupContainerView: View {
     HStack(spacing: 4) {
       ForEach(GroupSegment.allCases, id: \.self) { segment in
         Button {
-          Haptics.light()
           selectedSegment = segment
         } label: {
           Text(segment.title)
@@ -668,7 +671,6 @@ public struct GroupContainerView: View {
         HStack(spacing: 4) {
           ForEach(FundSubTab.allCases, id: \.self) { subTab in
             Button {
-              Haptics.light()
               fundSubTab = subTab
             } label: {
               Text(subTab.title)
@@ -756,13 +758,13 @@ public struct GroupContainerView: View {
     defer { isArchiving = false }
     do throws(AppError) {
       _ = try await dependencies.groups.archive(groupId: groupId)
-      Haptics.success()
+      archiveSuccessTick &+= 1
       await feedModel.load()
       await balancesModel.load()
       await statsModel.load()
       await fundModel.load()
     } catch {
-      Haptics.warning()
+      archiveWarningTick &+= 1
     }
   }
 
@@ -771,13 +773,13 @@ public struct GroupContainerView: View {
     defer { isArchiving = false }
     do throws(AppError) {
       _ = try await dependencies.groups.unarchive(groupId: groupId)
-      Haptics.success()
+      archiveSuccessTick &+= 1
       await feedModel.load()
       await balancesModel.load()
       await statsModel.load()
       await fundModel.load()
     } catch {
-      Haptics.warning()
+      archiveWarningTick &+= 1
     }
   }
 }

@@ -33,7 +33,7 @@
 
 ## Stage A — Design system
 
-- [x] **Task 5.6.A.1 — Motion tokens and Reduce Motion**
+- [x] **Task 5.6.A.1 — Motion tokens and Reduce Motion** (commit `bb20204`)
   - **Approach:**
     - Files to create/modify: `DesignSystem/Tokens/Motion.swift` (new), `DesignSystem/Components/{MoneyText,MoneyFormat,ControlsAndQR}.swift`, `AppShell/{GroupContainerView,RootView}.swift`, `GroupsFeature/CreateGroup/CreateGroupView.swift`, `LedgerFeature/Balances/{BalancesView,SettlementCyclesSectionView}.swift`, `LedgerFeature/ConfirmCard/ShareShapesView.swift`, `LedgerFeature/GroupFeed/{GroupFeedView,GroupFeedSubViews}.swift`, `LedgerFeature/QuickEntry/QuickEntryView.swift`, `LedgerFeature/Settle/SettleView.swift`, `LedgerFeature/SplitEditor/SplitEditorView.swift`, `OverviewFeature/Overview/OverviewView.swift`.
     - Approach: Introduce `Motion.quick`, `Motion.bounce`, and `Motion.smooth` springs plus `Motion.animation(_:reduceMotion:allowOpacityFade:)`, `Motion.withAnimation(...)`, and `.spAnimation(_:value:)` reading `\.accessibilityReduceMotion`; migrate all 17 existing animation call sites to `Motion` tokens; remove whole-screen fade on segment switches in `GroupContainerView` while sliding the selection pill via persistent `.matchedGeometryEffect(..., isSource: false)` in `SPSegmentedControl` and `GroupContainerView`; add `MoneyText` `.hero` style using `.contentTransition(.numericText(countsDown:))` (integer-only direction tracking, Decision D3) on Overview hero, Group Feed balance card, and Balances hero card.
@@ -52,6 +52,26 @@
     - Security review: checked relevant items 1, 2, 8 on `git diff`; UI-only motion/formatting changes and `#if DEBUG` launch flags, no issues found.
   - **Findings closed:** `F2-132`, `F2-57`, `F2-58`, `F2-61`, `F2-62`, `F1-58`, `F1-74`, `F2-63`, `F4-53`, `F1-44`, `F2-59`, `F2-60`, `F2-56` (component part).
 
+- [x] **Task 5.6.A.2 — Haptics, sound and the "Âm thanh và rung" setting**
+  - **Approach:**
+    - Files to create/modify/delete: create `apps/ios/Scripts/generate-sounds.swift`, `DesignSystem/Resources/Sounds/{coin,ting,chord}.caf`, `DesignSystem/Components/{Feedback,SoundPlayer}.swift`; delete `DesignSystem/Components/Haptics.swift`; modify `DesignSystem/Components/ChannelPillPicker.swift`, `LedgerFeature/Balances/{ShareCardPreviewSheet,SettlementVaultSectionView}.swift`, `LedgerFeature/GroupFeed/GroupFeedView.swift`, `LedgerFeature/SplitEditor/SplitEditorView.swift`, `AppShell/{GroupContainerView,Debug/DebugGalleryView}.swift`, `GroupsFeature/GuestShare/{GuestLinkSheetView,GuestGroupView}.swift`, `AccountFeature/Account/AccountView.swift`, `DesignSystem/Resources/Localizable.xcstrings`, `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
+    - Approach: Synthesize `coin` (150 ms), `ting` (240 ms), and `chord` (360 ms) locally via `generate-sounds.swift` + `afconvert -f caff -d LEI16`; preload them in `SoundPlayer.shared` on an `AVAudioSession` `.ambient` category gated on `FeedbackSettings.isSoundEnabled`; implement `.spFeedback(_:trigger:)` over `SwiftUI.View.sensoryFeedback(trigger:_:)` gated on `FeedbackSettings.isHapticsEnabled`; migrate all 22 `Haptics.` call sites (removing the 2 plain navigation segment switches in `GroupContainerView`), delete `Haptics.swift`, and add the "Âm thanh và rung" card to `AccountView`.
+    - Why this is the simplest approach: Uses `Package.swift`'s existing `.process("Resources")` rule, Apple's `AVAudioPlayer` + `sensoryFeedback(trigger:_:)`, and `@AppStorage` matching `AppearanceMode`.
+    - Rejected alternative: System sound IDs (`AudioServicesPlaySystemSound`) — rejected by ADR-043 (undocumented IDs and no fine volume envelope).
+    - Questions: none (Decision D4 recorded in `decisions.md`).
+  - **Gates (verbatim):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - **Exercise results:**
+    - `swift apps/ios/Scripts/generate-sounds.swift`: generated `coin.caf` (150 ms), `ting.caf` (240 ms), `chord.caf` (360 ms), each a few KB under `DesignSystem/Resources/Sounds/`.
+    - `grep -rn "\bHaptics\b" apps/ios/SongPhangKit/Sources/`: 0 matches (`Haptics.swift` deleted).
+    - Simulator (`--gallery-components --exercise-feedback`): OSLog verified `SoundPlayer played effect=coin started=true`, `effect=ting started=true`, `effect=chord started=true` and `spFeedback kind=selection enabled=true`.
+    - Simulator with settings off (`--gallery-components --exercise-feedback --sound-off --haptics-off`): OSLog verified `SoundPlayer suppressed (sound off)` for all 3 sounds and `spFeedback kind=selection enabled=false` (returns `nil`).
+    - Simulator (`--scripted --route-account`, light & dark): verified "Âm thanh và rung" card with "Âm thanh" and "Rung" toggles both ON by default (`screens/stage-a/a2-account-feedback-light.png`, `a2-account-feedback-dark.png`).
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; local `UserDefaults` booleans and bundled `.caf` assets only, no secrets or external calls, no issues found.
+  - **Findings closed:** `F1-60`, `F4-55`, `F2-127`, `F1-54`, `F1-55`, `F1-56`, `F1-57`.
+
 ## Stage B — Navigation
 
 ## Stage C — Apply
@@ -63,6 +83,7 @@
 ## Not verified
 
 - **Task 0 (`xctrace` `SwiftUI` and `Hitches` instruments on iOS Simulator):** `xcrun xctrace record --template 'SwiftUI'` fails on Simulator with `* [Error] Hitches is not supported on this platform.`, and `xcrun xctrace record --instrument 'SwiftUI'` completes with `* [Warning] Trace file had no SwiftUI data` because SwiftUI view-body signposts require a physical iPhone (per AD §8.3 and §11). `Hangs` instrument was recorded instead; physical-iPhone scrolling and SwiftUI profiling will be listed in `manual-checks.md`.
+- **Task 5.6.A.2 (physical haptics, hardware Ring/Silent switch, and device music mixing):** Simulator has no Taptic Engine or hardware ringer switch; OSLog confirmed `spFeedback` trigger evaluation and `AVAudioPlayer` playback/suppression, while physical vibration feel, hardware mute switch silence, and live Apple Music/Spotify non-interruption require a physical iPhone (`manual-checks.md`).
 
 ## Gate not passed
 
