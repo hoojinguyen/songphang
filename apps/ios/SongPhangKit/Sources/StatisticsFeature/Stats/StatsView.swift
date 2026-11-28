@@ -75,7 +75,7 @@ public struct StatsView: View {
       FileShareSheet(url: item.url) {
         shareItem = nil
       }
-      .presentationDetents([.medium, .large])
+      .spSheet(.half)
     }
     .task {
       async let loadStats: Void = model.load()

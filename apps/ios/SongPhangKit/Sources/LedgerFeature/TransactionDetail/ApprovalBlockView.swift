@@ -85,35 +85,45 @@ struct ApprovalBlockView: View {
                 maxLength: 300
               )
 
-              HStack(spacing: 12) {
-                SPButton(
-                  L10n.tr("approval.rejectCancel"),
-                  variant: .surface,
-                  isFullWidth: true
-                ) {
-                  isRejectSheetOpen = false
-                }
-
-                SPButton(
-                  L10n.tr("approval.reject"),
-                  variant: .surface,
-                  isFullWidth: true,
-                  isDisabled: isPending,
-                  isPending: isPending
-                ) {
-                  let note = rejectNote.trimmingCharacters(in: .whitespacesAndNewlines)
-                  onReject(note.isEmpty ? nil : note)
-                  isRejectSheetOpen = false
-                }
+              SPButton(
+                L10n.tr("approval.reject"),
+                variant: .primary,
+                size: .lg,
+                isFullWidth: true,
+                isDisabled: isPending,
+                isPending: isPending
+              ) {
+                let note = rejectNote.trimmingCharacters(in: .whitespacesAndNewlines)
+                onReject(note.isEmpty ? nil : note)
+                rejectNote = ""
+                isRejectSheetOpen = false
               }
             }
             .padding(20)
+            .spFittedSheetContent()
           }
           .background(Tokens.bg.ignoresSafeArea())
           .navigationTitle(L10n.tr("approval.rejectTitle"))
           .navigationBarTitleDisplayMode(.inline)
-          .presentationDetents([.medium, .large])
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+              SheetCancelButton {
+                rejectNote = ""
+                isRejectSheetOpen = false
+              }
+              .disabled(isPending)
+            }
+          }
         }
+        .spSheet(.fitted, embedsNavigationStack: true)
+        .discardGuard(
+          isDirty: !rejectNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !isPending,
+          onDiscard: {
+            rejectNote = ""
+            isRejectSheetOpen = false
+          }
+        )
       }
     }
   }

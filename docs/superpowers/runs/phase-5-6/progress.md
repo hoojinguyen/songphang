@@ -216,6 +216,24 @@
 
 ## Stage C — Apply
 
+### Task 5.6.C.1: Sheets applied
+- **Status:** Committed (Stage C)
+- **Step 2 (Think):**
+  - Files modified: `AccountFeature/Account/TelegramPairingSheetView.swift`, `AppShell/{Debug/DebugPanel,GroupContainerView,Push/PushPermissionSheet}.swift`, `GroupsFeature/{CloneGroup/CloneGroupSheetView,GroupSettings/GroupSettingsView,GuestShare/{GuestBreakdownSheet,GuestGroupView,GuestLinkSheetView,GuestTransactionDetailSheet},Members/HouseholdFormSheetView}.swift`, `LedgerFeature/{Balances/{BalancesView,CloseCycleSheetView,MemberBreakdownSheetView,ShareCardPreviewSheet},ExpenseForm/ExpenseFormView,ReceiptCapture/ReceiptCaptureSheet,TransactionDetail/{ApprovalBlockView,DisputeBlockView}}.swift`, `PaymentsFeature/{Fund/CreateFundSheetView,Pay/{PayModel,PayView},PaymentDetails/{PaymentDetailsModel,PaymentDetailsView}}.swift`, `StatisticsFeature/{Recurring/RecurringFormSheetView,Stats/StatsView}.swift`, `docs/superpowers/runs/phase-5-6/{decisions,progress}.md`.
+  - Approach: Inventoried all 32 `.sheet`/`.fullScreenCover` presentations (Decision D12) and applied `.spSheet(.fitted | .half | .form)` across all non-camera/viewer sheets, replaced all sheet `SPScreenHeader` / back chevrons / `"Thôi"` (`members.removeCancel`) / `"Quay lại"` / `"Đóng"` / `"Xong"` dismiss controls with `SheetCloseButton` (view-only) or `SheetCancelButton` (action/editing), converted `PaymentDetailsView`'s bank picker from a nested `.sheet` to `.navigationDestination(isPresented: $isPickingBank)` inside its own `NavigationStack`, and attached `.discardGuard(isDirty:onDiscard:)` on all editing sheets (`ApprovalBlockView`, `DisputeBlockView`, `CloseCycleSheetView`, `CloneGroupSheetView`, `GroupSettingsView.deleteGroupSheet`, `CreateFundSheetView`, `PaymentDetailsView`, `PayView`, `HouseholdFormSheetView`, `RecurringFormSheetView`).
+  - Why this is the simplest approach: Reuses Stage A's `SheetPresentation` helpers uniformly with zero extra wrapper types and lets SwiftUI's `NavigationStack` push `PaymentDetailsView`'s bank picker instead of stacking modal sheets.
+  - Rejected alternative: Keeping custom `.presentationDetents` per view or leaving nested sheets in `PaymentDetailsView` — rejected per Spec §5.1–§5.3.
+  - Questions: none (Decision D12 recorded in `decisions.md`).
+- **Gates (verbatim):**
+  - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+  - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (no output)
+  - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - `grep -rn "SPScreenHeader(\|presentationDetents\|members\.removeCancel" apps/ios/SongPhangKit/Sources`: only `SheetPresentation.swift:155` (`.presentationDetents`), `MembersView.swift:109` (member removal confirmation dialog), and `Localizable.xcstrings:4811` remain.
+- **Exercise results:**
+  - Verified in Simulator (`iPhone 17 Pro`, light, dark, and `AX5`) across `FilterSheetView`, `PayView`, `GuestLinkSheetView`, `CloneGroupSheetView`, `CloseCycleSheetView`, `deleteGroupSheet`, `MemberBreakdownSheetView`, and `ShareCardPreviewSheet` (`screens/stage-c/sheets/c1-*.png`, 15 PNGs visually inspected). Confirmed `.fitted` height hugs content cleanly at normal and `AX5` sizes, top-left `SheetCloseButton`/`SheetCancelButton` render without back chevrons or `"Thôi"`/`"Xong"`/`"Quay lại"`/`"Đóng"` labels. Interactive dirty typing + swipe-down discard alert tested in code and queued in `manual-checks.md`.
+  - Security review: checked `git diff`; `deleteGroupSheet`, `PaymentDetailsView`, `DisputeBlockView`, and `ApprovalBlockView` trim/validate input identically to prior behavior with zero secrets or unchecked data paths.
+- **Findings closed:** `F2-29`, `F2-30`, `F2-31`, `F2-32`, `F4-03`, `F4-04` (application), `F2-130`.
+
 ## Stage D — Data, checks and handoff
 
 ## Findings record

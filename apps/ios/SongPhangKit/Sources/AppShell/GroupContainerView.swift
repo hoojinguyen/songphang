@@ -358,6 +358,34 @@ public struct GroupContainerView: View {
           }
           isShareCardSheetOpen = true
         }
+        if args.contains("--open-guest-link") {
+          while balancesModel.state.value == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+          }
+          isGuestLinkSheetOpen = true
+        }
+        if args.contains("--open-clone-sheet") {
+          while currentGroup == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+          }
+          isCloneSheetPresented = true
+        }
+        if args.contains("--open-pay-sheet") {
+          while balancesModel.state.value == nil {
+            try? await Task.sleep(for: .milliseconds(50))
+            if Task.isCancelled { return }
+          }
+          if let data = balancesModel.state.value,
+            let transfer = data.balances.transfers.first,
+            let fromMember = data.members.first(where: { $0.id == transfer.fromMemberId }),
+            let toMember = data.members.first(where: { $0.id == transfer.toMemberId })
+          {
+            paymentSheet = PaymentSheet(
+              transfer: transfer, fromMember: fromMember, toMember: toMember)
+          }
+        }
         if args.contains("--exercise-segment-switch") {
           try? await Task.sleep(for: .milliseconds(800))
           guard !Task.isCancelled else { return }
@@ -430,35 +458,33 @@ public struct GroupContainerView: View {
             Task { await sessionModel.signOut() }
           }
         )
-        NavigationStack {
-          PayView(
-            model: payModel,
-            isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
-            onBack: { paymentSheet = nil },
-            onAddDetails: payModel.canAddDetails
-              ? {
-                paymentSheet = nil
-                onNavigate(.groupMembers(groupId: groupId))
-              } : nil,
-            onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
-              ? {
-                paymentSheet = nil
-                onNavigate(
-                  .settle(
-                    groupId: groupId,
-                    fromMemberId: selection.transfer.fromMemberId,
-                    toMemberId: selection.transfer.toMemberId,
-                    initialAmount: selection.transfer.amount
-                  )
-                )
-              } : nil,
-            onFinished: { _ in
-              pendingProofAttachmentId = nil
+        PayView(
+          model: payModel,
+          isOffline: sessionModel.isOffline || balancesModel.refreshError == .offline,
+          onBack: { paymentSheet = nil },
+          onAddDetails: payModel.canAddDetails
+            ? {
               paymentSheet = nil
-              onExpenseSaved()
-            }
-          )
-        }
+              onNavigate(.groupMembers(groupId: groupId))
+            } : nil,
+          onRecordDirectly: canEdit && selection.transfer.pendingSettlement == nil
+            ? {
+              paymentSheet = nil
+              onNavigate(
+                .settle(
+                  groupId: groupId,
+                  fromMemberId: selection.transfer.fromMemberId,
+                  toMemberId: selection.transfer.toMemberId,
+                  initialAmount: selection.transfer.amount
+                )
+              )
+            } : nil,
+          onFinished: { _ in
+            pendingProofAttachmentId = nil
+            paymentSheet = nil
+            onExpenseSaved()
+          }
+        )
       }
     )
   }

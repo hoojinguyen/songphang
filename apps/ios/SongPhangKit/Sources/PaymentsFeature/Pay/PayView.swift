@@ -37,25 +37,42 @@ public struct PayView: View {
   }
 
   public var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 20) {
-        if isOffline {
-          OfflineBanner()
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 20) {
+          if isOffline {
+            OfflineBanner()
+          }
+
+          membersBanner
+          amountHeader
+          paymentMethodsSection
+          footerSection
         }
-
-        SPScreenHeader(
-          title: L10n.t("pay.title", ["to": model.toMember.name]),
-          onBack: onBack
-        )
-
-        membersBanner
-        amountHeader
-        paymentMethodsSection
-        footerSection
+        .padding(20)
+        .spFittedSheetContent()
       }
-      .padding(20)
+      .background(Tokens.bg.ignoresSafeArea())
+      .navigationTitle(L10n.t("pay.title", ["to": model.toMember.name]))
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          if model.mayCreate && model.isEmailVerified && model.transfer.pendingSettlement == nil
+            && !model.submitted
+          {
+            SheetCancelButton(action: onBack)
+              .disabled(model.isSubmitting)
+          } else {
+            SheetCloseButton(action: onBack)
+          }
+        }
+      }
     }
-    .background(Tokens.bg.ignoresSafeArea())
+    .spSheet(.fitted, expandable: true, embedsNavigationStack: true)
+    .discardGuard(
+      isDirty: model.hasUnsavedProofDraft && !model.isSubmitting,
+      onDiscard: onBack
+    )
   }
 
   private var membersBanner: some View {

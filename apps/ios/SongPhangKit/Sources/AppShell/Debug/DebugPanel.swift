@@ -396,8 +396,8 @@
         }
         .navigationTitle("Debug Panel")
         .toolbar {
-          ToolbarItem(placement: .topBarTrailing) {
-            Button("Done", action: onDismiss)
+          ToolbarItem(placement: .cancellationAction) {
+            SheetCloseButton(action: onDismiss)
           }
         }
         .task {
@@ -422,6 +422,7 @@
           }
         }
       }
+      .spSheet(.form, embedsNavigationStack: true)
     }
 
     private func syncBehavior(world: FakeWorld) async {

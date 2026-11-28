@@ -55,8 +55,8 @@ public struct ShareCardPreviewSheet: View {
       .navigationTitle(L10n.tr("shareCard.openAction"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button(L10n.tr("split.done"), action: onDismiss)
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCloseButton(action: onDismiss)
         }
       }
       .task {
@@ -83,6 +83,7 @@ public struct ShareCardPreviewSheet: View {
       .onChange(of: caption) { _, _ in rerenderImage() }
       .onChange(of: guestLink) { _, _ in rerenderImage() }
     }
+    .spSheet(.form, embedsNavigationStack: true)
   }
 
   private var controlsSection: some View {

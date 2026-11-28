@@ -148,13 +148,13 @@ public struct ExpenseFormView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .cancellationAction) {
-            Button(L10n.tr("common.back")) {
+            SheetCloseButton {
               isManagingCategories = false
             }
           }
         }
       }
-      .presentationDetents([.medium, .large])
+      .spSheet(.half, embedsNavigationStack: true)
     }
     .task {
       if model.state.value == nil {

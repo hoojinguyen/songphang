@@ -55,7 +55,7 @@ public struct GuestGroupView: View {
     .toolbar {
       if showsCloseButton {
         ToolbarItem(placement: .cancellationAction) {
-          Button(L10n.tr("common.back"), action: onClose)
+          SheetCloseButton(action: onClose)
         }
       }
     }
@@ -120,7 +120,12 @@ public struct GuestGroupView: View {
         Text(L10n.tr("guestLink.invalidOrRevoked"))
           .font(Typography.bodyBold)
           .foregroundStyle(Tokens.ink)
-        SPButton(L10n.tr("common.back"), variant: .primary, isFullWidth: true, action: onClose)
+        SPButton(
+          showsCloseButton ? L10n.tr("ios.common.close") : L10n.tr("common.back"),
+          variant: .primary,
+          isFullWidth: true,
+          action: onClose
+        )
       }
     }
   }

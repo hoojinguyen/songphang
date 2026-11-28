@@ -205,3 +205,48 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
   2. Place `GroupUnavailableView` in `DesignSystem/States/GroupUnavailableView.swift` (imported by both `AppShell` and `GroupsFeature`); add `Route.SettingsSectionAnchor.categories` (`initialSection: SettingsSectionAnchor? = nil`) on `.groupSettings` and `initialToast: String? = nil` on `.groupFeed` (defaulted to `nil` so deep links stay compatible); add `Route.associatedGroupId` + `RootView.onReplaceGroup` so cloning replaces from the earliest route referencing the source group (Back -> list) and displays `ConfirmationToast` (`"Đã tạo {name}"`); gate `"Danh mục của nhóm"` with `if isOwner` (matching `GroupSettingsView`'s permission rule) and scroll to `CategoryManagementSection` via `ScrollViewReader`.
 - **Choice:** Option 2.
 - **Reason:** Zero duplicated views, zero circular module imports, backwards-compatible `Route` parameters, and guaranteed single-hop Back return after cloning from any entry point.
+
+### D12 — Sheet inventory, size classification, dismiss controls, and discard guards (Task 5.6.C.1)
+
+- **Problem:** 32 `.sheet` and `.fullScreenCover` presentations existed across `SongPhangKit/Sources/` (excluding 3 `#if DEBUG` preview-only sheets in `SheetPresentation.swift` and `DebugStageAGallerySection.swift`), with inconsistent hardcoded `.presentationDetents`, back arrows (`SPScreenHeader`) inside sheets (`PayView`, `PaymentDetailsView`), a nested sheet inside `PaymentDetailsView` (`isPickingBank`), mixed dismiss labels (`"Thôi"`, `"Đóng"`, `"Quay lại"`, `"Xong"`), and no unsaved-changes discard guards on editing sheets.
+- **Options:**
+  1. Keep ad-hoc detents and nested sheets while wrapping only a few confirmation sheets.
+  2. Classify every presentation against Spec §5.1–§5.3 and apply `.spSheet`, `SheetCloseButton` / `SheetCancelButton`, in-stack `.navigationDestination` for multi-step sheet subflows, and `.discardGuard` uniformly across all 32 presentations:
+
+| # | Presentation | File | Old height / detent | New `SheetSize` | Dismiss control | Discard guard |
+|---|---|---|---|---|---|---|
+| 1 | `PhotoViewerSheet` | `DesignSystem/Components/PhotoAttachmentViews.swift:57` | `.fullScreenCover` | `.fullScreenCover` | Top-right X (`attachments.closePhoto`) | No |
+| 2 | `TelegramPairingSheetView` | `AccountFeature/Account/TelegramAccountCardView.swift:77` | Large default | `.fitted` (`embedsNavigationStack: true`) | `SheetCloseButton` (replaces `"Đóng"`) | No |
+| 3 | Category management sheet | `LedgerFeature/ExpenseForm/ExpenseFormView.swift:133` | `[.medium, .large]` | `.half` (`embedsNavigationStack: true`) | `SheetCloseButton` (replaces `"Quay lại"`) | No |
+| 4 | Reject transaction sheet | `LedgerFeature/TransactionDetail/ApprovalBlockView.swift:78` | `[.medium, .large]` | `.fitted` (`embedsNavigationStack: true`) | `SheetCancelButton` (replaces bottom `"Huỷ"`) | Yes (`!rejectNote.trimmed.isEmpty`) |
+| 5 | Dispute transaction sheet | `LedgerFeature/TransactionDetail/DisputeBlockView.swift:63` | `[.medium, .large]` | `.fitted` (`embedsNavigationStack: true`) | `SheetCancelButton` (replaces bottom `"Huỷ"`) | Yes (`!disputeReason.trimmed.isEmpty`) |
+| 6 | `CameraPickerView` (capture) | `LedgerFeature/ReceiptCapture/ReceiptCaptureSheet.swift:233` | `.fullScreenCover` | `.fullScreenCover` | System camera Cancel | No |
+| 7 | `CameraPickerView` (retake) | `LedgerFeature/ReceiptReview/ReceiptReviewView.swift:75` | `.fullScreenCover` | `.fullScreenCover` | System camera Cancel | No |
+| 8 | `CloseCycleSheetView` | `LedgerFeature/Balances/CloseCycleSheetView.swift:130` | Large default | `.fitted` (`embedsNavigationStack: true`) | `SheetCancelButton` | Yes (`title != defaultTitle`) |
+| 9 | `MemberBreakdownSheetView` | `LedgerFeature/Balances/MemberBreakdownSheetView.swift:148` | Large default | `.half` (`embedsNavigationStack: true`) | `SheetCloseButton` (replaces `"Xong"`) | No |
+| 10 | `FilterSheetView` | `LedgerFeature/GroupFeed/GroupFeedView.swift:154` | `.spSheet(.half)` (`5.6.A.4`) | `.half` | `SheetCancelButton` | No |
+| 11 | Bank picker (`isPickingBank`) | `PaymentsFeature/PaymentDetails/PaymentDetailsView.swift:110` | Nested `.sheet` | Removed nested `.sheet` -> `.navigationDestination` inside `PaymentDetailsView` `NavigationStack` | System Back (removes `SPScreenHeader` close + `"Huỷ"`) | Covered by parent `PaymentDetailsView` |
+| 12 | `FileShareSheet` | `StatisticsFeature/Stats/StatsView.swift:74` | `[.medium, .large]` | `.half` (UIKit `UIActivityViewController` requires medium/large detents rather than SwiftUI `.fitted` measurement) | System share sheet Close | No |
+| 13 | `RecurringFormSheetView` (create) | `StatisticsFeature/Recurring/RecurringSectionView.swift:85` | Large default | `.form` (`embedsNavigationStack: true`) | `SheetCancelButton` | Yes (any field changed from defaults) |
+| 14 | `RecurringFormSheetView` (edit) | `StatisticsFeature/Recurring/RecurringSectionView.swift:99` | Large default | `.form` (`embedsNavigationStack: true`) | `SheetCancelButton` | Yes (any field changed from initial) |
+| 15 | `CloneGroupSheetView` (container) | `AppShell/GroupContainerView.swift:297` | Large default | `.fitted` (`embedsNavigationStack: true`) | `SheetCancelButton` | Yes (draft/toggles changed) |
+| 16 | `ReceiptCaptureSheet` | `AppShell/GroupContainerView.swift:317` | Large default | `.fitted` (`embedsNavigationStack: true`) | `SheetCancelButton` (replaces bottom `"Huỷ"`) | No |
+| 17 | `GuestLinkSheetView` (container) | `AppShell/GroupContainerView.swift:371` | Large default | `.fitted` (`embedsNavigationStack: true`) | `SheetCloseButton` (replaces `"Xong"`) | No |
+| 18 | `ShareCardPreviewSheet` | `AppShell/GroupContainerView.swift:379` | Large default | `.form` (`embedsNavigationStack: true`) | `SheetCloseButton` (replaces `"Xong"`) | No |
+| 19 | `PayView` (Pay / "Đã nhận") | `AppShell/GroupContainerView.swift:390` | Large default (`SPScreenHeader`) | `.fitted` (`expandable: true, embedsNavigationStack: true`) | `SheetCancelButton` when creating report, else `SheetCloseButton` (removes `SPScreenHeader` back arrow) | Yes (`hasUnsavedProofDraft`) |
+| 20 | `DebugPanel` (`#if DEBUG`) | `AppShell/RootView.swift:480` | Large default | `.form` (`embedsNavigationStack: true`) | `SheetCloseButton` | No |
+| 21 | `PushPermissionSheet` | `AppShell/RootView.swift:512` | `[.medium]` | `.half` | Keeps `"Để sau"` (`ios.push.later`) | No |
+| 22 | `GuestGroupView` | `AppShell/RootView.swift:538` | `.fullScreenCover` | `.fullScreenCover` | `SheetCloseButton` (replaces `"Quay lại"`) | No |
+| 23 | `GuestLinkSheetView` (members) | `AppShell/RouteDestination.swift:499` | Large default | `.fitted` (`embedsNavigationStack: true`) | `SheetCloseButton` (replaces `"Xong"`) | No |
+| 24 | `CreateFundSheetView` | `AppShell/RouteDestination.swift:515` | `[.medium]` | `.half` (`embedsNavigationStack: true`) | `SheetCancelButton` (replaces bottom `"Huỷ"`) | Yes (`name != defaultName \|\| holderChanged`) |
+| 25 | `PaymentDetailsView` | `AppShell/RouteDestination.swift:523` | Large default (`SPScreenHeader`) | `.half` (`embedsNavigationStack: true`) | `SheetCancelButton` (removes `SPScreenHeader` close) | Yes (`model.hasUnsavedChanges`) |
+| 26 | `GuestBreakdownSheet` | `GroupsFeature/GuestShare/GuestGroupView.swift:67` | Large default | `.half` (`embedsNavigationStack: true`) | `SheetCloseButton` (replaces `"Xong"`) | No |
+| 27 | `GuestTransactionDetailSheet` | `GroupsFeature/GuestShare/GuestGroupView.swift:91` | Large default | `.half` (`embedsNavigationStack: true`) | `SheetCloseButton` (replaces `"Xong"`) | No |
+| 28 | `HouseholdFormSheetView` (create) | `GroupsFeature/Members/HouseholdsSectionView.swift:80` | Large default | `.form` (`embedsNavigationStack: true`) | `SheetCancelButton` | Yes (name/members/rep changed) |
+| 29 | `HouseholdFormSheetView` (edit) | `GroupsFeature/Members/HouseholdsSectionView.swift:99` | Large default | `.form` (`embedsNavigationStack: true`) | `SheetCancelButton` | Yes (name/members/rep changed) |
+| 30 | `deleteGroupSheet` | `GroupsFeature/GroupSettings/GroupSettingsView.swift:139` | `[.medium]` | `.fitted` (`embedsNavigationStack: true`) | `SheetCancelButton` (replaces `"Thôi"`) | Yes (`!deleteConfirmationText.isEmpty`) |
+| 31 | `CloneGroupSheetView` (settings) | `GroupsFeature/GroupSettings/GroupSettingsView.swift:154` | Large default | `.fitted` (`embedsNavigationStack: true`) | `SheetCancelButton` | Yes (draft/toggles changed) |
+| 32 | `CloneGroupSheetView` (list) | `GroupsFeature/GroupList/GroupListView.swift:117` | Large default | `.fitted` (`embedsNavigationStack: true`) | `SheetCancelButton` | Yes (draft/toggles changed) |
+
+- **Choice:** Option 2.
+- **Reason:** Matches Spec §5.1–§5.3 and eliminates every nested sheet, sheet back chevron, `"Thôi"`/`"Đóng"`/`"Quay lại"`/`"Xong"` sheet dismiss inconsistency, and unguarded form dismissal while keeping `.fullScreenCover` for camera and photo viewers.

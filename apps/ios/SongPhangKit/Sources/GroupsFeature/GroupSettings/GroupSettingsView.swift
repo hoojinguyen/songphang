@@ -136,7 +136,10 @@ public struct GroupSettingsView: View {
     } message: {
       Text(L10n.tr("settings.transferConfirmBody"))
     }
-    .sheet(isPresented: $isShowingDeleteSheet) {
+    .sheet(
+      isPresented: $isShowingDeleteSheet,
+      onDismiss: { deleteConfirmationText = "" }
+    ) {
       deleteGroupSheet(groupName: model.state.value?.group.name ?? "")
     }
     .confirmationDialog(
@@ -513,51 +516,60 @@ public struct GroupSettingsView: View {
   }
 
   private func deleteGroupSheet(groupName: String) -> some View {
-    VStack(alignment: .leading, spacing: 20) {
-      Text(L10n.t("settings.deleteTitle", ["name": groupName]))
-        .font(Typography.sectionTitle)
-        .foregroundStyle(Tokens.ink)
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 18) {
+          Text(L10n.tr("settings.deleteBody"))
+            .font(Typography.subheadline)
+            .foregroundStyle(Tokens.ink)
 
-      Text(L10n.tr("settings.deleteBody"))
-        .font(Typography.subheadline)
-        .foregroundStyle(Tokens.ink)
+          SPTextField(
+            label: L10n.tr("settings.nameLabel"),
+            text: $deleteConfirmationText,
+            maxLength: 80
+          )
 
-      SPTextField(
-        label: L10n.tr("settings.nameLabel"),
-        text: $deleteConfirmationText,
-        maxLength: 80
-      )
-
-      HStack(spacing: 12) {
-        SPButton(
-          L10n.tr("members.removeCancel"),
-          variant: .surface,
-          isFullWidth: true,
-          isDisabled: model.isPerformingAction
-        ) {
-          isShowingDeleteSheet = false
-        }
-
-        SPButton(
-          L10n.tr("settings.deleteButton"),
-          variant: .primary,
-          isFullWidth: true,
-          isDisabled: deleteConfirmationText != groupName || model.isPerformingAction,
-          isPending: model.isPerformingAction
-        ) {
-          Task {
-            await model.deleteGroup(confirmName: deleteConfirmationText) {
-              isShowingDeleteSheet = false
-              onDeletedGroup()
+          SPButton(
+            L10n.tr("settings.deleteButton"),
+            variant: .primary,
+            size: .lg,
+            isFullWidth: true,
+            isDisabled: deleteConfirmationText != groupName || model.isPerformingAction,
+            isPending: model.isPerformingAction
+          ) {
+            Task {
+              await model.deleteGroup(confirmName: deleteConfirmationText) {
+                deleteConfirmationText = ""
+                isShowingDeleteSheet = false
+                onDeletedGroup()
+              }
             }
           }
         }
+        .padding(20)
+        .spFittedSheetContent()
       }
-      Spacer()
+      .background(Tokens.bg.ignoresSafeArea())
+      .navigationTitle(L10n.t("settings.deleteTitle", ["name": groupName]))
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCancelButton {
+            deleteConfirmationText = ""
+            isShowingDeleteSheet = false
+          }
+          .disabled(model.isPerformingAction)
+        }
+      }
     }
-    .padding(24)
-    .background(Tokens.bg.ignoresSafeArea())
-    .presentationDetents([.medium])
+    .spSheet(.fitted, embedsNavigationStack: true)
+    .discardGuard(
+      isDirty: !deleteConfirmationText.isEmpty && !model.isPerformingAction,
+      onDiscard: {
+        deleteConfirmationText = ""
+        isShowingDeleteSheet = false
+      }
+    )
   }
 
   private var budgetErrorText: String? {

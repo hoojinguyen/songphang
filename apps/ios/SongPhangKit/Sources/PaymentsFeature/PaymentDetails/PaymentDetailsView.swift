@@ -25,91 +25,97 @@ public struct PaymentDetailsView: View {
   }
 
   public var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 16) {
-        SPScreenHeader(
-          title: L10n.tr("payment.title"),
-          backIcon: .close,
-          onBack: onDismiss
-        )
+    NavigationStack {
+      ScrollView {
+        VStack(alignment: .leading, spacing: 16) {
+          Text(L10n.t("payment.hint", ["name": model.member.name]))
+            .font(Typography.subheadline)
+            .foregroundStyle(Tokens.muted)
 
-        Text(L10n.t("payment.hint", ["name": model.member.name]))
-          .font(Typography.subheadline)
-          .foregroundStyle(Tokens.muted)
+          SPCard {
+            VStack(alignment: .leading, spacing: 14) {
+              bankSelector
 
-        SPCard {
-          VStack(alignment: .leading, spacing: 14) {
-            bankSelector
+              SPTextField(
+                label: L10n.tr("payment.accountNumber"),
+                text: $model.accountNumber,
+                error: model.hasInvalidAccountNumberCharacters
+                  ? L10n.tr("payment.invalidAccount") : nil,
+                maxLength: 19
+              )
+              .textInputAutocapitalization(.characters)
+              .autocorrectionDisabled()
 
-            SPTextField(
-              label: L10n.tr("payment.accountNumber"),
-              text: $model.accountNumber,
-              error: model.hasInvalidAccountNumberCharacters
-                ? L10n.tr("payment.invalidAccount") : nil,
-              maxLength: 19
-            )
-            .textInputAutocapitalization(.characters)
-            .autocorrectionDisabled()
+              SPTextField(
+                label: L10n.tr("payment.accountName"),
+                text: Binding(
+                  get: { model.accountName },
+                  set: { model.updateAccountName($0) }
+                ),
+                maxLength: 50
+              )
+              .textInputAutocapitalization(.characters)
+              .autocorrectionDisabled()
 
-            SPTextField(
-              label: L10n.tr("payment.accountName"),
-              text: Binding(
-                get: { model.accountName },
-                set: { model.updateAccountName($0) }
-              ),
-              maxLength: 50
-            )
-            .textInputAutocapitalization(.characters)
-            .autocorrectionDisabled()
+              SPTextField(
+                label: L10n.tr("payment.momo"),
+                text: $model.momo,
+                maxLength: 32
+              )
+              .keyboardType(.phonePad)
 
-            SPTextField(
-              label: L10n.tr("payment.momo"),
-              text: $model.momo,
-              maxLength: 32
-            )
-            .keyboardType(.phonePad)
+              SPTextField(
+                label: L10n.tr("payment.zalopay"),
+                text: $model.zalopay,
+                maxLength: 32
+              )
+              .keyboardType(.phonePad)
 
-            SPTextField(
-              label: L10n.tr("payment.zalopay"),
-              text: $model.zalopay,
-              maxLength: 32
-            )
-            .keyboardType(.phonePad)
-
-            SPButton(
-              L10n.tr("compose.save"),
-              variant: .primary,
-              size: .lg,
-              isFullWidth: true,
-              isOfflineBlocked: isOffline,
-              isPending: model.isSaving
-            ) {
-              Task {
-                if await model.save() {
-                  onDismiss()
+              SPButton(
+                L10n.tr("compose.save"),
+                variant: .primary,
+                size: .lg,
+                isFullWidth: true,
+                isOfflineBlocked: isOffline,
+                isPending: model.isSaving
+              ) {
+                Task {
+                  if await model.save() {
+                    onDismiss()
+                  }
                 }
               }
-            }
 
-            if let errorMessage = model.errorMessage {
-              Text(errorMessage)
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.ink)
-            } else if model.saved {
-              Text(L10n.tr("payment.saved"))
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.ink)
+              if let errorMessage = model.errorMessage {
+                Text(errorMessage)
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.ink)
+              } else if model.saved {
+                Text(L10n.tr("payment.saved"))
+                  .font(Typography.captionBold)
+                  .foregroundStyle(Tokens.ink)
+              }
             }
           }
         }
+        .padding(20)
       }
-      .padding(20)
+      .background(Tokens.bg.ignoresSafeArea())
+      .disabled(model.isSaving)
+      .navigationTitle(L10n.tr("payment.title"))
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCancelButton(action: onDismiss)
+            .disabled(model.isSaving)
+        }
+      }
+      .navigationDestination(isPresented: $isPickingBank) {
+        bankPickerDestination
+      }
     }
-    .background(Tokens.bg.ignoresSafeArea())
-    .disabled(model.isSaving)
-    .sheet(isPresented: $isPickingBank) {
-      bankPickerSheet
-    }
+    .spSheet(.half, embedsNavigationStack: true)
+    .discardGuard(isDirty: model.hasUnsavedChanges && !model.isSaving, onDiscard: onDismiss)
   }
 
   private var bankSelector: some View {
@@ -160,7 +166,7 @@ public struct PaymentDetailsView: View {
     }
   }
 
-  private var bankPickerSheet: some View {
+  private var bankPickerDestination: some View {
     let foldedQuery = Self.foldForSearch(bankQuery.trimmingCharacters(in: .whitespacesAndNewlines))
     let filtered = PaymentBanks.entries.filter { bank in
       guard !foldedQuery.isEmpty else { return true }
@@ -169,12 +175,6 @@ public struct PaymentDetailsView: View {
     }
 
     return VStack(alignment: .leading, spacing: 16) {
-      SPScreenHeader(
-        title: L10n.tr("payment.bank"),
-        backIcon: .close,
-        onBack: { isPickingBank = false }
-      )
-
       SPTextField(
         label: L10n.tr("payment.bank"),
         text: $bankQuery,
@@ -205,17 +205,11 @@ public struct PaymentDetailsView: View {
           }
         }
       }
-
-      SPButton(
-        L10n.tr("common.cancel"),
-        variant: .surface,
-        isFullWidth: true
-      ) {
-        isPickingBank = false
-      }
     }
     .padding(20)
     .background(Tokens.bg.ignoresSafeArea())
+    .navigationTitle(L10n.tr("payment.bank"))
+    .navigationBarTitleDisplayMode(.inline)
   }
 
   private static func foldForSearch(_ value: String) -> String {

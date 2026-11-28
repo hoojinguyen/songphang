@@ -11,6 +11,8 @@ public struct CreateFundSheetView: View {
   private let onDismiss: () -> Void
   private let onUnauthorized: () -> Void
 
+  private let initialHolderMemberId: Member.ID?
+
   @State private var name: String = L10n.tr("fund.defaultName")
   @State private var holderMemberId: Member.ID?
   @State private var key = IdempotencyKey()
@@ -33,7 +35,13 @@ public struct CreateFundSheetView: View {
     self.onCreated = onCreated
     self.onDismiss = onDismiss
     self.onUnauthorized = onUnauthorized
-    _holderMemberId = State(initialValue: people.first?.id)
+    let firstId = people.first?.id
+    self.initialHolderMemberId = firstId
+    _holderMemberId = State(initialValue: firstId)
+  }
+
+  private var isDirty: Bool {
+    name != L10n.tr("fund.defaultName") || holderMemberId != initialHolderMemberId
   }
 
   public var body: some View {
@@ -72,19 +80,15 @@ public struct CreateFundSheetView: View {
               .foregroundStyle(Tokens.ink)
           }
 
-          HStack(spacing: 12) {
-            SPButton(L10n.tr("common.cancel"), variant: .surface, isFullWidth: true) {
-              onDismiss()
-            }
-            SPButton(
-              L10n.tr("fund.createSubmit"),
-              variant: .primary,
-              isFullWidth: true,
-              isDisabled: isOffline || isSubmitting || trimmed.isEmpty,
-              isPending: isSubmitting
-            ) {
-              Task { await submit(name: trimmed) }
-            }
+          SPButton(
+            L10n.tr("fund.createSubmit"),
+            variant: .primary,
+            size: .lg,
+            isFullWidth: true,
+            isDisabled: isOffline || isSubmitting || trimmed.isEmpty,
+            isPending: isSubmitting
+          ) {
+            Task { await submit(name: trimmed) }
           }
         }
         .padding(20)
@@ -92,8 +96,15 @@ public struct CreateFundSheetView: View {
       .background(Tokens.bg.ignoresSafeArea())
       .navigationTitle(L10n.tr("fund.createEntry"))
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCancelButton(action: onDismiss)
+            .disabled(isSubmitting)
+        }
+      }
     }
-    .presentationDetents([.medium])
+    .spSheet(.half, embedsNavigationStack: true)
+    .discardGuard(isDirty: isDirty && !isSubmitting, onDiscard: onDismiss)
   }
 
   private func holderPill(title: String, selected: Bool, action: @escaping () -> Void) -> some View

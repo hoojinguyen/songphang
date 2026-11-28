@@ -32,6 +32,13 @@ public final class PayModel {
   public private(set) var isUploadingProof = false
   public private(set) var proofError: String?
 
+  public var hasUnsavedProofDraft: Bool {
+    !submitted
+      && (channel != nil
+        || !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        || proofAttachment != nil)
+  }
+
   private let repository: any SettlementRequestsRepository
   private let uploadProof: (@Sendable (Data, String, String) async throws(AppError) -> Attachment)?
   public let loadAttachment: (@Sendable (Attachment.ID) async throws -> Data)?

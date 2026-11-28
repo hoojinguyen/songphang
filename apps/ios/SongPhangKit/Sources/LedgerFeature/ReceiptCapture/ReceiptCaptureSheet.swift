@@ -137,94 +137,91 @@ public struct ReceiptCaptureSheet: View {
 
   public var body: some View {
     NavigationStack {
-      VStack(alignment: .leading, spacing: 16) {
-        Text(L10n.tr("receipts.cameraLabel"))
-          .font(Typography.screenHeaderTitle)
-          .foregroundStyle(Tokens.ink)
+      ScrollView {
+        VStack(alignment: .leading, spacing: 16) {
+          Text(L10n.tr("receipts.aiNote"))
+            .font(Typography.subheadline)
+            .foregroundStyle(Tokens.muted)
 
-        Text(L10n.tr("receipts.aiNote"))
-          .font(Typography.subheadline)
-          .foregroundStyle(Tokens.muted)
+          if isBusy {
+            HStack(spacing: 12) {
+              ProgressView()
+              Text(L10n.tr("receipts.uploading"))
+                .font(Typography.bodyBold)
+                .foregroundStyle(Tokens.ink)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+          }
 
-        if isBusy {
-          HStack(spacing: 12) {
-            ProgressView()
-            Text(L10n.tr("receipts.uploading"))
+          if let errorMessage {
+            SPCard(tone: .surface, padding: 16) {
+              VStack(alignment: .leading, spacing: 10) {
+                Text(errorMessage)
+                  .font(Typography.subheadlineBold)
+                  .foregroundStyle(Tokens.debt)
+                SPButton(
+                  L10n.tr("receipts.manualEntry"),
+                  variant: .surface,
+                  isFullWidth: true
+                ) {
+                  onManualFallback(fallbackAttachmentId)
+                }
+              }
+            }
+          }
+
+          if isCameraDenied {
+            Text(L10n.tr("receipts.failed"))
+              .font(Typography.captionBold)
+              .foregroundStyle(Tokens.muted)
+          }
+
+          if ReceiptCameraCapability.isCameraAvailable {
+            SPButton(
+              L10n.tr("receipts.takePhoto"),
+              variant: .primary,
+              size: .lg,
+              isFullWidth: true,
+              isDisabled: isBusy
+            ) {
+              Task {
+                let granted = await ReceiptCameraCapability.requestCameraAccessIfNeeded()
+                if granted {
+                  isCameraPresented = true
+                } else {
+                  isCameraDenied = true
+                }
+              }
+            }
+          }
+
+          PhotosPicker(
+            selection: $selectedPhotoItem,
+            matching: .images,
+            photoLibrary: .shared()
+          ) {
+            Text(L10n.tr("receipts.pickLibrary"))
               .font(Typography.bodyBold)
               .foregroundStyle(Tokens.ink)
+              .frame(maxWidth: .infinity, minHeight: 54)
+              .background(Tokens.surface, in: Capsule())
           }
-          .padding(16)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+          .disabled(isBusy)
         }
-
-        if let errorMessage {
-          SPCard(tone: .surface, padding: 16) {
-            VStack(alignment: .leading, spacing: 10) {
-              Text(errorMessage)
-                .font(Typography.subheadlineBold)
-                .foregroundStyle(Tokens.debt)
-              SPButton(
-                L10n.tr("receipts.manualEntry"),
-                variant: .surface,
-                isFullWidth: true
-              ) {
-                onManualFallback(fallbackAttachmentId)
-              }
-            }
-          }
-        }
-
-        if isCameraDenied {
-          Text(L10n.tr("receipts.failed"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.muted)
-        }
-
-        if ReceiptCameraCapability.isCameraAvailable {
-          SPButton(
-            L10n.tr("receipts.takePhoto"),
-            variant: .primary,
-            size: .lg,
-            isFullWidth: true,
-            isDisabled: isBusy
-          ) {
-            Task {
-              let granted = await ReceiptCameraCapability.requestCameraAccessIfNeeded()
-              if granted {
-                isCameraPresented = true
-              } else {
-                isCameraDenied = true
-              }
-            }
-          }
-        }
-
-        PhotosPicker(
-          selection: $selectedPhotoItem,
-          matching: .images,
-          photoLibrary: .shared()
-        ) {
-          Text(L10n.tr("receipts.pickLibrary"))
-            .font(Typography.bodyBold)
-            .foregroundStyle(Tokens.ink)
-            .frame(maxWidth: .infinity, minHeight: 54)
-            .background(Tokens.surface, in: Capsule())
-        }
-        .disabled(isBusy)
-
-        SPButton(
-          L10n.tr("common.cancel"),
-          variant: .surface,
-          isFullWidth: true,
-          isDisabled: isBusy,
-          action: onDismiss
-        )
-
-        Spacer(minLength: 0)
+        .padding(20)
+        .spFittedSheetContent()
       }
-      .padding(20)
       .background(Tokens.bg.ignoresSafeArea())
+      .navigationTitle(L10n.tr("receipts.cameraLabel"))
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCancelButton(action: onDismiss)
+            .disabled(isBusy)
+        }
+      }
       .onChange(of: selectedPhotoItem) { _, item in
         guard let item else { return }
         selectedPhotoItem = nil
@@ -243,6 +240,7 @@ public struct ReceiptCaptureSheet: View {
         .ignoresSafeArea()
       }
     }
+    .spSheet(.fitted, embedsNavigationStack: true)
   }
 
   private func handlePickedItem(_ item: PhotosPickerItem) async {

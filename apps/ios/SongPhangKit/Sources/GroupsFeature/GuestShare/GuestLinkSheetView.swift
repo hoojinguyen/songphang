@@ -47,13 +47,14 @@ public struct GuestLinkSheetView: View {
           }
         }
         .padding(20)
+        .spFittedSheetContent()
       }
       .background(Tokens.bg.ignoresSafeArea())
       .navigationTitle(L10n.tr("guestLink.fullTitle"))
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button(L10n.tr("split.done"), action: onDismiss)
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCloseButton(action: onDismiss)
         }
       }
       .task {
@@ -70,6 +71,7 @@ public struct GuestLinkSheetView: View {
         }
       }
     }
+    .spSheet(.fitted, embedsNavigationStack: true)
   }
 
   @ViewBuilder

@@ -61,6 +61,7 @@ struct DisputeBlockView: View {
       }
       .disabled(isPending)
       .sheet(isPresented: $isDisputeSheetOpen) {
+        let trimmed = disputeReason.trimmingCharacters(in: .whitespacesAndNewlines)
         NavigationStack {
           ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -71,48 +72,57 @@ struct DisputeBlockView: View {
                 maxLength: 500
               )
 
-              HStack(spacing: 12) {
-                SPButton(
-                  L10n.tr("transactionView.disputeCancel"),
-                  variant: .surface,
-                  isFullWidth: true
-                ) {
-                  isDisputeSheetOpen = false
-                }
-
-                let trimmed = disputeReason.trimmingCharacters(in: .whitespacesAndNewlines)
-                SPButton(
-                  L10n.tr("transactionView.send"),
-                  variant: .primary,
-                  isFullWidth: true,
-                  isDisabled: trimmed.isEmpty || isPending,
-                  isPending: isPending
-                ) {
-                  Task {
+              SPButton(
+                L10n.tr("transactionView.send"),
+                variant: .primary,
+                size: .lg,
+                isFullWidth: true,
+                isDisabled: trimmed.isEmpty || isPending,
+                isPending: isPending
+              ) {
+                Task {
+                  submissionError = nil
+                  if await onOpenDispute(trimmed) {
+                    disputeReason = ""
                     submissionError = nil
-                    if await onOpenDispute(trimmed) {
-                      disputeReason = ""
-                      submissionError = nil
-                      isDisputeSheetOpen = false
-                    } else {
-                      submissionError = L10n.tr("common.saveError")
-                    }
+                    isDisputeSheetOpen = false
+                  } else {
+                    submissionError = L10n.tr("common.saveError")
                   }
                 }
               }
             }
             .padding(20)
+            .spFittedSheetContent()
           }
           .background(Tokens.bg.ignoresSafeArea())
           .navigationTitle(L10n.tr("transactionView.disputeTitle"))
           .navigationBarTitleDisplayMode(.inline)
-          .presentationDetents([.medium, .large])
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+              SheetCancelButton {
+                disputeReason = ""
+                submissionError = nil
+                isDisputeSheetOpen = false
+              }
+              .disabled(isPending)
+            }
+          }
           .onChange(of: disputeReason) { _, _ in
             if submissionError != nil {
               submissionError = nil
             }
           }
         }
+        .spSheet(.fitted, embedsNavigationStack: true)
+        .discardGuard(
+          isDirty: !trimmed.isEmpty && !isPending,
+          onDiscard: {
+            disputeReason = ""
+            submissionError = nil
+            isDisputeSheetOpen = false
+          }
+        )
       }
     }
   }

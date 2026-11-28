@@ -18,19 +18,21 @@ struct TelegramPairingSheetView: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .spFittedSheetContent()
       }
       .background(Tokens.bg.ignoresSafeArea())
+      .navigationTitle(L10n.tr("telegram.accountTitle"))
+      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button(L10n.tr("ios.common.close")) {
+        ToolbarItem(placement: .cancellationAction) {
+          SheetCloseButton {
             model.resetTelegramPairing()
             dismiss()
           }
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
         }
       }
     }
+    .spSheet(.fitted, embedsNavigationStack: true)
     .task(id: model.currentPairing?.id) {
       while !Task.isCancelled {
         try? await Task.sleep(for: .seconds(2))
@@ -51,11 +53,6 @@ struct TelegramPairingSheetView: View {
       Text(L10n.tr("telegram.linkDone"))
         .font(Typography.sectionTitle)
         .foregroundStyle(Tokens.ink)
-
-      SPButton(L10n.tr("ios.common.close"), variant: .primary, isFullWidth: true) {
-        model.resetTelegramPairing()
-        dismiss()
-      }
     } else if let terminal = model.pairingTerminalStatus {
       Text(
         terminal == .identityTaken

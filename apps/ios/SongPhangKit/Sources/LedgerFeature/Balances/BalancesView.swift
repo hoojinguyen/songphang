@@ -119,6 +119,9 @@ public struct BalancesView: View {
           {
             selectedBreakdownMemberId = firstDebtor
           }
+          if args.contains("--open-close-cycle") {
+            isCloseCycleSheetOpen = true
+          }
         #endif
         if ProcessInfo.processInfo.arguments.contains("--scroll-bars") {
           proxy.scrollTo("balance-bars", anchor: .bottom)

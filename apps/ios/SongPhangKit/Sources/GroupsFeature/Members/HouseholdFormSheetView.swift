@@ -12,6 +12,10 @@ struct HouseholdFormSheetView: View {
   let onSaveUpdate: (Household.ID, UpdateHouseholdInput) async -> Void
   let onDismiss: () -> Void
 
+  private let initialNameText: String
+  private let initialSelectedIds: [Member.ID]
+  private let initialRepresentativeId: Member.ID?
+
   @State private var nameText: String
   @State private var selectedIds: [Member.ID]
   @State private var representativeId: Member.ID?
@@ -36,11 +40,19 @@ struct HouseholdFormSheetView: View {
     self.onDismiss = onDismiss
 
     let initialMembers = editing?.memberIds ?? []
-    self._nameText = State(initialValue: editing?.name ?? "")
+    let initName = editing?.name ?? ""
+    let initRep = editing?.representativeMemberId ?? initialMembers.first
+    self.initialNameText = initName
+    self.initialSelectedIds = initialMembers
+    self.initialRepresentativeId = initRep
+    self._nameText = State(initialValue: initName)
     self._selectedIds = State(initialValue: initialMembers)
-    self._representativeId = State(
-      initialValue: editing?.representativeMemberId ?? initialMembers.first
-    )
+    self._representativeId = State(initialValue: initRep)
+  }
+
+  private var isDirty: Bool {
+    nameText != initialNameText || selectedIds != initialSelectedIds
+      || representativeId != initialRepresentativeId
   }
 
   private func conflictingHousehold(for memberId: Member.ID) -> Household? {
@@ -206,10 +218,13 @@ struct HouseholdFormSheetView: View {
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
-          Button(L10n.tr("common.cancel"), action: onDismiss)
+          SheetCancelButton(action: onDismiss)
+            .disabled(isPending)
         }
       }
     }
+    .spSheet(.form, embedsNavigationStack: true)
+    .discardGuard(isDirty: isDirty && !isPending, onDiscard: onDismiss)
   }
 
   private func toggleMember(_ id: Member.ID) {
