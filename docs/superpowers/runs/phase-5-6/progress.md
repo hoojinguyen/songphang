@@ -253,6 +253,28 @@
   - Security review: checked `git diff`; `groupSummaryLookup` reads only already-authorized in-memory models; `FeedEntryBarView` remains `.disabled(true)` while loading.
 - **Findings closed:** `B20` (`F4-43`, `F4-44`, `F4-45`), `F4-42`, `F1-52` (adoption), `F2-57` (no entrance motion).
 
+### Task 5.6.C.3: Feedback wiring and component adoption
+- **Status:** Committed (Stage C)
+- **Step 2 (Think):**
+  - Files modified: `AccountFeature/Account/TelegramPairingSheetView.swift`, `AppShell/{GroupContainerView,RouteDestination}.swift`, `DesignSystem/Components/{ConfirmationToast,CopyButton}.swift`, `GroupsFeature/{CreateGroup/CreateGroupView,GroupSettings/TelegramGroupCardView,GuestShare/{GuestGroupView,GuestLinkSheetView},Members/MembersView}.swift`, `LedgerFeature/{Activity/{ActivityModel,ActivityView},Balances/{BalancesModel,BalancesView},ExpenseForm/{ExpenseFormModel,ExpenseFormSubViews,ExpenseFormView},GroupFeed/GroupFeedView,QuickEntry/{QuickEntryModel,QuickEntryView},ReceiptReview/{ReceiptItemsAssignmentView,ReceiptReviewView},Settle/{SettleModel,SettleView}}.swift`, `PaymentsFeature/Pay/PayView.swift`, `StatisticsFeature/Recurring/RecurringFormSheetView.swift`, `docs/superpowers/runs/phase-5-6/progress.md`.
+  - Approach: Wired the three server-confirmed money moments (`coin` + `.success` in `ExpenseFormModel`/`QuickEntryModel`; `ting` + `.success` in `SettleModel`/`SettleView`; `chord` + three `.success` beats spaced 120 ms apart + `ShapeBurst` in `BalancesModel`/`BalancesView` guarded by `markOwnActionPendingCelebration` so opening an already-settled group or receiving another user's realtime update plays nothing). Added `.fieldShake` on invalid saves in `ExpenseFormView` (amount/description), `QuickEntryView` (empty send), and `CreateGroupView` (missing group name). Extended `CopyButton` with optional `onCopyImage:` and `ConfirmationToast` with `bottomPadding:`, replaced all 7 `UIPasteboard` copy sites with `CopyButton` (removing copy toasts), replaced feed/activity custom capsules with `ConfirmationToast`, replaced `MemberToggleGridView` / text chips / receipt payer & item grids with `MemberPicker`, added `matchedGeometryEffect` slide + `.selection` feedback to `TypeSwitchView` and `BalancesView.subTabBar`, and verified `GroupFeedView` uses system `.swipeActions` with zero custom swipe gestures in the codebase. Added `#if DEBUG` `--exercise-save-expense`, `--exercise-settle-submit`, `--exercise-all-settled` hooks.
+  - Why this is the simplest approach: Extending `CopyButton` for images and `ConfirmationToast` for custom bottom padding keeps every copy site and toast on one shared component without introducing wrapper types.
+  - Rejected alternative: Keeping a separate copy button for `ShareCardPreviewSheet` or leaving `MemberToggleGridView` alongside `MemberPicker` — rejected for component duplication.
+  - Questions: none.
+- **Gates (verbatim):**
+  - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+  - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (no output)
+  - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - `grep -rn "UIPasteboard\|MemberToggleGridView" apps/ios/SongPhangKit/Sources`: only `CopyButton.swift:{85,87}`; zero `MemberToggleGridView` remaining. `grep -rn "DragGesture\|swipeActions"`: `GroupFeedView.swift` uses system `.swipeActions`; only `SplitEditorView.swift:238` uses `DragGesture` (slider bar scrub; zero custom swipe actions).
+- **Exercise results (Simulator `iPhone 17 Pro` OSLog + screenshots):**
+  - Expense double-tap save (`--route-new-tx --exercise-save-expense`): `SoundPlayer played effect=coin started=true` + `spFeedback kind=success enabled=true` logged ONCE (idempotency guard prevented duplicate request/feedback).
+  - Settle submit (`--route-settle --exercise-settle-submit`): `SoundPlayer played effect=ting started=true` + `spFeedback kind=success enabled=true`.
+  - All-settled celebration (`--route-balances --exercise-all-settled`, `c3-all-settled-burst.png`): `SoundPlayer played effect=chord started=true`, then 3 `spFeedback kind=success enabled=true` beats (`18:36:12.932`, `18:36:13.056` [+124 ms], `18:36:13.181` [+125 ms]), with `ShapeBurst` over the accent card.
+  - Realtime update from another user (`--route-balances --exercise-record-payment`): `(no Feedback/Sound events)` confirmed.
+  - Component screenshots inspected: `c3-all-settled-burst.png`, `c3-expense-form-pickers.png` (`MemberPicker` + sliding `TypeSwitchView`), `c3-receipt-review-pickers.png` (`MemberPicker` item assignment).
+  - Security review: checked `git diff`; `idempotencyKey` preserved on concurrent save taps; `UIPasteboard` writes explicit values only on direct button tap.
+- **Findings closed:** `F1-32`, `F1-59` (wiring), `F1-51`, `F2-55`, `F2-54`, `F4-05`, `F4-06`, `F4-01`, `F4-02`, `F2-56`, `F1-49`, `F1-50`.
+
 ## Stage D — Data, checks and handoff
 
 ## Findings record

@@ -77,6 +77,8 @@ public final class BalancesModel {
   public private(set) var settlementNotice: SettlementNotice?
   public private(set) var isSendingReminder = false
   public private(set) var reminderNotice: String?
+  public private(set) var allSettledCelebrationTick = 0
+  private var shouldCheckCelebrationAfterNextLoad = false
 
   public init(
     groupId: ExpenseGroup.ID,
@@ -101,6 +103,18 @@ public final class BalancesModel {
     self.eventsRepository = eventsRepository
     self.onUnauthorized = onUnauthorized
   }
+
+  public func markOwnActionPendingCelebration() {
+    if let current = state.value, !current.balances.transfers.isEmpty {
+      shouldCheckCelebrationAfterNextLoad = true
+    }
+  }
+
+  #if DEBUG
+    public func triggerAllSettledCelebrationForExercise() {
+      allSettledCelebrationTick &+= 1
+    }
+  #endif
 
   public func load() async {
     isNotFound = false
@@ -186,6 +200,12 @@ public final class BalancesModel {
           breakdowns: breakdowns
         )
       )
+      if shouldCheckCelebrationAfterNextLoad {
+        shouldCheckCelebrationAfterNextLoad = false
+        if !allTransactions.isEmpty && balances.transfers.isEmpty {
+          allSettledCelebrationTick &+= 1
+        }
+      }
       refreshError = nil
       hasCurrentPaymentDetails = (pendingResult.error == nil)
       pendingLoadError = pendingResult.error != nil ? L10n.tr("common.loadError") : nil
@@ -214,6 +234,7 @@ public final class BalancesModel {
       switch decision {
       case .confirm:
         settlementNotice = .confirmed(amount: amount, fromName: fromName)
+        markOwnActionPendingCelebration()
       case .reject:
         settlementNotice = .rejected
       case .cancel:

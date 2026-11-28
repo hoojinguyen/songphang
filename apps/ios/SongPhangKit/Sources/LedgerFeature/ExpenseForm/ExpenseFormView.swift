@@ -14,6 +14,8 @@ public struct ExpenseFormView: View {
   @FocusState private var isDescriptionFocused: Bool
   @State private var isManagingCategories = false
   @State private var pickedPhotoItem: PhotosPickerItem?
+  @State private var amountShakeTick = 0
+  @State private var descriptionShakeTick = 0
 
   public init(
     model: ExpenseFormModel,
@@ -156,6 +158,7 @@ public struct ExpenseFormView: View {
       }
       .spSheet(.half, embedsNavigationStack: true)
     }
+    .spFeedback(.success, trigger: model.didSaveTick)
     .task {
       if model.state.value == nil {
         await model.load()
@@ -163,6 +166,14 @@ public struct ExpenseFormView: View {
       #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--simulate-conflict") {
           model.simulateConflictForExercise()
+        }
+        if ProcessInfo.processInfo.arguments.contains("--exercise-save-expense") {
+          model.updateAmountText("50000")
+          model.descriptionText = "Cà phê"
+          await withTaskGroup(of: Void.self) { group in
+            group.addTask { await model.submit() }
+            group.addTask { await model.submit() }
+          }
         }
       #endif
     }
@@ -217,6 +228,7 @@ public struct ExpenseFormView: View {
             onChange: { model.updateAmountText($0) },
             onAddThousands: { model.appendThousands() }
           )
+          .fieldShake(trigger: amountShakeTick, cornerRadius: 32)
 
           TextField(
             model.transactionType == .transfer
@@ -230,6 +242,7 @@ public struct ExpenseFormView: View {
           .padding(.horizontal, 16)
           .frame(height: 56)
           .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+          .fieldShake(trigger: descriptionShakeTick, cornerRadius: 26)
           .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
           .onTapGesture { isDescriptionFocused = true }
           .accessibilityLabel(L10n.tr("expenseForm.descriptionLabel"))
@@ -291,29 +304,19 @@ public struct ExpenseFormView: View {
               onManageCategories: { isManagingCategories = true }
             )
 
-            VStack(alignment: .leading, spacing: 8) {
-              Text(
-                model.transactionType == .income
-                  ? L10n.tr("expenseForm.receiverTitle")
-                  : L10n.tr("expenseForm.payerTitle")
-              )
-              .font(Typography.subheadlineBold)
-              .foregroundStyle(Tokens.ink)
-
-              MemberToggleGridView(
-                members: model.payerMembers,
-                selectedIds: model.payerIds,
-                disabledIds: [],
-                isCaptionDimmed: false,
-                captionFor: { member in
-                  if member.kind == .fund {
-                    return L10n.t("fund.payerOption", ["name": member.name])
-                  }
-                  return member.id == myMemberId ? L10n.tr("common.you") : member.name
-                },
-                onToggle: { model.togglePayer($0) }
-              )
-            }
+            MemberPicker(
+              title: model.transactionType == .income
+                ? L10n.tr("expenseForm.receiverTitle")
+                : L10n.tr("expenseForm.payerTitle"),
+              members: model.payerMembers,
+              selection: Binding(
+                get: { Set(model.payerIds) },
+                set: { model.setPayers($0) }
+              ),
+              mode: model.transactionType == .income ? .single : .multiple,
+              currentMemberId: myMemberId,
+              allowsEmptySelection: true
+            )
             .padding(12)
             .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
 
@@ -365,23 +368,16 @@ public struct ExpenseFormView: View {
                 .buttonStyle(.plain)
               }
 
-              MemberToggleGridView(
+              MemberPicker(
+                title: "",
                 members: active,
-                selectedIds: model.splitState.ids,
-                disabledIds: [],
-                isCaptionDimmed: model.isPreviewPending,
-                captionFor: { member in
-                  guard model.splitState.ids.contains(member.id) else {
-                    return member.name
-                  }
-                  if model.previewError == nil,
-                    let share = model.previewShares.first(where: { $0.memberId == member.id })
-                  {
-                    return MoneyFormat.amount(share.amount)
-                  }
-                  return L10n.tr("common.pendingValue")
-                },
-                onToggle: { model.toggleSharer($0) }
+                selection: Binding(
+                  get: { Set(model.splitState.ids) },
+                  set: { model.setSharers($0) }
+                ),
+                mode: .multiple,
+                currentMemberId: myMemberId,
+                allowsEmptySelection: true
               )
 
               if model.splitState.ids.isEmpty {
@@ -586,10 +582,22 @@ extension ExpenseFormView {
       variant: .accent,
       size: .lg,
       isFullWidth: true,
-      isDisabled: !model.canSubmit,
+      isDisabled: model.conflictTransaction != nil || model.isSubmitting
+        || model.isUploadingAttachment,
       isPending: model.isSubmitting
     ) {
-      Task { await model.submit() }
+      if model.canSubmit {
+        Task { await model.submit() }
+      } else {
+        if !model.effectiveAmount.isPositive {
+          amountShakeTick &+= 1
+        }
+        if model.transactionType != .transfer
+          && model.descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+          descriptionShakeTick &+= 1
+        }
+      }
     }
     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     .padding(.horizontal, 20)

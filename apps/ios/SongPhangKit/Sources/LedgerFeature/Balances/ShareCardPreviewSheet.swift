@@ -23,7 +23,6 @@ public struct ShareCardPreviewSheet: View {
   @State private var guestLink: GuestLink?
   @State private var exportedImage: UIImage?
   @State private var transferablePNG: ShareCardPNG?
-  @State private var copiedImage = false
   @State private var savedToPhotos = false
   @State private var saveErrorMessage: String?
 
@@ -232,19 +231,10 @@ public struct ShareCardPreviewSheet: View {
           Task { await savePNGToPhotos() }
         }
 
-        SPButton(
-          copiedImage ? L10n.tr("shareCard.copiedImage") : L10n.tr("shareCard.copyImage"),
-          variant: .surface,
-          size: .md,
-          isFullWidth: true
-        ) {
-          if let image = exportedImage ?? renderImage() {
-            UIPasteboard.general.image = image
-            copiedImage = true
-          }
+        CopyButton(label: L10n.tr("shareCard.copyImage")) {
+          exportedImage ?? renderImage()
         }
       }
-      .spFeedback(.selection, trigger: copiedImage)
       .spFeedback(.selection, trigger: savedToPhotos)
     }
   }
@@ -458,7 +448,6 @@ public struct ShareCardPreviewSheet: View {
 
   @MainActor
   private func rerenderImage() {
-    copiedImage = false
     savedToPhotos = false
     saveErrorMessage = nil
     let image = renderImage()

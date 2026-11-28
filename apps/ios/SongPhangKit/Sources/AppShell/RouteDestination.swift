@@ -326,7 +326,10 @@ public struct RouteDestination: View {
           transactionsRepository: dependencies.transactions,
           categoriesRepository: dependencies.categories,
           attachmentsRepository: dependencies.attachments,
-          onSaved: onPop,
+          onSaved: {
+            onPop()
+            onExpenseSaved()
+          },
           onDeleted: { id in
             deletedTransactionId.wrappedValue = id
             onPop()
@@ -391,7 +394,10 @@ public struct RouteDestination: View {
           balancesRepository: dependencies.balances,
           transactionsRepository: dependencies.transactions,
           attachmentsRepository: dependencies.attachments,
-          onSaved: onPop
+          onSaved: {
+            onPop()
+            onExpenseSaved()
+          }
         )
       )
     case .notifications:

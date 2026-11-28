@@ -67,6 +67,7 @@ public struct SettleView: View {
       .spAnimation(Motion.quick, value: model.isRecorded)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .spFeedback(.success, trigger: model.isRecorded)
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if isEmailVerified, case .loaded(let data) = model.state, data.group.role != .viewer {
         submitButton
@@ -78,6 +79,11 @@ public struct SettleView: View {
       if model.state.value == nil {
         await model.load()
       }
+      #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--exercise-settle-submit") {
+          await model.submit(reduceMotion: reduceMotion)
+        }
+      #endif
     }
   }
 

@@ -12,6 +12,7 @@ public struct QuickEntryView: View {
   private let isEmailVerified: Bool
   private let onCancel: () -> Void
   @FocusState private var isSentenceFocused: Bool
+  @State private var inputShakeTick = 0
 
   public init(
     model: QuickEntryModel,
@@ -78,6 +79,7 @@ public struct QuickEntryView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .spFeedback(.success, trigger: model.didSaveTick)
     .navigationTitle(L10n.tr("compose.title"))
     .navigationBarTitleDisplayMode(.inline)
     .task {
@@ -224,14 +226,22 @@ public struct QuickEntryView: View {
         .lineLimit(1...3)
         .focused($isSentenceFocused)
         .onSubmit {
-          model.sendImmediately()
+          if model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            inputShakeTick &+= 1
+          } else {
+            model.sendImmediately()
+          }
         }
         .accessibilityLabel(L10n.tr("compose.inputLabel"))
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 
       Button {
-        model.sendImmediately()
+        if model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+          inputShakeTick &+= 1
+        } else {
+          model.sendImmediately()
+        }
       } label: {
         Image(systemName: "arrow.up")
           .font(.system(size: 20, weight: .bold))
@@ -245,7 +255,6 @@ public struct QuickEntryView: View {
           )
       }
       .buttonStyle(.plain)
-      .disabled(model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
       .accessibilityLabel(L10n.tr("compose.send"))
     }
     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -260,6 +269,7 @@ public struct QuickEntryView: View {
             .strokeBorder(Tokens.ink, lineWidth: 3)
         )
     )
+    .fieldShake(trigger: inputShakeTick, cornerRadius: 30)
     .padding(.horizontal, 20)
     .padding(.bottom, 12)
   }

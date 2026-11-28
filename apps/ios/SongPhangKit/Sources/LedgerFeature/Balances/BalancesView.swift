@@ -26,6 +26,8 @@ public struct BalancesView: View {
 
   @State private var isCloseCycleSheetOpen = false
   @State private var selectedBreakdownMemberId: Member.ID?
+  @State private var subTabTapTick = 0
+  @Namespace private var subTabNamespace
 
   public init(
     model: BalancesModel,
@@ -128,6 +130,9 @@ public struct BalancesView: View {
           }
           if args.contains("--open-close-cycle") {
             isCloseCycleSheetOpen = true
+          }
+          if args.contains("--exercise-all-settled") {
+            model.triggerAllSettledCelebrationForExercise()
           }
         #endif
         if ProcessInfo.processInfo.arguments.contains("--scroll-bars") {
@@ -299,31 +304,42 @@ public struct BalancesView: View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: 8) {
         subTabPill(
+          tab: .toPay,
           title: L10n.tr("balances.subTabs.toPay"),
           badge: nil,
           isSelected: model.selectedSubTab == .toPay
         ) {
+          subTabTapTick &+= 1
           model.selectedSubTab = .toPay
         }
         subTabPill(
+          tab: .vault,
           title: L10n.tr("balances.subTabs.vault"),
           badge: pendingCount > 0 ? pendingCount : nil,
           isSelected: model.selectedSubTab == .vault
         ) {
+          subTabTapTick &+= 1
           model.selectedSubTab = .vault
         }
         subTabPill(
+          tab: .cycles,
           title: L10n.tr("balances.subTabs.cycles"),
           badge: cycleCount > 0 ? cycleCount : nil,
           isSelected: model.selectedSubTab == .cycles
         ) {
+          subTabTapTick &+= 1
           model.selectedSubTab = .cycles
         }
       }
+      .padding(4)
+      .background(Tokens.surface, in: Capsule())
+      .spAnimation(Motion.quick, value: model.selectedSubTab)
+      .spFeedback(.selection, trigger: subTabTapTick)
     }
   }
 
   private func subTabPill(
+    tab: BalancesSubTab,
     title: String,
     badge: Int?,
     isSelected: Bool,
@@ -345,7 +361,13 @@ public struct BalancesView: View {
       }
       .padding(.horizontal, 14)
       .frame(minHeight: 40)
-      .background(isSelected ? Tokens.ink : Tokens.surface, in: Capsule())
+      .background {
+        if isSelected {
+          Capsule()
+            .fill(Tokens.ink)
+            .matchedGeometryEffect(id: "balancesSubTabPill", in: subTabNamespace)
+        }
+      }
     }
     .buttonStyle(.plain)
   }
@@ -384,6 +406,11 @@ public struct BalancesView: View {
 
     quickActionBar(data: data, isOffline: isOffline)
 
+    #if DEBUG
+      let forceAllSettled = ProcessInfo.processInfo.arguments.contains("--exercise-all-settled")
+    #else
+      let forceAllSettled = false
+    #endif
     if !hasTransactions {
       VStack(alignment: .leading, spacing: 12) {
         Text(L10n.tr("balances.emptyTitle"))
@@ -394,11 +421,12 @@ public struct BalancesView: View {
           .foregroundStyle(Tokens.muted)
       }
       .padding(.vertical, 48)
-    } else if sortedTransfers.isEmpty {
+    } else if sortedTransfers.isEmpty || forceAllSettled {
       AllSettledSection(
         recorded: data.transactions.filter { $0.type == .transfer },
         members: data.members,
         myMemberId: myMemberId,
+        celebrationTick: model.allSettledCelebrationTick,
         onBackToGroup: onBack
       )
     } else {
@@ -1242,21 +1270,44 @@ private struct AllSettledSection: View {
   let recorded: [LedgerTransaction]
   let members: [Member]
   let myMemberId: Member.ID?
+  let celebrationTick: Int
   let onBackToGroup: () -> Void
+
+  @State private var hapticBeatTick = 0
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
-      VStack(alignment: .leading, spacing: 12) {
-        Text(L10n.tr("balances.allSettledTitle"))
-          .font(Typography.heroNumber)
-          .foregroundStyle(Tokens.onAccent)
-        Text(L10n.tr("balances.allSettledHint"))
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.onAccent)
+      ZStack(alignment: .top) {
+        VStack(alignment: .leading, spacing: 12) {
+          Text(L10n.tr("balances.allSettledTitle"))
+            .font(Typography.heroNumber)
+            .foregroundStyle(Tokens.onAccent)
+          Text(L10n.tr("balances.allSettledHint"))
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.onAccent)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 40, style: .continuous))
+
+        if celebrationTick > 0 {
+          ShapeBurst(members: members, trigger: celebrationTick)
+            .allowsHitTesting(false)
+            .padding(.top, -16)
+        }
       }
-      .padding(24)
-      .frame(maxWidth: .infinity, alignment: .leading)
-      .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 40, style: .continuous))
+      .spFeedback(.success, trigger: hapticBeatTick)
+      .task(id: celebrationTick) {
+        guard celebrationTick > 0 else { return }
+        SoundPlayer.shared.play(.chord)
+        hapticBeatTick &+= 1
+        try? await Task.sleep(for: .milliseconds(120))
+        guard !Task.isCancelled else { return }
+        hapticBeatTick &+= 1
+        try? await Task.sleep(for: .milliseconds(120))
+        guard !Task.isCancelled else { return }
+        hapticBeatTick &+= 1
+      }
 
       LazyVGrid(
         columns: [GridItem(.flexible()), GridItem(.flexible())],

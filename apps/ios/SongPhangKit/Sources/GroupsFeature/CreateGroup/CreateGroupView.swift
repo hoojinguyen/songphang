@@ -11,6 +11,8 @@ public struct CreateGroupView: View {
   @Bindable private var model: CreateGroupModel
   private let creatorName: String
   private let onBack: () -> Void
+  @State private var nameShakeTick = 0
+  @State private var scrollToNameTick = 0
 
   public init(
     model: CreateGroupModel,
@@ -43,6 +45,8 @@ public struct CreateGroupView: View {
               .frame(minHeight: 72)
               .background(Tokens.surface)
               .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+              .fieldShake(trigger: nameShakeTick, cornerRadius: 28)
+              .id("groupNameField")
               .onChange(of: model.name) { _, newValue in
                 if newValue.count > 80 {
                   model.name = String(newValue.prefix(80))
@@ -147,6 +151,11 @@ public struct CreateGroupView: View {
           }
         }
       }
+      .onChange(of: scrollToNameTick) { _, _ in
+        Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
+          proxy.scrollTo("groupNameField", anchor: .top)
+        }
+      }
     }
   }
 
@@ -168,10 +177,15 @@ public struct CreateGroupView: View {
         variant: .accent,
         size: .lg,
         isFullWidth: true,
-        isDisabled: !model.canSubmit,
+        isDisabled: model.isSubmitting,
         isPending: model.isSubmitting
       ) {
-        Task { await model.submit() }
+        if model.canSubmit {
+          Task { await model.submit() }
+        } else {
+          nameShakeTick &+= 1
+          scrollToNameTick &+= 1
+        }
       }
     }
     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)

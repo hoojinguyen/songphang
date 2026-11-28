@@ -1,3 +1,4 @@
+import DesignSystem
 public import Domain
 import Foundation
 public import Observation
@@ -63,6 +64,7 @@ public final class QuickEntryModel {
   public private(set) var isSaving = false
   public private(set) var saveError: AppError?
   public var isCollapsing = false
+  public private(set) var didSaveTick = 0
 
   private var debounceTask: Task<Void, Never>?
   private var slowTimerTask: Task<Void, Never>?
@@ -383,6 +385,8 @@ public final class QuickEntryModel {
         draft: draft,
         key: key
       )
+      didSaveTick &+= 1
+      SoundPlayer.shared.play(.coin)
       if hasNextDraft {
         isSaving = false
         currentDraftIndex += 1

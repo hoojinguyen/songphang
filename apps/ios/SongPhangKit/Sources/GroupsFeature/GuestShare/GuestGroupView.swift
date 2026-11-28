@@ -13,8 +13,6 @@ public struct GuestGroupView: View {
   private let onClose: () -> Void
 
   @State private var expandedTransferId: String?
-  @State private var copiedKey: String?
-  @State private var copyFeedbackTick = 0
   @State private var selectedBreakdownMemberId: Member.ID?
   @State private var selectedTransaction: GuestTransaction?
 
@@ -373,18 +371,11 @@ public struct GuestGroupView: View {
           .foregroundStyle(Tokens.ink)
       }
       Spacer(minLength: 8)
-      Button(copiedKey == id ? L10n.tr("pay.copied") : L10n.tr("pay.copy")) {
-        UIPasteboard.general.string = value
-        copiedKey = id
-        copyFeedbackTick &+= 1
-      }
-      .spFeedback(.selection, trigger: copyFeedbackTick)
-      .font(Typography.captionBold)
-      .foregroundStyle(Tokens.ink)
-      .padding(.horizontal, 10)
-      .frame(minHeight: 32)
-      .background(Tokens.surface, in: Capsule())
-      .buttonStyle(.plain)
+      CopyButton(
+        value: value,
+        label: L10n.tr("pay.copy"),
+        accessibilityLabel: "\(L10n.tr("pay.copy")) \(label)"
+      )
     }
   }
 

@@ -310,33 +310,12 @@ public struct ReceiptReviewView: View {
   }
 
   private func payerPicker(options: [Member]) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text(L10n.tr("receipts.paidBy"))
-        .font(Typography.captionBold)
-        .foregroundStyle(Tokens.muted)
-
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 8) {
-          ForEach(options) { member in
-            let activePayer = model.payerId == member.id
-            Button {
-              model.payerId = member.id
-            } label: {
-              HStack(spacing: 6) {
-                MemberShapeView(member: member, size: 22)
-                Text(member.name)
-                  .font(Typography.captionBold)
-              }
-              .foregroundStyle(activePayer ? Tokens.surface : Tokens.ink)
-              .padding(.horizontal, 12)
-              .frame(minHeight: 44)
-              .background(activePayer ? Tokens.ink : Tokens.sunken, in: Capsule())
-            }
-            .buttonStyle(.plain)
-          }
-        }
-      }
-    }
+    MemberPicker(
+      title: L10n.tr("receipts.paidBy"),
+      members: options,
+      selectedId: $model.payerId,
+      allowsEmptySelection: false
+    )
     .padding(14)
     .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
   }

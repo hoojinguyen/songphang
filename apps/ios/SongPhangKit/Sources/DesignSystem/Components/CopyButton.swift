@@ -8,9 +8,10 @@ public struct CopyButton: View {
   @State private var feedbackTick = 0
   @State private var resetTask: Task<Void, Never>?
 
-  private let value: String
+  private let value: String?
   private let label: String?
   private let customAccessibilityLabel: String?
+  private let onCopyImage: (() -> UIImage?)?
 
   public init(
     value: String,
@@ -20,6 +21,18 @@ public struct CopyButton: View {
     self.value = value
     self.label = label
     self.customAccessibilityLabel = accessibilityLabel
+    self.onCopyImage = nil
+  }
+
+  public init(
+    label: String? = nil,
+    accessibilityLabel: String? = nil,
+    onCopyImage: @escaping () -> UIImage?
+  ) {
+    self.value = nil
+    self.label = label
+    self.customAccessibilityLabel = accessibilityLabel
+    self.onCopyImage = onCopyImage
   }
 
   public var body: some View {
@@ -67,7 +80,14 @@ public struct CopyButton: View {
   }
 
   private func copyToPasteboard() {
-    UIPasteboard.general.string = value
+    if let onCopyImage {
+      guard let image = onCopyImage() else { return }
+      UIPasteboard.general.image = image
+    } else if let value {
+      UIPasteboard.general.string = value
+    } else {
+      return
+    }
     feedbackTick &+= 1
     AccessibilityNotification.Announcement(L10n.tr("ios.copy.announced")).post()
 

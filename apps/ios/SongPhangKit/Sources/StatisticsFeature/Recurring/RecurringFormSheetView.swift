@@ -362,47 +362,33 @@ struct RecurringFormSheetView: View {
           }
 
           VStack(alignment: .leading, spacing: 8) {
-            Text(L10n.tr("recurring.payerLabel"))
-              .font(Typography.captionBold)
-              .foregroundStyle(Tokens.muted)
-            ScrollView(.horizontal, showsIndicators: false) {
-              HStack(spacing: 8) {
-                ForEach(displayedPayerOptions) { member in
-                  let selected = payerIds.contains(member.id)
-                  let chipBg: Color =
-                    !member.active
-                    ? Tokens.debtSoft
-                    : (selected ? Tokens.ink : Tokens.surface)
-                  let chipFg: Color =
-                    !member.active
-                    ? Tokens.debt
-                    : (selected ? Tokens.onInk : Tokens.ink)
-                  Button {
-                    if mode == .variable {
-                      if member.active {
-                        payerIds = [member.id]
-                      } else if selected {
-                        payerIds = []
-                      }
-                    } else if selected {
-                      if payerIds.count > 1 || !member.active {
-                        payerIds.removeAll { $0 == member.id }
-                      }
-                    } else if member.active {
-                      payerIds.append(member.id)
+            MemberPicker(
+              title: L10n.tr("recurring.payerLabel"),
+              members: displayedPayerOptions,
+              selection: Binding(
+                get: { Set(payerIds) },
+                set: { next in
+                  let ordered = displayedPayerOptions.map(\.id).filter { next.contains($0) }
+                  if mode == .variable {
+                    if let first = ordered.first(where: { !payerIds.contains($0) })
+                      ?? ordered.first,
+                      displayedPayerOptions.first(where: { $0.id == first })?.active == true
+                    {
+                      payerIds = [first]
                     }
-                  } label: {
-                    Text(member.name)
-                      .font(Typography.captionBold)
-                      .foregroundStyle(chipFg)
-                      .padding(.horizontal, 12)
-                      .frame(minHeight: 36)
-                      .background(chipBg, in: Capsule())
+                  } else {
+                    let activeOrdered = ordered.filter { id in
+                      displayedPayerOptions.first(where: { $0.id == id })?.active == true
+                        || payerIds.contains(id)
+                    }
+                    if !activeOrdered.isEmpty {
+                      payerIds = activeOrdered
+                    }
                   }
-                  .buttonStyle(.plain)
                 }
-              }
-            }
+              ),
+              mode: mode == .variable ? .single : .multiple
+            )
 
             if mode == .fixed && payerIds.count > 1 {
               ForEach(displayedPayerOptions.filter { payerIds.contains($0.id) }) { payer in
@@ -463,36 +449,21 @@ struct RecurringFormSheetView: View {
               }
             }
             if splitMethod != .items {
-              ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                  ForEach(displayedSharerOptions) { member in
-                    let selected = sharerIds.contains(member.id)
-                    let chipBg: Color =
-                      !member.active
-                      ? Tokens.debtSoft
-                      : (selected ? Tokens.ink : Tokens.surface)
-                    let chipFg: Color =
-                      !member.active
-                      ? Tokens.coral
-                      : (selected ? Tokens.onInk : Tokens.ink)
-                    Button {
-                      if selected {
-                        sharerIds.removeAll { $0 == member.id }
-                      } else if member.active {
-                        sharerIds.append(member.id)
-                      }
-                    } label: {
-                      Text(member.name)
-                        .font(Typography.captionBold)
-                        .foregroundStyle(chipFg)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 36)
-                        .background(chipBg, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
+              MemberPicker(
+                title: L10n.tr("expenseForm.sharersTitle"),
+                members: displayedSharerOptions,
+                selection: Binding(
+                  get: { Set(sharerIds) },
+                  set: { next in
+                    let activeOrPreviouslySelected = displayedSharerOptions.filter {
+                      $0.active || sharerIds.contains($0.id)
+                    }.map(\.id)
+                    sharerIds = activeOrPreviouslySelected.filter { next.contains($0) }
                   }
-                }
-              }
+                ),
+                mode: .multiple,
+                allowsEmptySelection: true
+              )
 
               if splitMethod != .equal {
                 ForEach(displayedSharerOptions.filter { sharerIds.contains($0.id) }) { member in

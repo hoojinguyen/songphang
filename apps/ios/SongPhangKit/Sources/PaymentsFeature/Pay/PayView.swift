@@ -16,8 +16,6 @@ public struct PayView: View {
   private let onRecordDirectly: (() -> Void)?
   private let onFinished: (String?) -> Void
 
-  @State private var copiedAmount = false
-  @State private var copiedField: String?
   @State private var photoResult: Bool?
 
   public init(
@@ -112,22 +110,10 @@ public struct PayView: View {
         font: Typography.heroNumber,
         color: Tokens.ink
       )
-      Button {
-        UIPasteboard.general.string = String(model.payAmount.amount)
-        copiedAmount = true
-        Task {
-          try? await Task.sleep(for: .seconds(2))
-          copiedAmount = false
-        }
-      } label: {
-        Text(L10n.tr(copiedAmount ? "pay.copied" : "pay.copyAmount"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
-          .padding(.horizontal, 16)
-          .frame(minHeight: 44)
-          .background(Tokens.surface, in: Capsule())
-      }
-      .buttonStyle(.plain)
+      CopyButton(
+        value: String(model.payAmount.amount),
+        label: L10n.tr("pay.copyAmount")
+      )
 
       if model.isPartial {
         Text(
@@ -366,7 +352,6 @@ public struct PayView: View {
     -> some View
   {
     let targetCopy = copyValue ?? value
-    let isCopied = copiedField == id
     return HStack(alignment: .center, spacing: 12) {
       VStack(alignment: .leading, spacing: 2) {
         if !title.isEmpty {
@@ -380,23 +365,11 @@ public struct PayView: View {
           .textSelection(.enabled)
       }
       Spacer(minLength: 0)
-      Button {
-        UIPasteboard.general.string = targetCopy
-        copiedField = id
-        Task {
-          try? await Task.sleep(for: .seconds(2))
-          if copiedField == id { copiedField = nil }
-        }
-      } label: {
-        Text(L10n.tr(isCopied ? "pay.copied" : "pay.copy"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
-          .padding(.horizontal, 12)
-          .frame(minHeight: 44)
-          .background(Tokens.sunken, in: Capsule())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel(title.isEmpty ? L10n.tr("pay.copy") : "\(L10n.tr("pay.copy")) \(title)")
+      CopyButton(
+        value: targetCopy,
+        label: L10n.tr("pay.copy"),
+        accessibilityLabel: title.isEmpty ? L10n.tr("pay.copy") : "\(L10n.tr("pay.copy")) \(title)"
+      )
     }
   }
 

@@ -24,7 +24,6 @@ public struct MembersView: View {
   @State private var deactivateWarningMember: Member?
   @State private var removingUser: GroupUser?
   @State private var isConfirmingLeave = false
-  @State private var copiedLink = false
 
   public init(
     model: MembersModel,
@@ -640,10 +639,10 @@ public struct MembersView: View {
 
       if invite.active {
         HStack(spacing: 12) {
-          SPButton(L10n.tr("invite.copy"), variant: .primary) {
-            UIPasteboard.general.string = invite.url
-            copiedLink = true
-          }
+          CopyButton(
+            value: invite.url,
+            label: L10n.tr("invite.copy")
+          )
 
           if let shareURL = URL(string: invite.url) {
             ShareLink(item: shareURL) {
@@ -658,12 +657,6 @@ public struct MembersView: View {
             .buttonStyle(.plain)
           }
         }
-      }
-
-      if copiedLink {
-        Text(L10n.tr("invite.copied"))
-          .font(Typography.captionBold)
-          .foregroundStyle(Tokens.onAccent)
       }
     }
     .padding(16)

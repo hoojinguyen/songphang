@@ -66,6 +66,7 @@ public struct ConfirmationToast: View {
 private struct ConfirmationToastModifier: ViewModifier {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Binding var message: ToastMessage?
+  let bottomPadding: CGFloat
 
   func body(content: Content) -> some View {
     let reduced = Motion.isReduced(reduceMotion)
@@ -76,7 +77,7 @@ private struct ConfirmationToastModifier: ViewModifier {
             dismissToast()
           }
           .padding(.horizontal, 20)
-          .padding(.bottom, 12)
+          .padding(.bottom, bottomPadding)
           .transition(
             reduced
               ? .opacity
@@ -101,8 +102,11 @@ private struct ConfirmationToastModifier: ViewModifier {
 }
 
 extension View {
-  public func confirmationToast(_ message: Binding<ToastMessage?>) -> some View {
-    modifier(ConfirmationToastModifier(message: message))
+  public func confirmationToast(
+    _ message: Binding<ToastMessage?>,
+    bottomPadding: CGFloat = 12
+  ) -> some View {
+    modifier(ConfirmationToastModifier(message: message, bottomPadding: bottomPadding))
   }
 }
 

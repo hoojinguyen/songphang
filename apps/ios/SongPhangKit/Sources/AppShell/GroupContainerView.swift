@@ -376,7 +376,11 @@ public struct GroupContainerView: View {
         recurringExpensesModel.clearPendingDueDate(id: id)
         completingRecurringId = nil
       }
-      Task { await recurringExpensesModel.load() }
+      balancesModel.markOwnActionPendingCelebration()
+      Task {
+        await recurringExpensesModel.load()
+        await balancesModel.load()
+      }
     }
     #if DEBUG
       .task {
@@ -512,6 +516,7 @@ public struct GroupContainerView: View {
           onFinished: { _ in
             pendingProofAttachmentId = nil
             paymentSheet = nil
+            balancesModel.markOwnActionPendingCelebration()
             onExpenseSaved()
           }
         )

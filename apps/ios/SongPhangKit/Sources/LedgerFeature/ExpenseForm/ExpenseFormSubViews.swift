@@ -134,6 +134,7 @@ struct ConflictNoticeView: View {
 struct TypeSwitchView: View {
   let value: TransactionType
   let onChange: (TransactionType) -> Void
+  @Namespace private var namespace
 
   private let options: [(TransactionType, String)] = [
     (.expense, "expenseForm.typeExpense"),
@@ -155,14 +156,18 @@ struct TypeSwitchView: View {
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 10)
             .frame(minWidth: 44, minHeight: 44)
-            .background(
-              isSelected ? Tokens.ink : Color.clear,
-              in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-            )
         }
         .buttonStyle(.plain)
+        .matchedGeometryEffect(id: pair.0, in: namespace)
       }
     }
+    .background {
+      RoundedRectangle(cornerRadius: 18, style: .continuous)
+        .fill(Tokens.ink)
+        .matchedGeometryEffect(id: value, in: namespace, properties: .frame, isSource: false)
+    }
+    .spAnimation(Motion.quick, value: value)
+    .spFeedback(.selection, trigger: value)
     .padding(4)
     .fixedSize(horizontal: true, vertical: false)
     .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -299,56 +304,6 @@ struct CategoryPickerView: View {
   }
 }
 
-struct MemberToggleGridView: View {
-  let members: [Member]
-  let selectedIds: [Member.ID]
-  let disabledIds: [Member.ID]
-  let isCaptionDimmed: Bool
-  let captionFor: (Member) -> String
-  let onToggle: (Member.ID) -> Void
-
-  var body: some View {
-    LazyVGrid(
-      columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4),
-      spacing: 6
-    ) {
-      ForEach(members) { member in
-        let isSelected = selectedIds.contains(member.id)
-        let isDisabled = disabledIds.contains(member.id)
-        Button {
-          onToggle(member.id)
-        } label: {
-          VStack(spacing: 4) {
-            MemberShapeView(member: member, size: 44)
-            Text(captionFor(member))
-              .font(Typography.captionBold)
-              .foregroundStyle(isSelected ? Tokens.ink : Tokens.muted)
-              .lineLimit(1)
-              .opacity(isSelected && isCaptionDimmed ? 0.45 : 1.0)
-          }
-          .padding(.horizontal, 4)
-          .padding(.vertical, 8)
-          .frame(maxWidth: .infinity, minHeight: 76)
-          .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-              .fill(isSelected ? Tokens.surface : Tokens.bg)
-              .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                  .strokeBorder(
-                    isSelected ? Tokens.ink : Color.clear,
-                    lineWidth: 3
-                  )
-              )
-          )
-          .opacity(isDisabled ? 0.5 : 1.0)
-        }
-        .buttonStyle(.plain)
-        .disabled(isDisabled)
-      }
-    }
-  }
-}
-
 struct PayerAmountsView: View {
   let members: [Member]
   let values: [Member.ID: String]
@@ -425,35 +380,25 @@ struct TransferFieldsView: View {
 
   var body: some View {
     VStack(spacing: 12) {
-      VStack(alignment: .leading, spacing: 8) {
-        Text(L10n.tr("expenseForm.transferFrom"))
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
-        MemberToggleGridView(
-          members: members,
-          selectedIds: fromId.map { [$0] } ?? [],
-          disabledIds: [],
-          isCaptionDimmed: false,
-          captionFor: \.name,
-          onToggle: onFrom
+      MemberPicker(
+        title: L10n.tr("expenseForm.transferFrom"),
+        members: members,
+        selectedId: Binding(
+          get: { fromId },
+          set: { if let id = $0 { onFrom(id) } }
         )
-      }
+      )
       .padding(12)
       .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
 
-      VStack(alignment: .leading, spacing: 8) {
-        Text(L10n.tr("expenseForm.transferTo"))
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.ink)
-        MemberToggleGridView(
-          members: members,
-          selectedIds: toId.map { [$0] } ?? [],
-          disabledIds: fromId.map { [$0] } ?? [],
-          isCaptionDimmed: false,
-          captionFor: \.name,
-          onToggle: onTo
+      MemberPicker(
+        title: L10n.tr("expenseForm.transferTo"),
+        members: members.filter { $0.id != fromId },
+        selectedId: Binding(
+          get: { toId },
+          set: { if let id = $0 { onTo(id) } }
         )
-      }
+      )
       .padding(12)
       .background(Tokens.surface, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
     }

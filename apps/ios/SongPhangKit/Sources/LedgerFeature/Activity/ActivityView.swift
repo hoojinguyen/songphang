@@ -116,17 +116,7 @@ public struct ActivityView: View {
       .padding(20)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .overlay(alignment: .bottom) {
-      if let toast = model.toastMessage {
-        Text(toast)
-          .font(Typography.subheadlineBold)
-          .foregroundStyle(Tokens.surface)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 12)
-          .background(Tokens.ink, in: Capsule())
-          .padding(.bottom, 20)
-      }
-    }
+    .confirmationToast($model.toastMessage)
     .navigationTitle(L10n.tr("activity.title"))
     .navigationBarTitleDisplayMode(.inline)
     .task {
