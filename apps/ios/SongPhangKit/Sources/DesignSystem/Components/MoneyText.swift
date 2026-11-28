@@ -2,8 +2,16 @@ public import Domain
 public import SwiftUI
 
 public struct MoneyText: View {
+  public enum Role: Sendable {
+    case hero
+    case primary
+    case secondary
+  }
+
   public enum Style: Sendable {
     case hero
+    case primary
+    case secondary
     case full
     case amountOnly
     case signed
@@ -19,6 +27,31 @@ public struct MoneyText: View {
   private let font: Font
   private let color: Color
   private let showsPositiveSign: Bool
+
+  public init(
+    _ money: Money,
+    role: Role,
+    font: Font? = nil,
+    color: Color? = nil,
+    showsPositiveSign: Bool = false
+  ) {
+    self.money = money
+    switch role {
+    case .hero:
+      self.style = .hero
+      self.font = font ?? Typography.heroNumber
+      self.color = color ?? Tokens.ink
+    case .primary:
+      self.style = .primary
+      self.font = font ?? Typography.bodyBold
+      self.color = color ?? Tokens.ink
+    case .secondary:
+      self.style = .secondary
+      self.font = font ?? Typography.captionBold
+      self.color = color ?? Tokens.muted
+    }
+    self.showsPositiveSign = showsPositiveSign
+  }
 
   public init(
     _ money: Money,
@@ -59,8 +92,10 @@ public struct MoneyText: View {
 
   private var formattedText: String {
     switch style {
-    case .hero, .full:
-      return MoneyFormat.full(money, showsPositiveSign: showsPositiveSign)
+    case .hero, .primary, .full:
+      return MoneyFormat.primary(money, showsPositiveSign: showsPositiveSign)
+    case .secondary:
+      return MoneyFormat.secondary(money, showsPositiveSign: showsPositiveSign)
     case .amountOnly:
       return MoneyFormat.amount(money)
     case .signed:
@@ -70,3 +105,18 @@ public struct MoneyText: View {
     }
   }
 }
+
+#if DEBUG
+  #Preview("MoneyText Roles") {
+    VStack(alignment: .leading, spacing: 12) {
+      MoneyText(Money(500_000), role: .hero)
+      HStack {
+        MoneyText(Money(300_000), role: .primary)
+        Spacer()
+        MoneyText(Money(100_000), role: .secondary)
+      }
+    }
+    .padding(20)
+    .background(Tokens.bg)
+  }
+#endif

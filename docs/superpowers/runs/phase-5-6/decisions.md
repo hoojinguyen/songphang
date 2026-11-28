@@ -156,3 +156,14 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
   2. Remove `showInitial` from `MemberShapeView` altogether so plain dots are unrepresentable, add `isClaimed: Bool = true` + `init(member: Member, size: CGFloat)` drawing `Tokens.dashed` stroke and `0.45` fill opacity when `!isClaimed`, and migrate `Member`-backed call sites to `MemberShapeView(member:size:)`; implement `ChipWrapLayout` (`<= 4` items) and `PeekingChipHStackLayout` (`> 4` items, adjusting inter-chip spacing >= `spacing` when needed so the trailing boundary chip shows 35%–65% of its natural width); require either `action:` or `noActionReason:` on `EmptyState` initializers.
 - **Choice:** Option 2.
 - **Reason:** Making plain dots and silent actionless `EmptyState`s unrepresentable enforces `AGENTS.md` §6 ("Let the machine catch errors"), while `Layout` subviews keep every chip label untruncated (`fixedSize(horizontal: true)`).
+
+### D8 — `TimelineView` shimmer/pulse under Reduce Motion and `MoneyText.Role` compatibility (Task 5.6.A.6)
+
+- **Problem:**
+  1. Every SwiftUI animation must go through `Motion` (`5.6.A.1`), which returns `nil` when Reduce Motion is enabled, yet `ShapeLoader` requires a gentle pulsing opacity under Reduce Motion and `SkeletonBlocks` requires a slow shimmer that stops completely under Reduce Motion.
+  2. `MoneyText` gains explicit v3 roles (`.hero`, `.primary`, `.secondary`) in Stage A while feature call sites are migrated to those roles in Stage C (`5.6.C.4`).
+- **Options:**
+  1. Attach raw `.animation(.easeInOut.repeatForever())` in `ShapeLoader` and `SkeletonBlocks` (violating the `Motion`-only rule) or break existing `MoneyText(style:)` callers during Stage A.
+  2. Drive `ShapeLoader`'s Reduce Motion opacity pulse and `SkeletonBlocks`'s normal-mode slow shimmer via `TimelineView(.animation(minimumInterval:))` (zero `.animation` modifiers bypassing `Motion`; `SkeletonBlocks` renders static content when `Motion.isReduced` is `true`, and `ShapeLoader` uses `PhaseAnimator` with `Motion.animation(Motion.bounce, reduceMotion: false)` when `Motion.isReduced` is `false`); add `MoneyText.Role` (`.hero`, `.primary`, `.secondary`) + `MoneyFormat.primary`/`MoneyFormat.secondary` alongside existing `Style` cases until `5.6.C.4`.
+- **Choice:** Option 2.
+- **Reason:** Zero animations bypass `Motion`, Reduce Motion behavior matches Spec §10.5 and §9.1 (`F1-52`, `F4-53`), and all 13 targets compile cleanly between Stage A and Stage C.

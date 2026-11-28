@@ -106,7 +106,7 @@
     - Security review: checked relevant items 1, 2, 8 on `git diff`; SwiftUI sheet presentation and confirmation dialog only, no issues found.
   - **Findings closed:** `F2-29`, `F2-30`, `F2-31`, `F2-32`, `F4-03`, `F4-04` (component part; applied to all 32 presentations in `5.6.C.1`), `F2-130` (reference).
 
-- [x] **Task 5.6.A.5 — Selection and state components**
+- [x] **Task 5.6.A.5 — Selection and state components** (commit `25020e6`)
   - **Approach:**
     - Files to create/modify: `DesignSystem/Components/{MemberPicker,ChipRow,CountBadge,MemberShapeView,ShareCardCanvasView}.swift`, `DesignSystem/States/StateViews.swift`, `DesignSystem/Resources/Localizable.xcstrings`, plus `MemberShapeView`/`EmptyState` call sites across `AppShell`, `GroupsFeature`, `LedgerFeature`, and `PaymentsFeature`, and `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
     - Approach: Create `MemberPicker` (single/multiple selection, `MemberShapeView(member:size:)`, `"Bạn"` for current member, `.spFeedback(.selection)`, `Motion.quick`, vertical stack at accessibility Dynamic Type sizes, VoiceOver `"{name}, đã chọn"`), `ChipRow` (`<= 4` wrap layout, `> 4` untruncated horizontal scroll leaving ~half of the trailing boundary chip visible), and `CountBadge` (renders nothing when `<= 0`); require either `action:` or `noActionReason:` on `EmptyState` (updating `FundView.swift`); remove `showInitial` from `MemberShapeView` so plain dots cannot be rendered anywhere and add `isClaimed` dashed border (`Tokens.dashed`) + `init(member:size:)`.
@@ -121,6 +121,23 @@
     - Simulator (`--scripted --route-members` and `--scripted --route-feed` on `iPhone 17 Pro`): verified every `MemberShapeView` draws its member initial (`0` plain dots remaining across feed cards, compact transfer rows, and header pills) and unclaimed members render `Tokens.dashed` outlines (`screens/stage-a/a5-members-unclaimed.png`, `screens/stage-a/a5-feed-initials.png`).
     - Security review: checked relevant items 1, 2, 8 on `git diff`; UI selection/state components and avatar rendering only, no issues found.
   - **Findings closed:** `F4-01`, `F4-02` (component part), `F2-125`, `F2-44` (component part), `F2-123` (component part), `F2-122`, `F2-43`, `F1-01`.
+
+- [x] **Task 5.6.A.6 — Feedback and money components, gallery, Stage A gate**
+  - **Approach:**
+    - Files to create/modify: `DesignSystem/Components/{CopyButton,ConfirmationToast,ShapeLoader,ShapeBurst,FieldShake,PersonName,MoneyText,MoneyFormat,MemberPicker}.swift`, `DesignSystem/States/SkeletonBlocks.swift`, `AppShell/Debug/{DebugGalleryView,DebugStageAGallerySection}.swift`, `DesignSystem/Resources/Localizable.xcstrings`, and `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
+    - Approach: Build `CopyButton(value:label:)`, `ConfirmationToast` + `.confirmationToast(_:)`, `ShapeLoader` (4 bouncing brand shapes via `PhaseAnimator` + `Motion.bounce`, pulsing opacity under Reduce Motion), `ShapeBurst(members:trigger:)` (<= 1 s burst, still under Reduce Motion), `.fieldShake(trigger:)` (horizontal shake + `.spFeedback(.warning)`, red border only under Reduce Motion), `SkeletonBlocks` (`BalanceCardSkeleton`, `LinkRowSkeleton`, `SearchFieldSkeleton`, `TransactionRowSkeleton`, `MemberRowSkeleton` with `TimelineView` shimmer suppressed under Reduce Motion), explicit `MoneyText.Role` (`.hero`, `.primary`, `.secondary`), and `PersonName.display(name:isCurrentUser:)`; expose all Stage A components on `--gallery-components` (`DebugStageAGallerySection`).
+    - Why this is the simplest approach: Preserving `MoneyText(style:)` alongside `MoneyText(role:)` keeps all feature targets compiling cleanly until Stage C migration (`5.6.C.4`), while `TimelineView`-backed shimmer/pulse avoids any raw `.animation` modifier bypassing `Motion`.
+    - Rejected alternative: Adding `.animation(.repeatForever())` in `ShapeLoader` and `SkeletonBlocks` — rejected because every animation must respect `Motion.isReduced`.
+    - Questions: none (Decision D8 recorded in `decisions.md`).
+  - **Gates (verbatim — Task 5.6.A.6 + Stage A gate):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+    - `pnpm check`: `biome check .` (595 files, 0 errors, 9 pre-existing `noImgElement` warnings in `apps/web`), `pnpm -r typecheck` (8 workspace projects passed), `pnpm --filter @songphang/api contract:check` (`OpenAPI contract snapshot is up to date.`) — exit `0`.
+  - **Exercise results:**
+    - Simulator `--gallery-components` on `iPhone 17 Pro` (iOS 26.5): captured `screens/stage-a/gallery-components-light.png`, `screens/stage-a/gallery-components-dark.png`, and `screens/stage-a/gallery-components-ax5.png` at `accessibility-extra-extra-extra-large`; verified `MoneyText` `.hero`/`.primary`/`.secondary` roles (zero `"đồng"`), sound/haptic/sheet demo buttons, `CountBadge` (`0` hidden, `3` & `12` visible), `MemberPicker`, `ChipRow` wrap + horizontal peek, `CopyButton`, `ConfirmationToast`, `FieldShake`, `ShapeLoader`, `ShapeBurst`, and all 5 `SkeletonBlocks`.
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; `UIPasteboard.general.string` receives only explicit caller value on user tap, zero dynamic HTML/JS/logging of secrets, no issues found.
+  - **Findings closed:** `F2-54` (component), `F4-06` (component), `F1-52` (component), `F1-59` (component), `F1-51` and `F2-55` (modifier), `F2-119`, `F2-120` (component part).
 
 ## Stage B — Navigation
 

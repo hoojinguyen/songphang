@@ -47,6 +47,7 @@
           case .shapes:
             shapesSection
           case .components:
+            DebugStageAGallerySection()
             buttonsSection
             statesSection
           }

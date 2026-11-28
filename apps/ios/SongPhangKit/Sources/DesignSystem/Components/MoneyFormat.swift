@@ -2,6 +2,20 @@ public import Domain
 import Foundation
 
 public enum MoneyFormat {
+  public static func primary(_ money: Money, showsPositiveSign: Bool = false) -> String {
+    full(money, showsPositiveSign: showsPositiveSign)
+  }
+
+  public static func secondary(_ money: Money, showsPositiveSign: Bool = false) -> String {
+    if money.isNegative {
+      return signedAmount(money)
+    }
+    if showsPositiveSign && money.isPositive {
+      return signedAmount(money)
+    }
+    return amount(money)
+  }
+
   public static func amount(_ money: Money) -> String {
     formatUnsigned(money.magnitude.amount)
   }

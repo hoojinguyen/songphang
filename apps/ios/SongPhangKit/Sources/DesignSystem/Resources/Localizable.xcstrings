@@ -10659,6 +10659,17 @@
           }
         }
       }
+    },
+    "ios.copy.announced": {
+      "extractionState": "manual",
+      "localizations": {
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã sao chép"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

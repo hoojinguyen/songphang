@@ -116,8 +116,7 @@ public struct MemberPicker: View {
   }
 
   private func displayName(for member: Member) -> String {
-    let isCurrent = member.isMe || (currentMemberId != nil && member.id == currentMemberId)
-    return isCurrent ? L10n.tr("common.you") : member.name
+    PersonName.display(member: member, currentMemberId: currentMemberId)
   }
 
   private func accessibilityText(for member: Member, isSelected: Bool) -> String {
