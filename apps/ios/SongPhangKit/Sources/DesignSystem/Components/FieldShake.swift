@@ -23,6 +23,9 @@ private struct FieldShakeModifier<Trigger: Equatable>: ViewModifier {
       }
       .onDisappear {
         shakeTask?.cancel()
+        shakeTask = nil
+        horizontalOffset = 0
+        showsErrorOutline = false
       }
   }
 

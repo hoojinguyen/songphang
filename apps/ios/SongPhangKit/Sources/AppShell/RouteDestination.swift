@@ -484,7 +484,7 @@ public struct RouteDestination: View {
         JoinView(
           model: joinModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
-          onBackToGroups: { onPopToRoot(nil) }
+          onBackToGroups: onBackToGroups
         )
       }
     case .guestShare(let token):
@@ -712,7 +712,7 @@ public struct RouteDestination: View {
           model: settleModel,
           isEmailVerified: currentUser?.emailVerified ?? true,
           onCancel: onPop,
-          onBackToGroups: { onPopToRoot(nil) }
+          onBackToGroups: onBackToGroups
         )
       }
     case .notifications:

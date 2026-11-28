@@ -16,6 +16,10 @@ public struct MemberPicker: View {
   private let currentMemberId: Member.ID?
   private let allowsEmptySelection: Bool
   private let isDisabled: Bool
+  private let labelForMember: ((Member) -> String)?
+  private let captionForMember: ((Member) -> String?)?
+  private let isCaptionDimmed: Bool
+  private let warningMemberIds: Set<Member.ID>
 
   public init(
     title: String,
@@ -24,7 +28,11 @@ public struct MemberPicker: View {
     mode: Mode = .multiple,
     currentMemberId: Member.ID? = nil,
     allowsEmptySelection: Bool = false,
-    isDisabled: Bool = false
+    isDisabled: Bool = false,
+    labelForMember: ((Member) -> String)? = nil,
+    captionForMember: ((Member) -> String?)? = nil,
+    isCaptionDimmed: Bool = false,
+    warningMemberIds: Set<Member.ID> = []
   ) {
     self.title = title
     self.members = members
@@ -33,6 +41,10 @@ public struct MemberPicker: View {
     self.currentMemberId = currentMemberId
     self.allowsEmptySelection = allowsEmptySelection
     self.isDisabled = isDisabled
+    self.labelForMember = labelForMember
+    self.captionForMember = captionForMember
+    self.isCaptionDimmed = isCaptionDimmed
+    self.warningMemberIds = warningMemberIds
   }
 
   public init(
@@ -41,7 +53,11 @@ public struct MemberPicker: View {
     selectedId: Binding<Member.ID?>,
     currentMemberId: Member.ID? = nil,
     allowsEmptySelection: Bool = false,
-    isDisabled: Bool = false
+    isDisabled: Bool = false,
+    labelForMember: ((Member) -> String)? = nil,
+    captionForMember: ((Member) -> String?)? = nil,
+    isCaptionDimmed: Bool = false,
+    warningMemberIds: Set<Member.ID> = []
   ) {
     self.init(
       title: title,
@@ -60,7 +76,11 @@ public struct MemberPicker: View {
       mode: .single,
       currentMemberId: currentMemberId,
       allowsEmptySelection: allowsEmptySelection,
-      isDisabled: isDisabled
+      isDisabled: isDisabled,
+      labelForMember: labelForMember,
+      captionForMember: captionForMember,
+      isCaptionDimmed: isCaptionDimmed,
+      warningMemberIds: warningMemberIds
     )
   }
 
@@ -69,7 +89,11 @@ public struct MemberPicker: View {
     members: [Member],
     selectedId: Binding<Member.ID>,
     currentMemberId: Member.ID? = nil,
-    isDisabled: Bool = false
+    isDisabled: Bool = false,
+    labelForMember: ((Member) -> String)? = nil,
+    captionForMember: ((Member) -> String?)? = nil,
+    isCaptionDimmed: Bool = false,
+    warningMemberIds: Set<Member.ID> = []
   ) {
     self.init(
       title: title,
@@ -85,7 +109,11 @@ public struct MemberPicker: View {
       mode: .single,
       currentMemberId: currentMemberId,
       allowsEmptySelection: false,
-      isDisabled: isDisabled
+      isDisabled: isDisabled,
+      labelForMember: labelForMember,
+      captionForMember: captionForMember,
+      isCaptionDimmed: isCaptionDimmed,
+      warningMemberIds: warningMemberIds
     )
   }
 
@@ -116,19 +144,24 @@ public struct MemberPicker: View {
   }
 
   private func displayName(for member: Member) -> String {
-    PersonName.display(member: member, currentMemberId: currentMemberId)
+    labelForMember?(member) ?? PersonName.display(member: member, currentMemberId: currentMemberId)
   }
 
   private func accessibilityText(for member: Member, isSelected: Bool) -> String {
     let label = displayName(for: member)
-    return isSelected ? L10n.t("ios.memberPicker.selected", ["name": label]) : label
+    let base = isSelected ? L10n.t("ios.memberPicker.selected", ["name": label]) : label
+    if let caption = captionForMember?(member), !caption.isEmpty {
+      return "\(base), \(caption)"
+    }
+    return base
   }
 
   private func toggle(_ id: Member.ID) {
+    let canDeselectWarning = warningMemberIds.contains(id)
     switch mode {
     case .single:
       if selection.contains(id) {
-        if allowsEmptySelection {
+        if allowsEmptySelection || canDeselectWarning {
           selection.removeAll()
         }
       } else {
@@ -136,7 +169,7 @@ public struct MemberPicker: View {
       }
     case .multiple:
       if selection.contains(id) {
-        if allowsEmptySelection || selection.count > 1 {
+        if allowsEmptySelection || selection.count > 1 || canDeselectWarning {
           selection.remove(id)
         }
       } else {
@@ -147,7 +180,11 @@ public struct MemberPicker: View {
 
   private func gridOption(for member: Member) -> some View {
     let isSelected = selection.contains(member.id)
+    let isWarning = warningMemberIds.contains(member.id)
     let label = displayName(for: member)
+    let caption = captionForMember?(member)
+    let bgColor: Color = isWarning ? Tokens.debtSoft : (isSelected ? Tokens.surface : Tokens.sunken)
+    let borderColor: Color = isSelected ? (isWarning ? Tokens.coral : Tokens.ink) : .clear
     return Button {
       toggle(member.id)
     } label: {
@@ -155,20 +192,29 @@ public struct MemberPicker: View {
         MemberShapeView(member: member, size: 44)
         Text(label)
           .font(Typography.captionBold)
-          .foregroundStyle(Tokens.ink)
+          .foregroundStyle(isWarning ? Tokens.debt : Tokens.ink)
           .lineLimit(1)
           .minimumScaleFactor(0.8)
+        if let caption, !caption.isEmpty {
+          Text(caption)
+            .font(Typography.microBold)
+            .foregroundStyle(isWarning ? Tokens.debt : Tokens.muted)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .opacity(isCaptionDimmed ? 0.55 : 1.0)
+        }
       }
       .padding(.vertical, 10)
       .padding(.horizontal, 8)
       .frame(maxWidth: .infinity, minHeight: 84)
-      .background(isSelected ? Tokens.surface : Tokens.sunken)
+      .background(bgColor)
       .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
       .overlay(
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-          .strokeBorder(isSelected ? Tokens.ink : Color.clear, lineWidth: 2.5)
+          .strokeBorder(borderColor, lineWidth: 2.5)
       )
-      .opacity(isSelected ? 1.0 : 0.72)
+      .opacity(isSelected || isWarning ? 1.0 : 0.72)
     }
     .buttonStyle(.plain)
     .disabled(isDisabled)
@@ -179,27 +225,40 @@ public struct MemberPicker: View {
 
   private func accessibilityRow(for member: Member) -> some View {
     let isSelected = selection.contains(member.id)
+    let isWarning = warningMemberIds.contains(member.id)
     let label = displayName(for: member)
+    let caption = captionForMember?(member)
+    let bgColor: Color = isWarning ? Tokens.debtSoft : (isSelected ? Tokens.surface : Tokens.sunken)
+    let borderColor: Color = isSelected ? (isWarning ? Tokens.coral : Tokens.ink) : .clear
     return Button {
       toggle(member.id)
     } label: {
       HStack(spacing: 12) {
         MemberShapeView(member: member, size: 44)
-        Text(label)
-          .font(Typography.bodyBold)
-          .foregroundStyle(Tokens.ink)
-          .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(label)
+            .font(Typography.bodyBold)
+            .foregroundStyle(isWarning ? Tokens.debt : Tokens.ink)
+          if let caption, !caption.isEmpty {
+            Text(caption)
+              .font(Typography.captionBold)
+              .foregroundStyle(isWarning ? Tokens.debt : Tokens.muted)
+              .monospacedDigit()
+              .opacity(isCaptionDimmed ? 0.55 : 1.0)
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
           .spIconFont(size: 22, weight: .bold, relativeTo: .title3)
-          .foregroundStyle(isSelected ? Tokens.ink : Tokens.muted)
+          .foregroundStyle(isSelected ? (isWarning ? Tokens.debt : Tokens.ink) : Tokens.muted)
       }
       .padding(14)
       .frame(maxWidth: .infinity, minHeight: 60)
-      .background(isSelected ? Tokens.surface : Tokens.sunken)
+      .background(bgColor)
       .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
       .overlay(
         RoundedRectangle(cornerRadius: 22, style: .continuous)
-          .strokeBorder(isSelected ? Tokens.ink : Color.clear, lineWidth: 2.5)
+          .strokeBorder(borderColor, lineWidth: 2.5)
       )
     }
     .buttonStyle(.plain)

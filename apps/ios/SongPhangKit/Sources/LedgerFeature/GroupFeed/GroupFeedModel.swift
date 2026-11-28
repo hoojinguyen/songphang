@@ -45,7 +45,14 @@ public final class GroupFeedModel {
   public var searchText: String
   public var hasNewItemsPill = false
   public var isScrolledAwayFromBottom = false
-  public var lastDeletedTransactionId: LedgerTransaction.ID?
+  public var lastDeletedTransactionId: LedgerTransaction.ID? {
+    didSet {
+      if lastDeletedTransactionId != nil {
+        undoToastPresentationId = UUID()
+      }
+    }
+  }
+  public private(set) var undoToastPresentationId = UUID()
   public var toastMessage: String? {
     didSet {
       if toastMessage != nil {

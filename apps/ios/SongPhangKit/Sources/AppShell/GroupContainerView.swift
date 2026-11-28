@@ -688,7 +688,7 @@ public struct GroupContainerView: View {
         currentUserId: currentUser?.id,
         isEmailVerified: currentUser?.emailVerified ?? true,
         onBack: onBack,
-        onBackToGroups: { onPopToRoot(nil) },
+        onBackToGroups: onBackToGroups,
         onOpenPay: isArchived
           ? nil
           : { transfer, fromMember, toMember in

@@ -7,7 +7,7 @@ where Data.Element: Identifiable {
   private let chipContent: (Data.Element) -> ChipContent
 
   @State private var containerWidth: CGFloat = 0
-  @State private var needsHorizontalScrollForWideChip = false
+  @State private var chipWidths: [AnyHashable: CGFloat] = [:]
 
   public init(
     _ items: Data,
@@ -19,9 +19,18 @@ where Data.Element: Identifiable {
     self.chipContent = chipContent
   }
 
+  private var needsHorizontalScroll: Bool {
+    if items.count > 4 {
+      return true
+    }
+    guard containerWidth > 0 else { return false }
+    let widestChip = items.compactMap { chipWidths[AnyHashable($0.id)] }.max() ?? 0
+    return widestChip > containerWidth
+  }
+
   public var body: some View {
     Group {
-      if items.count <= 4 && !needsHorizontalScrollForWideChip {
+      if !needsHorizontalScroll {
         ChipWrapLayout(spacing: spacing) {
           ForEach(items) { item in
             chipContent(item)
@@ -29,8 +38,9 @@ where Data.Element: Identifiable {
               .onGeometryChange(for: CGFloat.self) { proxy in
                 ceil(proxy.size.width)
               } action: { chipWidth in
-                if containerWidth > 0, chipWidth > containerWidth {
-                  needsHorizontalScrollForWideChip = true
+                let key = AnyHashable(item.id)
+                if chipWidths[key] != chipWidth {
+                  chipWidths[key] = chipWidth
                 }
               }
           }
@@ -41,6 +51,14 @@ where Data.Element: Identifiable {
             ForEach(items) { item in
               chipContent(item)
                 .fixedSize(horizontal: true, vertical: false)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                  ceil(proxy.size.width)
+                } action: { chipWidth in
+                  let key = AnyHashable(item.id)
+                  if chipWidths[key] != chipWidth {
+                    chipWidths[key] = chipWidth
+                  }
+                }
             }
           }
         }
@@ -51,9 +69,6 @@ where Data.Element: Identifiable {
     } action: { next in
       if abs(next - containerWidth) >= 1 {
         containerWidth = next
-        if items.count <= 4 {
-          needsHorizontalScrollForWideChip = false
-        }
       }
     }
   }

@@ -27,6 +27,7 @@ public struct BalancesView: View {
   @State private var isCloseCycleSheetOpen = false
   @State private var selectedBreakdownMemberId: Member.ID?
   @State private var subTabTapTick = 0
+  @State private var lastPlayedCelebrationTick = 0
   @Namespace private var subTabNamespace
 
   public init(
@@ -427,6 +428,7 @@ public struct BalancesView: View {
         members: data.members,
         myMemberId: myMemberId,
         celebrationTick: model.allSettledCelebrationTick,
+        lastPlayedCelebrationTick: $lastPlayedCelebrationTick,
         onBackToGroup: onBack
       )
     } else {
@@ -1286,9 +1288,11 @@ private struct AllSettledSection: View {
   let members: [Member]
   let myMemberId: Member.ID?
   let celebrationTick: Int
+  @Binding var lastPlayedCelebrationTick: Int
   let onBackToGroup: () -> Void
 
   @State private var hapticBeatTick = 0
+  @State private var activeBurstTick = 0
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
@@ -1305,15 +1309,17 @@ private struct AllSettledSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Tokens.accent, in: RoundedRectangle(cornerRadius: 40, style: .continuous))
 
-        if celebrationTick > 0 {
-          ShapeBurst(members: members, trigger: celebrationTick)
+        if activeBurstTick > 0 {
+          ShapeBurst(members: members, trigger: activeBurstTick)
             .allowsHitTesting(false)
             .padding(.top, -16)
         }
       }
       .spFeedback(.success, trigger: hapticBeatTick)
       .task(id: celebrationTick) {
-        guard celebrationTick > 0 else { return }
+        guard celebrationTick > lastPlayedCelebrationTick else { return }
+        lastPlayedCelebrationTick = celebrationTick
+        activeBurstTick = celebrationTick
         SoundPlayer.shared.play(.chord)
         hapticBeatTick &+= 1
         try? await Task.sleep(for: .milliseconds(120))

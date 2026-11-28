@@ -120,7 +120,11 @@ public struct NotificationsView: View {
       if model.hasUnread {
         ToolbarItem(placement: .topBarTrailing) {
           Button {
-            Task { await model.markAllRead() }
+            Task {
+              await model.markAllRead {
+                onUnreadSynced?()
+              }
+            }
           } label: {
             Text(L10n.tr("notifications.markAll"))
               .font(Typography.captionBold)

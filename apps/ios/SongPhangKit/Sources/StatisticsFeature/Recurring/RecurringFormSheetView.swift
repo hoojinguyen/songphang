@@ -362,6 +362,9 @@ struct RecurringFormSheetView: View {
           }
 
           VStack(alignment: .leading, spacing: 8) {
+            let inactivePayerIds = Set(
+              displayedPayerOptions.filter { !$0.active }.map(\.id)
+            )
             MemberPicker(
               title: L10n.tr("recurring.payerLabel"),
               members: displayedPayerOptions,
@@ -375,19 +378,27 @@ struct RecurringFormSheetView: View {
                       displayedPayerOptions.first(where: { $0.id == first })?.active == true
                     {
                       payerIds = [first]
+                    } else if ordered.isEmpty
+                      && payerIds.allSatisfy({ inactivePayerIds.contains($0) })
+                    {
+                      payerIds = []
                     }
                   } else {
                     let activeOrdered = ordered.filter { id in
                       displayedPayerOptions.first(where: { $0.id == id })?.active == true
                         || payerIds.contains(id)
                     }
-                    if !activeOrdered.isEmpty {
+                    let clearedOnlyInactive =
+                      activeOrdered.isEmpty
+                      && payerIds.allSatisfy { inactivePayerIds.contains($0) }
+                    if !activeOrdered.isEmpty || clearedOnlyInactive {
                       payerIds = activeOrdered
                     }
                   }
                 }
               ),
-              mode: mode == .variable ? .single : .multiple
+              mode: mode == .variable ? .single : .multiple,
+              warningMemberIds: inactivePayerIds
             )
 
             if mode == .fixed && payerIds.count > 1 {
@@ -449,6 +460,9 @@ struct RecurringFormSheetView: View {
               }
             }
             if splitMethod != .items {
+              let inactiveSharerIds = Set(
+                displayedSharerOptions.filter { !$0.active }.map(\.id)
+              )
               MemberPicker(
                 title: L10n.tr("expenseForm.sharersTitle"),
                 members: displayedSharerOptions,
@@ -462,7 +476,8 @@ struct RecurringFormSheetView: View {
                   }
                 ),
                 mode: .multiple,
-                allowsEmptySelection: true
+                allowsEmptySelection: true,
+                warningMemberIds: inactiveSharerIds
               )
 
               if splitMethod != .equal {

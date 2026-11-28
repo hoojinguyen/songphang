@@ -24,6 +24,7 @@ public struct ShareCardPreviewSheet: View {
   @State private var exportedImage: UIImage?
   @State private var transferablePNG: ShareCardPNG?
   @State private var savedToPhotos = false
+  @State private var saveSuccessTick = 0
   @State private var saveErrorMessage: String?
 
   private var selectedTheme: ColorScheme {
@@ -235,7 +236,7 @@ public struct ShareCardPreviewSheet: View {
           exportedImage ?? renderImage()
         }
       }
-      .spFeedback(.selection, trigger: savedToPhotos)
+      .spFeedback(.selection, trigger: saveSuccessTick)
     }
   }
 
@@ -485,6 +486,7 @@ public struct ShareCardPreviewSheet: View {
         PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: tempURL)
       }
       savedToPhotos = true
+      saveSuccessTick &+= 1
     } catch {
       saveErrorMessage = L10n.tr("common.saveError")
     }

@@ -85,18 +85,15 @@ private struct SPFittedMeasuredModifier: ViewModifier {
   let chromeAllowance: CGFloat
 
   func body(content: Content) -> some View {
-    content.onGeometryChange(for: CGFloat.self) { proxy in
-      ceil(proxy.size.height)
-    } action: { _ in
-    }
-    .background(
-      GeometryReader { proxy in
-        Color.clear.preference(
-          key: SPSheetContentHeightKey.self,
-          value: ceil(proxy.size.height + chromeAllowance)
-        )
-      }
-    )
+    content
+      .background(
+        GeometryReader { proxy in
+          Color.clear.preference(
+            key: SPSheetContentHeightKey.self,
+            value: ceil(proxy.size.height + chromeAllowance)
+          )
+        }
+      )
   }
 }
 
@@ -108,19 +105,10 @@ private struct SPSheetModifier: ViewModifier {
   // Start at medium-equivalent height until first intrinsic geometry pass completes.
   @State private var measuredHeight: CGFloat = 320
 
-  private var maxSheetHeight: CGFloat {
-    let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-    let screenHeight = scene?.screen.bounds.height ?? 852
-    return max(360, floor(screenHeight * 0.86))
-  }
-
   private var detents: Set<PresentationDetent> {
     switch size {
     case .fitted:
       let target = max(180, measuredHeight)
-      if target >= maxSheetHeight {
-        return [.large]
-      }
       if expandable {
         return [.height(target), .large]
       }

@@ -319,7 +319,12 @@ public struct ExpenseFormView: View {
                 ),
                 mode: model.transactionType == .income ? .single : .multiple,
                 currentMemberId: myMemberId,
-                allowsEmptySelection: true
+                allowsEmptySelection: true,
+                labelForMember: { member in
+                  member.kind == .fund
+                    ? L10n.tr("fund.payerOption")
+                    : PersonName.display(member: member, currentMemberId: myMemberId)
+                }
               )
               .padding(12)
               .background(
@@ -373,6 +378,9 @@ public struct ExpenseFormView: View {
                   .buttonStyle(.plain)
                 }
 
+                let shareByMemberId = Dictionary(
+                  uniqueKeysWithValues: model.previewShares.map { ($0.memberId, $0.amount) }
+                )
                 MemberPicker(
                   title: "",
                   members: active,
@@ -382,7 +390,15 @@ public struct ExpenseFormView: View {
                   ),
                   mode: .multiple,
                   currentMemberId: myMemberId,
-                  allowsEmptySelection: true
+                  allowsEmptySelection: true,
+                  captionForMember: { member in
+                    guard model.splitState.ids.contains(member.id) else { return nil }
+                    if let share = shareByMemberId[member.id] {
+                      return MoneyFormat.amount(share)
+                    }
+                    return model.isPreviewPending ? L10n.tr("common.pendingValue") : nil
+                  },
+                  isCaptionDimmed: model.isPreviewPending
                 )
 
                 if model.splitState.ids.isEmpty {
@@ -595,24 +611,27 @@ extension ExpenseFormView {
   }
 
   private var saveButton: some View {
-    SPButton(
+    let hasEmptyAmount = !model.effectiveAmount.isPositive
+    let hasEmptyDescription =
+      model.transactionType != .transfer
+      && model.descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    let hasShakeableEmptyField = hasEmptyAmount || hasEmptyDescription
+    return SPButton(
       model.saveButtonTitle,
       variant: .accent,
       size: .lg,
       isFullWidth: true,
       isDisabled: model.conflictTransaction != nil || model.isSubmitting
-        || model.isUploadingAttachment,
+        || model.isUploadingAttachment || (!model.canSubmit && !hasShakeableEmptyField),
       isPending: model.isSubmitting
     ) {
       if model.canSubmit {
         Task { await model.submit() }
       } else {
-        if !model.effectiveAmount.isPositive {
+        if hasEmptyAmount {
           amountShakeTick &+= 1
         }
-        if model.transactionType != .transfer
-          && model.descriptionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        {
+        if hasEmptyDescription {
           descriptionShakeTick &+= 1
         }
       }

@@ -125,7 +125,7 @@ public final class NotificationsModel {
     }
   }
 
-  public func markAllRead() async {
+  public func markAllRead(onSynced: (@MainActor @Sendable () -> Void)? = nil) async {
     guard case .loaded(var data) = state, !isMarkingAll, !isFetchingNextPage else { return }
     isMarkingAll = true
     markError = nil
@@ -146,6 +146,7 @@ public final class NotificationsModel {
       try await repository.markAllRead()
       guard mutationGeneration == gen else { return }
       markError = nil
+      onSynced?()
     } catch {
       guard mutationGeneration == gen else { return }
       if error == .unauthorized {

@@ -342,6 +342,9 @@ public struct ReceiptItemsAssignmentView: View {
         let name = selectedItem?.name.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return name.isEmpty ? L10n.tr("receipts.itemNameLabel") : name
       }()
+      let shareByMemberId = Dictionary(
+        uniqueKeysWithValues: (preview?.shares ?? []).map { ($0.memberId, $0.amount) }
+      )
       MemberPicker(
         title: assignmentTitle,
         members: activePeople,
@@ -364,7 +367,14 @@ public struct ReceiptItemsAssignmentView: View {
         ),
         mode: .multiple,
         allowsEmptySelection: true,
-        isDisabled: groupExceedsCap
+        isDisabled: groupExceedsCap,
+        captionForMember: { member in
+          if let share = shareByMemberId[member.id] {
+            return MoneyFormat.amount(share)
+          }
+          return !isPreviewCurrent ? L10n.tr("common.pendingValue") : nil
+        },
+        isCaptionDimmed: !isPreviewCurrent
       )
 
       if groupExceedsCap || itemMembersFull {

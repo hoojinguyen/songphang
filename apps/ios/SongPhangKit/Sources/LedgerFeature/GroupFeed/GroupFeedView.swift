@@ -112,11 +112,6 @@ public struct GroupFeedView: View {
     }
     .background(Tokens.bg.ignoresSafeArea())
     .spFeedback(.selection, trigger: rowActionFeedbackTick)
-    .task(id: model.lastDeletedTransactionId) {
-      guard model.lastDeletedTransactionId != nil else { return }
-      try? await Task.sleep(for: .seconds(6))
-      if !Task.isCancelled { model.lastDeletedTransactionId = nil }
-    }
     .confirmationToast(feedToastBinding, bottomPadding: 84)
     .modifier(
       ConditionalFeedNavBar(
@@ -294,9 +289,7 @@ public struct GroupFeedView: View {
       get: {
         if let deletedId = model.lastDeletedTransactionId {
           return ToastMessage(
-            id: UUID(
-              uuidString: String(deletedId.rawValue.prefix(36))
-            ) ?? UUID(),
+            id: model.undoToastPresentationId,
             text: L10n.tr("expenseForm.deleted"),
             actionLabel: L10n.tr("expenseForm.undo"),
             action: {

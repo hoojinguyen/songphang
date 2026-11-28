@@ -20,7 +20,7 @@ public struct MoneyText: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   // Track direction via integer Money comparison so we never convert Money to Double.
-  @State private var countsDown = false
+  @State private var previousMoney: Money?
 
   private let money: Money
   private let style: Style
@@ -70,11 +70,17 @@ public struct MoneyText: View {
   public var body: some View {
     if style == .hero {
       let reduced = Motion.isReduced(reduceMotion)
+      let countsDown = previousMoney.map { money < $0 } ?? false
       baseText
         .contentTransition(reduced ? .identity : .numericText(countsDown: countsDown))
         .spAnimation(Motion.smooth, value: money)
-        .onChange(of: money) { oldValue, newValue in
-          countsDown = newValue < oldValue
+        .onAppear {
+          if previousMoney == nil {
+            previousMoney = money
+          }
+        }
+        .onChange(of: money) { _, newValue in
+          previousMoney = newValue
         }
     } else {
       baseText

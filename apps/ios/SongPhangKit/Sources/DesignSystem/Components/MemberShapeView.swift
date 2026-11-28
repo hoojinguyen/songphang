@@ -66,7 +66,7 @@ public struct MemberShapeView: View {
       if let firstLetter = initialLetter {
         Text(firstLetter)
           .font(.system(size: initialFontSize, weight: .black))
-          .foregroundStyle(Tokens.onAccent)
+          .foregroundStyle(isClaimed ? Tokens.onAccent : Tokens.ink)
           .accessibilityHidden(true)
       }
     }

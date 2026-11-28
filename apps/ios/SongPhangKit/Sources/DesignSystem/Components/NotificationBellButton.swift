@@ -31,11 +31,11 @@ public struct NotificationBellButton: View {
             .background(Tokens.coral)
             .clipShape(Capsule())
             .offset(x: 2, y: -2)
+            .accessibilityHidden(true)
         }
       }
     }
     .buttonStyle(.plain)
-    .accessibilityElement(children: .ignore)
     .accessibilityLabel(
       unreadCount > 0
         ? L10n.t("notifications.bellUnreadLabel", ["count": "\(unreadCount)"])
