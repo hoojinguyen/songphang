@@ -70,3 +70,15 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
   2. Add `--route-groups` (`selectedTab = .groups`) and `--route-tx-detail` (`selectedTab = .groups; groupsPath = [.groupFeed(groupId: targetGroupId), .transactionDetail(groupId: targetGroupId, transactionId: TripScenario.t1Transaction.id)]`) inside `#if DEBUG` in `RootView.swift` without modifying any screen view or production code.
 - **Choice:** Option 2.
 - **Reason:** Zero change to production code or screen layout (preserves unmodified B01 double-back-button defect on `TransactionDetailView`), while enabling deterministic "before" and "after" Simulator captures across all 10 baseline screens.
+
+### D3 — `MoneyText(.hero)` rolling via `.numericText(countsDown:)` and persistent `matchedGeometryEffect` segment pill (Task 5.6.A.1)
+
+- **Problem:**
+  1. `SwiftUICore` offers `ContentTransition.numericText(value: Double)` and `ContentTransition.numericText(countsDown: Bool)`. Passing `Double(money.amount)` to `.numericText(value:)` would convert `Money` to a floating-point number, which `apps/ios/AGENTS.md` §5 forbids ("never convert it to a floating-point number").
+  2. Wrapping `selectedSegment = segment` in `withAnimation` in `GroupContainerView` previously cross-faded the entire screen content (`F2-56`).
+- **Options:**
+  1. Convert `Money` to `Double` for `.numericText(value:)` and wrap segment state changes in `withAnimation`.
+  2. Track roll direction with pure integer `Money` comparison (`newValue < oldValue`) in `MoneyText`, passing `countsDown` to `.contentTransition(reduceMotion ? .identity : .numericText(countsDown: countsDown))` paired with `.spAnimation(Motion.smooth, value: money)`; and render one persistent selection pill with `.matchedGeometryEffect(..., properties: .frame, isSource: false)` + `.spAnimation(Motion.quick, value:)` inside `SPSegmentedControl` and `GroupContainerView` while mutating `selectedSegment` / `fundSubTab` without `withAnimation`.
+- **Choice:** Option 2.
+- **Reason:** Keeps `Money` 100% integer-only (`apps/ios/AGENTS.md` §5), rolls hero numbers in the right direction only when `money` changes (`F1-44`, `F2-59`, `F2-60`), slides the segment pill smoothly with `Motion.quick`, switches content below without fading (`F2-56`), and falls back to instant updates under Reduce Motion (`F2-63`, `F4-53`).
+- **Debug launch helpers (`#if DEBUG`):** Added `--reduce-motion` (injects `\.accessibilityReduceMotion = true` at `RootView`), `--exercise-segment-switch`, and `--exercise-record-payment` so Reduce Motion and motion moments are deterministically verifiable in headless `simctl`.

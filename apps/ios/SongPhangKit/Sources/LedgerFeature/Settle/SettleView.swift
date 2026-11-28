@@ -62,12 +62,9 @@ public struct SettleView: View {
         }
       }
       .padding(20)
-      .scaleEffect(model.isRecorded ? 0.95 : 1.0)
+      .scaleEffect(Motion.isReduced(reduceMotion) ? 1.0 : (model.isRecorded ? 0.95 : 1.0))
       .opacity(model.isRecorded ? 0.0 : 1.0)
-      .animation(
-        reduceMotion ? nil : .spring(duration: 0.2, bounce: 0.15),
-        value: model.isRecorded
-      )
+      .spAnimation(Motion.quick, value: model.isRecorded)
     }
     .background(Tokens.bg.ignoresSafeArea())
     .safeAreaInset(edge: .bottom, spacing: 0) {

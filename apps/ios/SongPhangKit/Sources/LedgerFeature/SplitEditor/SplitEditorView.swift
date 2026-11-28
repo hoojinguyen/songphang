@@ -229,11 +229,8 @@ public struct SplitEditorView: View {
                         name: member.name,
                         size: 52
                       )
-                      .scaleEffect(isHeld ? 1.15 : 1.0)
-                      .animation(
-                        reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.25),
-                        value: isHeld
-                      )
+                      .scaleEffect(Motion.isReduced(reduceMotion) ? 1.0 : (isHeld ? 1.15 : 1.0))
+                      .spAnimation(Motion.bounce, value: isHeld)
 
                       Text(member.name)
                         .font(Typography.captionBold)

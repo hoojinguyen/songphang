@@ -169,16 +169,10 @@ public struct QuickEntryView: View {
               .id("\(reading.text):\(model.currentDraftIndex)")
             }
           }
-          .scaleEffect(model.isCollapsing ? 0.92 : 1.0)
+          .scaleEffect(Motion.isReduced(reduceMotion) ? 1.0 : (model.isCollapsing ? 0.92 : 1.0))
           .opacity(model.isCollapsing ? 0.0 : 1.0)
-          .animation(
-            reduceMotion ? nil : .spring(duration: 0.25, bounce: 0.15),
-            value: model.isCollapsing
-          )
-          .animation(
-            reduceMotion ? nil : .spring(duration: 0.28, bounce: 0.2),
-            value: reading.text
-          )
+          .spAnimation(Motion.quick, value: model.isCollapsing)
+          .spAnimation(Motion.bounce, value: reading.text)
         }
 
         if model.isSlowReading {

@@ -134,9 +134,10 @@ public struct OverviewView: View {
 
         MoneyText(
           summary.netBalance,
-          style: .signed,
+          style: .hero,
           font: Typography.heroNumber,
-          color: Tokens.onAccent
+          color: Tokens.onAccent,
+          showsPositiveSign: true
         )
 
         Divider()

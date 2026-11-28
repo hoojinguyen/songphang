@@ -21,6 +21,7 @@ public struct SPSegmentedControl: View {
   private let isDisabled: Bool
   private let onChange: (String) -> Void
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Namespace private var selectionNamespace
 
   public init(
     label: String,
@@ -54,13 +55,25 @@ public struct SPSegmentedControl: View {
             .minimumScaleFactor(0.8)
             .padding(.horizontal, 6)
             .frame(maxWidth: .infinity, minHeight: 44)
-            .background(isSelected ? Tokens.ink : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
+        .matchedGeometryEffect(id: option.value, in: selectionNamespace)
       }
     }
+    .background {
+      if options.contains(where: { $0.value == value }) {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+          .fill(Tokens.ink)
+          .matchedGeometryEffect(
+            id: value,
+            in: selectionNamespace,
+            properties: .frame,
+            isSource: false
+          )
+      }
+    }
+    .spAnimation(Motion.quick, value: value)
     .padding(4)
     .background(Tokens.sunken)
     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))

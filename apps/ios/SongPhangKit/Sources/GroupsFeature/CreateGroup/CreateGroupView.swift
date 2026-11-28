@@ -7,6 +7,7 @@ public import SwiftUI
 #endif
 
 public struct CreateGroupView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Bindable private var model: CreateGroupModel
   private let creatorName: String
   private let onBack: () -> Void
@@ -138,14 +139,14 @@ public struct CreateGroupView: View {
       .navigationBarBackButtonHidden(true)
       .onChange(of: model.addedMembers.count) { oldCount, newCount in
         if newCount > oldCount {
-          withAnimation(.easeInOut(duration: 0.25)) {
+          Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
             proxy.scrollTo("newMemberInputRow", anchor: .bottom)
           }
         }
       }
       .onChange(of: model.submitError != nil) { _, hasError in
         if hasError {
-          withAnimation(.easeInOut(duration: 0.25)) {
+          Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
             proxy.scrollTo("validationErrorBanner", anchor: .bottom)
           }
         }

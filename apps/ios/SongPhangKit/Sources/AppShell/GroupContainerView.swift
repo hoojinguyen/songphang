@@ -55,6 +55,8 @@ public struct GroupContainerView: View {
 
   @State private var selectedSegment: GroupSegment
   @State private var fundSubTab: FundSubTab = .stats
+  @Namespace private var segmentNamespace
+  @Namespace private var fundSubTabNamespace
   @State private var isCloneSheetPresented = false
   @State private var isArchiveConfirmPresented = false
   @State private var isReceiptCaptureOpen = false
@@ -299,12 +301,21 @@ public struct GroupContainerView: View {
     }
     #if DEBUG
       .task {
-        if ProcessInfo.processInfo.arguments.contains("--open-share-card") {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--open-share-card") {
           while balancesModel.state.value == nil {
             try? await Task.sleep(for: .milliseconds(50))
             if Task.isCancelled { return }
           }
           isShareCardSheetOpen = true
+        }
+        if args.contains("--exercise-segment-switch") {
+          try? await Task.sleep(for: .milliseconds(800))
+          guard !Task.isCancelled else { return }
+          selectedSegment = .payments
+          try? await Task.sleep(for: .milliseconds(800))
+          guard !Task.isCancelled else { return }
+          selectedSegment = .fundAndStats
         }
       }
     #endif
@@ -529,9 +540,7 @@ public struct GroupContainerView: View {
       ForEach(GroupSegment.allCases, id: \.self) { segment in
         Button {
           Haptics.light()
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = segment
-          }
+          selectedSegment = segment
         } label: {
           Text(segment.title)
             .font(Typography.captionBold)
@@ -540,14 +549,22 @@ public struct GroupContainerView: View {
             .padding(.horizontal, 4)
             .foregroundStyle(selectedSegment == segment ? Tokens.onInk : Tokens.muted)
             .frame(maxWidth: .infinity, minHeight: 38)
-            .background(
-              selectedSegment == segment ? Tokens.ink : Color.clear,
-              in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
         }
         .buttonStyle(.plain)
+        .matchedGeometryEffect(id: segment, in: segmentNamespace)
       }
     }
+    .background {
+      RoundedRectangle(cornerRadius: 14, style: .continuous)
+        .fill(Tokens.ink)
+        .matchedGeometryEffect(
+          id: selectedSegment,
+          in: segmentNamespace,
+          properties: .frame,
+          isSource: false
+        )
+    }
+    .spAnimation(Motion.quick, value: selectedSegment)
     .padding(4)
     .background(Tokens.sunken, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
   }
@@ -564,14 +581,10 @@ public struct GroupContainerView: View {
         onBack: onBack,
         onOpenMembers: { id in onNavigate(.groupMembers(groupId: id)) },
         onOpenBalances: { _ in
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = .payments
-          }
+          selectedSegment = .payments
         },
         onOpenStats: { _ in
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = .fundAndStats
-          }
+          selectedSegment = .fundAndStats
         },
         onOpenQuickEntry: { id, sentence in
           onNavigate(.quickEntry(groupId: id, initialSentence: sentence))
@@ -624,10 +637,8 @@ public struct GroupContainerView: View {
             )
           },
         onOpenFund: { _ in
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = .fundAndStats
-            fundSubTab = .fund
-          }
+          selectedSegment = .fundAndStats
+          fundSubTab = .fund
         },
         onCreateFund: isArchived
           ? nil
@@ -647,9 +658,7 @@ public struct GroupContainerView: View {
           onNavigate(.transactionDetail(groupId: groupId, transactionId: txId))
         },
         onViewCycleExpenses: { cycleId in
-          withAnimation(.easeInOut(duration: 0.18)) {
-            selectedSegment = .expenses
-          }
+          selectedSegment = .expenses
           Task { await feedModel.selectCycle(.cycle(cycleId)) }
         }
       )
@@ -660,23 +669,29 @@ public struct GroupContainerView: View {
           ForEach(FundSubTab.allCases, id: \.self) { subTab in
             Button {
               Haptics.light()
-              withAnimation(.easeInOut(duration: 0.15)) {
-                fundSubTab = subTab
-              }
+              fundSubTab = subTab
             } label: {
               Text(subTab.title)
                 .font(Typography.captionBold)
                 .foregroundStyle(fundSubTab == subTab ? Tokens.surface : Tokens.muted)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 32)
-                .background(
-                  fundSubTab == subTab ? Tokens.ink : Color.clear,
-                  in: Capsule()
-                )
             }
             .buttonStyle(.plain)
+            .matchedGeometryEffect(id: subTab, in: fundSubTabNamespace)
           }
         }
+        .background {
+          Capsule()
+            .fill(Tokens.ink)
+            .matchedGeometryEffect(
+              id: fundSubTab,
+              in: fundSubTabNamespace,
+              properties: .frame,
+              isSource: false
+            )
+        }
+        .spAnimation(Motion.quick, value: fundSubTab)
         .padding(3)
         .background(Tokens.sunken, in: Capsule())
         .padding(.horizontal, 20)

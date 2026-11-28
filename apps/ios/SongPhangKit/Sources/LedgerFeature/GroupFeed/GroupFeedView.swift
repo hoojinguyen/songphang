@@ -7,6 +7,7 @@ public import SwiftUI
 #endif
 
 public struct GroupFeedView: View {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Bindable private var model: GroupFeedModel
   private let showHeader: Bool
   private let isEmailVerified: Bool
@@ -555,14 +556,14 @@ public struct GroupFeedView: View {
               let list = Array(rows)
               var idx = 0
               while idx < list.count {
-                withAnimation(.linear(duration: 0.08)) {
+                Motion.withAnimation(Motion.quick, reduceMotion: reduceMotion) {
                   proxy.scrollTo(list[idx].id, anchor: .bottom)
                 }
                 try? await Task.sleep(for: .milliseconds(60))
                 idx += 25
               }
               if let last = list.last {
-                withAnimation(.linear(duration: 0.08)) {
+                Motion.withAnimation(Motion.quick, reduceMotion: reduceMotion) {
                   proxy.scrollTo(last.id, anchor: .bottom)
                 }
               }
@@ -574,7 +575,7 @@ public struct GroupFeedView: View {
           Button {
             model.hasNewItemsPill = false
             if let newest = chronological.last {
-              withAnimation {
+              Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {
                 proxy.scrollTo(newest.id, anchor: .bottom)
               }
             }

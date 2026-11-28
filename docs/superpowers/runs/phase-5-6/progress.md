@@ -7,7 +7,7 @@
 
 ## Task 0 — Re-baseline
 
-- [x] **Task 0 — Re-baseline and "before" captures**
+- [x] **Task 0 — Re-baseline and "before" captures** (commit `1bdf2e6`)
   - **Approach:**
     - Files to create/modify: `docs/superpowers/runs/phase-5-6/{progress,decisions}.md`, `docs/superpowers/runs/phase-5-6/screens/before/*.png`, and `apps/ios/SongPhangKit/Sources/AppShell/RootView.swift` (`#if DEBUG` `--route-groups` and `--route-tx-detail` launch flags, Decision D2).
     - Approach: Confirm clean git tree on `phase-5-6` at `6d8f398`, run the iOS gate and `pnpm check`, verify every plan-referenced file and spec count in `decisions.md`, capture 40 "before" screenshots (10 baseline screens across light, dark, and `accessibility-extra-extra-extra-large` on `iPhone 17 Pro`, plus all 10 screens on `SP-SE3-review` iPhone SE 3rd generation), and run the baseline 10-second `xctrace` scroll profile on `--scripted --scenario-large --route-feed --auto-scroll-large`.
@@ -32,6 +32,25 @@
   - **Findings closed:** none (baseline task).
 
 ## Stage A — Design system
+
+- [x] **Task 5.6.A.1 — Motion tokens and Reduce Motion**
+  - **Approach:**
+    - Files to create/modify: `DesignSystem/Tokens/Motion.swift` (new), `DesignSystem/Components/{MoneyText,MoneyFormat,ControlsAndQR}.swift`, `AppShell/{GroupContainerView,RootView}.swift`, `GroupsFeature/CreateGroup/CreateGroupView.swift`, `LedgerFeature/Balances/{BalancesView,SettlementCyclesSectionView}.swift`, `LedgerFeature/ConfirmCard/ShareShapesView.swift`, `LedgerFeature/GroupFeed/{GroupFeedView,GroupFeedSubViews}.swift`, `LedgerFeature/QuickEntry/QuickEntryView.swift`, `LedgerFeature/Settle/SettleView.swift`, `LedgerFeature/SplitEditor/SplitEditorView.swift`, `OverviewFeature/Overview/OverviewView.swift`.
+    - Approach: Introduce `Motion.quick`, `Motion.bounce`, and `Motion.smooth` springs plus `Motion.animation(_:reduceMotion:allowOpacityFade:)`, `Motion.withAnimation(...)`, and `.spAnimation(_:value:)` reading `\.accessibilityReduceMotion`; migrate all 17 existing animation call sites to `Motion` tokens; remove whole-screen fade on segment switches in `GroupContainerView` while sliding the selection pill via persistent `.matchedGeometryEffect(..., isSource: false)` in `SPSegmentedControl` and `GroupContainerView`; add `MoneyText` `.hero` style using `.contentTransition(.numericText(countsDown:))` (integer-only direction tracking, Decision D3) on Overview hero, Group Feed balance card, and Balances hero card.
+    - Why this is the simplest approach: Centralizes Reduce Motion handling in one modifier/helper so individual screens never forget to check it, and avoids floating-point conversion on `Money`.
+    - Rejected alternative: Wrapping `selectedSegment` changes in `withAnimation` — rejected because it cross-fades the entire screen content below the segment bar (`F2-56`).
+    - Questions: none (Decision D3 recorded in `decisions.md`).
+  - **Gates (verbatim):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - **Exercise results:**
+    - `grep -rn "\bwithAnimation\b\|\.animation(" apps/ios/SongPhangKit/Sources/`: all 17 call sites routed through `Motion` (`Motion.swift`, `Motion.withAnimation`, `.spAnimation`); zero raw SwiftUI animation calls remain.
+    - Simulator (`iPhone 17 Pro`, `--scripted --route-feed --exercise-segment-switch`): selection pill slid from `Chi tiêu` → `Thanh toán` → `Quỹ & Thống kê` with `Motion.quick` and zero screen fade (`screens/stage-a/a1-segment-payments.png`, `a1-segment-stats.png`).
+    - Simulator (`--scripted --route-feed --exercise-record-payment`): recording Thu → Minh `210.000 đ` rolled hero balance from `500.001 đ` down to `290.001 đ` with `.numericText(countsDown: true)` (`screens/stage-a/a1-balance-before-roll.png`, `a1-balance-after-roll.png` capturing mid-roll `9`, `a1-balance-settled.png`).
+    - Simulator Reduce Motion (`--reduce-motion`): OSLog verified `Motion.animation reduceMotion=true allowOpacityFade=false` returning `nil`; segment switches and `500.001 đ` → `290.001 đ` snapped immediately with no slide, scale, or digit roll (`screens/stage-a/a1-balance-reduce-motion.png`).
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; UI-only motion/formatting changes and `#if DEBUG` launch flags, no issues found.
+  - **Findings closed:** `F2-132`, `F2-57`, `F2-58`, `F2-61`, `F2-62`, `F1-58`, `F1-74`, `F2-63`, `F4-53`, `F1-44`, `F2-59`, `F2-60`, `F2-56` (component part).
 
 ## Stage B — Navigation
 

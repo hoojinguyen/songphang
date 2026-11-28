@@ -41,7 +41,7 @@ struct FeedBalanceBlockView: View {
             .foregroundStyle(Tokens.onAccent)
           MoneyText(
             balance.magnitude,
-            style: .full,
+            style: .hero,
             font: Typography.heroNumber,
             color: Tokens.onAccent
           )

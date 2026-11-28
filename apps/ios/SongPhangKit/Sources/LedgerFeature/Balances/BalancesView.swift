@@ -602,7 +602,7 @@ public struct BalancesView: View {
             .foregroundStyle(Tokens.muted)
           MoneyText(
             balance.magnitude,
-            style: .full,
+            style: .hero,
             font: Typography.sectionTitle,
             color: tint
           )

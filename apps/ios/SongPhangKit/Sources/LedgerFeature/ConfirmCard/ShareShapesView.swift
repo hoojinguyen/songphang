@@ -14,7 +14,6 @@ public struct ShareShapeItem: Sendable, Hashable, Identifiable {
 }
 
 public struct ShareShapesView: View {
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   private let shares: [ShareShapeItem]
   private let isDimmed: Bool
 
@@ -34,10 +33,7 @@ public struct ShareShapesView: View {
             name: item.member.name,
             size: shapeSize
           )
-          .animation(
-            reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.2),
-            value: shapeSize
-          )
+          .spAnimation(Motion.bounce, value: shapeSize)
 
           Text(item.member.name)
             .font(Typography.captionBold)

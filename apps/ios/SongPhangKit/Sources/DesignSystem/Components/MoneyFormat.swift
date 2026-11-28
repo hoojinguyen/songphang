@@ -6,10 +6,13 @@ public enum MoneyFormat {
     formatUnsigned(money.magnitude.amount)
   }
 
-  public static func full(_ money: Money) -> String {
+  public static func full(_ money: Money, showsPositiveSign: Bool = false) -> String {
     let formatted = formatUnsigned(money.magnitude.amount)
     if money.isNegative {
       return "−\(formatted)\u{00A0}đ"
+    }
+    if showsPositiveSign && money.isPositive {
+      return "+\(formatted)\u{00A0}đ"
     }
     return "\(formatted)\u{00A0}đ"
   }

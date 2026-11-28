@@ -741,6 +741,22 @@ public struct RootView: View {
             idempotencyKey: IdempotencyKey()
           )
         }
+        if args.contains("--exercise-record-payment") {
+          try? await Task.sleep(for: .milliseconds(1000))
+          _ = try? await world.createTransaction(
+            groupId: TripScenario.groupId,
+            draft: .transfer(
+              TransactionDraft.TransferPayload(
+                amount: Money(210_000),
+                occurredAt: "2026-11-16T15:05:00.000Z",
+                fromMemberId: TripScenario.thuId,
+                toMemberId: TripScenario.minhId
+              )
+            ),
+            key: IdempotencyKey()
+          )
+          await world.emitEvent(.changed(["balances", "transactions"]))
+        }
       #endif
     }
     .preferredColorScheme((AppearanceMode(rawValue: appearanceModeRaw) ?? .system).colorScheme)
