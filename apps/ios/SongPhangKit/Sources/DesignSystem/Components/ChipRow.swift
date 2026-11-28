@@ -7,6 +7,7 @@ where Data.Element: Identifiable {
   private let chipContent: (Data.Element) -> ChipContent
 
   @State private var containerWidth: CGFloat = 0
+  @State private var needsHorizontalScrollForWideChip = false
 
   public init(
     _ items: Data,
@@ -19,27 +20,39 @@ where Data.Element: Identifiable {
   }
 
   public var body: some View {
-    if items.count <= 4 {
-      ChipWrapLayout(spacing: spacing) {
-        ForEach(items) { item in
-          chipContent(item)
-            .fixedSize(horizontal: true, vertical: false)
-        }
-      }
-    } else {
-      ScrollView(.horizontal, showsIndicators: false) {
-        PeekingChipHStackLayout(containerWidth: containerWidth, spacing: spacing) {
+    Group {
+      if items.count <= 4 && !needsHorizontalScrollForWideChip {
+        ChipWrapLayout(spacing: spacing) {
           ForEach(items) { item in
             chipContent(item)
               .fixedSize(horizontal: true, vertical: false)
+              .onGeometryChange(for: CGFloat.self) { proxy in
+                ceil(proxy.size.width)
+              } action: { chipWidth in
+                if containerWidth > 0, chipWidth > containerWidth {
+                  needsHorizontalScrollForWideChip = true
+                }
+              }
+          }
+        }
+      } else {
+        ScrollView(.horizontal, showsIndicators: false) {
+          PeekingChipHStackLayout(containerWidth: containerWidth, spacing: spacing) {
+            ForEach(items) { item in
+              chipContent(item)
+                .fixedSize(horizontal: true, vertical: false)
+            }
           }
         }
       }
-      .onGeometryChange(for: CGFloat.self) { proxy in
-        floor(proxy.size.width)
-      } action: { next in
-        if abs(next - containerWidth) >= 1 {
-          containerWidth = next
+    }
+    .onGeometryChange(for: CGFloat.self) { proxy in
+      floor(proxy.size.width)
+    } action: { next in
+      if abs(next - containerWidth) >= 1 {
+        containerWidth = next
+        if items.count <= 4 {
+          needsHorizontalScrollForWideChip = false
         }
       }
     }

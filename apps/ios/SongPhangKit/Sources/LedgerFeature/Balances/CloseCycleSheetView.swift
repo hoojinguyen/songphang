@@ -131,7 +131,7 @@ struct CloseCycleSheetView: View {
       }
     }
     .spSheet(.fitted, embedsNavigationStack: true)
-    .discardGuard(isDirty: title != defaultTitle && !isClosing, onDiscard: onDismiss)
+    .discardGuard(isDirty: title != defaultTitle, isPending: isClosing, onDiscard: onDismiss)
   }
 }
 

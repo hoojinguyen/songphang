@@ -224,7 +224,7 @@ struct HouseholdFormSheetView: View {
       }
     }
     .spSheet(.form, embedsNavigationStack: true)
-    .discardGuard(isDirty: isDirty && !isPending, onDiscard: onDismiss)
+    .discardGuard(isDirty: isDirty, isPending: isPending, onDiscard: onDismiss)
   }
 
   private func toggleMember(_ id: Member.ID) {

@@ -60,7 +60,8 @@ public struct GroupContainerView: View {
   private let onNavigate: (Route) -> Void
   private let onReplaceTop: (Route) -> Void
   private let onPopToRoot: (String?) -> Void
-  private let onExpenseSaved: () -> Void
+  private let onBackToGroups: () -> Void
+  private let onTransactionChanged: () -> Void
   private let recurringRefreshTick: Int
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
@@ -104,7 +105,8 @@ public struct GroupContainerView: View {
     onNavigate: @escaping (Route) -> Void,
     onReplaceTop: @escaping (Route) -> Void,
     onPopToRoot: @escaping (String?) -> Void,
-    onExpenseSaved: @escaping () -> Void,
+    onBackToGroups: (() -> Void)? = nil,
+    onTransactionChanged: @escaping () -> Void,
     recurringRefreshTick: Int = 0
   ) {
     self.groupId = groupId
@@ -117,7 +119,8 @@ public struct GroupContainerView: View {
     self.onNavigate = onNavigate
     self.onReplaceTop = onReplaceTop
     self.onPopToRoot = onPopToRoot
-    self.onExpenseSaved = onExpenseSaved
+    self.onBackToGroups = onBackToGroups ?? { onPopToRoot(nil) }
+    self.onTransactionChanged = onTransactionChanged
     self.recurringRefreshTick = recurringRefreshTick
     self._selectedSegment = State(initialValue: initialSegment)
     self._pendingProofAttachmentId = State(initialValue: initialTransferProofAttachmentId)
@@ -266,7 +269,7 @@ public struct GroupContainerView: View {
     Group {
       if let unavailableKind {
         GroupUnavailableView(kind: unavailableKind) {
-          onPopToRoot(nil)
+          onBackToGroups()
         }
       } else {
         VStack(spacing: 8) {
@@ -517,7 +520,7 @@ public struct GroupContainerView: View {
             pendingProofAttachmentId = nil
             paymentSheet = nil
             balancesModel.markOwnActionPendingCelebration()
-            onExpenseSaved()
+            onTransactionChanged()
           }
         )
       }

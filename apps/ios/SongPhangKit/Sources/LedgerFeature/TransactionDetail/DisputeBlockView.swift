@@ -116,7 +116,8 @@ struct DisputeBlockView: View {
         }
         .spSheet(.fitted, embedsNavigationStack: true)
         .discardGuard(
-          isDirty: !trimmed.isEmpty && !isPending,
+          isDirty: !trimmed.isEmpty,
+          isPending: isPending,
           onDiscard: {
             disputeReason = ""
             submissionError = nil

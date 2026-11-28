@@ -536,7 +536,7 @@ struct RecurringFormSheetView: View {
       }
     }
     .spSheet(.form, embedsNavigationStack: true)
-    .discardGuard(isDirty: isDirty && !isPending, onDiscard: onDismiss)
+    .discardGuard(isDirty: isDirty, isPending: isPending, onDiscard: onDismiss)
   }
 
   private static func parseHundredths(_ raw: String) -> Int? {

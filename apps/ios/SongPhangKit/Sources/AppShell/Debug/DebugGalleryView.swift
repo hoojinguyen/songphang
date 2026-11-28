@@ -13,6 +13,7 @@
 
     @State private var selectedTab: SectionTab
     @State private var debugFeedbackTick = 0
+    @State private var toastMessage: ToastMessage?
 
     public init() {
       let args = ProcessInfo.processInfo.arguments
@@ -47,7 +48,7 @@
           case .shapes:
             shapesSection
           case .components:
-            DebugStageAGallerySection()
+            DebugStageAGallerySection(toastMessage: $toastMessage)
             buttonsSection
             statesSection
           }
@@ -57,16 +58,21 @@
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(Tokens.bg.ignoresSafeArea())
+      .confirmationToast($toastMessage)
       .spFeedback(.selection, trigger: debugFeedbackTick)
       .task {
         if ProcessInfo.processInfo.arguments.contains("--exercise-feedback") {
-          try? await Task.sleep(for: .milliseconds(300))
-          SoundPlayer.shared.play(.coin)
-          debugFeedbackTick &+= 1
-          try? await Task.sleep(for: .milliseconds(250))
-          SoundPlayer.shared.play(.ting)
-          try? await Task.sleep(for: .milliseconds(300))
-          SoundPlayer.shared.play(.chord)
+          do {
+            try await Task.sleep(for: .milliseconds(300))
+            SoundPlayer.shared.play(.coin)
+            debugFeedbackTick &+= 1
+            try await Task.sleep(for: .milliseconds(250))
+            SoundPlayer.shared.play(.ting)
+            try await Task.sleep(for: .milliseconds(300))
+            SoundPlayer.shared.play(.chord)
+          } catch {
+            return
+          }
         }
       }
     }

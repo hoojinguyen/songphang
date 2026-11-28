@@ -48,12 +48,14 @@ public struct BalanceCardSkeleton: View {
   public init() {}
 
   public var body: some View {
-    HStack(spacing: 16) {
+    AdaptiveStack(horizontalSpacing: 16, verticalSpacing: 12) {
       VStack(alignment: .leading, spacing: 10) {
-        SkeletonBar(width: 110, height: 14, cornerRadius: 7)
-        SkeletonBar(width: 180, height: 36, cornerRadius: 12)
+        SkeletonBar(height: 14, cornerRadius: 7)
+          .frame(maxWidth: 110, alignment: .leading)
+        SkeletonBar(height: 36, cornerRadius: 12)
+          .frame(maxWidth: 180, alignment: .leading)
       }
-      Spacer(minLength: 8)
+      .frame(maxWidth: .infinity, alignment: .leading)
       SkeletonBar(width: 92, height: 48, cornerRadius: 24)
     }
     .padding(22)

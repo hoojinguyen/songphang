@@ -117,7 +117,8 @@ public struct CloneGroupSheetView: View {
     }
     .spSheet(.fitted, embedsNavigationStack: true)
     .discardGuard(
-      isDirty: isDirty && !isSubmitting,
+      isDirty: isDirty,
+      isPending: isSubmitting,
       onDiscard: {
         if !isSubmitting {
           onDismiss()

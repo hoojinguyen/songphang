@@ -174,17 +174,21 @@ private struct SPSheetModifier: ViewModifier {
 
 private struct SPDiscardGuardModifier: ViewModifier {
   let isDirty: Bool
+  let isPending: Bool
   let onDiscard: () -> Void
   @State private var cleanId = UUID()
   @State private var dirtyId = UUID()
+  @State private var lockedId = UUID()
   @State private var isShowingConfirmation = false
 
   func body(content: Content) -> some View {
+    let activeId = isPending ? lockedId : (isDirty ? dirtyId : cleanId)
     content
-      .interactiveDismissDisabled(isDirty)
+      .interactiveDismissDisabled(isDirty || isPending)
       .environment(
         \.spSheetDismissAction,
-        SPSheetDismissAction(id: isDirty ? dirtyId : cleanId) {
+        SPSheetDismissAction(id: activeId) {
+          guard !isPending else { return }
           if isDirty {
             isShowingConfirmation = true
           } else {
@@ -224,8 +228,12 @@ extension View {
     modifier(SPFittedMeasuredModifier(chromeAllowance: chromeAllowance))
   }
 
-  public func discardGuard(isDirty: Bool, onDiscard: @escaping () -> Void) -> some View {
-    modifier(SPDiscardGuardModifier(isDirty: isDirty, onDiscard: onDiscard))
+  public func discardGuard(
+    isDirty: Bool,
+    isPending: Bool = false,
+    onDiscard: @escaping () -> Void
+  ) -> some View {
+    modifier(SPDiscardGuardModifier(isDirty: isDirty, isPending: isPending, onDiscard: onDiscard))
   }
 }
 

@@ -8,16 +8,20 @@ public import SwiftUI
 
 public struct NotificationsView: View {
   @Bindable private var model: NotificationsModel
+  @State private var isNavigatingToTarget = false
   private let onBack: (() -> Void)?
+  private let onUnreadSynced: (() -> Void)?
   private let onSelectTarget: (AppNotification.Target) -> Void
 
   public init(
     model: NotificationsModel,
     onBack: (() -> Void)? = nil,
+    onUnreadSynced: (() -> Void)? = nil,
     onSelectTarget: @escaping (AppNotification.Target) -> Void
   ) {
     self.model = model
     self.onBack = onBack
+    self.onUnreadSynced = onUnreadSynced
     self.onSelectTarget = onSelectTarget
   }
 
@@ -55,7 +59,10 @@ public struct NotificationsView: View {
                 NotificationRowView(
                   notification: item,
                   onSelect: { notification in
-                    model.markOneRead(notification)
+                    isNavigatingToTarget = true
+                    model.markOneRead(notification) {
+                      onUnreadSynced?()
+                    }
                     onSelectTarget(notification.target)
                   }
                 )
@@ -122,11 +129,16 @@ public struct NotificationsView: View {
         }
       }
     }
+    .onAppear {
+      isNavigatingToTarget = false
+    }
     .task {
       await model.load()
     }
     .onDisappear {
-      onBack?()
+      if !isNavigatingToTarget {
+        onBack?()
+      }
     }
   }
 }

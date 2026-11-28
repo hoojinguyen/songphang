@@ -2,6 +2,7 @@ import Foundation
 public import SwiftUI
 
 public struct NotificationBellButton: View {
+  @ScaledMetric(relativeTo: .title3) private var scaledSize: CGFloat = 44
   public let unreadCount: Int
   public let onOpen: () -> Void
 
@@ -11,12 +12,13 @@ public struct NotificationBellButton: View {
   }
 
   public var body: some View {
+    let circleSize = max(44, scaledSize)
     Button(action: onOpen) {
       ZStack(alignment: .topTrailing) {
         Image(systemName: "bell")
           .spIconFont(size: 20, weight: .semibold, relativeTo: .title3)
           .foregroundStyle(Tokens.ink)
-          .frame(width: 44, height: 44)
+          .frame(width: circleSize, height: circleSize)
           .background(Tokens.surface)
           .clipShape(Circle())
 
@@ -33,6 +35,7 @@ public struct NotificationBellButton: View {
       }
     }
     .buttonStyle(.plain)
+    .accessibilityElement(children: .ignore)
     .accessibilityLabel(
       unreadCount > 0
         ? L10n.t("notifications.bellUnreadLabel", ["count": "\(unreadCount)"])

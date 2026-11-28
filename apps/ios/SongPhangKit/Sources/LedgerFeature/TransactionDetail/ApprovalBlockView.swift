@@ -117,8 +117,8 @@ struct ApprovalBlockView: View {
         }
         .spSheet(.fitted, embedsNavigationStack: true)
         .discardGuard(
-          isDirty: !rejectNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && !isPending,
+          isDirty: !rejectNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+          isPending: isPending,
           onDiscard: {
             rejectNote = ""
             isRejectSheetOpen = false

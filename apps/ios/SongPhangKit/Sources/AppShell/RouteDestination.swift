@@ -25,7 +25,9 @@ public struct RouteDestination: View {
   private let onReplaceGroup: (ExpenseGroup.ID, Route) -> Void
   private let onPop: () -> Void
   private let onPopToRoot: (String?) -> Void
+  private let onBackToGroups: () -> Void
   private let onExpenseSaved: () -> Void
+  private let onTransactionChanged: () -> Void
   private let recurringRefreshTick: Int
   @Binding private var deletedTransactionId: LedgerTransaction.ID?
 
@@ -72,7 +74,9 @@ public struct RouteDestination: View {
     onReplaceGroup: @escaping (ExpenseGroup.ID, Route) -> Void = { _, _ in },
     onPop: @escaping () -> Void,
     onPopToRoot: @escaping (String?) -> Void,
+    onBackToGroups: (() -> Void)? = nil,
     onExpenseSaved: @escaping () -> Void = {},
+    onTransactionChanged: (() -> Void)? = nil,
     recurringRefreshTick: Int = 0,
     deletedTransactionId: Binding<LedgerTransaction.ID?>
   ) {
@@ -88,7 +92,10 @@ public struct RouteDestination: View {
     self.onReplaceGroup = onReplaceGroup
     self.onPop = onPop
     self.onPopToRoot = onPopToRoot
+    self.onBackToGroups = onBackToGroups ?? { onPopToRoot(nil) }
     self.onExpenseSaved = onExpenseSaved
+    let resolvedTransactionChanged = onTransactionChanged ?? onExpenseSaved
+    self.onTransactionChanged = resolvedTransactionChanged
 
     let args = ProcessInfo.processInfo.arguments
     switch route {
@@ -328,7 +335,7 @@ public struct RouteDestination: View {
           attachmentsRepository: dependencies.attachments,
           onSaved: {
             onPop()
-            onExpenseSaved()
+            resolvedTransactionChanged()
           },
           onDeleted: { id in
             deletedTransactionId.wrappedValue = id
@@ -396,7 +403,7 @@ public struct RouteDestination: View {
           attachmentsRepository: dependencies.attachments,
           onSaved: {
             onPop()
-            onExpenseSaved()
+            resolvedTransactionChanged()
           }
         )
       )
@@ -570,7 +577,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved,
+        onBackToGroups: onBackToGroups,
+        onTransactionChanged: onTransactionChanged,
         recurringRefreshTick: recurringRefreshTick
       )
     case .groupSettings(let groupId, let initialSection):
@@ -582,7 +590,7 @@ public struct RouteDestination: View {
           isEmailVerified: currentUser?.emailVerified ?? true,
           initialSection: mappedSection,
           onBack: onPop,
-          onBackToGroups: { onPopToRoot(nil) },
+          onBackToGroups: onBackToGroups,
           onDeletedGroup: { onPopToRoot(L10n.tr("groups.deleted")) },
           onClonedGroup: { newGroup in
             onReplaceGroup(
@@ -610,7 +618,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved,
+        onBackToGroups: onBackToGroups,
+        onTransactionChanged: onTransactionChanged,
         recurringRefreshTick: recurringRefreshTick
       )
     case .groupStats(let groupId):
@@ -627,7 +636,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved,
+        onBackToGroups: onBackToGroups,
+        onTransactionChanged: onTransactionChanged,
         recurringRefreshTick: recurringRefreshTick
       )
     case .groupBalances(let groupId, let initialTransferProofAttachmentId):
@@ -645,7 +655,8 @@ public struct RouteDestination: View {
         onNavigate: onNavigate,
         onReplaceTop: onReplaceTop,
         onPopToRoot: onPopToRoot,
-        onExpenseSaved: onExpenseSaved,
+        onBackToGroups: onBackToGroups,
+        onTransactionChanged: onTransactionChanged,
         recurringRefreshTick: recurringRefreshTick
       )
     case .groupActivity:
@@ -713,10 +724,12 @@ public struct RouteDestination: View {
               await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
             }
           },
-          onSelectTarget: { target in
+          onUnreadSynced: {
             Task {
               await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
             }
+          },
+          onSelectTarget: { target in
             onNavigate(Self.notificationDestination(for: target))
           }
         )

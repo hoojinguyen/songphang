@@ -68,7 +68,8 @@ public struct PayView: View {
     }
     .spSheet(.fitted, expandable: true, embedsNavigationStack: true)
     .discardGuard(
-      isDirty: model.hasUnsavedProofDraft && !model.isSubmitting,
+      isDirty: model.hasUnsavedProofDraft,
+      isPending: model.isSubmitting,
       onDiscard: onBack
     )
   }

@@ -5,6 +5,7 @@
 
   struct DebugStageAGallerySection: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Binding var toastMessage: ToastMessage?
 
     @State private var segmentValue = "feed"
     @State private var motionExpanded = false
@@ -15,7 +16,6 @@
     @State private var dirtySheetDraft = ""
     @State private var selectedMembers: Set<Member.ID> = [Member.ID("m1"), Member.ID("m2")]
     @State private var selectedChipId = "c1"
-    @State private var toastMessage: ToastMessage?
     @State private var burstTrigger = 0
     @State private var shakeTrigger = 0
     @State private var heroSampleMoney = Money(500_000)
@@ -63,7 +63,6 @@
         actionsAndCelebrationCard
         skeletonsAndEmptyCard
       }
-      .confirmationToast($toastMessage)
       .spFeedback(.selection, trigger: selectionFeedbackTick)
       .spFeedback(.success, trigger: successFeedbackTick)
       .spFeedback(.warning, trigger: warningFeedbackTick)

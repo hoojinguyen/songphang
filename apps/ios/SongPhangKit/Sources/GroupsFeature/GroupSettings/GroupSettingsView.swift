@@ -564,7 +564,8 @@ public struct GroupSettingsView: View {
     }
     .spSheet(.fitted, embedsNavigationStack: true)
     .discardGuard(
-      isDirty: !deleteConfirmationText.isEmpty && !model.isPerformingAction,
+      isDirty: !deleteConfirmationText.isEmpty,
+      isPending: model.isPerformingAction,
       onDiscard: {
         deleteConfirmationText = ""
         isShowingDeleteSheet = false

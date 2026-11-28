@@ -944,9 +944,7 @@
         groupsById[targetGroupId] = group
       }
       var list = transactionsByGroup[targetGroupId] ?? []
-      guard !list.contains(where: { $0.id == Self.samplePendingApprovalTransactionId }) else {
-        return
-      }
+      list.removeAll { $0.id == Self.samplePendingApprovalTransactionId }
       list.insert(Self.samplePendingApprovalTransaction, at: 0)
       transactionsByGroup[targetGroupId] = list
     }

@@ -7,21 +7,25 @@ public struct ToastMessage: Identifiable, Equatable, Sendable {
   public let text: String
   public let actionLabel: String?
   public let action: (@MainActor @Sendable () -> Void)?
+  public let autoDismissDelay: Duration?
 
   public init(
     id: UUID = UUID(),
     text: String,
     actionLabel: String? = nil,
-    action: (@MainActor @Sendable () -> Void)? = nil
+    action: (@MainActor @Sendable () -> Void)? = nil,
+    autoDismissDelay: Duration? = .seconds(3)
   ) {
     self.id = id
     self.text = text
     self.actionLabel = actionLabel
     self.action = action
+    self.autoDismissDelay = autoDismissDelay
   }
 
   public static func == (lhs: ToastMessage, rhs: ToastMessage) -> Bool {
     lhs.id == rhs.id && lhs.text == rhs.text && lhs.actionLabel == rhs.actionLabel
+      && lhs.autoDismissDelay == rhs.autoDismissDelay
   }
 }
 
@@ -84,10 +88,14 @@ private struct ConfirmationToastModifier: ViewModifier {
               : .move(edge: .bottom).combined(with: .opacity)
           )
           .task(id: current.id) {
-            AccessibilityNotification.Announcement(current.text).post()
-            try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled, message?.id == current.id else { return }
-            dismissToast()
+            let announcement =
+              current.actionLabel.map { "\(current.text). \($0)" } ?? current.text
+            AccessibilityNotification.Announcement(announcement).post()
+            if let delay = current.autoDismissDelay {
+              try? await Task.sleep(for: delay)
+              guard !Task.isCancelled, message?.id == current.id else { return }
+              dismissToast()
+            }
           }
         }
       }

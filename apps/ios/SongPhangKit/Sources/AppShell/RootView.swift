@@ -65,6 +65,7 @@ public struct RootView: View {
   @State private var recurringRefreshTick = 0
   #if DEBUG
     @State private var isShowingDebugPanel = false
+    @State private var pendingRouteFeedFromList = false
   #endif
   @State private var hasCompletedInitialAppear = false
   @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.system
@@ -521,15 +522,24 @@ public struct RootView: View {
           overviewPath = [.personalLedger]
         } else if args.contains("--route-feed-from-list") {
           selectedTab = .groups
-          Task {
-            while groupListModel.groups.value == nil {
-              try? await Task.sleep(for: .milliseconds(50))
-              if Task.isCancelled { return }
-            }
-            if let first = groupListModel.groups.value?.first {
+          pendingRouteFeedFromList = true
+        }
+      }
+      .task(id: pendingRouteFeedFromList) {
+        guard pendingRouteFeedFromList else { return }
+        while !Task.isCancelled {
+          if let first = groupListModel.groups.value?.first {
+            if selectedTab == .groups && groupsPath.isEmpty {
               groupsPath = [.groupFeed(groupId: first.id)]
             }
+            pendingRouteFeedFromList = false
+            return
           }
+          if case .failed = groupListModel.groups {
+            pendingRouteFeedFromList = false
+            return
+          }
+          try? await Task.sleep(for: .milliseconds(50))
         }
       }
       .sheet(isPresented: $isShowingDebugPanel) {
@@ -1357,6 +1367,11 @@ public struct RootView: View {
           NotificationsView(
             model: notificationsModel,
             onBack: nil,
+            onUnreadSynced: {
+              Task {
+                await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
+              }
+            },
             onSelectTarget: { target in
               let route = RouteDestination.notificationDestination(for: target)
               navigate(to: route)
@@ -1477,6 +1492,15 @@ public struct RootView: View {
           await overviewModel.load()
         }
       },
+      onBackToGroups: {
+        path.wrappedValue.removeAll()
+        selectedTab = .groups
+        groupsPath.removeAll()
+        Task {
+          await groupListModel.load()
+          await overviewModel.load()
+        }
+      },
       onExpenseSaved: {
         recurringRefreshTick &+= 1
         guard case .signedIn(let signedInUser) = sessionModel.state else { return }
@@ -1492,6 +1516,9 @@ public struct RootView: View {
             features: features
           )
         }
+      },
+      onTransactionChanged: {
+        recurringRefreshTick &+= 1
       },
       recurringRefreshTick: recurringRefreshTick,
       deletedTransactionId: $deletedTransactionId

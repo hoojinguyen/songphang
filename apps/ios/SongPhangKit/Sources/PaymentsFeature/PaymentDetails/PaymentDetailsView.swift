@@ -115,7 +115,7 @@ public struct PaymentDetailsView: View {
       }
     }
     .spSheet(.half, embedsNavigationStack: true)
-    .discardGuard(isDirty: model.hasUnsavedChanges && !model.isSaving, onDiscard: onDismiss)
+    .discardGuard(isDirty: model.hasUnsavedChanges, isPending: model.isSaving, onDiscard: onDismiss)
   }
 
   private var bankSelector: some View {

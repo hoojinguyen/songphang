@@ -302,15 +302,17 @@ public struct GroupFeedView: View {
             action: {
               Task {
                 await model.undoDelete(
+                  id: deletedId,
                   restoredMessage: L10n.tr("expenseForm.restored"),
                   errorMessage: L10n.tr("common.saveError")
                 )
               }
-            }
+            },
+            autoDismissDelay: .seconds(6)
           )
         }
         if let text = model.toastMessage {
-          return ToastMessage(text: text)
+          return ToastMessage(id: model.toastPresentationId, text: text)
         }
         return nil
       },

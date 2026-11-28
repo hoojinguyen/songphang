@@ -104,7 +104,7 @@ public struct CreateFundSheetView: View {
       }
     }
     .spSheet(.half, embedsNavigationStack: true)
-    .discardGuard(isDirty: isDirty && !isSubmitting, onDiscard: onDismiss)
+    .discardGuard(isDirty: isDirty, isPending: isSubmitting, onDiscard: onDismiss)
   }
 
   private func holderPill(title: String, selected: Bool, action: @escaping () -> Void) -> some View

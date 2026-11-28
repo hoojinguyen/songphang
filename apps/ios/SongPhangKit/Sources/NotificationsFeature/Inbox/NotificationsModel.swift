@@ -100,7 +100,10 @@ public final class NotificationsModel {
     }
   }
 
-  public func markOneRead(_ notification: AppNotification) {
+  public func markOneRead(
+    _ notification: AppNotification,
+    onSynced: (@MainActor @Sendable () -> Void)? = nil
+  ) {
     guard !notification.read else { return }
     guard case .loaded(var data) = state else { return }
 
@@ -113,6 +116,7 @@ public final class NotificationsModel {
     Task {
       do throws(AppError) {
         try await repository.markRead(ids: [notification.id])
+        onSynced?()
       } catch {
         if error == .unauthorized {
           onUnauthorized()
