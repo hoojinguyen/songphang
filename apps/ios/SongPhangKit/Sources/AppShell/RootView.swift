@@ -905,7 +905,36 @@ public struct RootView: View {
     )
   }
 
+  private func appendToCurrentTab(_ route: Route) {
+    statusNotice = nil
+    switch selectedTab {
+    case .overview:
+      overviewPath.append(route)
+    case .groups:
+      groupsPath.append(route)
+    case .notifications:
+      notificationsPath.append(route)
+    case .account:
+      accountPath.append(route)
+    }
+  }
+
   private func navigate(to route: Route) {
+    statusNotice = nil
+    switch route {
+    case .account:
+      selectedTab = .account
+    case .notifications:
+      selectedTab = .notifications
+    case .personalLedger:
+      selectedTab = .overview
+      overviewPath.append(.personalLedger)
+    default:
+      appendToCurrentTab(route)
+    }
+  }
+
+  private func openExternalRoute(_ route: Route) {
     statusNotice = nil
     switch route {
     case .account:
@@ -933,7 +962,7 @@ public struct RootView: View {
     }
     if let immediate = pendingInviteState.receiveValidated(route, isSignedIn: isSignedIn) {
       if isSignedIn {
-        navigate(to: immediate)
+        openExternalRoute(immediate)
       } else {
         path.append(immediate)
       }
@@ -942,7 +971,7 @@ public struct RootView: View {
 
   private func consumePendingRouteIfSignedIn() {
     if let route = pendingInviteState.consumeIfSignedIn(isSignedIn) {
-      navigate(to: route)
+      openExternalRoute(route)
     }
   }
 
@@ -1138,22 +1167,16 @@ public struct RootView: View {
             user: user,
             unreadNotificationCount: sessionModel.unreadNotificationCount,
             onOpenGroup: { groupId in
-              selectedTab = .groups
-              groupsPath = [.groupFeed(groupId: groupId)]
+              appendToCurrentTab(.groupFeed(groupId: groupId))
             },
             onOpenBalances: { groupId in
-              selectedTab = .groups
-              groupsPath = [.groupBalances(groupId: groupId)]
+              appendToCurrentTab(.groupBalances(groupId: groupId))
             },
             onOpenTransaction: { groupId, txId in
-              selectedTab = .groups
-              groupsPath = [
-                .groupFeed(groupId: groupId),
-                .transactionDetail(groupId: groupId, transactionId: txId),
-              ]
+              appendToCurrentTab(.transactionDetail(groupId: groupId, transactionId: txId))
             },
             onOpenPersonalLedger: {
-              overviewPath.append(.personalLedger)
+              appendToCurrentTab(.personalLedger)
             },
             onOpenNotifications: {
               selectedTab = .notifications
@@ -1162,11 +1185,9 @@ public struct RootView: View {
               selectedTab = .account
             },
             onOpenDueRecurring: { action in
-              selectedTab = .groups
-              groupsPath = [
-                .groupFeed(groupId: action.groupId),
-                .newTransactionForm(groupId: action.groupId, initialRecurringDueAction: action),
-              ]
+              appendToCurrentTab(
+                .newTransactionForm(groupId: action.groupId, initialRecurringDueAction: action)
+              )
             }
           )
           .navigationTitle("")

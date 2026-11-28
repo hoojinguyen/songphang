@@ -182,3 +182,14 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
      - Put Overview and Groups tab roots under `.navigationTitle("").navigationBarTitleDisplayMode(.inline)` so all 4 tab roots live under a navigation bar (`B19`), and delete `PopGestureEnabler.swift` and `StatusBarCover.swift`.
 - **Choice:** Option 2.
 - **Reason:** Every pushed route uses authentic system iOS 26 navigation bars, Liquid Glass scroll-edge protection under the clock, and system interactive edge-swipe without UIKit gesture/status-bar hacks. `PayView` and `PaymentDetailsView` keep `SPScreenHeader` inside sheets temporarily until `5.6.C.1` applies sheet dismiss controls across all 32 presentations.
+
+### D10 — Tab bar visibility rule and in-tab vs external route handling (Task 5.6.B.2)
+
+- **Problem:**
+  1. `RouteDestination` previously applied `.toolbar(.hidden, for: .tabBar)` unconditionally to all pushed routes.
+  2. Overview (`onOpenGroup`, `onOpenBalances`, `onOpenTransaction`, `onOpenDueRecurring`) and `navigate(to:)` (called from `NotificationsView`) previously forced `selectedTab = .groups` and overwrote `groupsPath`, stranding Back in a tab the user was not in.
+- **Options:**
+  1. Apply `.toolbar(.hidden, for: .tabBar)` piecemeal inside individual feature views and force `.groups` everywhere.
+  2. Centralize tab-bar visibility in one exhaustive `RouteDestination.hidesTabBar` switch over `Route` (hidden only on `.quickEntry`, `.newTransactionForm`, `.editTransaction`, `.settle`, `.receiptReview`; visible on all content routes), add `RootView.appendToCurrentTab(_:)`, keep `navigate(to:)` for in-app navigation (switching tabs only when the route explicitly names `.account`, `.notifications`, or `.personalLedger`, otherwise appending to the active tab's stack), keep explicit tab links (`onOpenNotifications`, `onOpenAccount`) switching tabs, and keep external triggers (`openExternalRoute` from deep links/universal links, `applyPushTap`, `receiveAppAction`, `--route-*` debug flags) targeting `.groups`. Also removed the stale `onPop()` call from `RouteDestination`'s `.notifications` `onBack` closure since `NotificationsView.onDisappear` now runs it on system pop.
+- **Choice:** Option 2.
+- **Reason:** Exhaustive switching guarantees future routes make an explicit tab-bar choice at compile time, Back always returns to the tab where the user started, and external links/pushes continue landing cleanly on `.groups`.

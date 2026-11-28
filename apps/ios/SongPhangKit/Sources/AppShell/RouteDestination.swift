@@ -414,12 +414,27 @@ public struct RouteDestination: View {
 
   public var body: some View {
     content
-      .toolbar(.hidden, for: .tabBar)
+      .toolbar(hidesTabBar ? .hidden : .visible, for: .tabBar)
       .onChange(of: deletedTransactionId) { _, id in
         guard let id, let feedModel else { return }
         feedModel.markDeleted(id)
         deletedTransactionId = nil
       }
+  }
+
+  private var hidesTabBar: Bool {
+    switch route {
+    case .quickEntry, .newTransactionForm, .editTransaction, .settle, .receiptReview:
+      return true
+    case .register, .forgotPassword, .account, .createGroup, .joinGroup, .guestShare,
+      .groupFeed, .groupBalances, .groupStats, .groupActivity, .groupMembers, .groupFund,
+      .groupSettings, .transactionDetail, .notifications, .personalLedger:
+      return false
+    #if DEBUG
+      case .debugGallery:
+        return false
+    #endif
+    }
   }
 
   @ViewBuilder
@@ -668,7 +683,6 @@ public struct RouteDestination: View {
             Task {
               await sessionModel.refreshUnreadNotificationCount(using: dependencies.notifications)
             }
-            onPop()
           },
           onSelectTarget: { target in
             Task {

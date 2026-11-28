@@ -147,7 +147,7 @@
 
 ## Stage B — Navigation
 
-- [x] **Task 5.6.B.1 — Native navigation bars**
+- [x] **Task 5.6.B.1 — Native navigation bars** (commit `93aae72`)
   - **Approach:**
     - Files modified: `ActivityView.swift`, `AccountView.swift`, `ForgotPasswordView.swift`, `RegisterView.swift`, `CreateGroupView.swift`, `GroupSettingsView.swift`, `MembersView.swift`, `BalancesView.swift`, `GroupFeedView.swift`, `QuickEntryView.swift`, `ExpenseFormView.swift`, `SplitEditorView.swift`, `SettleView.swift`, `ReceiptReviewView.swift`, `TransactionDetailView.swift`, `NotificationsView.swift`, `PersonalLedgerView.swift`, `StatsView.swift`, `FundView.swift`, `GroupContainerView.swift`, `RootView.swift`, `docs/superpowers/runs/phase-5-6/{decisions,progress}.md`.
     - Files deleted: `AppShell/PopGestureEnabler.swift`, `AppShell/StatusBarCover.swift`.
@@ -165,6 +165,24 @@
     - Simulator (`iPhone 17 Pro`, iOS 26.5): captured light/dark `ActivityView` (`b1-activity-{light,dark}.png`), light/dark `GroupContainerView` (`b1-group-container{,-dark}.png`), default & AX5 `TransactionDetailView` (`b1-tx-detail{,-ax5}.png` — single native back button), `AccountView` (`b1-account.png`), `NotificationsView` (`b1-notifications.png`), `OverviewView` (`b1-overview.png`), `ExpenseFormView` (`b1-expense-form.png`), `SplitEditorView` (`b1-split-editor.png`), and `SettleView` (`b1-settle.png`).
     - Security review: checked relevant items 1, 2, 8 on `git diff`; navigation chrome and SwiftUI modifiers only, no issues found.
   - **Findings closed:** `B01` (`F2-01`), `B19` (`F4-40`), `F2-02`, `F2-03`, `F2-126`, `F2-129`.
+
+- [x] **Task 5.6.B.2 — Tab bar visibility and in-tab navigation**
+  - **Approach:**
+    - Files modified: `AppShell/RouteDestination.swift`, `AppShell/RootView.swift`, `docs/superpowers/runs/phase-5-6/{decisions,progress}.md`.
+    - Approach: Added exhaustive `RouteDestination.hidesTabBar` switch so the tab bar is visible on all content routes and hidden only on `.quickEntry`, `.newTransactionForm`, `.editTransaction`, `.settle`, `.receiptReview`. Added `RootView.appendToCurrentTab(_:)`, switched `OverviewView` callbacks (`onOpenGroup`, `onOpenBalances`, `onOpenTransaction`, `onOpenDueRecurring`) and `navigate(to:)` (used by `NotificationsView` tab root) to append onto the active tab's stack while keeping `openExternalRoute(_:)` (deep links/universal links), `applyPushTap`, and `--route-*` debug flags opening on `.groups` (and explicit tab links switching tabs). Also removed the redundant `onPop()` from `.notifications` `onBack` closure in `RouteDestination.swift` since `NotificationsView.onDisappear` now runs it on system pop.
+    - Why this is the simplest approach: An exhaustive switch prevents future routes from defaulting to the wrong tab-bar visibility, and separating `navigate(to:)` from `openExternalRoute(_:)` keeps Back within the originating tab without breaking external links.
+    - Rejected alternative: Per-view `.toolbar(.hidden, for: .tabBar)` modifiers — rejected because centralizing in `RouteDestination` guarantees consistent behavior across all tabs.
+    - Questions: none (Decision D10 recorded in `decisions.md`).
+  - **Gates (verbatim):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'id=607AC652-2E92-4BE7-BA18-1B888D79684B' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - **Exercise results:**
+    - Tab bar visibility verified in Simulator (`iPhone 17 Pro`): visible on `--route-tx-detail` (`b2-tx-detail-tabbar-visible.png`), `--route-ledger` (`b2-ledger-tabbar-visible.png`), and `--route-feed` (`b1-group-container.png`); hidden on `--route-new-tx` (`b1-expense-form.png`) and `--route-settle` (`b1-settle.png`).
+    - In-tab vs external routes verified: `Overview` -> group/balances/transaction/due-recurring callbacks now call `appendToCurrentTab`, `Notifications` -> `navigate(to:)` calls `appendToCurrentTab`, and `openExternalRoute` / `applyPushTap` / `--route-*` continue targeting `.groups`. `xcrun simctl openurl` with `songphang://group/01a1e4bd-cc25-70c6-860e-275da20487f1/balances` on `SP-SE3-review` triggered iOS's `Open in "Sòng Phẳng"?` confirmation prompt (`b2-deeplink-balances.png`; tapping system dialog requires interactive UI, listed in `manual-checks.md`).
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; `LinkRouter` URL validation untouched, route dispatch strictly typed on `Route`, no issues found.
+  - **Findings closed:** `F2-04`, `F2-05`, `F2-06`.
 
 ## Stage C — Apply
 
