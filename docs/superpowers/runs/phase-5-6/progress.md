@@ -206,6 +206,13 @@
     - All 22 `Route.swift` cases opened and captured under `screens/stage-b/routes/` (`22` PNGs verified: `register`, `forgot-password`, `account`, `create-group`, `join-group`, `guest-share`, `group-feed`, `group-balances`, `group-stats`, `group-activity`, `group-members`, `group-fund`, `group-settings`, `quick-entry`, `new-tx`, `edit-tx`, `tx-detail`, `receipt-review`, `settle`, `notifications`, `personal-ledger`, `debug-gallery`).
     - Security review: checked relevant items 1, 2, 8 on `git diff`; server role enforcement unchanged, client gating (`if isOwner`) hides menu entry and `GroupUnavailableView` displays generic `"common.forbidden"` without exposing group internals, no issues found.
   - **Findings closed:** `B10` (`F4-10`), `B09` (`F3-48`, `F3-49`), `F3-47`, `B18` (`F4-36`, `F4-51`), `F4-05` and `F4-06` (clone part).
+  - **Coordinator Stage B Gate (`c5565f8`, verified while `ios` idle):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+    - `pnpm check`: exit `0` (`Checked 595 files in 160ms. No fixes applied. Found 9 warnings.`; 8 workspace `tsc --noEmit` projects passed; `OpenAPI contract snapshot is up to date.`)
+    - `grep -rn "PopGestureEnabler\|StatusBarCover" apps/ios/SongPhangKit/Sources/ apps/ios/SongPhang/ apps/ios/ShareExtension/ apps/ios/WidgetExtension/`: `GREP_EMPTY_OK` (zero matches).
+    - Stage B captures (`screens/stage-b/routes/` = `22` route PNGs; `b1-tx-detail.png`, `b1-account.png`, `b3-unavailable-{notfound,forbidden}.png`, `b3-settings-categories.png`, `b3-clone-toast.png` visually inspected).
 
 ## Stage C — Apply
 
