@@ -19,20 +19,15 @@ public final class SoundPlayer {
     private let logger = Logger(subsystem: "vn.songphang.app", category: "Sound")
   #endif
 
-  private var didConfigureSession = false
-  private var players: [SoundEffect: AVAudioPlayer] = [:]
+  private let engine = AudioEngine()
 
   private init() {
     preloadAll()
   }
 
   public func preloadAll() {
-    configureSessionIfNeeded()
-    for effect in SoundEffect.allCases where players[effect] == nil {
-      guard let url = Self.resourceURL(for: effect) else { continue }
-      guard let player = try? AVAudioPlayer(contentsOf: url) else { continue }
-      player.prepareToPlay()
-      players[effect] = player
+    Task {
+      await engine.preloadAll()
     }
   }
 
@@ -44,11 +39,30 @@ public final class SoundPlayer {
       #endif
       return
     }
-    configureSessionIfNeeded()
-    if players[effect] == nil {
-      preloadAll()
+    Task {
+      await engine.play(effect)
     }
-    guard let player = players[effect] else {
+  }
+}
+
+private actor AudioEngine {
+  #if DEBUG
+    private let logger = Logger(subsystem: "vn.songphang.app", category: "Sound")
+  #endif
+
+  private var didConfigureSession = false
+  private var players: [SoundEffect: AVAudioPlayer] = [:]
+
+  func preloadAll() {
+    configureSessionIfNeeded()
+    for effect in SoundEffect.allCases where players[effect] == nil {
+      _ = loadPlayerIfNeeded(for: effect)
+    }
+  }
+
+  func play(_ effect: SoundEffect) {
+    configureSessionIfNeeded()
+    guard let player = loadPlayerIfNeeded(for: effect) else {
       #if DEBUG
         logger.error("SoundPlayer missing resource effect=\(effect.rawValue, privacy: .public)")
       #endif
@@ -64,6 +78,17 @@ public final class SoundPlayer {
         "SoundPlayer played effect=\(effect.rawValue, privacy: .public) started=\(started, privacy: .public)"
       )
     #endif
+  }
+
+  private func loadPlayerIfNeeded(for effect: SoundEffect) -> AVAudioPlayer? {
+    if let existing = players[effect] {
+      return existing
+    }
+    guard let url = Self.resourceURL(for: effect) else { return nil }
+    guard let player = try? AVAudioPlayer(contentsOf: url) else { return nil }
+    player.prepareToPlay()
+    players[effect] = player
+    return player
   }
 
   private func configureSessionIfNeeded() {
