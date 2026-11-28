@@ -72,7 +72,8 @@ public struct SettleView: View {
         submitButton
       }
     }
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(settleNavigationTitle)
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.state.value == nil {
         await model.load()
@@ -98,26 +99,25 @@ public struct SettleView: View {
     .background(Tokens.bg)
   }
 
+  private var settleNavigationTitle: String {
+    guard case .loaded(let data) = model.state else {
+      return L10n.tr("settle.title")
+    }
+    let myMemberId = data.group.myMemberId
+    if data.toMember.id == myMemberId {
+      return L10n.tr("settle.titleReceived")
+    } else if data.fromMember.id == myMemberId {
+      return L10n.tr("settle.titlePaid")
+    } else {
+      return L10n.tr("settle.title")
+    }
+  }
+
   @ViewBuilder
   private func loadedContent(data: SettleModel.ScreenData) -> some View {
     let myMemberId = data.group.myMemberId
     // Read here so the field re-renders when the model reformats the typed digits.
     let amountText = model.amountText
-    let title: String = {
-      if data.toMember.id == myMemberId {
-        return L10n.tr("settle.titleReceived")
-      } else if data.fromMember.id == myMemberId {
-        return L10n.tr("settle.titlePaid")
-      } else {
-        return L10n.tr("settle.title")
-      }
-    }()
-
-    SPScreenHeader(
-      title: title,
-      backLabel: L10n.tr("common.cancel"),
-      onBack: onCancel
-    )
 
     HStack(spacing: 20) {
       VStack(spacing: 12) {

@@ -167,3 +167,18 @@ Each decision: problem, options, choice, reason (and for a library: license, mai
   2. Drive `ShapeLoader`'s Reduce Motion opacity pulse and `SkeletonBlocks`'s normal-mode slow shimmer via `TimelineView(.animation(minimumInterval:))` (zero `.animation` modifiers bypassing `Motion`; `SkeletonBlocks` renders static content when `Motion.isReduced` is `true`, and `ShapeLoader` uses `PhaseAnimator` with `Motion.animation(Motion.bounce, reduceMotion: false)` when `Motion.isReduced` is `false`); add `MoneyText.Role` (`.hero`, `.primary`, `.secondary`) + `MoneyFormat.primary`/`MoneyFormat.secondary` alongside existing `Style` cases until `5.6.C.4`.
 - **Choice:** Option 2.
 - **Reason:** Zero animations bypass `Motion`, Reduce Motion behavior matches Spec §10.5 and §9.1 (`F1-52`, `F4-53`), and all 13 targets compile cleanly between Stage A and Stage C.
+
+### D9 — Native navigation bar template (`ActivityView` -> remaining pushed screens) (Task 5.6.B.1)
+
+- **Problem:** 17 pushed screens hid the system back button (`navigationBarBackButtonHidden(true)`) and drew `SPScreenHeader` in scroll content, `TransactionDetailView` forgot to hide the system button (`B01`), `NotificationsView` and `SplitEditorView` drew custom `chevron.left` buttons, `GroupContainerView` drew a custom `persistentHeader` with `chevron.backward`, tab roots had no navigation bar (`B19`), and `RootView` patched around these with `StatusBarCover` and `PopGestureEnabler`.
+- **Options:**
+  1. Keep custom `SPScreenHeader` on focused-task screens or keep `SplitEditorView` swapped inline inside `ExpenseFormView`'s `body`.
+  2. Establish the uniform pattern proved in `ActivityView` (`screens/stage-b/b1-activity-{light,dark}.png`):
+     - Remove `.navigationBarBackButtonHidden(true)` and `SPScreenHeader` (and custom `chevron.left`/`chevron.backward` buttons) on every pushed screen.
+     - Apply `.navigationTitle(...)` and `.navigationBarTitleDisplayMode(.inline)` for detail/task screens or `.large` for `AccountView` and `NotificationsView`, placed on the outer screen container so `.loading`/`.failed`/`.loaded` states all retain the native bar and back button.
+     - Move `SPScreenHeader` subtitles (group name, `"Chỉ chủ nhóm"`, member count, payer summary) to the first line inside content in `Typography.subheadlineBold` + `Tokens.muted`.
+     - Move trailing actions (`TransactionDetailView` "Sửa", `NotificationsView` "Đọc hết", `GroupContainerView` member-shapes capsule + overflow menu) into `.toolbar { ToolbarItem(placement: .topBarTrailing) { ... } }`; move `ExpenseFormView`'s 3-option `TypeSwitchView` to the top of `scrollingForm` so inline nav bars stay uncrowded at AX5 and 375 pt width.
+     - Push `SplitEditorView` via `.navigationDestination(isPresented: $model.isSplitEditorOpen)` inside `ExpenseFormView` so split editing gets the native Back button and swipe-back gesture.
+     - Put Overview and Groups tab roots under `.navigationTitle("").navigationBarTitleDisplayMode(.inline)` so all 4 tab roots live under a navigation bar (`B19`), and delete `PopGestureEnabler.swift` and `StatusBarCover.swift`.
+- **Choice:** Option 2.
+- **Reason:** Every pushed route uses authentic system iOS 26 navigation bars, Liquid Glass scroll-edge protection under the clock, and system interactive edge-swipe without UIKit gesture/status-bar hacks. `PayView` and `PaymentDetailsView` keep `SPScreenHeader` inside sheets temporarily until `5.6.C.1` applies sheet dismiss controls across all 32 presentations.

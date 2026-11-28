@@ -132,37 +132,9 @@ public struct SplitEditorView: View {
 
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        HStack(spacing: 12) {
-          Button(action: onDone) {
-            Image(systemName: "chevron.left")
-              .font(.system(size: 18, weight: .bold))
-              .foregroundStyle(Tokens.ink)
-              .frame(width: 44, height: 44)
-              .background(Tokens.surface, in: Circle())
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(L10n.tr("common.back"))
-
-          VStack(alignment: .leading, spacing: 2) {
-            Text(description)
-              .font(Typography.screenHeaderTitle)
-              .foregroundStyle(Tokens.ink)
-              .lineLimit(1)
-              .minimumScaleFactor(0.85)
-            Text(payerLine)
-              .font(Typography.caption)
-              .foregroundStyle(Tokens.muted)
-              .lineLimit(1)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-
-          MoneyText(
-            displayedAmount,
-            style: .full,
-            font: Typography.sectionTitle,
-            color: Tokens.ink
-          )
-        }
+        Text(payerLine)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.muted)
 
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 8) {
@@ -367,6 +339,18 @@ public struct SplitEditorView: View {
       .padding(20)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .navigationTitle(description)
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItem(placement: .topBarTrailing) {
+        MoneyText(
+          displayedAmount,
+          style: .full,
+          font: Typography.subheadlineBold,
+          color: Tokens.ink
+        )
+      }
+    }
     .spFeedback(.selection, trigger: pumpFeedbackTick)
     .onDisappear {
       holdTask?.cancel()

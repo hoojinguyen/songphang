@@ -24,8 +24,6 @@ public struct NotificationsView: View {
   public var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 16) {
-        headerView
-
         if model.markError != nil {
           Text(L10n.tr("common.saveError"))
             .font(Typography.captionBold)
@@ -109,49 +107,26 @@ public struct NotificationsView: View {
       .padding(.vertical, 20)
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .navigationTitle(L10n.tr("notifications.title"))
+    .navigationBarTitleDisplayMode(.large)
+    .toolbar {
+      if model.hasUnread {
+        ToolbarItem(placement: .topBarTrailing) {
+          Button {
+            Task { await model.markAllRead() }
+          } label: {
+            Text(L10n.tr("notifications.markAll"))
+              .font(Typography.captionBold)
+          }
+          .disabled(model.isMarkingAll)
+        }
+      }
+    }
     .task {
       await model.load()
     }
-  }
-
-  private var headerView: some View {
-    HStack(alignment: .center, spacing: 8) {
-      if let onBack {
-        Button(action: onBack) {
-          HStack(spacing: 4) {
-            Image(systemName: "chevron.left")
-              .font(.system(size: 14, weight: .bold))
-            Text(L10n.tr("common.back"))
-              .font(Typography.bodyBold)
-          }
-          .foregroundStyle(Tokens.ink)
-          .frame(minHeight: 44)
-        }
-      }
-
-      Text(L10n.tr("notifications.title"))
-        .font(Typography.sectionTitle)
-        .foregroundStyle(Tokens.ink)
-        .lineLimit(1)
-        .minimumScaleFactor(0.85)
-
-      Spacer(minLength: 8)
-
-      if model.hasUnread {
-        Button(action: {
-          Task { await model.markAllRead() }
-        }) {
-          Text(L10n.tr("notifications.markAll"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.onAccent)
-            .lineLimit(1)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Tokens.accent)
-            .clipShape(Capsule())
-        }
-        .disabled(model.isMarkingAll)
-      }
+    .onDisappear {
+      onBack?()
     }
   }
 }

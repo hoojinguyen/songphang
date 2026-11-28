@@ -96,7 +96,12 @@ public struct BalancesView: View {
         .padding(20)
       }
       .background(Tokens.bg.ignoresSafeArea())
-      .navigationBarBackButtonHidden(true)
+      .modifier(
+        ConditionalBalancesNavBar(
+          isEnabled: showHeader,
+          title: model.state.value?.group.name ?? ""
+        )
+      )
       .task {
         if model.state.value == nil {
           await model.load()
@@ -174,13 +179,6 @@ public struct BalancesView: View {
 
   @ViewBuilder
   private func loadedContent(data: BalancesViewData) -> some View {
-    if showHeader {
-      SPScreenHeader(
-        title: data.group.name,
-        onBack: onBack
-      )
-    }
-
     if let noticeText = model.reminderNotice ?? noticeMessage {
       SPCard(tone: .accent, padding: 14) {
         Text(noticeText)
@@ -1516,6 +1514,21 @@ private struct HalfBalanceBarStyle: ProgressViewStyle {
       .fill(color)
       .scaleEffect(x: fraction, y: 1, anchor: anchor)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+}
+
+private struct ConditionalBalancesNavBar: ViewModifier {
+  let isEnabled: Bool
+  let title: String
+
+  func body(content: Content) -> some View {
+    if isEnabled {
+      content
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    } else {
+      content
+    }
   }
 }
 

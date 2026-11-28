@@ -37,7 +37,6 @@ public struct ExpenseFormView: View {
       case .failed(let error):
         if case .api(_, 404) = error {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("common.groupNotFound"))
               .font(Typography.bodyBold)
@@ -47,7 +46,6 @@ public struct ExpenseFormView: View {
           .padding(20)
         } else {
           VStack {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             LoadError {
               Task { await model.load() }
@@ -60,7 +58,6 @@ public struct ExpenseFormView: View {
       case .loaded(let data):
         if data.group.role == .viewer {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("common.forbidden"))
               .font(Typography.bodyBold)
@@ -70,7 +67,6 @@ public struct ExpenseFormView: View {
           .padding(20)
         } else if !isEmailVerified {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             SPCard(tone: .accent, padding: 20) {
               Text(L10n.tr("verify.banner"))
                 .font(Typography.subheadlineBold)
@@ -81,7 +77,6 @@ public struct ExpenseFormView: View {
           .padding(20)
         } else if let editingTx = data.editingTransaction, editingTx.deletedAt != nil {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("expenseForm.deletedNotice"))
               .font(Typography.bodyBold)
@@ -89,48 +84,52 @@ public struct ExpenseFormView: View {
             Spacer()
           }
           .padding(20)
-        } else if model.isSplitEditorOpen {
-          let active = model.sharerMembers
-          let payerNames = model.payerMembers.filter { model.payerIds.contains($0.id) }
-            .map(\.name)
-            .joined(separator: ", ")
-          SplitEditorView(
-            splitState: Binding(
-              get: { model.splitState },
-              set: {
-                model.splitState = $0
-                if model.hasManualExtras {
-                  model.scheduleExtrasPreview()
-                } else {
-                  model.schedulePreview()
-                }
-                if $0.method == .items {
-                  model.scheduleItemsPreview()
-                }
-              }
-            ),
-            members: active,
-            amount: model.hasManualExtras ? model.amount : model.effectiveAmount,
-            description: model.descriptionText.isEmpty ? model.headerTitle : model.descriptionText,
-            payerLine: L10n.t("expenseForm.payerAmountLabel", ["name": payerNames]),
-            shares: model.previewShares,
-            isPreviewPending: model.isPreviewPending,
-            allowItems: model.transactionType == .expense,
-            itemsPreview: model.itemsPreview,
-            isItemsPreviewCurrent: model.isItemsPreviewCurrent,
-            itemsPreviewError: model.itemsPreviewError,
-            onItemsChange: {
-              model.scheduleItemsPreview()
-            },
-            onDone: { model.isSplitEditorOpen = false }
-          )
         } else {
           formContent(data: data)
         }
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(model.state.value == nil ? "" : model.headerTitle)
+    .navigationBarTitleDisplayMode(.inline)
+    .navigationDestination(isPresented: $model.isSplitEditorOpen) {
+      if case .loaded = model.state {
+        let active = model.sharerMembers
+        let payerNames = model.payerMembers.filter { model.payerIds.contains($0.id) }
+          .map(\.name)
+          .joined(separator: ", ")
+        SplitEditorView(
+          splitState: Binding(
+            get: { model.splitState },
+            set: {
+              model.splitState = $0
+              if model.hasManualExtras {
+                model.scheduleExtrasPreview()
+              } else {
+                model.schedulePreview()
+              }
+              if $0.method == .items {
+                model.scheduleItemsPreview()
+              }
+            }
+          ),
+          members: active,
+          amount: model.hasManualExtras ? model.amount : model.effectiveAmount,
+          description: model.descriptionText.isEmpty ? model.headerTitle : model.descriptionText,
+          payerLine: L10n.t("expenseForm.payerAmountLabel", ["name": payerNames]),
+          shares: model.previewShares,
+          isPreviewPending: model.isPreviewPending,
+          allowItems: model.transactionType == .expense,
+          itemsPreview: model.itemsPreview,
+          isItemsPreviewCurrent: model.isItemsPreviewCurrent,
+          itemsPreviewError: model.itemsPreviewError,
+          onItemsChange: {
+            model.scheduleItemsPreview()
+          },
+          onDone: { model.isSplitEditorOpen = false }
+        )
+      }
+    }
     .sheet(isPresented: $isManagingCategories) {
       NavigationStack {
         ScrollView {
@@ -175,35 +174,9 @@ public struct ExpenseFormView: View {
     let myMemberId = data.group.myMemberId
     let isEditing = (data.editingTransaction != nil)
 
-    VStack(spacing: 0) {
-      Group {
-        if isEditing {
-          SPScreenHeader(
-            title: model.headerTitle,
-            backLabel: L10n.tr("common.cancel"),
-            onBack: onCancel
-          )
-        } else {
-          SPScreenHeader(
-            title: model.headerTitle,
-            backLabel: L10n.tr("common.cancel"),
-            onBack: onCancel
-          ) {
-            TypeSwitchView(
-              value: model.transactionType,
-              onChange: { model.setType($0) }
-            )
-          }
-        }
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 8)
-      .padding(.bottom, 6)
-
-      scrollingForm(data: data, active: active, myMemberId: myMemberId, isEditing: isEditing)
-    }
-    // The member grids are four columns wide and cannot reflow at accessibility sizes.
-    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    scrollingForm(data: data, active: active, myMemberId: myMemberId, isEditing: isEditing)
+      // The member grids are four columns wide and cannot reflow at accessibility sizes.
+      .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
   }
 
   @ViewBuilder
@@ -216,6 +189,14 @@ public struct ExpenseFormView: View {
     ScrollViewReader { proxy in
       ScrollView {
         VStack(alignment: .leading, spacing: 14) {
+          if !isEditing {
+            TypeSwitchView(
+              value: model.transactionType,
+              onChange: { model.setType($0) }
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+          }
+
           if !isEditing, let reading = model.initialReading, !model.isUnparsedBannerDismissed {
             UnparsedBannerView(
               reading: reading,

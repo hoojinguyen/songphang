@@ -140,7 +140,17 @@ public struct GroupFeedView: View {
           .padding(.bottom, 84)
       }
     }
-    .navigationBarBackButtonHidden(true)
+    .modifier(
+      ConditionalFeedNavBar(
+        isEnabled: showHeader,
+        title: model.state.value?.group.name ?? "",
+        members: model.state.value?.members ?? [],
+        groupId: model.groupId,
+        unreadNotificationCount: unreadNotificationCount,
+        onOpenNotifications: onOpenNotifications,
+        onOpenMembers: onOpenMembers
+      )
+    )
     .sheet(isPresented: $isFilterSheetOpen) {
       if let data = model.state.value {
         FilterSheetView(
@@ -176,39 +186,6 @@ public struct GroupFeedView: View {
       data.balances.balances.first(where: { $0.memberId == data.group.myMemberId })?.balance
       ?? .zero
     let canEdit = data.group.role.canWrite && isEmailVerified
-
-    if showHeader {
-      SPScreenHeader(
-        title: data.group.name,
-        onBack: onBack
-      ) {
-        HStack(spacing: 8) {
-          if let onOpenNotifications {
-            NotificationBellButton(
-              unreadCount: unreadNotificationCount,
-              onOpen: onOpenNotifications
-            )
-          }
-          Button {
-            onOpenMembers(model.groupId)
-          } label: {
-            HStack(spacing: 2) {
-              ForEach(Array(data.members.prefix(4))) { member in
-                MemberShapeView(member: member, size: 24)
-              }
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 48)
-            .background(Tokens.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(L10n.tr("feed.membersLink"))
-        }
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 8)
-    }
 
     FeedBalanceBlockView(
       balance: myBalance,
@@ -593,6 +570,46 @@ public struct GroupFeedView: View {
           .padding(.bottom, 12)
         }
       }
+    }
+  }
+}
+
+private struct ConditionalFeedNavBar: ViewModifier {
+  let isEnabled: Bool
+  let title: String
+  let members: [Member]
+  let groupId: ExpenseGroup.ID
+  let unreadNotificationCount: Int
+  let onOpenNotifications: (() -> Void)?
+  let onOpenMembers: (ExpenseGroup.ID) -> Void
+
+  func body(content: Content) -> some View {
+    if isEnabled {
+      content
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItemGroup(placement: .topBarTrailing) {
+            if let onOpenNotifications {
+              NotificationBellButton(
+                unreadCount: unreadNotificationCount,
+                onOpen: onOpenNotifications
+              )
+            }
+            Button {
+              onOpenMembers(groupId)
+            } label: {
+              HStack(spacing: 2) {
+                ForEach(Array(members.prefix(4))) { member in
+                  MemberShapeView(member: member, size: 22)
+                }
+              }
+            }
+            .accessibilityLabel(L10n.tr("feed.membersLink"))
+          }
+        }
+    } else {
+      content
     }
   }
 }

@@ -27,12 +27,10 @@ public struct TransactionDetailView: View {
     VStack(spacing: 0) {
       switch model.state {
       case .loading:
-        SPScreenHeader(title: "", onBack: onBack)
         Spacer()
         ProgressView()
         Spacer()
       case .failed(let error):
-        SPScreenHeader(title: "", onBack: onBack)
         Spacer()
         VStack(spacing: 12) {
           Text(
@@ -50,29 +48,13 @@ public struct TransactionDetailView: View {
         Spacer()
       case .loaded(let data):
         let isVerified = data.currentUser?.emailVerified ?? true
-        let canEdit = data.group.role != .viewer && isVerified && data.transaction.deletedAt == nil
-
-        SPScreenHeader(
-          title: data.transaction.description,
-          subtitle: data.group.name,
-          onBack: onBack
-        ) {
-          if canEdit {
-            Button {
-              onOpenEdit(data.group.id, data.transaction.id)
-            } label: {
-              Text(L10n.tr("transactionView.editLink"))
-                .font(Typography.captionBold)
-                .foregroundStyle(Tokens.ink)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(Tokens.surface, in: Capsule())
-            }
-          }
-        }
 
         ScrollView {
           VStack(alignment: .leading, spacing: 16) {
+            Text(data.group.name)
+              .font(Typography.subheadlineBold)
+              .foregroundStyle(Tokens.muted)
+
             if !isVerified, let verifyEmailBanner {
               verifyEmailBanner
             }
@@ -160,6 +142,23 @@ public struct TransactionDetailView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
+    .navigationTitle(model.state.value?.transaction.description ?? "")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      if case .loaded(let data) = model.state {
+        let isVerified = data.currentUser?.emailVerified ?? true
+        let canEdit =
+          data.group.role != .viewer && isVerified && data.transaction.deletedAt == nil
+        if canEdit {
+          ToolbarItem(placement: .topBarTrailing) {
+            Button(L10n.tr("transactionView.editLink")) {
+              onOpenEdit(data.group.id, data.transaction.id)
+            }
+            .font(Typography.captionBold)
+          }
+        }
+      }
+    }
     .task {
       await model.load()
     }

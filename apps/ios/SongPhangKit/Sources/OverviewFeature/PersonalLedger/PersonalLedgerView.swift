@@ -23,16 +23,9 @@ public struct PersonalLedgerView: View {
 
   public var body: some View {
     VStack(spacing: 0) {
-      SPScreenHeader(
-        title: L10n.tr("ledger.title"),
-        onBack: onBack
-      )
-      .padding(.horizontal, 20)
-      .padding(.top, 16)
-      .padding(.bottom, 12)
-
       searchAndFiltersBar
         .padding(.horizontal, 20)
+        .padding(.top, 12)
         .padding(.bottom, 12)
 
       ScrollView {
@@ -59,7 +52,8 @@ public struct PersonalLedgerView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("ledger.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.items.isEmpty {
         await model.loadInitial()

@@ -78,7 +78,8 @@ public struct GroupSettingsView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("settings.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if ProcessInfo.processInfo.arguments.contains("--open-delete-sheet") {
         isShowingDeleteSheet = true
@@ -141,11 +142,9 @@ public struct GroupSettingsView: View {
 
   @ViewBuilder
   private func loadedContent(_ data: GroupSettingsModel.ScreenData) -> some View {
-    SPScreenHeader(
-      title: L10n.tr("settings.title"),
-      subtitle: L10n.tr("settings.ownerOnly"),
-      onBack: onBack
-    )
+    Text(L10n.tr("settings.ownerOnly"))
+      .font(Typography.subheadlineBold)
+      .foregroundStyle(Tokens.muted)
 
     if !isEmailVerified {
       SPCard(tone: .accent, padding: 20) {

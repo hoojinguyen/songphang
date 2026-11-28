@@ -85,7 +85,8 @@ public struct MembersView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(model.state.value?.group.name ?? L10n.tr("feed.membersLink"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       await model.load()
     }
@@ -131,11 +132,9 @@ public struct MembersView: View {
     let canWrite = isEmailVerified && data.group.role.canWrite && !isOffline
     let people = data.members.filter { $0.kind == .person }
 
-    SPScreenHeader(
-      title: data.group.name,
-      subtitle: L10n.t("members.memberCount", ["count": String(people.count)]),
-      onBack: onBack
-    )
+    Text(L10n.t("members.memberCount", ["count": String(people.count)]))
+      .font(Typography.subheadlineBold)
+      .foregroundStyle(Tokens.muted)
 
     if let fund = data.balances.fund {
       FundBlockView(fund: fund, members: people) {

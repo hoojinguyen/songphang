@@ -43,15 +43,9 @@ public struct StatsView: View {
 
         switch model.state {
         case .loading:
-          if showHeader {
-            SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
-          }
           LoadingSkeleton(rowCount: 4, rowHeight: 96)
 
         case .failed(let error):
-          if showHeader {
-            SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
-          }
           if case .api(_, 404) = error {
             VStack(spacing: 12) {
               Text(L10n.tr("common.groupNotFound"))
@@ -68,9 +62,6 @@ public struct StatsView: View {
           }
 
         case .loaded(let data):
-          if showHeader {
-            SPScreenHeader(title: L10n.tr("stats.title"), onBack: onBack)
-          }
           loadedContent(data)
         }
       }
@@ -79,7 +70,7 @@ public struct StatsView: View {
       .padding(.bottom, 28)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .modifier(ConditionalStatsNavBar(isEnabled: showHeader, title: L10n.tr("stats.title")))
     .sheet(item: $shareItem) { item in
       FileShareSheet(url: item.url) {
         shareItem = nil
@@ -333,6 +324,21 @@ public struct StatsView: View {
           }
         }
       }
+    }
+  }
+}
+
+private struct ConditionalStatsNavBar: ViewModifier {
+  let isEnabled: Bool
+  let title: String
+
+  func body(content: Content) -> some View {
+    if isEnabled {
+      content
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+    } else {
+      content
     }
   }
 }

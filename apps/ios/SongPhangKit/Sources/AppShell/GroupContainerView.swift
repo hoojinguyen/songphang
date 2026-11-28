@@ -218,12 +218,9 @@ public struct GroupContainerView: View {
 
   public var body: some View {
     VStack(spacing: 8) {
-      persistentHeader
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
-
       segmentSwitcher
         .padding(.horizontal, 20)
+        .padding(.top, 8)
 
       if isArchived {
         Text(L10n.tr("groups.archivedBanner"))
@@ -241,7 +238,14 @@ public struct GroupContainerView: View {
     .background(Tokens.bg.ignoresSafeArea())
     .spFeedback(.success, trigger: archiveSuccessTick)
     .spFeedback(.warning, trigger: archiveWarningTick)
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(currentGroup?.name ?? "")
+    .navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+      ToolbarItemGroup(placement: .topBarTrailing) {
+        memberCapsuleButton
+        overflowMenu
+      }
+    }
     .confirmationDialog(
       L10n.tr("groups.archiveAction"),
       isPresented: $isArchiveConfirmPresented,
@@ -418,59 +422,17 @@ public struct GroupContainerView: View {
     )
   }
 
-  private var persistentHeader: some View {
-    HStack(spacing: 8) {
-      Button(action: onBack) {
-        Image(systemName: "chevron.backward")
-          .font(.system(size: 16, weight: .semibold))
-          .foregroundStyle(Tokens.ink)
-          .frame(width: 44, height: 44)
-          .background(Tokens.surface, in: Circle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel(L10n.tr("common.back"))
-
-      HStack(spacing: 6) {
-        Text(currentGroup?.name ?? "")
-          .font(Typography.bodyBold)
-          .foregroundStyle(Tokens.ink)
-          .lineLimit(1)
-          .minimumScaleFactor(0.85)
-
-        if isArchived {
-          Text(L10n.tr("groups.tabArchived"))
-            .font(Typography.captionBold)
-            .foregroundStyle(Tokens.muted)
-            .lineLimit(1)
-            .fixedSize()
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Tokens.sunken, in: Capsule())
+  private var memberCapsuleButton: some View {
+    Button {
+      onNavigate(.groupMembers(groupId: groupId))
+    } label: {
+      HStack(spacing: 2) {
+        ForEach(Array(currentMembers.prefix(3))) { member in
+          MemberShapeView(member: member, size: 22)
         }
-      }
-
-      Spacer(minLength: 4)
-
-      HStack(spacing: 8) {
-        Button {
-          onNavigate(.groupMembers(groupId: groupId))
-        } label: {
-          HStack(spacing: 2) {
-            ForEach(Array(currentMembers.prefix(3))) { member in
-              MemberShapeView(member: member, size: 24)
-            }
-          }
-          .padding(.horizontal, 10)
-          .frame(minHeight: 44)
-          .background(Tokens.surface)
-          .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L10n.tr("feed.membersLink"))
-
-        overflowMenu
       }
     }
+    .accessibilityLabel(L10n.tr("feed.membersLink"))
   }
 
   private var overflowMenu: some View {
@@ -526,10 +488,7 @@ public struct GroupContainerView: View {
       }
     } label: {
       Image(systemName: "ellipsis")
-        .font(.system(size: 16, weight: .bold))
-        .foregroundStyle(Tokens.ink)
-        .frame(width: 44, height: 44)
-        .background(Tokens.surface, in: Circle())
+        .accessibilityLabel(L10n.tr("settings.title"))
     }
   }
 

@@ -122,7 +122,7 @@
     - Security review: checked relevant items 1, 2, 8 on `git diff`; UI selection/state components and avatar rendering only, no issues found.
   - **Findings closed:** `F4-01`, `F4-02` (component part), `F2-125`, `F2-44` (component part), `F2-123` (component part), `F2-122`, `F2-43`, `F1-01`.
 
-- [x] **Task 5.6.A.6 — Feedback and money components, gallery, Stage A gate**
+- [x] **Task 5.6.A.6 — Feedback and money components, gallery, Stage A gate** (commit `16ee165`)
   - **Approach:**
     - Files to create/modify: `DesignSystem/Components/{CopyButton,ConfirmationToast,ShapeLoader,ShapeBurst,FieldShake,PersonName,MoneyText,MoneyFormat,MemberPicker}.swift`, `DesignSystem/States/SkeletonBlocks.swift`, `AppShell/Debug/{DebugGalleryView,DebugStageAGallerySection}.swift`, `DesignSystem/Resources/Localizable.xcstrings`, and `docs/superpowers/runs/phase-5-6/{copy-changes,decisions,progress}.md`.
     - Approach: Build `CopyButton(value:label:)`, `ConfirmationToast` + `.confirmationToast(_:)`, `ShapeLoader` (4 bouncing brand shapes via `PhaseAnimator` + `Motion.bounce`, pulsing opacity under Reduce Motion), `ShapeBurst(members:trigger:)` (<= 1 s burst, still under Reduce Motion), `.fieldShake(trigger:)` (horizontal shake + `.spFeedback(.warning)`, red border only under Reduce Motion), `SkeletonBlocks` (`BalanceCardSkeleton`, `LinkRowSkeleton`, `SearchFieldSkeleton`, `TransactionRowSkeleton`, `MemberRowSkeleton` with `TimelineView` shimmer suppressed under Reduce Motion), explicit `MoneyText.Role` (`.hero`, `.primary`, `.secondary`), and `PersonName.display(name:isCurrentUser:)`; expose all Stage A components on `--gallery-components` (`DebugStageAGallerySection`).
@@ -146,6 +146,25 @@
     - Stage A gallery captures (`screens/stage-a/gallery-components-{light,dark,ax5}.png`): verified on disk and visually inspected (light, dark, and `AX5` Dynamic Type).
 
 ## Stage B — Navigation
+
+- [x] **Task 5.6.B.1 — Native navigation bars**
+  - **Approach:**
+    - Files modified: `ActivityView.swift`, `AccountView.swift`, `ForgotPasswordView.swift`, `RegisterView.swift`, `CreateGroupView.swift`, `GroupSettingsView.swift`, `MembersView.swift`, `BalancesView.swift`, `GroupFeedView.swift`, `QuickEntryView.swift`, `ExpenseFormView.swift`, `SplitEditorView.swift`, `SettleView.swift`, `ReceiptReviewView.swift`, `TransactionDetailView.swift`, `NotificationsView.swift`, `PersonalLedgerView.swift`, `StatsView.swift`, `FundView.swift`, `GroupContainerView.swift`, `RootView.swift`, `docs/superpowers/runs/phase-5-6/{decisions,progress}.md`.
+    - Files deleted: `AppShell/PopGestureEnabler.swift`, `AppShell/StatusBarCover.swift`.
+    - Approach: Converted `ActivityView` first (`screens/stage-b/b1-activity-{light,dark}.png`) and recorded Decision D9 in `decisions.md`, then applied the identical pattern across all remaining pushed screens, `TransactionDetailView` (removing duplicate back button), `NotificationsView`, and `SplitEditorView` (now pushed via `.navigationDestination(isPresented: $model.isSplitEditorOpen)`). Moved `GroupContainerView`'s title, member-shapes capsule, and overflow menu into the navigation bar; put Overview and Groups tab roots under `.navigationTitle("").navigationBarTitleDisplayMode(.inline)` alongside `.large` titles on `AccountView` and `NotificationsView`; deleted `PopGestureEnabler.swift` and `StatusBarCover.swift`.
+    - Why this is the simplest approach: Using system `NavigationStack` chrome everywhere eliminates custom header spacing hacks, restores native edge-swipe back, and gives every screen iOS 26 Liquid Glass scroll-edge clock protection automatically.
+    - Rejected alternative: Keeping `SPScreenHeader` on task forms or inline-swapping `SplitEditorView` — rejected because custom back buttons break system edge-swipe consistency.
+    - Questions: none (Decision D9 recorded in `decisions.md`; `PayView` and `PaymentDetailsView` retain `SPScreenHeader` inside sheets until `5.6.C.1`).
+  - **Gates (verbatim):**
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'generic/platform=iOS Simulator' build`: `** BUILD SUCCEEDED **`
+    - `xcodebuild -project apps/ios/SongPhang.xcodeproj -scheme SongPhang -destination 'id=607AC652-2E92-4BE7-BA18-1B888D79684B' build`: `** BUILD SUCCEEDED **`
+    - `xcrun swift-format lint --strict --recursive apps/ios`: exit `0` (empty output)
+    - `./apps/ios/Scripts/check-strings.sh`: `OK: 893 web keys verified, 0 missing, 0 differing.`
+  - **Exercise results:**
+    - Verified `grep -rn "navigationBarBackButtonHidden\|PopGestureEnabler\|StatusBarCover" apps/ios/SongPhangKit/Sources/` returns zero matches, and `SPScreenHeader` remains only on the two modal sheet views (`PayView`, `PaymentDetailsView`) scheduled for `5.6.C.1`.
+    - Simulator (`iPhone 17 Pro`, iOS 26.5): captured light/dark `ActivityView` (`b1-activity-{light,dark}.png`), light/dark `GroupContainerView` (`b1-group-container{,-dark}.png`), default & AX5 `TransactionDetailView` (`b1-tx-detail{,-ax5}.png` — single native back button), `AccountView` (`b1-account.png`), `NotificationsView` (`b1-notifications.png`), `OverviewView` (`b1-overview.png`), `ExpenseFormView` (`b1-expense-form.png`), `SplitEditorView` (`b1-split-editor.png`), and `SettleView` (`b1-settle.png`).
+    - Security review: checked relevant items 1, 2, 8 on `git diff`; navigation chrome and SwiftUI modifiers only, no issues found.
+  - **Findings closed:** `B01` (`F2-01`), `B19` (`F4-40`), `F2-02`, `F2-03`, `F2-126`, `F2-129`.
 
 ## Stage C — Apply
 

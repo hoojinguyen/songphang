@@ -1169,6 +1169,8 @@ public struct RootView: View {
               ]
             }
           )
+          .navigationTitle("")
+          .navigationBarTitleDisplayMode(.inline)
           .toolbar {
             #if DEBUG
               ToolbarItem(placement: .topBarTrailing) {
@@ -1211,6 +1213,8 @@ public struct RootView: View {
               try await dependencies.auth.resendVerification()
             }
           )
+          .navigationTitle("")
+          .navigationBarTitleDisplayMode(.inline)
           .toolbar {
             #if DEBUG
               ToolbarItem(placement: .topBarTrailing) {
@@ -1350,8 +1354,6 @@ public struct RootView: View {
       deletedTransactionId: $deletedTransactionId
     )
     .toolbar { keyboardDoneToolbar }
-    .overlay { StatusBarCover() }
-    .background(PopGestureEnabler())
     .id(route)
   }
 }

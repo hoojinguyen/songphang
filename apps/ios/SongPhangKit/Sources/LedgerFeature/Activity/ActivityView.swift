@@ -32,11 +32,11 @@ public struct ActivityView: View {
           OfflineBanner()
         }
 
-        SPScreenHeader(
-          title: L10n.tr("activity.title"),
-          subtitle: model.state.value?.group.name ?? "",
-          onBack: onBack
-        )
+        if let groupName = model.state.value?.group.name, !groupName.isEmpty {
+          Text(groupName)
+            .font(Typography.subheadlineBold)
+            .foregroundStyle(Tokens.muted)
+        }
 
         Text(L10n.tr("activity.headline"))
           .font(Typography.pageTitle)
@@ -127,7 +127,8 @@ public struct ActivityView: View {
           .padding(.bottom, 20)
       }
     }
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("activity.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.state.value == nil {
         await model.load()

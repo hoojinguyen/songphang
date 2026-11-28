@@ -32,11 +32,6 @@ public struct AccountView: View {
           OfflineBanner()
         }
 
-        SPScreenHeader(
-          title: L10n.tr("account.title"),
-          onBack: onBack
-        )
-
         switch model.user {
         case .loading:
           LoadingSkeleton(rowCount: 3, rowHeight: 96)
@@ -55,7 +50,8 @@ public struct AccountView: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("account.title"))
+    .navigationBarTitleDisplayMode(.large)
     .task {
       await model.load()
     }

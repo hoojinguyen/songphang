@@ -27,19 +27,9 @@ public struct ReceiptReviewView: View {
       VStack(alignment: .leading, spacing: 16) {
         switch model.state {
         case .loading:
-          SPScreenHeader(
-            title: L10n.tr("receipts.title"),
-            backLabel: L10n.tr("common.back"),
-            onBack: onBack
-          )
           LoadingSkeleton(rowCount: 3, rowHeight: 96)
 
         case .failed:
-          SPScreenHeader(
-            title: L10n.tr("receipts.title"),
-            backLabel: L10n.tr("common.back"),
-            onBack: onBack
-          )
           LoadError {
             Task { await model.load(defaultTitle: L10n.tr("receipts.title")) }
           }
@@ -63,7 +53,8 @@ public struct ReceiptReviewView: View {
       .padding(.bottom, 28)
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("receipts.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.state.value == nil {
         await model.load(defaultTitle: L10n.tr("receipts.title"))
@@ -99,11 +90,6 @@ public struct ReceiptReviewView: View {
 
   @ViewBuilder
   private func pendingView(attachmentId: Attachment.ID) -> some View {
-    SPScreenHeader(
-      title: L10n.tr("receipts.title"),
-      backLabel: L10n.tr("common.cancel"),
-      onBack: onBack
-    )
     RemoteAttachmentThumbnail(attachmentId: attachmentId, size: 96, cornerRadius: 20) { id in
       try await model.attachmentsRepository.content(groupId: model.groupId, attachmentId: id)
     }
@@ -118,11 +104,6 @@ public struct ReceiptReviewView: View {
   @ViewBuilder
   private func failedView(scan: ReceiptScan) -> some View {
     let notAReceipt = scan.errorCode == "NOT_A_RECEIPT"
-    SPScreenHeader(
-      title: L10n.tr("receipts.title"),
-      backLabel: L10n.tr("common.cancel"),
-      onBack: onBack
-    )
     RemoteAttachmentThumbnail(attachmentId: scan.attachmentId, size: 96, cornerRadius: 20) { id in
       try await model.attachmentsRepository.content(groupId: model.groupId, attachmentId: id)
     }
@@ -203,16 +184,9 @@ public struct ReceiptReviewView: View {
     let payers = model.payerOptions(from: data.members)
     let computedAmount = model.isPreviewCurrent ? model.itemsPreview?.computedAmount : nil
 
-    VStack(alignment: .leading, spacing: 4) {
-      SPScreenHeader(
-        title: L10n.tr("receipts.title"),
-        backLabel: L10n.tr("common.cancel"),
-        onBack: onBack
-      )
-      Text(L10n.tr("receipts.aiNote"))
-        .font(Typography.captionBold)
-        .foregroundStyle(Tokens.muted)
-    }
+    Text(L10n.tr("receipts.aiNote"))
+      .font(Typography.captionBold)
+      .foregroundStyle(Tokens.muted)
 
     HStack(alignment: .top, spacing: 12) {
       RemoteAttachmentThumbnail(attachmentId: data.scan.attachmentId, size: 80, cornerRadius: 20) {

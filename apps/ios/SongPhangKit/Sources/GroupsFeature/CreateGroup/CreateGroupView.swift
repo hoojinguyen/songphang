@@ -31,11 +31,6 @@ public struct CreateGroupView: View {
     ScrollViewReader { proxy in
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          SPScreenHeader(
-            title: L10n.tr("newGroup.title"),
-            onBack: onBack
-          )
-
           VStack(alignment: .leading, spacing: 8) {
             Text(L10n.tr("newGroup.nameLabel"))
               .font(Typography.captionBold)
@@ -136,7 +131,8 @@ public struct CreateGroupView: View {
       .safeAreaInset(edge: .bottom, spacing: 0) {
         submitBar
       }
-      .navigationBarBackButtonHidden(true)
+      .navigationTitle(L10n.tr("newGroup.title"))
+      .navigationBarTitleDisplayMode(.inline)
       .onChange(of: model.addedMembers.count) { oldCount, newCount in
         if newCount > oldCount {
           Motion.withAnimation(Motion.smooth, reduceMotion: reduceMotion) {

@@ -34,7 +34,6 @@ public struct QuickEntryView: View {
       case .failed(let error):
         if case .api(_, 404) = error {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("common.groupNotFound"))
               .font(Typography.bodyBold)
@@ -44,7 +43,6 @@ public struct QuickEntryView: View {
           .padding(20)
         } else {
           VStack {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             LoadError {
               Task { await model.load() }
@@ -57,7 +55,6 @@ public struct QuickEntryView: View {
       case .loaded(let data):
         if data.group.role == .viewer {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             Spacer()
             Text(L10n.tr("common.forbidden"))
               .font(Typography.bodyBold)
@@ -67,7 +64,6 @@ public struct QuickEntryView: View {
           .padding(20)
         } else if !isEmailVerified {
           VStack(spacing: 16) {
-            SPScreenHeader(title: "", backLabel: L10n.tr("common.back"), onBack: onCancel)
             SPCard(tone: .accent, padding: 20) {
               Text(L10n.tr("verify.banner"))
                 .font(Typography.subheadlineBold)
@@ -82,7 +78,8 @@ public struct QuickEntryView: View {
       }
     }
     .background(Tokens.bg.ignoresSafeArea())
-    .navigationBarBackButtonHidden(true)
+    .navigationTitle(L10n.tr("compose.title"))
+    .navigationBarTitleDisplayMode(.inline)
     .task {
       if model.state.value == nil {
         await model.load()
@@ -94,17 +91,13 @@ public struct QuickEntryView: View {
   @ViewBuilder
   private func composeBody(data: QuickEntryModel.ScreenData) -> some View {
     let activeMembers = data.members.filter(\.active)
-    SPScreenHeader(
-      title: L10n.tr("compose.title"),
-      subtitle: data.group.name,
-      backLabel: L10n.tr("common.cancel"),
-      onBack: onCancel
-    )
-    .padding(.horizontal, 20)
-    .padding(.top, 8)
 
     ScrollView {
       VStack(spacing: 16) {
+        Text(data.group.name)
+          .font(Typography.subheadlineBold)
+          .foregroundStyle(Tokens.muted)
+          .frame(maxWidth: .infinity, alignment: .leading)
         if let reading = model.reading,
           !model.sentence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         {
