@@ -22,7 +22,7 @@ The review pages are private artifacts owned by the project owner:
 - Part 3, direction and decisions: https://claude.ai/artifact/XhnuFd9j59r6ywDopcHugz
 - Part 4, remaining screens and global checks: https://claude.ai/artifact/2j55wSDoTTZ6jfGGcLSsta
 
-The full record lives in the repository at `docs/superpowers/research/2026-11-28-ui-ux-v3-review/`: a Markdown copy of each part with its screenshots, and `findings.md`, a register of all 316 findings and 21 defects with IDs, owning phase and status. Use those files, not the artifact pages, which agents cannot open. This overview summarises; where it is silent, the register and the parts apply.
+The full record lives in the repository at `docs/superpowers/research/2026-11-28-ui-ux-v3-review/`: a Markdown copy of each part with its screenshots, and `findings.md`, a register of all 326 findings and 21 defects with IDs, owning phase and status. Use those files, not the artifact pages, which agents cannot open. This overview summarises; where it is silent, the register and the parts apply.
 
 **Goals**
 

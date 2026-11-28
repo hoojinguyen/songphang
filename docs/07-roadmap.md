@@ -263,4 +263,4 @@ Approved by the project owner on 2026-11-28. Where this section differs from sec
    - iOS and API first. Phases 5.6–5.8 change iOS and the API only; Phase 5.9 then updates Web to follow the finished iOS app. This replaces, for v3, the per-wave Web parity rule of section 8.
    - Additive API v1 only, so Web v2 keeps working until Phase 5.9.
    - VND-only, server-authoritative and no cross-group netting of debts.
-4. **References:** `docs/superpowers/specs/2026-11-28-ui-ux-v3-roadmap-overview-design.md` (owner decisions, direction per phase, open questions) and `docs/superpowers/research/2026-11-28-ui-ux-v3-review/` (the full review and `findings.md`, the register of 316 findings and 21 defects that each phase must close).
+4. **References:** `docs/superpowers/specs/2026-11-28-ui-ux-v3-roadmap-overview-design.md` (owner decisions, direction per phase, open questions) and `docs/superpowers/research/2026-11-28-ui-ux-v3-review/` (the full review and `findings.md`, the register of 326 findings and 21 defects that each phase must close).

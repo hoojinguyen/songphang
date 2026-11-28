@@ -8,11 +8,11 @@ Generated on 2026-11-28 from the four parts in this folder; maintained by hand f
 
 | Phase | Findings |
 |---|---|
-| 5.6 — iOS foundations | 73 |
-| 5.7 — iOS core screens | 161 |
+| 5.6 — iOS foundations | 80 |
+| 5.7 — iOS core screens | 164 |
 | 5.8 — iOS money and secondary screens | 74 |
 | All phases (rules every phase applies) | 8 |
-| **Total** | **316** |
+| **Total** | **326** |
 | 5.9 — Web v3 | Applies the finished iOS outcome of every row above to Web; tracked in the 5.9 spec |
 
 Columns:
@@ -129,6 +129,10 @@ B15 appears only in the defect list of part 4, so no finding row below carries i
 | F1-70 | Học bằng cách làm, không có slide hướng dẫn | Point | **Mỗi màn tối đa một gợi ý**, hiện một lần rồi biến mất vĩnh viễn (ví dụ "Vuốt trái để sửa" ở khoản chi đầu tiên). | 5.7 |  | Open |
 | F1-71 | Học bằng cách làm, không có slide hướng dẫn | Point | **Mở dần tính năng:** chip "Phụ phí" chỉ xuất hiện sau khoản chi thứ 3; "Chốt đợt" chỉ hiện khi nhóm có trên 20 khoản; "Quỹ" chỉ hiện khi có người lập quỹ. Người dùng lâu năm vẫn tìm được mọi thứ trong Thông tin nhóm. | 5.7 |  | Open |
 | F1-72 | Học bằng cách làm, không có slide hướng dẫn | Point | **Khoản chi đầu tiên được ăn mừng** bằng một hiệu ứng nhỏ. Mục tiêu là người mới thêm được khoản chi đầu tiên trong vòng một phút. | 5.7 |  | Open |
+| F1-73 | Từ 4 tab và 3 segment xuống 3 tab và 1 màn nhóm | Rule | Phần lớn cảm giác ngợp đến từ cấu trúc, không phải từ màu sắc. Sửa cấu trúc trước thì các bước làm gọn sau sẽ dễ hơn nhiều. | 5.7 |  | Open |
+| F1-74 | Hệ thống chuyển động, rung và âm thanh | Rule | Không cần thêm thư viện. SwiftUI trên iOS 26 có sẵn mọi thứ cần dùng: `.contentTransition(.numericText())`, `.sensoryFeedback`, `.symbolEffect`, `matchedGeometryEffect`, `PhaseAnimator`, `Canvas`/`TimelineView` cho hiệu ứng bung hình. Mọi chuyển động có phương án thay thế khi bật Giảm chuyển động. | 5.6 |  | Open |
+| F1-75 | Viết lại theo giọng bạn bè | Rule | Quy ước: nhãn tối đa 3 từ; câu gợi ý tối đa 1 dòng; mọi đoạn giải thích dài hơn 60 ký tự (hiện có 38 chuỗi) chuyển vào nút "Vì sao?" hoặc trang trợ giúp. | 5.6 |  | Open |
+| F1-76 | Ba đợt, cái dễ và vui làm trước | Rule | Cách kiểm tra (dự án không viết test tự động): mời 3 đến 5 người chưa dùng app, giao 3 việc ("thêm bữa lẩu 300k chia đều", "xem mình được nhận bao nhiêu", "đánh dấu Thu đã trả"), đếm số lần chạm và số lần khựng lại. Làm một lần trước R1 và một lần sau R3. | 5.7 |  | Open |
 
 ### [02-detail-screens.md](02-detail-screens.md)
 
@@ -262,6 +266,10 @@ B15 appears only in the defect list of part 4, so no finding row below carries i
 | F2-126 | 8. Lề và vùng bấm thẳng hàng | Rule | Header chi tiết đang tràn mép. Dùng thanh điều hướng của hệ thống thì phần này tự đúng. | 5.6 |  | Open |
 | F2-127 | 9. Rung có nghĩa | Rule | Rung nhẹ khi chọn, rung thành công khi tiền đổi chủ, rung cảnh báo khi lỗi. Không rung khi chỉ đổi tab. | 5.6 |  | Open |
 | F2-128 | 10. Chữ cái đầu chỉ là chỗ tạm | Rule | Ô tên nhóm mới không có gợi ý. Dùng gợi ý cụ thể như “Đà Lạt cuối tuần”, đúng giọng app. | 5.6 |  | Open |
+| F2-129 | Cảm giác “giật” đến từ việc làm lại thứ hệ thống đã có | Rule | iOS cho sẵn ba kiểu chuyển: đẩy sang (push) cho đi sâu vào nội dung, sheet trượt lên cho một việc ngắn, và toàn màn hình cho việc dài hoặc camera. App hiện dùng đúng tên các kiểu này nhưng tắt đi phần hệ thống tự làm, rồi vá lại bằng tay. Kết quả là mỗi màn chuyển hơi khác nhau một chút. | 5.6 |  | Open |
+| F2-130 | Sheet đang to hơn việc nó làm | Keep | Bộ lọc là sheet làm đúng nhất trong app: có thanh kéo, cao vừa nửa màn, nổi lên dạng kính mờ của iOS 26, nhìn thấy màn phía sau. Các sheet còn lại phần lớn mở toàn màn hình, nên trông như một trang mới chứ không phải một việc nhỏ đặt lên trên. | 5.6 |  | Open |
+| F2-131 | Nói một lần, ở chỗ cao nhất | Rule | Lặp trong app rơi vào ba kiểu. Thứ nhất, một thông tin giống nhau được in lại ở mỗi hàng, trong khi nó có thể làm tiêu đề nhóm. Thứ hai, một nút chính đặt ở mỗi hàng, nên trên màn có nhiều nút chính cùng lúc. Thứ ba, một câu hỏi được trả lời hai lần với hai cách nói khác nhau. Bảng dưới là các chỗ tôi đếm được trên ảnh chụp. | 5.6 |  | Open |
+| F2-132 | Chỗ nào chuyển động, chỗ nào đứng yên | Rule | Nguyên tắc: chuyển động chỉ dùng khi nó trả lời câu hỏi “vừa có gì thay đổi?” Mỗi màn có nhiều nhất một chuyển động chính. Phần chuyển màn để hệ thống làm, vì nó đã được tối ưu và đúng với cử chỉ tay. | 5.6 |  | Open |
 
 ### [03-direction.md](03-direction.md)
 
@@ -328,6 +336,7 @@ B15 appears only in the defect list of part 4, so no finding row below carries i
 | F3-59 | Chế độ tối | Keep | Độ tương phản ổn, màu vàng vẫn rõ, hình thành viên vẫn tươi. | All |  | Open |
 | F3-60 | Chế độ tối | Remove | Không thấy lỗi lớn ở 3 màn đã thử. | All |  | Open |
 | F3-61 | Chế độ tối | Change | Cần thử thêm sheet và ảnh chia sẻ ở chế độ tối. | All |  | Open |
+| F3-62 | Bấm “Đã nhận” là xong, có 5 giây để đổi ý | Rule | Tôi đã đọc code trước khi chọn. App có hai luồng. Người trả bấm “Tôi đã trả” thì tạo một yêu cầu chờ người nhận xác nhận, đã là hai bước. Người nhận bấm “Đã nhận” thì ghi thẳng một khoản thanh toán vào sổ. Câu hỏi này là về luồng thứ hai. | 5.7 |  | Open |
 
 ### [04-remaining-screens.md](04-remaining-screens.md)
 
@@ -388,3 +397,4 @@ B15 appears only in the defect list of part 4, so no finding row below carries i
 | F4-53 | Giảm chuyển động, VoiceOver, rung và âm thanh (đọc code) | Point | **Giảm chuyển động:** chỉ 4 file đọc cài đặt này (nhập nhanh, ghi nhận, chia tiền, hình thành viên), trong khi có 17 chỗ gọi animation. Ví dụ, chuyển segment trong nhóm vẫn chạy hiệu ứng mờ dần khi người dùng đã bật giảm chuyển động. **Hướng:** một bộ thông số chuyển động dùng chung, tự tắt hiệu ứng di chuyển khi bật cài đặt này. Đây cũng là chỗ để thêm hiệu ứng mới mà không phải kiểm tra từng màn. | 5.6 |  | Open |
 | F4-54 | Giảm chuyển động, VoiceOver, rung và âm thanh (đọc code) | Point | **VoiceOver:** có 80 nhãn đọc và 9 chỗ gộp phần tử. Khoảng 10 nút chỉ có biểu tượng cần kiểm tra nhãn. Tôi chưa bật VoiceOver để nghe thật, nên mục này mới là ước lượng. | 5.6 |  | Open |
 | F4-55 | Giảm chuyển động, VoiceOver, rung và âm thanh (đọc code) | Point | **Rung:** đã có sẵn 4 kiểu rung trong `Haptics.swift`, nhưng không dùng kiểu rung mới của SwiftUI (`sensoryFeedback`). App không có âm thanh nào. Phần 1 đã đề xuất nơi nên rung: lưu khoản chi, đã nhận, chốt đợt, cả nhóm sòng phẳng. | 5.6 |  | Open |
+| F4-56 | Bốn kiểu lỗi lặp lại | Rule | Các màn mới không mang thêm vấn đề lạ. Chúng lặp lại đúng bốn kiểu dưới đây, vì vậy spec nên sửa theo kiểu chứ không sửa từng màn. | 5.6 |  | Open |

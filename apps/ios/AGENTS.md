@@ -74,6 +74,7 @@ A model is `@Observable`, receives repository protocols through its initialiser,
 ## 8. Strings and screens
 
 - User-visible strings are Vietnamese, in one String Catalog, identical character for character to `apps/web/src/messages/vi.ts`. Never reword a string that exists on the web.
+  - Exception for UI/UX v3 (ADR-044): during Phases 5.6–5.8 a string may differ from the web file. Record every added, changed or removed string in the run's `copy-changes.md` (key, old value, new value, reason); Phase 5.9 applies them to the web file and ends the exception.
 - When a web screen exists, the iOS screen has the same content, order and strings; platform conventions replace only navigation chrome and controls.
 - Dynamic Type to the largest accessibility size without clipping; VoiceOver labels on every shape; Reduce Motion replaces motions with instant changes.
 

@@ -12,7 +12,7 @@ The review was run on `main@6839bbf` in the iOS Simulator (iPhone 17 Pro, iPhone
 | [02-detail-screens.md](02-detail-screens.md) | Part 2. Transitions, sheets, repetition, row buttons, the animation budget, keep / remove / change for 18 screens, ten small conventions |
 | [03-direction.md](03-direction.md) | Part 3. Decisions on the form sheet and instant "Đã nhận", the three-layer model, 14 more screens and states, coverage |
 | [04-remaining-screens.md](04-remaining-screens.md) | Part 4. Four recurring patterns, clone, receipt, recurring, close cycle, settings, account, slow network, iPhone SE, editor role, accessibility from code |
-| [findings.md](findings.md) | The register: 316 findings and 21 defects, each with an ID, owning phase and status |
+| [findings.md](findings.md) | The register: 326 findings and 21 defects, each with an ID, owning phase and status |
 | `img/` | The 63 screenshots used by the four parts |
 
 The parts are kept in the original Vietnamese because they quote the product's own wording. Each part was first published as a private claude.ai artifact; the Markdown copy here is the one to use, because agents cannot open those pages.
